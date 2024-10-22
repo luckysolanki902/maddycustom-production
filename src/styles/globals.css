@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100..900;1,100..900&family=Krona+One&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100..900;1,100..900&family=Krona+One&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+/* General Styles */
+html,
+body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    background-color: white;
+    color: rgb(0, 0, 0);
+}
+
+body::-webkit-scrollbar {
+    display: none;
+}
+
+a {
+    text-decoration: none;
+    padding: 0;
+    margin: 0;
+}
+
+* {
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+    font-family: Jost, sans-serif;
+
+}
+
+/* Utility Classes */
+.black {
+    display: none;
+}
+
+.flexRorC {
+    flex-direction: row;
+}
+
+.margintopbottom {
+    margin-top: 4rem;
+    margin-bottom: 3rem;
+}
+
+/* Sidebar Styles */
+.sideBarLinks {
+    color: rgb(57, 57, 57);
+    font-family: sans-serif;
+}
+
+.sideiconhover {
+    padding: 5px 6px 2px 6px;
+    border-radius: 0.5rem;
+}
+
+.sideiconhover:hover {
+    background-color: rgba(211, 211, 211, 0.4);
+    scale: 0.95;
+}
+
+/* Containers */
+.chooseContainer,
+.placeContainer {
+    padding-top: 3rem;
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+}
+
+@media (min-width: 800px) {
+    .chooseContainer {
+        padding-left: 2rem;
+        padding-right: 2rem;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        column-gap: 2rem;
+        justify-content: space-evenly;
+    }
+
+    .placeContainer {
+        grid-template-columns: repeat(2, auto);
+    }
+}
+
+/* Error Button */
+.errorbutton {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: rgb(70, 70, 70);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 1.5rem;
+    font-size: 1.2rem;
+    transition: background-color 0.3s, color 0.3s;
+    cursor: pointer;
+}
+
+.errorbutton:hover {
+    scale: 0.95;
+    background-color: #333;
+    color: #fff;
+}
+
+/* Loading Bar */
+.loadingBar {
+    transition: all 0.3s ease;
+}
+
+/* Flex Change for Smaller Screens */
+@media (width < 800px) {
+    .flexRorC {
+        flex-direction: column;
+        gap: 4rem;
+    }
+
+    .flexChange {
+        flex-direction: column;
+    }
+}
+
+/* Responsive Styles */
+@media (max-width: 600px) {
+    #onlyPC {
+        display: none;
+    }
+}
+
+@media (width < 600px) {
+    .pcid {
+        display: none;
+    }
+}
+
+@media (width > 600px) {
+    .hideinpc {
+        display: none;
+    }
+}
+
+/* Radio Buttons */
+input[type="radio"] {
+    accent-color: black;
+    width: 20px;
+    height: 20px;
+    margin-left: 2rem;
+    margin-right: 1rem;
+    cursor: pointer;
+}
+
+@media (width < 550px) {
+    input[type="radio"] {
+        margin-left: 1.5rem;
+    }
+}
+
+@media (width < 390px) {
+    input[type="radio"] {
+        margin-left: 1rem;
+        margin-right: 0.7rem;
+    }
+}
+
+input[name="helmetOption"] {
+    accent-color: black;
+    width: 25px;
+    height: 25px;
+    margin-left: 2rem;
+    margin-right: 1rem;
+    cursor: pointer;
+}
