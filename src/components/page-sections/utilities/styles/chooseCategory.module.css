@@ -1,0 +1,107 @@
+/* styles/chooseBike.module.css */
+
+.chooseContainer {
+    display: grid;
+    gap: 6rem;
+    margin: 10rem 3rem 6rem 3rem;
+    grid-template-columns: repeat(4, 1fr);
+    /* Show 3 images per row on larger screens */
+}
+
+.chooseCard {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    /* border: 1px solid #ccc; */
+    border-radius: 3rem;
+    overflow: hidden;
+    /* padding: 1rem; */
+    box-shadow: -7px -7px 7px #A3D5E0, 3px 7px 7px #A3D5E0;
+    transition: all 0.3s ease-out;
+}
+
+.mainCard{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.chooseCard:hover {
+    box-shadow: -9px -9px 10px #A3D5E0, 5px 9px 9px #A3D5E0;
+}
+
+.chooseImage {
+    width: 100%;
+    /* Ensure the image takes the full width of its container */
+    height: auto;
+    object-fit: cover;
+    scale: 1.1;
+    /* Maintain aspect ratio */
+    transition: all 0.3s ease-out;
+}
+
+.chooseImage:hover {
+    scale: 1.05;
+}
+
+.name{
+margin-top: 2rem;
+font-size: 1.3rem;
+text-align: center;
+}
+
+@media (width<=768px) {
+    .chooseContainer {
+        grid-template-columns: repeat(2, 1fr);
+        margin: 4rem 3rem 4rem 2rem;
+        /* Show 2 images per row on mobile devices */
+    }
+
+    .chooseCard {
+        border-radius: 1.8rem;
+        overflow: hidden;
+        /* padding: 1rem; */
+        box-shadow: -4px -4px 4px #A3D5E0, 1px 4px 4px #A3D5E0;
+        transition: all 0.3s ease-out;
+    }
+
+
+    .chooseContainer {
+        display: grid;
+        gap: 3rem;
+    }
+    .name{
+        margin-top: 1.4rem;
+        font-size: 1rem;
+        text-align: center;
+        }
+
+        .chooseCard:hover {
+            box-shadow: -5px -5px 5px #A3D5E0, 2px 5px 5px #A3D5E0;
+        }
+}
+
+@media (min-width: 768px) and (max-width: 1200px) {
+    .chooseContainer {
+        grid-template-columns: repeat(2, 1fr);
+        /* Show 2 images per row on mobile devices */
+    }
+
+    .chooseCard {
+        border-radius: 3rem;
+        overflow: hidden;
+        /* padding: 1rem; */
+        box-shadow: -4px -4px 4px #A3D5E0, 1px 4px 4px #A3D5E0;
+        transition: all 0.3s ease-out;
+    }
+
+
+    .chooseContainer {
+        display: grid;
+        gap: 6rem;
+        margin: 8rem 5rem;
+    }
+
+}

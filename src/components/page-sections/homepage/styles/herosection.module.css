@@ -1,0 +1,41 @@
+/* heroSection.module.css */
+.logoDiv {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+    width: 100%;
+    margin-top: 2rem;
+}
+
+.logoDiv img {
+    width: 15rem;
+    height: auto;
+}
+
+.carouseldiv {
+    margin: auto 1rem;
+}
+
+@media (max-width: 600px) {
+    .logoImg {
+        width: 200px;
+        height: auto;
+    }
+    
+}
+@media (min-width: 800px) {
+    .logoDiv img {
+        width: 12rem;
+    }
+}
+
+@media (min-width: 1000px) {
+    .carouseldiv {
+        margin: auto 15rem;
+    }
+
+    .logoDiv img {
+        width: 15rem;
+    }
+}
