@@ -17,7 +17,7 @@ export default function RootLayout({ children }) {
 
       <head>
         <FacebookPixel />
-        <GoogleAnalytics />
+        <GoogleAnalytics /> 
         <Clarity />
         <Razorpay /> 
       </head>

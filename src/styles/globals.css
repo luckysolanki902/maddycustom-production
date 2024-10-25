@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100..900;1,100..900&family=Krona+One&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
-
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100..900;1,100..900&family=Krona+One&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
 
@@ -11,6 +9,7 @@ body {
     overflow-x: hidden;
     background-color: white;
     color: rgb(0, 0, 0);
+    -webkit-tap-highlight-color: transparent;
 }
 
 body::-webkit-scrollbar {

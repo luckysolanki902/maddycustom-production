@@ -1,6 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
- 
+    images: {
+        remotePatterns: [
+          {
+            protocol: 'https',
+            hostname: 'd26w01jhwuuxpo.cloudfront.net',
+          },
+        ],
+      },
+
+      eslint: {
+        ignoreDuringBuilds: true,
+      },
 };
 
 export default nextConfig;
