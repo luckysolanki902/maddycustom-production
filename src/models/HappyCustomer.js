@@ -14,41 +14,28 @@ const HappyCustomerSchema = new mongoose.Schema(
       required: true,
       maxlength: 100,
     },
-    // URL to the customer's photo
-    // Example: "https://example.com/photos/johndoe.jpg"
+    // URL to the customer's review photo
     photo: {
       type: String,
       required: true,
     },
-    // Customer's rating
-    // Example: 5
-    rating: {
+    homepageDisplayOrder: {
       type: Number,
-      min: 1,
-      max: 5,
-    },
-    // Optional review comment
-    review: {
-      type: String,
-      maxlength: 1000,
+      index: true
     },
     // Pages where the testimonial should appear
     pagesToAppearOn: [
       {
-        // Page type (e.g., "home", "product", "category")
-        pageType: {
+        // Variants pages with same display order
+        specificCategoryCode: [{
           type: String,
-          required: true,
-          enum: ['home', 'product', 'category'],
-        },
-        // Reference to specific page (e.g., category slug)
-        pageReference: {
-          type: String,
-        },
+          index: true
+        }], 
         // Order in which the testimonial should appear
         displayOrder: {
           type: Number,
           required: true,
+          index: true
         },
       },
     ],
@@ -61,10 +48,9 @@ const HappyCustomerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index added for efficient querying by pageType and pageReference
-HappyCustomerSchema.index({
-  'pagesToAppearOn.pageType': 1,
-  'pagesToAppearOn.pageReference': 1,
-});
+// Create indexes for the schema fields as specified
+HappyCustomerSchema.index({ homepageDisplayOrder: 1 });
+HappyCustomerSchema.index({ 'pagesToAppearOn.specificCategoryCode': 1 });
+HappyCustomerSchema.index({ 'pagesToAppearOn.displayOrder': 1 });
 
-module.exports = mongoose.models.HappyCustomer ||mongoose.model('HappyCustomer', HappyCustomerSchema);
+module.exports = mongoose.models.HappyCustomer || mongoose.model('HappyCustomer', HappyCustomerSchema);

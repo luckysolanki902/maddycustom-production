@@ -30,21 +30,7 @@ const CartSchema = new mongoose.Schema(
           min: 1,
           default: 1,
         },
-        // Price of the product when added to cart
-        priceAtAddition: {
-          type: Number,
-          required: true,
-          min: 0,
-        },
-        // Selected variant
-        variant: {
-          type: String,
-        },
-        // Selected color
-        color: {
-          type: String,
-        },
-        // Custom fields for additional information
+        // Custom fields for additional information optional not necessary right now
         customFields: {
           bikeModel: String,
           carModel: String,

@@ -1,0 +1,28 @@
+.main {
+    display: flex;
+    justify-content: space-evenly;
+    margin: auto;
+    max-width: 700px;
+    font-family: Jost;
+}
+
+.item {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+    justify-content: center;
+    align-items: center;
+    word-wrap: break-word;
+    gap: 0.9rem;
+}
+.word{
+    word-wrap: break-word;
+    max-width: 6rem;
+    text-align: center;
+    line-height: 1rem;
+}
+.item img {
+    width: 5.5rem;
+    height: auto;
+
+}

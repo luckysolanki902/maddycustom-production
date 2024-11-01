@@ -6,7 +6,7 @@ import Product from '@/models/Product';
 import SpecificCategory from '@/models/SpecificCategory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 
-export async function DELETE(request) {
+export async function GET(request) {
     try {
         // Connect to the database
         await connectToDatabase();  
@@ -18,7 +18,7 @@ export async function DELETE(request) {
         await SpecificCategoryVariant.deleteMany({});
 
         // Delete all specific categories
-        // await SpecificCategory.deleteMany({});
+        await SpecificCategory.deleteMany({});
 
         return NextResponse.json({ message: 'Products, specific category variants and specific categories deleted successfully' });
     } catch (error) {

@@ -1,0 +1,65 @@
+.tagMainContainer {
+    overflow: hidden;
+    padding: 0;
+    margin: 20px;
+    position: relative; /* Add position relative to create a stacking context */
+  }
+  @media(width<600px){
+    .tagMainContainer{
+        margin-bottom: 0rem;
+    }
+  }
+  
+  .tagContainer {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 30px;
+    overflow-y: hidden;
+    overflow-x: auto;
+  }
+  
+  .tagContainer::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .tags {
+    display: flex;
+    padding: 4px 10px;
+    margin-right: 10px;
+    justify-content: center;
+    align-items: center;
+    border-radius: 0.7rem;
+    background-color: white;
+    color: black;
+    border: 1px solid black;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease-in-out;
+    transition: width 0.3s ease-in-out;
+  }
+  
+  .activeTag {
+    background-color: rgb(52, 52, 52);
+    color: white;
+    border: none;
+  }
+  
+  /* New styles for the overlay */
+  .tagOverlay {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 100px; /* Adjust this width as needed for the overlay */
+    background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.847)); /* White gradient for the blur effect */
+    pointer-events: none; /* Allow clicking through the overlay */
+    z-index: 1; /* Ensure the overlay is on top of the tags */
+  }
+  
+  .tags {
+    transition: background-color 0.3s ease;
+  }
+  
+
+  

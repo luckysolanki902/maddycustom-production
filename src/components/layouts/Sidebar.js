@@ -55,7 +55,7 @@ const linkStyle = {
     width: '100%',
 };
 
-const SwipeableTemporaryDrawer = (props) => {
+const Sidebar = (props) => {
     const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
     const router = useRouter();
@@ -205,7 +205,7 @@ const SwipeableTemporaryDrawer = (props) => {
     };
 
     return (
-        <div>
+        <>
             {/* Menu Button */}
             <Button
                 onClick={toggleDrawer('left', true)}
@@ -233,8 +233,8 @@ const SwipeableTemporaryDrawer = (props) => {
             >
                 {renderList('left')}
             </SwipeableDrawer>
-        </div>
+        </>
     );
 };
 
-export default SwipeableTemporaryDrawer;
+export default Sidebar;
