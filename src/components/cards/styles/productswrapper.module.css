@@ -1,0 +1,106 @@
+/* Apply box-sizing globally for consistency */
+
+/* Container for the grid of products */
+.productsGrid {
+  margin-top: 5rem;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  /* 2 columns for desktop and tablet */
+  row-gap: 6rem;
+  column-gap: 2rem;
+  padding: 20px;
+}
+
+/* Styles for each grid item to ensure equal height */
+.productsGrid>* {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Video card styling */
+.videoCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(145, 145, 145, 0.08);
+  padding: 0.2rem 0.5rem 1rem 0.5rem;
+}
+
+/* Video styling to maintain aspect ratio */
+.videoCard video {
+  width: 100%;
+  height: auto;
+  max-height: 440px;
+  object-fit: cover;
+}
+
+/* "Maddy Customs" text styling */
+.videoCard h1 {
+  text-align: center;
+  margin-top: 1rem;
+  /* Space above the text */
+  font-size: 1.5rem;
+  /* Adjust as needed */
+  font-family: 'Jost', sans-serif;
+  /* Consistent font */
+  color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ProductCard main container styling */
+.mainCardDiv {
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(145, 145, 145, 0.08);
+  padding: 0.2rem 0.5rem 1rem 0.5rem;
+  /* flex-grow: 1;  */
+  /* Allows the card to grow and fill the grid cell */
+  display: flex;
+  flex-direction: column;
+}
+
+.imageLoad {
+  width: 100%;
+  height: auto;
+  max-height: 440px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  will-change: transform;
+}
+
+
+
+/* Responsive adjustments for mobile devices */
+@media (max-width: 600px) {
+  .productsGrid {
+    grid-template-columns: 1fr;
+    /* 1 column for mobile */
+    padding: 0;
+    /* Remove container padding */
+    gap: 5rem;
+    /* Reduce gap for smaller screens */
+  }
+
+  .videoCard h1 {
+    display: none;
+  }
+
+  .videoCard {
+    width: 80%;
+    margin: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: none;
+    border-radius: 1rem;
+  }
+  .videoCard video{
+    border-radius: 1rem;
+  }
+}

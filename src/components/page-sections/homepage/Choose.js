@@ -1,6 +1,6 @@
 import React from 'react'
 import CategorySearchbox from '../utilities/CategorySearch'
-import ChooseCategory from '../utilities/ChoseCategory'
+import ChooseCategory from './ChoseCategory'
 
 export default function Choose() {
     return (

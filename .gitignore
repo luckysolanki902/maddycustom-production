@@ -38,3 +38,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# apis
+# Ignore API routes in src directory
+/src/pages/api/**/*

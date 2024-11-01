@@ -1,0 +1,51 @@
+.placeCont {
+  margin-top: 30px;
+  margin-bottom: 120px;
+  padding: 1rem;
+  
+}
+
+ .orderPlaceh1, .orderPlaceh2 {
+  width: 100%;
+  aspect-ratio: 2;
+  background: linear-gradient(45deg, #d9d9d9, #ededed, #d9d9d9);
+  background-size: 400%;
+  animation: shimmer 5s infinite linear;
+  color: #303030;
+  border-radius: 0.2rem;
+}
+.placeholder{
+  padding: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  /* background: linear-gradient(45deg, #d9d9d9, #ededed, #d9d9d9); */
+  
+  animation: shimmer 5s infinite linear;
+  color: #303030;
+  border-radius: 0.2rem;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.orderPlaceh1, .orderPlaceh2 {
+  margin: 10px 0;
+  height: 2rem;
+  background: linear-gradient(45deg, #f3f3f3, #ededed, #f3f3f3);
+  background-size: 400%;
+  animation: shimmer 7s infinite linear;
+}
+.orderPlaceh1{
+  width: 60%;
+}
+.orderPlaceh2{
+  width: 40%;
+}

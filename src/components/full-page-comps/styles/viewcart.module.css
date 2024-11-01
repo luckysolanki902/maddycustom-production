@@ -1,0 +1,71 @@
+/* @/components/full-page-comps/styles/ViewCart.module.css */
+
+.container {
+    background-color: #F1FFFC;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+    margin: 0;
+  }
+  
+  .header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .heading {
+    flex-grow: 1;
+    text-align: center;
+  }
+  
+  .subHeading {
+    position: absolute;
+    right: 20px;
+  }
+  
+  .cartList {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .cartItem {
+    display: flex;
+    align-items: center;
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 10px 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .productImage {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 5px;
+    margin-right: 15px;
+  }
+  
+  .productName {
+    flex-grow: 1;
+    font-size: 16px;
+  }
+  
+  .footer {
+    margin-top: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .totalCost {
+    font-size: 20px;
+    font-weight: bold;
+  }
+  
+  .checkoutButton {
+    padding: 10px 20px;
+    font-size: 16px;
+  }
+  

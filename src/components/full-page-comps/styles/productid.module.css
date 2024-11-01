@@ -1,0 +1,573 @@
+
+.studdspng img {
+    width: 3rem;
+    height: auto;
+}
+
+.carDiv {
+    margin-bottom: 30px;
+    margin-top: 20px;
+    width: 100%;
+    padding: 0 10px;
+}
+
+.mopMain input[name="modeofpayment"] {
+    accent-color: black;
+    width: 20px;
+    height: 20px;
+    margin-right: 1rem;
+    cursor: pointer;
+}
+
+.mopLabel {
+    font-size: 0.8rem;
+}
+
+@media(width<550px) {
+    .mopMain input[name="modeofpayment"] {
+        accent-color: black;
+        width: 15px;
+        height: 15px;
+
+        margin-right: 1rem;
+        cursor: pointer;
+    }
+}
+
+@media(width<390px) {
+    .mopMain input[name="modeofpayment"] {
+        accent-color: black;
+        width: 20px;
+        height: 20px;
+        margin-right: 0.7rem;
+        cursor: pointer;
+    }
+}
+
+
+@media (width>750px) {
+    .studdspng img {
+        width: 4rem;
+        height: auto;
+    }
+
+    .carDiv {
+        margin-bottom: 1rem;
+        margin-top: 1rem;
+        padding: 0 18rem;
+    }
+}
+
+@media (width>1250px) {
+    .carDiv {
+        margin-bottom: 1rem;
+        margin-top: 1rem;
+        padding: 0 28rem;
+    }
+}
+
+.name {
+    /* margin-left: 20px; */
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+
+
+
+.whatsappIcon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-right: 20px;
+    background: none;
+    border: none;
+}
+
+.whatsappIcon:hover {
+    scale: 0.95;
+}
+
+
+
+.featureBox {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: Jost, sans-serif;
+    padding: 2px;
+    border-radius: 0.37694rem;
+    max-width: 70%;
+    color: #030303;
+    font-size: 0.9rem;
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: 0.1115rem;
+    padding: 2px 30px;
+    margin: 5px;
+
+}
+
+.featureBox2 {
+    display: flex;
+    justify-content: space-between;
+    font-family: Jost, sans-serif;
+    padding: 2px;
+    border-radius: 0.37694rem;
+    max-width: 100%;
+    color: #030303;
+    font-size: 0.7306rem;
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: 0.1115rem;
+    padding: 2px 10px 2px 30px;
+    margin: 5px;
+    align-items: center;
+
+}
+
+.fiftyCalculationBox {
+    margin: 1rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    font-family: Jost, sans-serif;
+    max-width: 440px;
+    gap: 0.5rem;
+    max-width: 50%;
+}
+.patch{
+    background-color: rgb(250, 250, 125);
+}
+
+.fiftyCalculationFlex {
+    display: flex;
+    justify-content: space-between;
+    font-family: Jost, sans-serif;
+    font-size: 0.9rem;
+}
+
+.hRow, .hRowrt {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: rgb(49, 49, 49);
+    letter-spacing: 1.5px;
+}
+
+
+.normalRow {
+    margin-left: 1rem;
+}
+
+@media (width>800px) {
+    .featureBox {
+        width: 30%;
+    }
+
+    .featureBox2 {
+        width: 35%;
+    }
+    .fiftyCalculationBox{
+        max-width: 27%;
+    }
+}
+
+.hr {
+    /* color: black; */
+    background-color: rgb(0, 0, 0);
+    height: 0.5px;
+    outline: none;
+    border: none;
+    margin: 1rem;
+}
+
+.checkIcon img {
+    margin-right: 20px;
+    /* filter: invert(1); */
+    /* transform: translateY(10%); */
+}
+
+.buttonContainer {
+    margin-top: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 50px;
+
+}
+
+.buttonContainer button {
+    border: none;
+    outline: none;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 20px;
+    background-color: black;
+    color: white;
+    border-radius: 0.6rem;
+    letter-spacing: 0.1rem;
+    transition: 0.2s;
+    cursor: pointer;
+    align-items: center;
+    box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25), 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+}
+
+.buttonContainer:hover button {
+    opacity: 90%;
+    scale: 0.95;
+}
+
+.place {
+    color: #FFF;
+    text-align: center;
+    font-size: 0.9rem;
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: 0.0715rem;
+    /* border: 1px solid white; */
+    font-family: Jost;
+
+}
+
+.order {
+    /* border: 1px solid white; */
+    margin-top: -0.5rem;
+    color: #FFF;
+    text-align: center;
+    font-size: 1.4rem;
+    font-style: normal;
+    font-weight: 900;
+    letter-spacing: 0.18206rem;
+    transition: 0.3S;
+    font-family: Jost;
+
+}
+
+.buttonContainer:hover .order {
+    letter-spacing: 0.5rem;
+}
+
+.contactUs {
+    font-size: 0.65rem;
+    font-weight: 400;
+    color: black;
+}
+
+
+
+
+
+
+
+
+.blurred {
+    filter: blur(5px);
+    pointer-events: none;
+    position: relative;
+}
+
+
+/* Styles for the overlay */
+.popupOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Styles for the popup content */
+.popupContent {
+    background: white;
+    padding: 40px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    max-width: 400px;
+    width: 90%;
+    /* height: 80%; */
+    padding-bottom: 0;
+}
+
+/* Styles for form inputs */
+/* .popupContent form input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 50px;
+    border: 4px solid #000;
+    border-radius: 2rem;
+    padding-left: 30px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    font-size: 1.3rem;
+
+} */
+
+.inputBox {
+    display: flex;
+    margin-bottom: 30px;
+    align-items: flex-end;
+}
+
+.inputBlack {
+    height: 2rem;
+    width: 2rem;
+    background-color: black;
+    margin-right: 1rem;
+}
+
+.logoDiv {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 60px;
+}
+
+.logoImg {
+    width: 300px;
+    height: auto;
+}
+
+#whatsappLabel {
+    width: 43%;
+    min-width: 155px;
+}
+
+#nameLabel {
+    width: 27%;
+    min-width: 98px;
+}
+
+.submitButtonContainer {
+    display: flex;
+    justify-content: center;
+    margin-top: 50px;
+}
+
+.submitButton {
+    border: none;
+    padding: 5px;
+    color: white;
+    width: 9.4375rem;
+    height: 3.375rem;
+    border-radius: 0.625rem;
+    background-color: rgb(35, 35, 35);
+    margin: auto;
+    text-align: center;
+    font-size: 1rem;
+    font-style: normal;
+    font-weight: 700;
+    line-height: normal;
+    transition: 0.5sec;
+    transition-timing-function: ease-in-out;
+}
+
+.submitButton:disabled {
+    background-color: rgb(79, 79, 79);
+}
+
+.submitButton:hover {
+    scale: 0.95;
+    opacity: 0.9;
+}
+
+.closePopup {
+    display: none;
+}
+
+.popupContent form input:hover {
+    outline: none;
+}
+
+.customIndicator {
+    background-color: black;
+}
+
+.activeTabText {
+    color: black;
+    /* Change the font color to black for the active tab */
+}
+
+
+
+.tabs {
+    display: flex;
+    justify-content: space-around;
+    font-size: 1.2rem;
+    font-family: 'Jost';
+    font-weight: 500;
+    text-underline-offset: 0.5rem;
+}
+
+.tab {
+    padding: 10px 20px;
+    cursor: pointer;
+}
+
+.active {
+    text-decoration: underline;
+}
+
+.tabContent {
+    margin-top: 1rem;
+    padding: 20px;
+}
+
+.featureSpan {
+    font-family: Jost;
+    font-weight: 500;
+}
+
+
+.submitButtonContainer button:disabled {
+    background-color: rgb(35, 35, 35);
+}
+
+
+
+
+@media (width>800px) {
+    .buttonContainer {
+        margin-top: 10px;
+    }
+
+    .buttonContainer button {
+        width: 20rem;
+        padding: 1rem;
+    }
+}
+
+
+
+/* CSS classes */
+.sizeContainer {
+    display: flex;
+    gap: 8px;
+    /* Adjust the spacing between boxes */
+    margin-top: 10px;
+    /* Adjust margin as needed */
+}
+
+.sizeBox {
+    width: 40px;
+    /* Adjust the width of the boxes */
+    height: 40px;
+    /* Adjust the height of the boxes */
+    border: 1px solid black;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+    border-radius: 0.5rem;
+    gap: 5rem;
+    margin-right: 0.4rem;
+}
+
+.sizeBox:hover {
+    background-color: rgb(56, 56, 56);
+    color: white;
+}
+
+.selected {
+    background-color: black;
+    color: white;
+}
+
+
+.imgContainer {
+    display: flex;
+    justify-content: center;
+    margin: 10px auto;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+}
+
+
+
+.image {
+    width: 80%;
+    height: auto;
+    border-radius: 1rem;
+    filter: brightness(110%);
+    transition: transform 0.3s ease;
+    /* color: #e3f8e3; */
+}
+
+.zoomed .image {
+    scale: 1.1;
+    margin: 0;
+    width: 80vh;
+    height: auto;
+    /* This sets the height to 100% of the viewport height */
+    object-fit: contain;
+}
+
+
+
+.zoomed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    background-color: rgb(255, 255, 255);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+
+.rotated {
+    transform: rotate(90deg);
+}
+
+
+@media (width>800px) {
+
+    .zoomed {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9999;
+        background-color: rgb(255, 255, 255);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        margin: 0;
+        padding: 5rem;
+        cursor: zoom-out;
+    }
+
+    .rotated {
+        transform: none;
+    }
+
+
+}
+
+@media (width>750px) {
+    .image {
+        width: 30%;
+    }
+
+}
+
+
+@media (width>1250px) {
+    .image {
+        width: 30%;
+    }
+}
