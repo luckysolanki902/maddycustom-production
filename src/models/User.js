@@ -7,19 +7,14 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      match: /^\+\d{10,15}$/,
-    },
-    // Optional email address
-    email: {
-      type: String,
-      unique: true,
-      sparse: true,
-      match: /^\S+@\S+\.\S+$/,
+      match: /^\d{10}$/,
     },
     // User's name
     name: {
       type: String,
       maxlength: 100,
+      minLength: 3,
+      required: true,
     },
     // Array of address objects
     addresses: [
@@ -32,13 +27,14 @@ const UserSchema = new mongoose.Schema(
         receiverPhoneNumber: {
           type: String,
           required: true,
-          match: /^\+\d{10,15}$/,
+          match: /^\d{10}$/,
         },
         addressLine1: {
           type: String,
           required: true,
           maxlength: 200,
         },
+        // Optional
         addressLine2: {
           type: String,
           maxlength: 200,
@@ -63,25 +59,6 @@ const UserSchema = new mongoose.Schema(
           required: true,
           maxlength: 10,
         },
-      },
-    ],
-    // References to products in the user's wishlist
-    wishlists: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Product',
-      },
-    ],
-    // Reference to the user's cart
-    cart: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Cart',
-    },
-    // References to user's orders
-    orders: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Order',
       },
     ],
     // OTP for login/verification

@@ -1,6 +1,6 @@
 // /app/api/create-from-scratch/specific-categories/route.js
 import { NextResponse } from 'next/server';
-import connectToDatabase from '../../../../../middleware';
+import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategory from '@/models/SpecificCategory';
 import { ObjectId } from 'mongodb';
 

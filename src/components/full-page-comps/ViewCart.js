@@ -1,115 +1,245 @@
-// @/components/full-page-comps/ViewCart.js
+// components/page-sections/viewcart/ViewCart.js
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
-import {
-  Checkbox,
-  IconButton,
-  Typography,
-  Button,
-} from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import AddToCartButton from '../common-utils/AddToCartButton';
-import {
-  removeItem,
-} from '../../store/slices/cartSlice';
+import axios from 'axios';
+import { removeItem } from '@/store/slices/cartSlice';
 import styles from './styles/viewcart.module.css';
-import Image from 'next/image';
+
+// Subcomponents
+import ViewCartHeader from '../page-sections/viewcart/ViewCartHeader';
+import CartList from '../page-sections/viewcart/CartList';
+import PriceDetails from '../page-sections/viewcart/PriceDetails';
+import PaymentModes from '../page-sections/viewcart/PaymentModes';
+import Footer from '../page-sections/viewcart/Footer';
+
+// Dialogs and Notifications
+import ApplyCoupon from '../dialogs/ApplyCoupon';
+import CustomSnackbar from '@/components/notifications/CustomSnackbar';
+import OrderForm from '../dialogs/OrderForm'; // Import OrderForm
+
+// Utility Functions
+import {
+  calculateTotalQuantity,
+  calculateTotalCostBeforeDiscount,
+  calculateDiscountAmount,
+  calculateFinalDiscount,
+  calculateTotalCostAfterDiscount,
+} from '@/lib/utils/cartCalculations';
 
 const ViewCart = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
 
-  // Calculate total number of products and unique items
-  const totalQuantity = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-  const uniqueItems = cartItems.length;
+  // Coupon state
+  const [isCouponDialogOpen, setIsCouponDialogOpen] = useState(false);
+  const [couponState, setCouponState] = useState({
+    couponApplied: false,
+    couponName: '',
+    couponDiscount: 0,
+    discountType: '', // 'percentage' or 'fixed'
+    isDbCoupon: false,
+  });
 
-  // Calculate total cost
-  const totalCost = cartItems.reduce((acc, item) => {
-    const price = item.productDetails.variantDetails?.availableBrands?.length > 0
-      ? item.productDetails.variantDetails.availableBrands[0].brandBasePrice + item.productDetails.price
-      : item.productDetails.price;
-    return acc + price * item.quantity;
-  }, 0);
+  // Snackbar State
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success', // 'success' | 'error' | 'info' | 'warning'
+  });
 
-  // Handle checkbox change
-  const handleCheckboxChange = (e, productId) => {
-    if (!e.target.checked) {
-      dispatch(removeItem({ productId }));
+  // Payment Modes State
+  const [paymentModes, setPaymentModes] = useState([]);
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState(null);
+  const [isLoadingPaymentModes, setIsLoadingPaymentModes] = useState(true);
+
+  // OrderForm Dialog State
+  const [isOrderFormOpen, setIsOrderFormOpen] = useState(false);
+
+  // Form State to Preserve Data
+  // Removed unused formState and onFormStateChange
+
+  // Fetch Payment Modes on Component Mount
+  useEffect(() => {
+    const fetchPaymentModes = async () => {
+      try {
+        const response = await axios.get('/api/checkout/modeofpayments');
+        if (response.status === 200) {
+          setPaymentModes(response.data.data);
+          // Set default selected payment mode (e.g., 'online')
+          const defaultMode = response.data.data.find(mode => mode.name === 'online') || response.data.data[0];
+          setSelectedPaymentMode(defaultMode);
+        } else {
+          setSnackbar({
+            open: true,
+            message: 'Failed to fetch payment modes.',
+            severity: 'error',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching payment modes:', error);
+        setSnackbar({
+          open: true,
+          message: 'An error occurred while fetching payment modes.',
+          severity: 'error',
+        });
+      } finally {
+        setIsLoadingPaymentModes(false);
+      }
+    };
+
+    fetchPaymentModes();
+  }, []);
+
+  // Use utility functions to calculate totals
+  const totalQuantity = calculateTotalQuantity(cartItems);
+  const totalCostBeforeDiscount = calculateTotalCostBeforeDiscount(cartItems);
+  const discountAmount = calculateDiscountAmount(totalCostBeforeDiscount, couponState);
+  const finalDiscount = calculateFinalDiscount(discountAmount, totalCostBeforeDiscount);
+  const totalCostAfterDiscount = calculateTotalCostAfterDiscount(totalCostBeforeDiscount, finalDiscount);
+
+  // Delivery Cost (Default or based on payment mode)
+  const deliveryCost = 100; // Default delivery cost
+
+  // Extra Charge based on Payment Mode
+  const extraCharge = selectedPaymentMode && selectedPaymentMode.extraCharge ? selectedPaymentMode.extraCharge : 0;
+
+  // Total cost including delivery and extra charge
+  const totalCostWithDelivery = totalCostAfterDiscount + deliveryCost + extraCharge;
+
+  // Original Total (for display when coupon applied)
+  const originalTotal = totalCostBeforeDiscount + deliveryCost + extraCharge;
+
+  // Handle removing a cart item
+  const handleRemoveItem = (productId) => {
+    dispatch(removeItem({ productId }));
+  };
+
+  // Handle back navigation with conditions
+  const handleBack = useCallback(() => {
+    if (isOrderFormOpen) {
+      setIsOrderFormOpen(false);
+    } else {
+      router.back();
     }
-  };
+  }, [isOrderFormOpen, router]);
 
-  // Handle back navigation
-  const handleBack = () => {
-    router.back();
-  };
-
-  // Placeholder checkout function
+  // Handle Checkout button click
   const handleCheckout = () => {
-    // Currently does nothing
-    return;
+    setIsOrderFormOpen(true);
+  };
+
+  // Handle applying a coupon
+  const handleApplyCoupon = (couponCode, discount, discountType, isDbCoupon) => {
+    setCouponState({
+      couponObjectId: '',
+      couponApplied: true,
+      couponName: couponCode,
+      couponDiscount: discount,
+      discountType: discountType,
+      isDbCoupon: isDbCoupon,
+    });
+    setSnackbar({
+      open: true,
+      message: 'Coupon applied successfully!',
+      severity: 'info',
+    });
+  };
+
+  // Handle Snackbar close
+  const handleSnackbarClose = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
+
+  // Handle removing a coupon
+  const removeCoupon = () => {
+    setCouponState({
+      couponApplied: false,
+      couponName: '',
+      couponDiscount: 0,
+      discountType: '',
+      isDbCoupon: false,
+    });
+    setSnackbar({
+      open: true,
+      message: 'Coupon removed.',
+      severity: 'info',
+    });
+  };
+
+  // Handle Payment Mode Selection
+  const handlePaymentModeChange = (event) => {
+    const selectedModeName = event.target.value;
+    const mode = paymentModes.find(mode => mode.name === selectedModeName);
+    setSelectedPaymentMode(mode);
   };
 
   return (
     <div className={styles.container}>
       {/* Header */}
-      <div className={styles.header}>
-        <IconButton onClick={handleBack}>
-          <ArrowBackIcon />
-        </IconButton>
-        <Typography variant="h5" className={styles.heading}>
-          MyCart ({totalQuantity})
-        </Typography>
-        <Typography variant="subtitle1" className={styles.subHeading}>
-          Products: {uniqueItems}
-        </Typography>
-      </div>
+      <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
 
       {/* Cart Items List */}
-      <div className={styles.cartList}>
-        {cartItems.map((item) => (
-          <div key={item.productId} className={styles.cartItem}>
-            <Checkbox
-              checked
-              onChange={(e) => handleCheckboxChange(e, item.productId)}
-              color="primary"
-            />
-            <Image
-            width={300}
-              height={300}
-              src={
-                item.productDetails.images && item.productDetails.images.length > 0
-                  ? `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${item.productDetails.images[0]}`
-                  : '/images/assets/gifs/helmetloadinggif.gif'
-              }
-              alt={item.productDetails.name}
-              className={styles.productImage}
-            />
-            <Typography variant="body1" className={styles.productName}>
-              {item.productDetails.name}
-            </Typography>
-            <AddToCartButton product={item.productDetails} />
-          </div>
-        ))}
-      </div>
+      <CartList cartItems={cartItems} onRemove={handleRemoveItem} />
+
+      {/* Price Details and Payment Modes */}
+      {totalQuantity > 0 && (
+        <section className={styles.cartList}>
+          <PriceDetails
+            deliveryCost={deliveryCost}
+            couponState={couponState}
+            finalDiscount={finalDiscount}
+            totalCostWithDelivery={totalCostWithDelivery}
+            onOpenCoupon={() => setIsCouponDialogOpen(true)}
+            onRemoveCoupon={removeCoupon}
+          />
+
+          <PaymentModes
+            paymentModes={paymentModes}
+            isLoading={isLoadingPaymentModes}
+            selectedPaymentMode={selectedPaymentMode}
+            onChange={handlePaymentModeChange}
+          />
+        </section>
+      )}
 
       {/* Total Cost and Checkout */}
-      <div className={styles.footer}>
-        <div className={styles.totalCost}>
-          <Typography variant="h6">Total: ₹{totalCost.toFixed(2)}</Typography>
-        </div>
-        <Button
-          variant="contained"
-          color="primary"
-          className={styles.checkoutButton}
-          onClick={handleCheckout}
-        >
-          Checkout
-        </Button>
-      </div>
+      {totalQuantity > 0 && (
+        <Footer
+          totalCost={totalCostWithDelivery}
+          originalTotal={couponState.couponApplied ? originalTotal : null}
+          onCheckout={handleCheckout}
+        />
+      )}
+
+      {/* Coupon Dialog */}
+      <ApplyCoupon
+        open={isCouponDialogOpen}
+        onClose={() => setIsCouponDialogOpen(false)}
+        onApplyCoupon={handleApplyCoupon}
+        totalCost={totalCostBeforeDiscount}
+        removeCoupon={removeCoupon}
+      />
+
+      {/* Order Form Dialog */}
+      <OrderForm
+        open={isOrderFormOpen}
+        onClose={() => setIsOrderFormOpen(false)}
+        paymentModeConfig={selectedPaymentMode}
+        // Removed formState and onFormStateChange props
+      />
+
+      {/* Custom Snackbar for Feedback */}
+      <CustomSnackbar
+        open={snackbar.open}
+        message={snackbar.message}
+        severity={snackbar.severity}
+        handleClose={handleSnackbarClose}
+      />
     </div>
   );
 };

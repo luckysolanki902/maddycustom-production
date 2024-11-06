@@ -1,7 +1,9 @@
 // @/store/index.js
+
 import { configureStore } from '@reduxjs/toolkit';
 import { combineReducers } from 'redux';
-import cartReducer from './slices/cartSlice'; // Assuming you have a cart slice
+import cartReducer from './slices/cartSlice';
+import orderFormReducer from './slices/orderFormSlice'; // Import orderFormSlice
 import {
   persistStore,
   persistReducer,
@@ -16,13 +18,14 @@ import storage from 'redux-persist/lib/storage'; // Uses localStorage
 
 const rootReducer = combineReducers({
   cart: cartReducer,
+  orderForm: orderFormReducer, // Add orderForm to rootReducer
   // Add other reducers here if needed
 });
 
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['cart'], // Only persist the cart slice
+  whitelist: ['cart', 'orderForm'], // Persist cart and orderForm slices
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

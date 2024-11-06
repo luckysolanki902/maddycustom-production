@@ -1,7 +1,9 @@
 // pages/api/shop/products/route.js
-import connectToDatabase from '../../../../../middleware';
+
+import connectToDatabase from '@/lib/middleware/connectToDb';
 import Product from '@/models/Product';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
+import SpecificCategory from '@/models/SpecificCategory'; // Import SpecificCategory
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -28,7 +30,23 @@ export async function POST(request) {
       // Fetch the associated SpecificCategoryVariant if it exists
       const variant = await SpecificCategoryVariant.findById(product.specificCategoryVariant).lean().exec();
 
-      return NextResponse.json({ type: 'product', product, variant }, { status: 200 });
+      if (!variant) {
+        console.warn(`No SpecificCategoryVariant found for product: ${product.name}`);
+        return NextResponse.json({ message: 'Variant Not Found' }, { status: 404 });
+      }
+
+      // Fetch the associated SpecificCategory
+      const specificCategory = await SpecificCategory.findById(variant.specificCategory).lean().exec();
+
+      if (!specificCategory) {
+        console.warn(`No SpecificCategory found for variant: ${variant.name}`);
+        return NextResponse.json({ message: 'Specific Category Not Found' }, { status: 404 });
+      }
+
+      return NextResponse.json(
+        { type: 'product', product, variant, specificCategory },
+        { status: 200 }
+      );
     }
 
     // If no product found, check for SpecificCategoryVariant by pageSlug
@@ -36,11 +54,24 @@ export async function POST(request) {
 
     if (variant) {
       console.info(`Found SpecificCategoryVariant: ${variant.name}`);
+
+      // Fetch the associated SpecificCategory
+      const specificCategory = await SpecificCategory.findById(variant.specificCategory).lean().exec();
+
+      if (!specificCategory) {
+        console.warn(`No SpecificCategory found for variant: ${variant.name}`);
+        return NextResponse.json({ message: 'Specific Category Not Found' }, { status: 404 });
+      }
+
       const products = await Product.find({ specificCategoryVariant: variant._id })
         .sort({ displayOrder: 1 }) // Default sorting by displayOrder
         .lean()
         .exec();
-      return NextResponse.json({ type: 'variant', variant, products }, { status: 200 });
+
+      return NextResponse.json(
+        { type: 'variant', variant, products, specificCategory },
+        { status: 200 }
+      );
     }
 
     // Neither variant nor product found, return 404

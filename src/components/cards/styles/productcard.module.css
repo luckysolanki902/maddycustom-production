@@ -41,6 +41,8 @@
   display: flex;
   gap: 2rem;
   align-items: center;
+  justify-content: space-between;
+  padding-right: 1rem;
 }
 
 .prodDescRow3 {

@@ -27,10 +27,10 @@ const HappyCustomerSchema = new mongoose.Schema(
     pagesToAppearOn: [
       {
         // Variants pages with same display order
-        specificCategoryCode: [{
-          type: String,
-          index: true
-        }], 
+        specificCategory: [{
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'SpecificCategory',
+        }],
         // Order in which the testimonial should appear
         displayOrder: {
           type: Number,

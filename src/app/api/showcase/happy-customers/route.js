@@ -1,5 +1,5 @@
 // Updated GET Method in /api/shop/happycustomers
-import connectToDatabase from '../../../../../middleware';
+import connectToDatabase from '@/lib/middleware/connectToDb';
 import HappyCustomer from '@/models/HappyCustomer';
 import SpecificCategory from '@/models/SpecificCategory';
 import { NextResponse } from 'next/server';

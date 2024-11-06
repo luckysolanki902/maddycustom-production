@@ -5,10 +5,10 @@ import GoogleAnalytics from '@/components/analytics/GoogleAnalytics';
 import Clarity from '@/components/analytics/Clarity';
 import Razorpay from '@/components/analytics/Razorpay';
 import { generateMetadataOptions } from '@/lib/metadata/generate-metadata';
-import ContactUs from '@/components/layouts/ContactUs';
 
 // Redux
 import ReduxProvider from '@/components/layouts/ReduxProvider';
+import FloatingActionBar from '@/components/utils/FloatingActionButton';
 
 export async function generateMetadata({ }) {
   return generateMetadataOptions();
@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
       <body>
         <ReduxProvider>
           {children}
-          <ContactUs />
+          <FloatingActionBar />
         </ReduxProvider>
       </body>
     </html>
