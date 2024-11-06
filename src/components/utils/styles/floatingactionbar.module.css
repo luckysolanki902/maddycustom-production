@@ -1,0 +1,51 @@
+/* FloatingActionBar.module.css */
+
+.container {
+  position: fixed;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 2000;
+
+}
+
+.actionBar {
+  background-color: white;
+  border-radius: 1.2rem;
+  display: flex;
+  align-items: center;
+  padding: 14px 24px;
+  gap: 36px;
+  box-shadow: 0 0 4px 2px #4de1ff24, 0 0 4px 2px #40bcff33;
+}
+
+.iconButton {
+  color: black;
+  display: flex;
+  /* flex-direction: column; */
+  align-items: center;
+  font-size: 14px;
+
+}
+
+.cartButtonActive {
+  /* color: #525252; */
+}
+
+.icon {
+  font-size: 50px;
+  background-color: rgba(82, 217, 255, 0.28);
+  padding: 0.4rem;
+  border-radius: 0.3rem;
+  margin-right: 0.5rem;
+  width: 30px;
+  height: auto;
+}
+
+.divider {
+  height: 24px;
+  width: 1px;
+  background-color: #b6b6b6;
+}

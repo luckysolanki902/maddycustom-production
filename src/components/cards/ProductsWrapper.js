@@ -5,7 +5,7 @@ import ProductCard from './ProductCard';
 import styles from './styles/productswrapper.module.css';
 import { filterProductsByTag, sortProducts } from '@/lib/utils/productsPageFunctions';
 
-const ProductsWrapper = ({ variant, products, tagFilter, sortBy }) => {
+const ProductsWrapper = ({ variant, products, category, tagFilter, sortBy }) => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const [loading, setLoading] = useState(true);
 
@@ -15,7 +15,7 @@ const ProductsWrapper = ({ variant, products, tagFilter, sortBy }) => {
 
     const timeoutId = setTimeout(() => {
       setLoading(false);
-    }, 1000);
+    }, 400);
 
     return () => clearTimeout(timeoutId);
   }, [tagFilter, sortBy]);
@@ -45,7 +45,7 @@ const ProductsWrapper = ({ variant, products, tagFilter, sortBy }) => {
       {sortedProducts.map((product) => (
         <ProductCard
           key={product._id}
-          product={{ ...product, variantDetails: variant }}
+          product={{ ...product, variantDetails: variant, category }}
           loading={loading}
         />
       ))}

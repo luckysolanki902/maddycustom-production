@@ -8,7 +8,7 @@ import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
 import { useMediaQuery } from '@mui/material';
 import { useSpring, animated } from '@react-spring/web';
 import { useRouter } from 'next/navigation';
-import AddToCartButton from '../common-utils/AddToCartButton';
+import AddToCartButton from '../utils/AddToCartButton';
 // import Placeholder from '../ui/Placeholder';
 
 const ProductCard = ({ product, loading }) => {
@@ -172,19 +172,19 @@ const ProductCard = ({ product, loading }) => {
         <animated.div
           className={styles.image}
           style={animationProps}
-          // Removed the onClick handler from the image
+        // Removed the onClick handler from the image
         >
+
           <Image
             className={styles.image}
             src={
               loading
-                ? '/images/assets/gifs/helmetloadinggif.gif'
+                ? '/images/assets/gifs/helmetloadinggiflandscape2.gif'
                 : product.images && product.images.length > 0
-                ? `${baseImageUrl}${product.images[0]}`
-                : '/images/assets/gifs/helmetloadinggif.gif'
+                  ? `${baseImageUrl}${product.images[0]}`
+                  : '/images/assets/gifs/helmetloadinggiflandscape2.gif'
             }
             alt={product.name}
-            style={loading ? { objectFit: 'cover', width: '50%', height: 'auto' } : {}}
             width={1076}
             height={683}
             loading="lazy"
@@ -197,9 +197,11 @@ const ProductCard = ({ product, loading }) => {
       <div className={styles.productDescription}>
         <div className={styles.prodDescRow1}>
           <div className={styles.productName}>{product.name}</div>
-          <div className={styles.addToCart}>
+
+          {product.variantDetails.available && <div className={styles.addToCart} >
             <AddToCartButton product={product} />
-          </div>
+          </div>}
+
         </div>
         <div className={styles.prodDescRow2}>
           <div className={styles.productCardSubtitles}>

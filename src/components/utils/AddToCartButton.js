@@ -5,6 +5,8 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSpring, animated } from 'react-spring';
 import styles from './styles/addtocartbutton.module.css';
+import RemoveIcon from '@mui/icons-material/Remove';
+import AddIcon from '@mui/icons-material/Add';
 import {
   addItem,
   incrementQuantity,
@@ -28,8 +30,8 @@ export default function AddToCartButton({ product }) {
       lastAction === 'increment'
         ? '#28a745' // Green
         : lastAction === 'decrement'
-        ? '#dc3545' // Red
-        : '#000',
+          ? '#dc3545' // Red
+          : '#000',
     opacity: cartItem ? 1 : 0,
     config: {
       tension: 300,
@@ -75,11 +77,12 @@ export default function AddToCartButton({ product }) {
 
   if (cartItem) {
     return (
-      <div className={styles.main}>
+      <div className={styles.main} onClick={(e) => e.stopPropagation()}>
         <button onClick={handleDecrement} className={styles.decrement}>
-          -
+          <RemoveIcon />
         </button>
         <animated.div
+          onClick={(e) => e.stopPropagation()}
           style={{
             transform: props.scale.to((s) => `scale(${s})`),
             color: props.color,
@@ -90,14 +93,14 @@ export default function AddToCartButton({ product }) {
           {cartItem.quantity}
         </animated.div>
         <button onClick={handleIncrement} className={styles.increment}>
-          +
+          <AddIcon />
         </button>
       </div>
     );
   }
 
   return (
-    <button onClick={handleAdd} className={styles.main}>
+    <button onClick={handleAdd} className={`${styles.main} ${styles.addToCart}`}>
       <span className={styles.addToCart}>Add to cart</span>
     </button>
   );

@@ -1,0 +1,121 @@
+.mainDiv {
+    background: linear-gradient(to bottom, #BB7ED8, #F19CEA);
+    display: flex;
+    flex-direction: column;
+    /* justify-content: center; */
+    align-items: center;
+    width: 10rem;
+    height: 15rem;
+    border-radius: 1rem;
+    background-image: '/public/images/bgs/md.png';
+}
+
+.mdLogo img{
+    width: 3rem;
+    height: auto;
+    margin-bottom: -1rem;
+}
+
+.percent{
+    color: rgba(255, 255, 255, 0.17);
+    font-weight: 900;
+    font-size: 5rem;
+    padding: 0;
+    margin: 0;
+    line-height: 5rem;
+    font-family: Jost;
+    position: relative;
+    
+
+}
+
+.percent div{
+position: absolute;
+color: white;
+top: 0;
+display: flex;
+justify-content: center;
+align-items: center;
+font-size: 2.5rem;
+width: 100%;
+transform: translateY(-5%);
+
+}
+
+.cut{
+display: flex;
+justify-content: space-between;
+width: 100%;
+align-items: center;
+position: relative;
+height: auto;
+min-height: 2rem;
+}
+
+.circle{
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: white;
+    border-radius: 60%;
+    /* opacity: 0; */
+}
+
+.cut :first-child{
+    transform: translateX(-80%);
+}
+.cut :last-child{
+    transform: translateX(80%);
+}
+
+.mainDiv p{
+    color: white;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    margin-top: -0.7rem;
+}
+.lineMain{
+display: flex;
+justify-content: space-evenly;
+align-items: center;
+padding: 0.5rem;
+overflow: hidden;
+}
+
+.validity{
+    color: white;
+    font-family: Jost;
+    position: absolute;
+    top: 0;
+    left: 1rem;
+    font-size: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.lines{
+    width: 3rem;
+    height: 0.7px;
+    background-color: rgb(67, 67, 67);
+}
+
+.applyButton button{
+    outline: none;
+    border: none;
+    padding: 0.4rem 1rem;
+    border-radius: 0.4rem;
+    background-color: white;
+    color: #F19CEA;
+    font-family: Jost, sans-serif;
+    font-weight: 600;
+    font-size: 0.7rem;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3 cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    letter-spacing: 2px;
+}
+
+
+.applyButton button:hover{
+   transform: scale(0.98);
+}
+
+

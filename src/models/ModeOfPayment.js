@@ -5,12 +5,12 @@ const mongoose = require('mongoose');
 /**
  * ModeOfPayment Schema
  * Represents different modes of payment.
- * Examples: COD, Online, CustomFifty, CustomThirty
+ * Currently: online, fifty
  */
 const ModeOfPaymentSchema = new mongoose.Schema(
   {
     // Name of the mode of payment
-    // Example: 'cod', 'online', 'customFifty', 'customThirty'
+    // For now, just: 'online', 'fifty' (lowercase)
     name: {
       type: String,
       required: true,
@@ -20,36 +20,26 @@ const ModeOfPaymentSchema = new mongoose.Schema(
       lowercase: true, // To ensure consistency
     },
     // Caption
-    // Example: "50% online 50% COD"
+    // Example: "50% online 50% COD" in case of fifty, else empty
     caption: {
       type: String,
       maxlength: 300,
       trim: true,
     },
     // Description of the mode of payment
-    // Example: "Cash on Delivery", "Online Payment", etc.
+    // Example: "Cards, UPI, Wallets", etc (in both online fifty), but in fifty add one mroe thing, that in parts
     description: {
       type: String,
       maxlength: 300,
       trim: true,
     },
     // Extra Charges (anti-discount)
-    // Example: 100
+    // Example: 100 (in case of fifty)
     extraCharge: {
       type: Number,
       min: 0,
     },
-    // Discount on certain mops (type:fixed or percentage, and value)
-    discount: {
-      type: String,
-      enum: ['fixed', 'percentage'],
-      default: 'fixed',
-    },
-    // Value of the discount
-    discountValue: {
-      type: Number,
-      min: 0,
-    },
+
     // Configuration details for custom payment modes
     // For example, percentages for online and COD
     configuration: {
@@ -66,6 +56,12 @@ const ModeOfPaymentSchema = new mongoose.Schema(
         default: 100,
       },
     },
+    notAvailableWith: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SpecificCategory',
+      }
+    ],
     // Indicates if this payment mode is currently active
     isActive: {
       type: Boolean,
@@ -75,4 +71,4 @@ const ModeOfPaymentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.models.ModeOfPayment ||mongoose.model('ModeOfPayment', ModeOfPaymentSchema);
+module.exports = mongoose.models.ModeOfPayment || mongoose.model('ModeOfPayment', ModeOfPaymentSchema);

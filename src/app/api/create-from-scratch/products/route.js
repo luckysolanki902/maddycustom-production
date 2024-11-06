@@ -1,7 +1,7 @@
 // /app/api/create-from-scratch/products/route.js
 
 import { NextResponse } from 'next/server';
-import connectToDatabase from '../../../../../middleware';
+import connectToDatabase from '@/lib/middleware/connectToDb';
 import Product from '@/models/Product';
 import SpecificCategory from '@/models/SpecificCategory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';

@@ -10,17 +10,28 @@ export default async function ShopPage({ params }) {
   const { slug } = await params;
 
   const data = await fetchProducts(slug);
-
   // Render ProductsPage if the response is a variant with products
   if (data.type === 'variant') {
-    return <ProductsPage variant={data.variant} products={data.products} />;
+    return (
+      <ProductsPage
+        variant={data.variant}
+        products={data.products}
+        category={data.specificCategory} // Pass specificCategory
+      />
+    );
   }
 
   // Render ProductIdPage if the response is a single product along with its variant
   else if (data.type === 'product') {
-    return <ProductIdPage product={data?.product} variant={data?.variant} />;
+    return (
+      <ProductIdPage
+        product={data.product}
+        variant={data.variant}
+        category={data.specificCategory} // Pass specificCategory
+      />
+    );
   }
 
   // Redirect to not found if no data is available
-  redirect('/not-found');
+  // redirect('/not-found');
 }

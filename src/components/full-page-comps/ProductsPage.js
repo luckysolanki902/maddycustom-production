@@ -7,7 +7,7 @@ import { useMediaQuery } from '@mui/material';
 import ProductsWrapper from '../cards/ProductsWrapper';
 import Tags from '../page-sections/products-page/Tags';
 
-export default function ProductsPage({ variant, products }) {
+export default function ProductsPage({ variant, products, category }) {
   // Constants
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
@@ -51,6 +51,7 @@ export default function ProductsPage({ variant, products }) {
       <ProductsWrapper
         variant={variant}
         products={products}
+        category={category}
         tagFilter={tagFilter}
         sortBy={sortBy}
       />

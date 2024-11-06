@@ -1,71 +1,160 @@
-/* @/components/full-page-comps/styles/ViewCart.module.css */
 
 .container {
-    background-color: #F1FFFC;
-    min-height: 100vh;
-    padding: 20px;
-    box-sizing: border-box;
-    margin: 0;
-  }
-  
-  .header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  
-  .heading {
-    flex-grow: 1;
-    text-align: center;
-  }
-  
-  .subHeading {
-    position: absolute;
-    right: 20px;
-  }
-  
+  background-color: #F1FFFC;
+  min-height: 100vh;
+  padding: 1.2rem;
+  margin: 0;
+  padding-bottom: 10rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+}
+
+.heading {
+  margin: 0;
+  margin-left: 1rem;
+  text-align: center;
+  display: flex;
+  align-items: center;
+}
+
+
+.heading span {
+  margin-left: 0.5rem;
+  color: #676767;
+  font-weight: 400;
+  font-size: 1.5rem;
+}
+
+.subHeading {
+  position: absolute;
+  right: 20px;
+}
+
+.cartList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin-bottom: 40px;
+  margin-top: 30px;
+}
+
+
+@media (min-width: 600px) {
   .cartList {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+    
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.2rem;
+    margin-bottom: 40px;
+    margin-top: 40px;
   }
+}
+
+.cartItem {
+  color: black;
   
-  .cartItem {
-    display: flex;
-    align-items: center;
-    background-color: #ffffff;
-    border-radius: 10px;
-    padding: 10px 15px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  .productImage {
-    width: 50px;
-    height: 50px;
-    object-fit: cover;
-    border-radius: 5px;
-    margin-right: 15px;
-  }
-  
-  .productName {
-    flex-grow: 1;
-    font-size: 16px;
-  }
-  
-  .footer {
-    margin-top: 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .totalCost {
-    font-size: 20px;
-    font-weight: bold;
-  }
-  
-  .checkoutButton {
-    padding: 10px 20px;
-    font-size: 16px;
-  }
-  
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 2px 4px 4px #b7fffb2c, 0 2px 1px 1px #a5e4ff18;
+  min-height: 110px;
+  border-radius: 1.2rem;
+}
+
+.priceDetails {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1.5rem;
+  gap: 1rem;
+
+}
+
+
+.priceField {
+  min-width: 150px;
+  text-align: left;
+  font-size: 1.1rem;
+  display: flex;
+}
+.mopBox{
+  padding-left: 1.5rem;
+  align-items: flex-start;
+  padding: 1.5rem;
+
+}
+.patch{
+  background-color: #fafa7d;
+}
+.priceDetailRow {
+  display: flex;
+}
+
+.rupee {
+  font-size: 0.7rem;
+}
+
+.productImage {
+  width: 100px;
+  height: auto;
+  object-fit: cover;
+  border-radius: 5px;
+  margin-right: 15px;
+}
+
+.priceValue {
+  font-size: 1.1rem;
+  color: gray;
+
+}
+
+.productDetails {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.categoryName {
+  flex-grow: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1rem;
+}
+
+.productName {
+  flex-grow: 1;
+  font-size: 0.8rem;
+  color: gray;
+}
+
+.footer {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  padding: 1rem;
+  background-color: #EEFEFC;
+  box-shadow: 0px -5px 5px 3px rgba(0, 0, 0, 0.1);
+}
+
+.totalCost {
+  font-size: 20px;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+}
+
+.checkoutButton {
+  padding: 10px 20px;
+  font-size: 16px;
+}

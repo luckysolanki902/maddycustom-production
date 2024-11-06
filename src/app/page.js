@@ -4,6 +4,7 @@ import styles from '@/styles/page-styles/home.module.css'
 import CategorySearchBox from '@/components/page-sections/homepage/CategorySearchBox'
 import ChooseCategory from '@/components/page-sections/homepage/ChoseCategory'
 import Sidebar from '@/components/layouts/Sidebar';
+import ContactUs from '@/components/layouts/ContactUs'
 
 export default function page() {
   return (
@@ -18,6 +19,7 @@ export default function page() {
         <CategorySearchBox />
         {/* Category cards like Helmet, Tank, Bonnet to choose from */}
         <ChooseCategory />
+        <ContactUs />
 
       </main>
     </>
