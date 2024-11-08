@@ -22,7 +22,6 @@ export async function POST(request) {
     const existingUser = await User.findOne({ phoneNumber });
 
     if (existingUser) {
-      console.log(existingUser._id.toString())
       return NextResponse.json(
         {
           message: 'User already exists',
@@ -41,7 +40,6 @@ export async function POST(request) {
     });
 
     await newUser.save();
-    console.log(newUser._id.toString())
     // Return success response
     return NextResponse.json(
       {

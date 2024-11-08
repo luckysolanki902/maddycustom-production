@@ -23,7 +23,6 @@ export async function GET(request) {
     const user = await User.findOne(
       { phoneNumber },
     );
-console.log(user)
     if (user) {
       const latestAddress =
         user.addresses && user.addresses.length > 0

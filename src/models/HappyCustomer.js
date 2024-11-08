@@ -1,9 +1,23 @@
-/**
- * HappyCustomer Schema
- * Represents a happy customer testimonial with photo.
- */
-
+// /models/HappyCustomer.js
 const mongoose = require('mongoose');
+
+const PlacementSchema = new mongoose.Schema({
+  refType: {
+    type: String,
+    enum: ['SpecificCategory', 'SpecificCategoryVariant', 'Product'],
+    required: true,
+  },
+  refId: {
+    type: mongoose.Schema.Types.ObjectId,
+    refPath: 'placements.refType',
+    required: true,
+  },
+  displayOrder: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
+}, { _id: false });
 
 const HappyCustomerSchema = new mongoose.Schema(
   {
@@ -19,38 +33,30 @@ const HappyCustomerSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    homepageDisplayOrder: {
-      type: Number,
-      index: true
+    // Indicates if the testimonial is global (appears on all relevant pages)
+    isGlobal: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
-    // Pages where the testimonial should appear
-    pagesToAppearOn: [
-      {
-        // Variants pages with same display order
-        specificCategory: [{
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'SpecificCategory',
-        }],
-        // Order in which the testimonial should appear
-        displayOrder: {
-          type: Number,
-          required: true,
-          index: true
-        },
-      },
+    // Array of placements where the testimonial should appear (if not global)
+    placements: [
+      PlacementSchema
     ],
     // Indicates if the testimonial is active
     isActive: {
       type: Boolean,
       default: true,
+      index: true,
     },
   },
   { timestamps: true }
 );
 
-// Create indexes for the schema fields as specified
-HappyCustomerSchema.index({ homepageDisplayOrder: 1 });
-HappyCustomerSchema.index({ 'pagesToAppearOn.specificCategoryCode': 1 });
-HappyCustomerSchema.index({ 'pagesToAppearOn.displayOrder': 1 });
+// Indexes for efficient querying
+HappyCustomerSchema.index({ isGlobal: 1 });
+HappyCustomerSchema.index({ 'placements.refType': 1, 'placements.refId': 1 });
+HappyCustomerSchema.index({ 'placements.displayOrder': 1 });
+HappyCustomerSchema.index({ isActive: 1 });
 
 module.exports = mongoose.models.HappyCustomer || mongoose.model('HappyCustomer', HappyCustomerSchema);
