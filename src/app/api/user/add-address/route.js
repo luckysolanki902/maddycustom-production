@@ -43,7 +43,6 @@ export async function POST(request) {
 
         // Find the user by phone number
         const user = await User.findOne({ phoneNumber });
-        console.log(user._id.toString())
         if (!user) {
             return NextResponse.json(
                 { message: 'User not found' },

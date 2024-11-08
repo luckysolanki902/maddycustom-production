@@ -33,6 +33,9 @@ import { makePayment } from '../../lib/payments/makePayment';
 import { useRouter } from 'next/navigation';
 import CustomSnackbar from '../notifications/CustomSnackbar';
 import { calculateTotalAmount, getPaymentButtonText } from '../../lib/utils/orderFormUtils'; // Import utility functions
+import { styled } from '@mui/material/styles';
+import theme from '@/styles/theme';
+import { ThemeProvider } from '@mui/material';
 
 const OrderForm = ({ open, onClose, paymentModeConfig }) => {
   const dispatch = useDispatch();
@@ -115,7 +118,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
   };
-// 
+  // 
   const onSubmitUserDetails = async (data) => {
     setIsLoading(true);
     try {
@@ -154,86 +157,86 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
     }
   };
 
- const onSubmitAddressDetails = async (data) => {
-  setIsLoading(true);
-  setIsPaymentProcessing(true);
-  try {
-    dispatch(setAddressDetails(data));
+  const onSubmitAddressDetails = async (data) => {
+    setIsLoading(true);
+    setIsPaymentProcessing(true);
+    try {
+      dispatch(setAddressDetails(data));
 
-    const orderResponse = await axios.post('/api/checkout/order/create', {
-      userId: orderForm.userDetails.userId,
-      phoneNumber: orderForm.userDetails.phoneNumber,
-      items: cartItems.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        priceAtPurchase: item.productDetails.price,
-        discount: 0,
-        extraCharges: [],
-      })),
-      paymentModeId: paymentModeConfig._id,
-      address: {
-        receiverName: orderForm.userDetails.name || '',
-        receiverPhoneNumber: orderForm.userDetails.phoneNumber,
-        addressLine1: data.addressLine1,
-        addressLine2: data.addressLine2,
-        city: data.city,
-        state: data.state,
-        pincode: data.pincode,
-      },
-      totalAmount: calculateTotalAmount(cartItems, paymentModeConfig),
-      couponCode: orderForm.couponCode,
-    });
+      const orderResponse = await axios.post('/api/checkout/order/create', {
+        userId: orderForm.userDetails.userId,
+        phoneNumber: orderForm.userDetails.phoneNumber,
+        items: cartItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          priceAtPurchase: item.productDetails.price,
+          discount: 0,
+          extraCharges: [],
+        })),
+        paymentModeId: paymentModeConfig._id,
+        address: {
+          receiverName: orderForm.userDetails.name || '',
+          receiverPhoneNumber: orderForm.userDetails.phoneNumber,
+          addressLine1: data.addressLine1,
+          addressLine2: data.addressLine2,
+          city: data.city,
+          state: data.state,
+          pincode: data.pincode,
+        },
+        totalAmount: calculateTotalAmount(cartItems, paymentModeConfig),
+        couponCode: orderForm.couponCode,
+      });
 
-    const { orderId, message, paymentDetails } = orderResponse.data;
+      const { orderId, message, paymentDetails } = orderResponse.data;
 
-    dispatch(setLastOrderId(orderId));
+      dispatch(setLastOrderId(orderId));
 
 
-    if (paymentDetails.amountPaidOnline > 0) {
-      const paymentInitResponse = await axios.post(
-        '/api/checkout/order/payment/create-razorpay-order',
-        {
-          price: paymentDetails.amountPaidOnline,
-          orderId: orderId,
-        }
-      );
+      if (paymentDetails.amountPaidOnline > 0) {
+        const paymentInitResponse = await axios.post(
+          '/api/checkout/order/payment/create-razorpay-order',
+          {
+            price: paymentDetails.amountPaidOnline,
+            orderId: orderId,
+          }
+        );
 
-      const { order: razorpayOrder, msg } = paymentInitResponse.data;
+        const { order: razorpayOrder, msg } = paymentInitResponse.data;
 
-      if (msg === 'success') {
-        const paymentResult = await makePayment({
-          customerName: orderForm.userDetails.name || '',
-          customerMobile: orderForm.userDetails.phoneNumber,
-          orderId,
-          razorpayOrder, // Pass the entire razorpayOrder object
-        });
+        if (msg === 'success') {
+          const paymentResult = await makePayment({
+            customerName: orderForm.userDetails.name || '',
+            customerMobile: orderForm.userDetails.phoneNumber,
+            orderId,
+            razorpayOrder, // Pass the entire razorpayOrder object
+          });
 
-        if (paymentResult) {
-          showSnackbar('Payment Successful!', 'success');
+          if (paymentResult) {
+            showSnackbar('Payment Successful!', 'success');
+          } else {
+            showSnackbar('Payment failed. Please try again.', 'error');
+          }
         } else {
-          showSnackbar('Payment failed. Please try again.', 'error');
+          showSnackbar('Failed to initiate payment.', 'error');
         }
       } else {
-        showSnackbar('Failed to initiate payment.', 'error');
+        showSnackbar(`Please pay ₹${paymentDetails.amountDueCod} via COD upon delivery.`, 'info');
       }
-    } else {
-      showSnackbar(`Please pay ₹${paymentDetails.amountDueCod} via COD upon delivery.`, 'info');
-    }
 
-    dispatch(clearCart());
-    dispatch(resetOrderForm());
-    reset();
-    handleClose();
-  } catch (error) {
-    console.error('Error creating order or processing payment:', error);
-    const errorMessage =
-      error.response?.data?.message || 'An error occurred while processing your order.';
-    showSnackbar(errorMessage, 'error');
-  } finally {
-    setIsLoading(false);
-    setIsPaymentProcessing(false);
-  }
-};
+      dispatch(clearCart());
+      dispatch(resetOrderForm());
+      reset();
+      handleClose();
+    } catch (error) {
+      console.error('Error creating order or processing payment:', error);
+      const errorMessage =
+        error.response?.data?.message || 'An error occurred while processing your order.';
+      showSnackbar(errorMessage, 'error');
+    } finally {
+      setIsLoading(false);
+      setIsPaymentProcessing(false);
+    }
+  };
 
 
 
@@ -269,39 +272,26 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
   }, [open, handleClose]);
 
   return (
-    <>
+    <ThemeProvider theme={theme}>
       <Dialog
         open={open}
         onClose={handleClose}
         fullWidth
-        maxWidth="sm"
+        // maxWidth="xs"
+        sx={{}}
+
         disableEscapeKeyDown={isPaymentProcessing} // Prevent closing with Escape key
       >
-        <DialogTitle>
-          Place Your Order
-          <IconButton
-            aria-label="close"
-            onClick={handleClose}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: (theme) => theme.palette.grey[500],
-            }}
-            disabled={isPaymentProcessing}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <Tabs value={tabIndex} onChange={handleTabChange} variant="fullWidth">
-            <Tab label="User Details" />
-            <Tab label="Address Details" disabled={tabIndex !== 1} />
+        <DialogContent >
+          <Tabs sx={{padding: '0rem 5rem'}} value={tabIndex} onChange={handleTabChange} variant="fullWidth">
+            <Tab label="Part 1" />
+            <Tab label="Part 2" disabled={tabIndex !== 1} />
           </Tabs>
 
           <Box
+
             component="form"
-            sx={{ mt: 2 }}
+            sx={{ mt: 2}}
             onSubmit={
               tabIndex === 0
                 ? handleSubmit(onSubmitUserDetails)
@@ -309,7 +299,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
             }
           >
             {tabIndex === 0 && (
-              <Box>
+              <Box sx={{ padding: '0rem 4rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
                 <Controller
                   name="name"
                   control={control}
@@ -319,12 +309,13 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                   }}
                   render={({ field }) => (
                     <TextField
+                      variant='standard'
                       {...field}
                       label="Name"
                       fullWidth
                       margin="normal"
                       error={!!errors.name}
-                      helperText={errors.name ? errors.name.message : 'Enter your full name'}
+                      helperText={errors.name ? errors.name.message : ''}
                       disabled={isLoading || isPaymentProcessing}
                       onChange={(e) => {
                         field.onChange(e);
@@ -345,16 +336,13 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                   }}
                   render={({ field }) => (
                     <TextField
+                      variant='standard'
                       {...field}
                       label="Mobile Number"
                       fullWidth
                       margin="normal"
                       error={!!errors.phoneNumber}
-                      helperText={
-                        errors.phoneNumber
-                          ? errors.phoneNumber.message
-                          : 'Enter 10-digit mobile number'
-                      }
+                      helperText={errors.phoneNumber ? errors.phoneNumber.message : ''}
                       disabled={isLoading || isPaymentProcessing}
                       onChange={(e) => {
                         field.onChange(e);
@@ -363,7 +351,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                     />
                   )}
                 />
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
                   <BlackButton
                     isLoading={isLoading}
                     buttonText="Next"
@@ -375,13 +363,14 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
             )}
 
             {tabIndex === 1 && (
-              <Box>
+              <Box sx={{ padding: '0rem 4rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
                 <Controller
                   name="addressLine1"
                   control={control}
                   rules={{ required: 'Address is required' }}
                   render={({ field }) => (
                     <TextField
+                      variant='standard'
                       {...field}
                       label="Address"
                       fullWidth
@@ -401,6 +390,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                   control={control}
                   render={({ field }) => (
                     <TextField
+                      variant='standard'
                       {...field}
                       label="Address Line 2 (Optional)"
                       fullWidth
@@ -419,6 +409,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                   rules={{ required: 'City is required' }}
                   render={({ field }) => (
                     <TextField
+                      variant='standard'
                       {...field}
                       label="City"
                       fullWidth
@@ -449,6 +440,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                       value={field.value || ''}
                       renderInput={(params) => (
                         <TextField
+                          variant='standard'
                           {...params}
                           label="State"
                           margin="normal"
@@ -472,6 +464,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                   }}
                   render={({ field }) => (
                     <TextField
+                      variant='standard'
                       {...field}
                       label="Pincode"
                       fullWidth
@@ -486,7 +479,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                     />
                   )}
                 />
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
                   <BlackButton
                     isLoading={isLoading}
                     buttonText={getPaymentButtonText(paymentModeConfig)} // Use utility function
@@ -507,7 +500,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
         severity={snackbarSeverity}
         handleClose={() => setSnackbarOpen(false)}
       />
-    </>
+    </ThemeProvider>
   );
 };
 
