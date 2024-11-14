@@ -18,15 +18,18 @@ export async function POST(request) {
       address,
       couponCode,
       totalAmount,
+      discountAmount,
+      extraCharges,
     } = await request.json();
 
     // Validate input
-    if ((!userId && !phoneNumber) || !items || !paymentModeId || !address || !totalAmount) {
+    if ((!userId && !phoneNumber) || !items || !paymentModeId || !address || totalAmount == null) {
       return NextResponse.json(
         { message: 'Missing required fields' },
         { status: 400 }
       );
     }
+
     await connectToDatabase();
 
     // Find user
@@ -50,7 +53,7 @@ export async function POST(request) {
     // Find the latest existing pending order for the user
     const existingOrder = await Order.findOne({
       user: userId,
-      status: 'pending',
+      paymentStatus: { $in: ['pending', 'paidPartially'] },
     }).sort({ createdAt: -1 });
 
     // Function to compare items arrays
@@ -93,9 +96,9 @@ export async function POST(request) {
 
     // Find payment mode
     const paymentMode = await ModeOfPayment.findById(paymentModeId);
-    if (!paymentMode) {
+    if (!paymentMode || !paymentMode.isActive) {
       return NextResponse.json(
-        { message: 'Invalid payment mode' },
+        { message: 'Invalid or inactive payment mode' },
         { status: 400 }
       );
     }
@@ -110,11 +113,30 @@ export async function POST(request) {
           { status: 400 }
         );
       }
+
+      // Ensure coupon is applicable based on usage, validity, etc.
+      const now = new Date();
+      if (now < coupon.validFrom || now > coupon.validUntil) {
+        return NextResponse.json(
+          { message: 'Coupon is not valid at this time' },
+          { status: 400 }
+        );
+      }
+
+      if (coupon.usageCount >= coupon.usagePerUser) {
+        return NextResponse.json(
+          { message: 'Coupon usage limit reached' },
+          { status: 400 }
+        );
+      }
     }
 
     // Calculate payment splits based on payment mode configuration
     let amountPaidOnline = 0;
+    let amountDueOnline = 0;
     let amountDueCod = 0;
+    let amountPaidCod = 0;
+    let paymentStatus = 'pending';
 
     if (paymentMode.configuration) {
       const onlinePercentage = paymentMode.configuration.onlinePercentage || 0;
@@ -128,29 +150,44 @@ export async function POST(request) {
         );
       }
 
-      amountPaidOnline = Math.floor((totalAmount * onlinePercentage) / 100);
+      amountPaidOnline = 0; // As per requirement
+      amountDueOnline = Math.floor((totalAmount * onlinePercentage) / 100);
       amountDueCod = Math.ceil((totalAmount * codPercentage) / 100);
+      amountPaidCod = 0;
+
+      if (paymentMode.name === 'cod') {
+        // For COD only, all amount is due via COD
+        amountDueCod = totalAmount;
+        amountDueOnline = 0;
+        paymentStatus = 'allToBePaidCod';
+      }
     } else {
       // Default to full COD if no configuration
       amountPaidOnline = 0;
+      amountDueOnline = 0;
       amountDueCod = totalAmount;
+      amountPaidCod = 0;
+      paymentStatus = 'allToBePaidCod';
     }
 
     // Create new order
     const newOrder = new Order({
       user: userId,
-      items: items.map((item) => ({
-        product: new mongoose.Types.ObjectId(item.productId),
-        quantity: item.quantity,
-        priceAtPurchase: item.priceAtPurchase,
-        discount: item.discount || 0,
-        extraCharges: item.extraCharges || [],
-      })),
+      items: items,
       totalAmount: totalAmount,
+      extraCharges: extraCharges || [],
+      couponApplied: coupon
+        ? {
+            couponCode: coupon.code,
+            discountAmount: discountAmount,
+          }
+        : null,
       paymentDetails: {
         mode: paymentModeId,
         amountPaidOnline: amountPaidOnline,
+        amountDueOnline: amountDueOnline,
         amountDueCod: amountDueCod,
+        amountPaidCod: amountPaidCod,
         razorpayDetails: {},
       },
       address: {
@@ -163,15 +200,17 @@ export async function POST(request) {
         country: address.country || 'India',
         pincode: address.pincode,
       },
-      status: 'pending',
-      purchaseStatus: {
-        paymentVerified: amountPaidOnline > 0 ? false : true,
-        shiprocketOrderCreated: false,
-      },
-      couponApplied: coupon ? coupon._id : null,
+      paymentStatus: paymentStatus,
+      deliveryStatus: 'pending',
     });
 
     await newOrder.save();
+
+    if (coupon) {
+      // Increment coupon usage count
+      coupon.usageCount += 1;
+      await coupon.save();
+    }
 
     return NextResponse.json(
       { message: 'Order created successfully', orderId: newOrder._id, paymentDetails: newOrder.paymentDetails },

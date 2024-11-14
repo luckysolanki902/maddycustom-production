@@ -4,19 +4,63 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  max-width: 200px; /* Adjusted for better layout */
+  max-width: 200px;
+  /* Adjusted for better layout */
   font-family: Jost, sans-serif;
   border: 1px solid black;
+  background-color: white;
   padding: 0.2rem 0;
   border-radius: 0.6rem;
-  background-color: white;
   outline: none;
   font-size: 1rem;
-  height: 2rem;
+  height: 1.7rem;
   position: relative;
   overflow: hidden;
+  width: 70px;
+  min-width: 70px;
+  transition: all 0.3s ease;
+  /* Smooth transition for style changes */
+  font-family: Jost, sans-serif;
+
+}
+
+/* New class for black button */
+.blackButton {
+  background-color: black;
+  color: white;
+}
+
+/* New class for large button */
+.largeButton {
+  width: 180px;
+  /* Twice the original width */
+  min-width: 180px;
+  height: 4rem;
+  /* Twice the original height */
+  font-size: 2rem;
+  /* Increase font size */
+  font-weight: 700;
+  letter-spacing: 0.1rem;
+}
+
+/* Ensure text inside the button inherits the color correctly */
+.addToCart {
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  font-family: Jost, sans-serif;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   width: 90px;
-  min-width: 90px;
+}
+
+.largeButton:hover {
+  scale: 0.95;
+  opacity: 0.9;
+  letter-spacing: 0.3rem;
+}
+
+.blackButton .addToCart {
+  color: white;
 }
 
 .decrement,
@@ -26,30 +70,34 @@
   border: none;
   cursor: pointer;
   font-size: 1.2rem;
-  padding: 0.5rem;
+  padding: 0.8rem;
   transition: background-color 0.2s ease;
-  min-width: 20%;
+  min-width: 15%;
   display: flex;
   justify-content: center;
   align-items: center;
 }
-
 
 .decrement:hover,
 .increment:hover {
   background-color: #f0f0f0;
 }
 
+
+.blackButton .decrement,
+.blackButton .increment {
+  color: white;
+  background-color: black;
+}
+
 .quantity {
   cursor: default;
   font-size: 1rem;
-  margin: 0 0.5rem;
+  /* margin: 0 0.5rem; */
   min-width: 20px;
   text-align: center;
 }
 
-.addToCart {
-  justify-content: center;
-  cursor: pointer;
-  font-size: 1rem;
+.blackButton .quantity {
+  color: white;
 }

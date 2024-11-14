@@ -1,0 +1,25 @@
+.bikeStyleMain {
+    font-size: 1.2rem;
+    margin-left: 1.5rem;
+    background-color: rgba(118, 246, 255, 0.371);
+    max-width: fit-content;
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.7rem;
+    cursor: pointer;
+    font-family: jost, sans-serif;
+}
+
+
+@media (width<600px) {
+    .bikeStyleMain {
+        font-size: 1.1rem;
+        margin-left: 1.4rem;
+        background-color: rgba(118, 246, 255, 0.371);
+        max-width: fit-content;
+        padding: 0.5rem 0.9rem;
+        border-radius: 0.7rem;
+        cursor: pointer;
+        font-family: jost, sans-serif;
+        margin-top: 1.5rem;
+    }
+}

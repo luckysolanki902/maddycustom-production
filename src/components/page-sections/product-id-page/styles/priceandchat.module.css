@@ -1,13 +1,13 @@
 .priceContainer {
     margin: 20px auto;
     display: flex;
-    justify-content: space-around;
+    justify-content: flex-start;
     /* border: 1px solid red; */
     align-items: center;
     font-family: Jost;
     width: 100%;
-    max-width: 900px;
-
+    /* margin-left: 60px; */
+    max-width: 90%;
 }
 
 
@@ -56,9 +56,6 @@
 
 
 @media(width>750px) {
-    .priceContainer {
-        justify-content: space-evenly;
-    }
 
     .price {
         font-size: 1.3rem;

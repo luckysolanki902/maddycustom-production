@@ -10,7 +10,7 @@
 
 
 .image {
-    width: 80%;
+    width: 90%;
     height: auto;
     border-radius: 1rem;
     filter: brightness(110%);
@@ -19,10 +19,9 @@
 }
 
 .zoomed .image {
-    scale: 1.1;
     margin: 0;
-    width: 80vh;
-    height: auto;
+    height: 90vh;
+    width: auto;
     /* This sets the height to 100% of the viewport height */
     object-fit: contain;
 }
@@ -45,48 +44,19 @@
     padding: 0;
 }
 
-
-.rotated {
-    transform: rotate(90deg);
+.animatedDiv {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 
-@media (width>800px) {
-
-    .zoomed {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 9999;
-        background-color: rgb(255, 255, 255);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: hidden;
-        margin: 0;
-        padding: 5rem;
-        cursor: zoom-out;
-    }
-
-    .rotated {
-        transform: none;
+@media screen and (max-width: 600px) {
+    .zoomed .image {
+        height: 97vw;
+        width: auto;
+        scale: 1;
     }
 
 
-}
-
-@media (width>750px) {
-    .image {
-        width: 30%;
-    }
-
-}
-
-
-@media (width>1250px) {
-    .image {
-        width: 30%;
-    }
 }

@@ -8,10 +8,12 @@
   display: flex;
   justify-content: center;
   z-index: 2000;
+  pointer-events: none;
 
 }
 
 .actionBar {
+  pointer-events: auto;
   background-color: white;
   border-radius: 1.2rem;
   display: flex;

@@ -1,0 +1,104 @@
+.orderpng {
+  margin-left: 20px;
+  margin-top: -1rem;
+}
+
+.orderpng img {
+  width: 6rem;
+  height: auto;
+  opacity: 0.9;
+}
+.rs{
+ font-size: 1.5rem; 
+}
+.price{
+  font-size: 0.9rem
+}
+
+.swipercustom{
+  position: absolute;
+  bottom: 13%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  z-index: 9;
+  box-shadow: none
+}
+.cardStyles{
+  width: 100%;
+  height: auto;
+  margin: auto;
+  padding-bottom: 30px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.h3{
+  margin-left: 2rem;
+  margin-bottom: -1.2rem;
+}
+.detailp{
+  margin-left: 2rem;
+}
+
+@media (width > 768px) {
+  .mainCarDiv {
+    padding: 0 3rem;
+  }
+}
+
+@media(width>768px) and (width < 1660px) {
+.swipercustom{
+  bottom: 4%;
+}
+.cardStyles{
+  padding-bottom: 10px;
+}
+  .h3 {
+    font-size: 1rem;
+  }
+  .rs{
+    font-size: 1.1rem; 
+   }
+   .price{
+     font-size: 0.7rem
+   }
+   
+}
+
+@media(width>768px) and (width < 900px) {
+.swipercustom{
+  bottom: 4%;
+}
+.cardStyles{
+  padding-bottom: 10px;
+}
+  .h3 {
+    font-size: 0.7rem;
+    margin-left: 0.6rem;
+  }
+  .detailp{
+    margin-left: 0.6rem;
+    
+
+  }
+  .rs{
+    font-size: 1.1rem; 
+
+   }
+   .price{
+     font-size: 0.7rem
+   }
+   .orderpng{
+    margin-left: 10px;
+   }
+
+   .orderpng img{
+width: 4rem;
+   }
+
+   
+}

@@ -1,5 +1,4 @@
-// components/page-sections/viewcart/ViewCart.js
-
+// @/components/full-page-comps/ViewCart.js
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -26,7 +25,6 @@ import {
   calculateTotalQuantity,
   calculateTotalCostBeforeDiscount,
   calculateDiscountAmount,
-  calculateFinalDiscount,
   calculateTotalCostAfterDiscount,
 } from '@/lib/utils/cartCalculations';
 
@@ -60,9 +58,6 @@ const ViewCart = () => {
   // OrderForm Dialog State
   const [isOrderFormOpen, setIsOrderFormOpen] = useState(false);
 
-  // Form State to Preserve Data
-  // Removed unused formState and onFormStateChange
-
   // Fetch Payment Modes on Component Mount
   useEffect(() => {
     const fetchPaymentModes = async () => {
@@ -71,7 +66,9 @@ const ViewCart = () => {
         if (response.status === 200) {
           setPaymentModes(response.data.data);
           // Set default selected payment mode (e.g., 'online')
-          const defaultMode = response.data.data.find(mode => mode.name === 'online') || response.data.data[0];
+          const defaultMode =
+            response.data.data.find((mode) => mode.name === 'online') ||
+            response.data.data[0];
           setSelectedPaymentMode(defaultMode);
         } else {
           setSnackbar({
@@ -99,17 +96,23 @@ const ViewCart = () => {
   const totalQuantity = calculateTotalQuantity(cartItems);
   const totalCostBeforeDiscount = calculateTotalCostBeforeDiscount(cartItems);
   const discountAmount = calculateDiscountAmount(totalCostBeforeDiscount, couponState);
-  const finalDiscount = calculateFinalDiscount(discountAmount, totalCostBeforeDiscount);
-  const totalCostAfterDiscount = calculateTotalCostAfterDiscount(totalCostBeforeDiscount, finalDiscount);
+  const totalCostAfterDiscount = calculateTotalCostAfterDiscount(
+    totalCostBeforeDiscount,
+    discountAmount
+  );
 
   // Delivery Cost (Default or based on payment mode)
   const deliveryCost = 100; // Default delivery cost
 
   // Extra Charge based on Payment Mode
-  const extraCharge = selectedPaymentMode && selectedPaymentMode.extraCharge ? selectedPaymentMode.extraCharge : 0;
+  const extraCharge =
+    selectedPaymentMode && selectedPaymentMode.extraCharge
+      ? selectedPaymentMode.extraCharge
+      : 0;
 
   // Total cost including delivery and extra charge
-  const totalCostWithDelivery = totalCostAfterDiscount + deliveryCost + extraCharge;
+  const totalCostWithDelivery =
+    totalCostAfterDiscount + deliveryCost + extraCharge;
 
   // Original Total (for display when coupon applied)
   const originalTotal = totalCostBeforeDiscount + deliveryCost + extraCharge;
@@ -119,14 +122,20 @@ const ViewCart = () => {
     dispatch(removeItem({ productId }));
   };
 
-  // Handle back navigation with conditions
-  const handleBack = useCallback(() => {
-    if (isOrderFormOpen) {
-      setIsOrderFormOpen(false);
+// Updated handleBack function
+const handleBack = useCallback(() => {
+  if (isOrderFormOpen) {
+    setIsOrderFormOpen(false);
+  } else {
+    if (window.history.length > 2) {
+      router.back(); // Go back if there’s a history
     } else {
-      router.back();
+      router.push('/'); // Go to homepage if no history to go back to
     }
-  }, [isOrderFormOpen, router]);
+  }
+}, [isOrderFormOpen, router]);
+
+
 
   // Handle Checkout button click
   const handleCheckout = () => {
@@ -136,7 +145,6 @@ const ViewCart = () => {
   // Handle applying a coupon
   const handleApplyCoupon = (couponCode, discount, discountType, isDbCoupon) => {
     setCouponState({
-      couponObjectId: '',
       couponApplied: true,
       couponName: couponCode,
       couponDiscount: discount,
@@ -174,7 +182,7 @@ const ViewCart = () => {
   // Handle Payment Mode Selection
   const handlePaymentModeChange = (event) => {
     const selectedModeName = event.target.value;
-    const mode = paymentModes.find(mode => mode.name === selectedModeName);
+    const mode = paymentModes.find((mode) => mode.name === selectedModeName);
     setSelectedPaymentMode(mode);
   };
 
@@ -192,7 +200,7 @@ const ViewCart = () => {
           <PriceDetails
             deliveryCost={deliveryCost}
             couponState={couponState}
-            finalDiscount={finalDiscount}
+            discountAmount={discountAmount}
             totalCostWithDelivery={totalCostWithDelivery}
             onOpenCoupon={() => setIsCouponDialogOpen(true)}
             onRemoveCoupon={removeCoupon}
@@ -230,7 +238,7 @@ const ViewCart = () => {
         open={isOrderFormOpen}
         onClose={() => setIsOrderFormOpen(false)}
         paymentModeConfig={selectedPaymentMode}
-        // Removed formState and onFormStateChange props
+        couponCode={couponState.couponApplied ? couponState.couponName : null}
       />
 
       {/* Custom Snackbar for Feedback */}

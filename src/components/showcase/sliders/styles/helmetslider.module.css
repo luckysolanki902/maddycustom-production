@@ -1,0 +1,156 @@
+.main {
+    overflow: hidden;
+    padding: 2rem 0 0.4rem 0;
+    box-shadow: 0px 5px 8px rgba(190, 150, 221, 0.5), 0px 4px 8px rgba(190, 150, 221, 0.5) inset;
+
+
+}
+
+.slider {
+    display: flex;
+    padding: 4rem;
+    overflow-x: auto;
+    gap: 4rem;
+    width: 100%;
+}
+
+.slide {
+    width: 100%;
+    height: auto;
+}
+
+.image {
+    border-radius: 2.3rem;
+    box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25), 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+    width: 18vw;
+    height: 18vw;
+    object-fit: cover;
+}
+
+/* Define the scrollbar width and color */
+.slider::-webkit-scrollbar {
+    height: 4px;
+    display: none;
+}
+
+
+/* Track */
+.slider::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    display: none;
+
+}
+
+
+/* Handle */
+.slider::-webkit-scrollbar-thumb {
+    background: #88888885;
+    display: none;
+}
+
+
+/* Handle on hover */
+.slider::-webkit-scrollbar-thumb:hover {
+    background: #7777779c;
+    display: none;
+
+}
+
+.name {
+    color: black;
+    font-size: '1.5rem';
+    letter-spacing: '0.12rem';
+    font-family: 'Krona One';
+    margin-bottom: '0';
+    margin-top: '0';
+    font-weight: 800;
+    color: rgb(70, 70, 70);
+}
+
+.details {
+    padding: 1rem;
+    padding-bottom: 0;
+
+}
+
+.para {
+    color: rgb(79, 79, 79);
+    margin-top: 0rem;
+}
+
+.rupee {
+    font-size: 2rem;
+}
+
+.price {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+
+
+
+@media (width<800px) {
+
+
+    .slider {
+        display: flex;
+        padding: 1rem;
+        overflow-x: auto;
+        gap: 1.5rem;
+        width: 100%;
+    }
+
+    .image {
+        border-radius: 0.9rem;
+        box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25), 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+        width: 35vw;
+        height: 35vw;
+    }
+
+    .name {
+        letter-spacing: '0.05rem';
+        /* font-size: '0.4rem'; */
+    }
+
+    .details h3 {
+        font-size: '0.4rem';
+
+    }
+
+
+    .details {
+        padding: 1rem;
+        padding-bottom: 0;
+    }
+
+    .para {
+        color: rgb(79, 79, 79);
+        margin-top: 0rem;
+    }
+
+    .rupee {
+        font-size: 1.4rem;
+    }
+
+    .price {
+        font-size: 0.8rem;
+        font-weight: 600;
+        font-family: 'Krona One';
+
+    }
+
+}
+
+
+@media screen and (max-width: 600px) {
+    .name {
+        font-size: 1rem;
+    }
+}
+
+@media screen and (max-width: 400px) {
+    .name {
+        font-size: 0.8rem;
+    }
+}

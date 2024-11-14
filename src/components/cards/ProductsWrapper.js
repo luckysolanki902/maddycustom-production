@@ -1,11 +1,11 @@
-// components/ProductsWrapper.js
+// @/components/ProductsWrapper.js
 "use client";
 import React, { useEffect, useState } from 'react';
 import ProductCard from './ProductCard';
 import styles from './styles/productswrapper.module.css';
 import { filterProductsByTag, sortProducts } from '@/lib/utils/productsPageFunctions';
 
-const ProductsWrapper = ({ variant, products, category, tagFilter, sortBy }) => {
+const ProductsWrapper = ({ variant, products, category, tagFilter=null, sortBy='default', showVideo= true }) => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +28,7 @@ const ProductsWrapper = ({ variant, products, category, tagFilter, sortBy }) => 
 
   return (
     <div className={styles.productsGrid}>
-      {variant.showCase?.[0]?.available && (
+      {variant.showCase?.[0]?.available && showVideo &&(
         <div
           className={styles.videoCard}
           aria-description="product video"
@@ -42,7 +42,7 @@ const ProductsWrapper = ({ variant, products, category, tagFilter, sortBy }) => 
         </div>
       )}
 
-      {sortedProducts.map((product) => (
+      {sortedProducts?.map((product) => (
         <ProductCard
           key={product._id}
           product={{ ...product, variantDetails: variant, category }}
