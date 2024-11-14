@@ -1,4 +1,3 @@
-// @/lib/faceboookPixels.js
 import { v4 as uuidv4 } from 'uuid';
 
 const getClientIp = async () => {
@@ -12,107 +11,101 @@ const getClientIp = async () => {
   }
 };
 
-export const event = async (name, formData = {}, otherOptions = {}) => {
-  const eventId = uuidv4();
-  const eventTime = Math.floor(Date.now() / 1000);
-  const client_ip_address = await getClientIp();
-  const client_user_agent = navigator.userAgent;
-
-  const eventParams = {
-    eventID: eventId,
-    event_time: eventTime,
-    event_name: name,
-    action_source: 'website',
-    event_source_url: window.location.href,
-    client_ip_address,
-    client_user_agent,
-    ...otherOptions, // price, orderId, search_string, content_category ,
-  };
-
-  if (formData.customerName) {
-    const [first_name, surname] = formData.customerName.split(' ');
-    eventParams.first_name = first_name;
-    eventParams.surname = surname;
-  }
-
-  if (formData.customerMobile) eventParams.phone = formData.customerMobile;
-  if (formData.customerCity) eventParams.town = formData.customerCity;
-  if (formData.selectedState) eventParams.state = formData.selectedState;
-  if (formData.customerPincode) eventParams.pincode = formData.customerPincode;
-  if (formData.stickerId) eventParams.productId = formData.stickerId;
-  if (otherOptions.productName) eventParams.productName = otherOptions.productName;
-
-  if (name === 'CompleteRegistration' && otherOptions.value) {
-    eventParams.currency = otherOptions.currency || 'INR';
-    eventParams.orderId = otherOptions.orderId;
-    eventParams.quantity = otherOptions.quantity || 1;
-  }
+const sendToServer = async (eventName, options) => {
   try {
-    window.fbq('track', name, eventParams); // Send event to FB Pixel
-    await sendToServer(name, eventParams);  // Send to server for Conversions API
-    console.log('Event sent successfully:', name);
+    const res = await fetch('/api/meta/conversion-api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventName, options }),
+    });
+    if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
+    await res.json();
   } catch (error) {
-    console.error('Error sending event to Facebook:', error.message);
-    console.error('Event Params:', eventParams);
-    if (error.response) {
-      console.error('Response data:', error.response.data);
-      console.error('Response status:', error.response.status);
+    console.error('Error sending event to server:', error);
+  }
+};
+
+const trackEvent = async (name, formData = {}, otherOptions = {}) => {
+  try {
+    const eventId = uuidv4();
+    const eventTime = Math.floor(Date.now() / 1000);
+    const client_ip_address = await getClientIp();
+    const client_user_agent = navigator.userAgent;
+    const eventParams = {
+      eventID: eventId,
+      event_time: eventTime,
+      event_name: name,
+      action_source: 'website',
+      event_source_url: window.location.href,
+      client_ip_address,
+      client_user_agent,
+      ...otherOptions,
+    };
+
+    if (window.fbq) {
+      window.fbq('track', name, eventParams);
+    } else {
+      console.warn('Facebook Pixel is not initialized.');
     }
-  }}
 
+    await sendToServer(name, eventParams);
 
-  const sendToServer = async (eventName, options) => {
-    try {
-      await fetch('/api/meta/conversion-api', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ eventName, options }),
-      });
-      console.log('Event sent to server:', eventName);
-    } catch (error) {
-      console.error('Error sending event to server:', error);
-    }
-  };
+  } catch (error) {
+    console.error('Error tracking event:', error);
+  }
+};
 
-  export const pageview = async () => {
-    await event('PageView');
-  };
-
-  export const completeRegistration = async (formData, price, orderId) => {
-    await event('CompleteRegistration', formData, {
-      value: price,
+export const addToCart = async (product) => {
+  try {
+    await trackEvent('AddToCart', {}, {
+      value: product.price,
       currency: 'INR',
-      orderId,
-      quantity: 1,
+      contents: [{
+        id: product.id || product._id,
+        quantity: product.quantity || 1,
+        item_price: product.price || 0,
+      }],
+      content_name: `${product.name} ${product.category?.name?.endsWith('s')
+        ? product.category?.name.slice(0, -1)
+        : product.category?.name}`,
+      content_category: product.category,
+      content_type: 'product',
     });
-  };
+  } catch (error) {
+    console.error('Error in addToCart function:', error);
+  }
+};
 
-  export const addToCart = async (formData, price) => {
-    await event('AddToCart', formData, {
-      value: price,
+export const purchase = async (order) => {
+  try {
+    await trackEvent('Purchase', {}, {
+      value: order.totalAmount,
       currency: 'INR',
-      quantity: 1,
+      orderId: order.orderId,
+      contents: order.items.map(item => ({
+        id: item.product || item._id,
+        quantity: item.quantity,
+        item_price: item.priceAtPurchase,
+      })),
     });
-  };
+  } catch (error) {
+    console.error('Error in purchase function:', error);
+  }
+};
 
-  export const purchase = async (formData, price, orderId, search_string, productName, content_category) => {
-    await event('Purchase', formData, {
-      value: price,
-      currency: 'INR',
-      orderId,
-      quantity: 1,
-      search_string,
-      productName,
-      content_category,
+export const viewContent = async (product) => {
+  try {
+    await trackEvent('ViewContent', {}, {
+      content_name: product.name,
+      content_ids: [product.id || product._id],
+      content_category: product.category,
+      content_type: 'product',
+      contents: [{
+        id: product.id || product._id,
+        item_price: product.price || 0,
+      }],
     });
-  };
-
-  export const contactFbq = async (formData = {}) => {
-    await event('Contact', formData);
-  };
-
-  export const viewContent = async (formData = {}, otherOptions = {}) => {
-    await event('ViewContent', formData, otherOptions);
-  };
+  } catch (error) {
+    console.error('Error in viewContent function:', error);
+  }
+};

@@ -11,7 +11,6 @@ import { useRouter } from 'next/navigation';
 
 const CartItem = ({ item, onRemove }) => {
   const router = useRouter();
-
   const handleCheckboxChange = (e) => {
     if (!e.target.checked) {
       onRemove(item.productId);
@@ -49,15 +48,18 @@ const CartItem = ({ item, onRemove }) => {
 
       <div className={styles.productDetails}>
         <div className={styles.categoryName}>
-          {item.productDetails.category?.name?.endsWith('s')
-            ? item.productDetails.category.name.slice(0, -1)
-            : item.productDetails.category.name}
+          {item.productDetails.category?.name.length < 20 ?
+            item.productDetails.category?.name?.endsWith('s')
+              ? item.productDetails.category.name.slice(0, -1)
+              : item.productDetails.category.name :
+            (item.productDetails.category.name.slice(0, 20) + '...' )}
+
         </div>
         <div className={styles.productName}>
-          {item.productDetails.name}
+          {item.productDetails.name.length < 20 ? item.productDetails.name : (item.productDetails.name.slice(0, 20) + '...')}
         </div>
         <div className={styles.productPrice}>
-          ₹{(item.productDetails.price * item.quantity).toFixed(2)}/-
+          ₹{(item.productDetails.price * item.quantity).toFixed(0)}/-
         </div>
       </div>
       <AddToCartButton product={item.productDetails} />

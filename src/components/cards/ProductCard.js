@@ -17,7 +17,6 @@ const ProductCard = ({ product, loading }) => {
   const [isZoomed, setIsZoomed] = useState(false);
   const router = useRouter();
 
-
   // Define the animation properties using React Spring
   const animationProps = useSpring({
     transform: isZoomed ? 'scale(2) rotate(90deg)' : 'scale(1) rotate(0deg)',
@@ -126,7 +125,7 @@ const ProductCard = ({ product, loading }) => {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          zIndex: 1000,
+          zIndex: 3000,
         }}
         onClick={handleOverlayClick}
       >
@@ -134,7 +133,8 @@ const ProductCard = ({ product, loading }) => {
           <div style={{ position: 'relative', cursor: 'zoom-out' }}>
             <animated.div style={animationProps}>
               <Image
-                className={styles.image}
+              unoptimized={product.images && product.images.length > 0 ? false : true}
+                className={`${styles.image} ${product?.category?.specificCategoryCode === 'fbw' ? styles.increaseBrightness : ''}`}
                 src={
                   product.images && product.images.length > 0
                     ? `${baseImageUrl}${product.images[0]}`
@@ -170,13 +170,14 @@ const ProductCard = ({ product, loading }) => {
       {/* Regular Image with Animation */}
       {!isZoomed && (
         <animated.div
-          className={styles.image}
+          className={`${styles.image} ${product?.category?.specificCategoryCode === 'fbw' ? styles.increaseBrightness : ''}`}
           style={animationProps}
         // Removed the onClick handler from the image
         >
 
           <Image
-            className={styles.image}
+            className={`${styles.image} ${product?.category?.specificCategoryCode === 'fbw' ? styles.increaseBrightness : ''}`}
+
             src={
               loading
                 ? '/images/assets/gifs/helmetloadinggiflandscape2.gif'

@@ -43,12 +43,14 @@ const ModeOfPaymentSchema = new mongoose.Schema(
     // Configuration details for custom payment modes
     // For example, percentages for online and COD
     configuration: {
+      // Percentage of amount to be paid online
       onlinePercentage: {
         type: Number,
         min: 0,
         max: 100,
         default: 0,
       },
+      // Percentage of amount to be paid via COD
       codPercentage: {
         type: Number,
         min: 0,

@@ -105,7 +105,7 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
         brandLogo: {
           type: String,
         },
-        brandBasePrice:{
+        brandBasePrice: {
           type: Number,
           default: 0
         }
@@ -119,13 +119,38 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       availableSizes: {
         type: [String],
         enum: ['S', 'M', 'L', 'XL', 'XXL'],
-        required: function() {
+        required: function () {
           return this.sizes.applicable;
         }
       }
     },
+    variantInfo: {
+      type: String,
+      default: '', // Empty by default
+      maxlength: 500, // Optional: adjust as needed
+    },
+    // New Field: dimensions
+    dimensions: {
+      length: {
+        type: Number,
+        default: 8,
+      },
+      breadth: {
+        type: Number,
+        default: 8,
+      },
+      height: {
+        type: Number,
+        default: 39,
+      },
+      weight: {
+        type: Number,
+        default: 0.3,
+      },
+    },
   },
   { timestamps: true }
 );
+
 
 module.exports = mongoose.models.SpecificCategoryVariant || mongoose.model('SpecificCategoryVariant', SpecificCategoryVariantSchema);

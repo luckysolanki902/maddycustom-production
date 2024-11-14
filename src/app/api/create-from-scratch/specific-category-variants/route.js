@@ -6,7 +6,6 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import fs from 'fs';
 import path from 'path';
 
-
 export async function GET(request) {
   try {
     // Connect to the database
@@ -20,7 +19,6 @@ export async function GET(request) {
     try {
       const productsContent = fs.readFileSync(productsFilePath, 'utf-8');
       productsData = JSON.parse(productsContent);
-      console.log(`Loaded products data from '${productsFilePath}'.`);
     } catch (err) {
       console.error(`Failed to load products data from '${productsFilePath}':`, err);
       return NextResponse.json({ error: "Failed to load products data." }, { status: 500 });
@@ -30,7 +28,6 @@ export async function GET(request) {
     const fbw_bike_codes = [
       "rid", "pn16", "rc3", "yr1", "duk3", "ap16", "rec3", "spl", "pns1", "mt"
     ];
-    console.log(`FBW Bike codes to process: ${fbw_bike_codes}`);
 
     // Fetch Specific Categories from DB
     const specificCategories = await SpecificCategory.find({});
@@ -98,7 +95,7 @@ export async function GET(request) {
       const page_slug = specific_category.pageSlug;
       const aws_slug_base = `/products${page_slug}`;
 
-      if (code === "flw") {
+      if (code === "fbw") {
         // Full Bike Wraps: Generate variants based on fbw_bike_codes
         for (const code_variant of fbw_bike_codes) {
           const product = productsData.find(prod => prod.BikeCode === code_variant);
@@ -134,7 +131,7 @@ export async function GET(request) {
             name: fullname,
             cardCaptions: [], // Empty array as per requirement
             commonPrice: specific_category.commonPrice,
-            subtitles: [`Give your ${fullname} a complete new look`],
+            subtitles: [`Give your bike a complete new look`],
             description: description,
             keywords: keywords,
             pageSlug: `${page_slug}/${url_friendly(fullname)}`,
@@ -150,7 +147,9 @@ export async function GET(request) {
             showCase: [],
             stock: 1000,
             features: generate_features(isHelVariant),
-            sizes: generate_sizes(isHelVariant)
+            sizes: generate_sizes(isHelVariant),
+            // Set variantInfo for Full Bike Wraps
+            variantInfo: fullname, // e.g., "Apache 160 4V"
           };
 
           // If it's a 'hel' variant, add availableBrands
@@ -166,7 +165,6 @@ export async function GET(request) {
           }
 
           variants.push(variant);
-          console.log(`Created variant for Full Bike Wraps: '${fullname}'.`);
         }
 
       } else if (code === "tw") {
@@ -174,7 +172,7 @@ export async function GET(request) {
         const tank_variants = {
           "tw-s": {
             variantType: "designVariant",
-            name: "Slim",
+            name: "Slim Tank Wraps",
             description: "Slim Tank Wraps offer a sleek and streamlined look for your vehicle's tank. Perfect for those seeking a minimalistic design without compromising on protection.",
             keywords: [
               "slim tank wrap",
@@ -183,17 +181,19 @@ export async function GET(request) {
               "vehicle tank customization",
               "slim vinyl tank wraps"
             ],
-            pageSlug: `${page_slug}/slim`,
+            pageSlug: `${page_slug}/slim-tank-wraps`,
             designTemplateFolderPath: `/design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-s`,
             thumbnails: [
               `/assets/images/tw-s/thumbnail1.jpg`,
               `/assets/images/tw-s/thumbnail2.jpg`
             ],
-            helperText: "Choose this if you prefer a slim design for your tank."
+            helperText: "Choose this if you prefer a slim design for your tank.",
+            // variantInfo for tw-s
+            variantInfo: "Choose if your bike has a plain slim tank like: pulsar, xtream, splendor, etc.",
           },
           "tw-m": {
             variantType: "designVariant",
-            name: "Medium",
+            name: "Medium Tank Wraps",
             description: "Medium Tank Wraps strike the perfect balance between style and protection. Ideal for those who want a noticeable yet tasteful enhancement to their vehicle's tank.",
             keywords: [
               "medium tank wrap",
@@ -202,7 +202,7 @@ export async function GET(request) {
               "vehicle tank customization",
               "medium vinyl tank wraps"
             ],
-            pageSlug: `${page_slug}/medium`,
+            pageSlug: `${page_slug}/medium-tank-wraps`,
 
             designTemplateFolderPath: `/design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-m`,
 
@@ -210,11 +210,13 @@ export async function GET(request) {
               `/assets/images/tw-m/thumbnail1.jpg`,
               `/assets/images/tw-m/thumbnail2.jpg`
             ],
-            helperText: "Choose this for a medium-sized enhancement to your tank."
+            helperText: "Choose this for a medium-sized enhancement to your tank.",
+            // variantInfo for tw-m
+            variantInfo: "Choose if your bike has a little thick tank like: classic350, jawa, etc.",
           },
           "tw-w": {
             variantType: "designVariant",
-            name: "Wide",
+            name: "Wide Tank Wraps",
             description: "Wide Tank Wraps provide a bold and expansive look for your vehicle's tank. Designed for maximum visual impact and comprehensive protection.",
             keywords: [
               "wide tank wrap",
@@ -223,14 +225,16 @@ export async function GET(request) {
               "vehicle tank customization",
               "wide vinyl tank wraps"
             ],
-            pageSlug: `${page_slug}/wide`,
+            pageSlug: `${page_slug}/wide-tank-wraps`,
             designTemplateFolderPath: `/design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-w`,
 
             thumbnails: [
               `/assets/images/tw-w/thumbnail1.jpg`,
               `/assets/images/tw-w/thumbnail2.jpg`
             ],
-            helperText: "Choose this for a wide and bold tank design."
+            helperText: "Choose this for a wide and bold tank design.",
+            // variantInfo for tw-w
+            variantInfo: "Choose if your bike has a wide matte finish in between tank or wide sticker from before: tvs-raider, gixxer, apache, continental-gt, etc.",
           }
         };
 
@@ -248,7 +252,7 @@ export async function GET(request) {
             variantType: variant_info.variantType,
             name: variant_info.name,
             commonPrice: specific_category.commonPrice,
-            subtitles: [variant_info.description.split(".")[0]],
+            subtitles: [],
             description: description,
             keywords: keywords,
             cardCaptions: [], // Empty array as per requirement
@@ -261,11 +265,12 @@ export async function GET(request) {
             showCase: [],
             stock: 1000,
             features: generate_features(isHelVariant),
-            sizes: generate_sizes(isHelVariant)
+            sizes: generate_sizes(isHelVariant),
+            // Set variantInfo for Tank Wraps
+            variantInfo: variant_info.variantInfo,
           };
 
           variants.push(variant);
-          console.log(`Created variant for Tank Wraps: '${variant_info.name}'.`);
         }
 
       } else if (code === "win") {
@@ -314,11 +319,11 @@ export async function GET(request) {
           stock: 1000,
           availableBrands: [], // No brands for Win Wraps
           features: generate_features(isHelVariant),
-          sizes: generate_sizes(isHelVariant)
+          sizes: generate_sizes(isHelVariant),
+          variantInfo: '', // Empty for non-tank and non-fbw variants
         };
 
         variants.push(variant);
-        console.log(`Created variant for Window Pillar Wraps: '${variant_name}'.`);
 
       } else if (code === "hel") {
         // Graphic Helmets
@@ -376,11 +381,11 @@ export async function GET(request) {
           stock: 1000,
           availableBrands: availableBrands, // Set only for 'hel' variant
           features: generate_features(isHelVariant),
-          sizes: generate_sizes(isHelVariant)
+          sizes: generate_sizes(isHelVariant),
+          variantInfo: '', // Empty for non-tank and non-fbw variants
         };
 
         variants.push(variant);
-        console.log(`Created variant for Graphic Helmets: '${variant_name}'.`);
 
       } else if (code === "bw") {
         // Bonnet Strip Wraps
@@ -423,11 +428,11 @@ export async function GET(request) {
           stock: 1000,
           availableBrands: [], // No brands for Bonnet Strip Wraps
           features: generate_features(isHelVariant),
-          sizes: generate_sizes(isHelVariant)
+          sizes: generate_sizes(isHelVariant),
+          variantInfo: '', // Empty for non-tank and non-fbw variants
         };
 
         variants.push(variant);
-        console.log(`Created variant for Bonnet Strip Wraps: '${variant_name}'.`);
       } else {
         console.warn(`No variant generation logic defined for Specific Category Code '${code}'. Skipping.`);
       }
@@ -435,11 +440,9 @@ export async function GET(request) {
 
     // Delete all existing SpecificCategoryVariant documents
     await SpecificCategoryVariant.deleteMany({});
-    console.log("All existing SpecificCategoryVariant documents have been deleted.");
 
     // Insert new SpecificCategoryVariant documents
     const insertedVariants = await SpecificCategoryVariant.insertMany(variants);
-    console.log("New SpecificCategoryVariant documents have been inserted successfully.");
 
     // Update SpecificCategory documents with availableSpecificCategoryVariants
     for (const variant of insertedVariants) {
@@ -456,7 +459,6 @@ export async function GET(request) {
           }
         }
       );
-      console.log(`Updated SpecificCategory '${variant.specificCategory}' with variant '${variant.name}'.`);
     }
 
     return NextResponse.json({ message: "Specific category variants have been successfully reset and populated." }, { status: 200 });
