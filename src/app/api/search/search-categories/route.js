@@ -1,0 +1,60 @@
+// pages/api/search/search-categories.js
+
+import connectToDatabase from '@/lib/middleware/connectToDb';
+import SpecificCategory from '@/models/SpecificCategory';
+import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
+import { NextResponse } from 'next/server';
+
+export async function GET(request) {
+  try {
+    // Connect to the database
+    await connectToDatabase();
+
+    // Fetch all specific categories
+    const categories = await SpecificCategory.find({ showInSearch: true }).lean();
+
+    // Create a map of category IDs to category names for easy lookup
+    const categoryMap = categories.reduce((map, category) => {
+      map[category._id.toString()] = category.name;
+      return map;
+    }, {});
+
+    // Fetch all specific category variants
+    const variants = await SpecificCategoryVariant.find({ showInSearch: true }).lean();
+
+    // Structure the response
+    const responseData = {
+      categories: categories.map(category => ({
+        id: category._id,
+        name: category.name,
+        pageSlug: category.pageSlug,
+        subCategory: category.subCategory,
+        // Add other necessary fields if needed
+      })),
+      variants: variants.map(variant => {
+        let variantName = variant.name;
+
+        // Check if the variant name is a single word
+        if (variantName.trim().split(/\s+/).length === 1) {
+          const categoryName = categoryMap[variant.specificCategory.toString()];
+          if (categoryName) {
+            variantName = `${variantName} ${categoryName}`;
+          }
+        }
+
+        return {
+          id: variant._id,
+          name: variantName,
+          pageSlug: variant.pageSlug,
+          specificCategory: variant.specificCategory, // Reference to parent category
+          // Add other necessary fields if needed
+        };
+      }),
+    };
+
+    return NextResponse.json(responseData, { status: 200 });
+  } catch (error) {
+    console.error('Error fetching search categories:', error);
+    return NextResponse.json({ error: 'Failed to fetch search categories' }, { status: 500 });
+  }
+}

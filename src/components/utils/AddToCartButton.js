@@ -1,4 +1,4 @@
-// @/components/common-utils/AddToCartButton.js
+// src/components/common-utils/AddToCartButton.js
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -13,8 +13,9 @@ import {
   decrementQuantity,
   removeItem,
 } from '../../store/slices/cartSlice';
+import { addToCart as trackAddToCart } from '@/lib/metadata/faceboookPixels';
 
-export default function AddToCartButton({ product }) {
+export default function AddToCartButton({ product, isBlackButton = false, isLarge = false }) {
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
   const cartItem = cartItems.find((item) => item.productId === product._id);
@@ -31,7 +32,7 @@ export default function AddToCartButton({ product }) {
         ? '#28a745' // Green
         : lastAction === 'decrement'
           ? '#dc3545' // Red
-          : '#000',
+          : isBlackButton ? '#fff' : '#000',
     opacity: cartItem ? 1 : 0,
     config: {
       tension: 300,
@@ -53,19 +54,35 @@ export default function AddToCartButton({ product }) {
     // No need for additional logic here
   }, [cartItem]);
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.stopPropagation(); // Prevent parent onClick
     setLastAction('increment');
     dispatch(addItem({ productId: product._id, productDetails: product }));
+
+    // Track AddToCart event
+    try {
+      await trackAddToCart(product);
+    } catch (error) {
+      console.error('AddToCart tracking failed:', error);
+      // Do not interfere with user experience
+    }
   };
 
-  const handleIncrement = (e) => {
+  const handleIncrement = async (e) => {
     e.stopPropagation();
     setLastAction('increment');
     dispatch(incrementQuantity({ productId: product._id }));
+
+    // Track AddToCart event (increment)
+    try {
+      await trackAddToCart(product);
+    } catch (error) {
+      console.error('AddToCart tracking failed:', error);
+      // Do not interfere with user experience
+    }
   };
 
-  const handleDecrement = (e) => {
+  const handleDecrement = async (e) => {
     e.stopPropagation();
     setLastAction('decrement');
     if (cartItem.quantity === 1) {
@@ -75,11 +92,18 @@ export default function AddToCartButton({ product }) {
     }
   };
 
+  // Construct the main container's className
+  const mainClasses = [
+    styles.main,
+    isBlackButton ? styles.blackButton : '',
+    isLarge ? styles.largeButton : '',
+  ].join(' ').trim();
+
   if (cartItem) {
     return (
-      <div className={styles.main} onClick={(e) => e.stopPropagation()}>
+      <div className={mainClasses} onClick={(e) => e.stopPropagation()}>
         <button onClick={handleDecrement} className={styles.decrement}>
-          <RemoveIcon />
+          <RemoveIcon fontSize='1rem'/>
         </button>
         <animated.div
           onClick={(e) => e.stopPropagation()}
@@ -93,15 +117,23 @@ export default function AddToCartButton({ product }) {
           {cartItem.quantity}
         </animated.div>
         <button onClick={handleIncrement} className={styles.increment}>
-          <AddIcon />
+          <AddIcon fontSize='1rem'/>
         </button>
       </div>
     );
   }
 
+  // Construct the Add to Cart button's className
+  const addToCartClasses = [
+    styles.main,
+    styles.addToCart,
+    isBlackButton ? styles.blackButton : '',
+    isLarge ? styles.largeButton : '',
+  ].join(' ').trim();
+
   return (
-    <button onClick={handleAdd} className={`${styles.main} ${styles.addToCart}`}>
-      <span className={styles.addToCart}>Add to cart</span>
+    <button onClick={handleAdd} className={addToCartClasses}>
+      <span>Add to cart</span>
     </button>
   );
 }

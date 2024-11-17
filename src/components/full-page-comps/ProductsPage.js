@@ -6,6 +6,8 @@ import styles from './styles/products.module.css';
 import { useMediaQuery } from '@mui/material';
 import ProductsWrapper from '../cards/ProductsWrapper';
 import Tags from '../page-sections/products-page/Tags';
+import Sidebar from '../layouts/Sidebar';
+import ChangeVariantButton from '../page-sections/products-page/ChangeVariantButton';
 
 export default function ProductsPage({ variant, products, category }) {
   // Constants
@@ -27,6 +29,7 @@ export default function ProductsPage({ variant, products, category }) {
 
   return (
     <div>
+      <Sidebar/>
       <header>
         <div className={styles.headContainer}>
           <div className={styles.headingFlex}>
@@ -38,7 +41,6 @@ export default function ProductsPage({ variant, products, category }) {
                   <Image className={styles.studds} src={`${baseImageUrl}${variant?.availableBrands[0]?.brandLogo}`} width={1103 / 5} height={394 / 5} alt={'studds'}></Image></>
                 :
                 <h2 className={styles.belowMainHeading} >{variant?.subtitles[0]}</h2>
-
             )}
 
           </div>
@@ -47,6 +49,8 @@ export default function ProductsPage({ variant, products, category }) {
 
       <Tags setTagFilter={setTagFilter} tags={allTags} />
       {/* <SortBy setSortBy={setSortBy} /> */}
+
+      <ChangeVariantButton category={category} /> 
 
       <ProductsWrapper
         variant={variant}

@@ -2,7 +2,7 @@
 .contactContainer {
     background-color: #252525;
     padding: 40px 0;
-    padding-bottom: 15px;
+    padding-bottom: 95px;
 }
 
 .contactHeading {
@@ -47,7 +47,7 @@
 @media (width> 800px) {
     .contactContainer {
         padding: 70px 0;
-        padding-bottom: 20px;
+        padding-bottom: 100px;
     }
     .tnc{
         color: #FFF;

@@ -27,15 +27,18 @@ import {
   setAddressDetails,
   setUserExists,
   setPrefilledAddress,
-  setLastOrderId, // Import setLastOrderId action
+  setLastOrderId,
+  setCoupon, // Ensure this action exists in your Redux slice
+  removeCoupon, // Ensure this action exists in your Redux slice
 } from '../../store/slices/orderFormSlice';
 import { makePayment } from '../../lib/payments/makePayment';
 import { useRouter } from 'next/navigation';
 import CustomSnackbar from '../notifications/CustomSnackbar';
-import { calculateTotalAmount, getPaymentButtonText } from '../../lib/utils/orderFormUtils'; // Import utility functions
+import { calculateTotalAmount, getPaymentButtonText } from '../../lib/utils/orderFormUtils';
 import { styled } from '@mui/material/styles';
 import theme from '@/styles/theme';
 import { ThemeProvider } from '@mui/material';
+import { purchase } from '@/lib/metadata/faceboookPixels';
 
 const OrderForm = ({ open, onClose, paymentModeConfig }) => {
   const dispatch = useDispatch();
@@ -43,7 +46,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
   const cartItems = useSelector((state) => state.cart.items);
   const orderForm = useSelector((state) => state.orderForm);
 
-  const { userDetails, addressDetails, userExists, prefilledAddress } = orderForm;
+  const { userDetails, addressDetails, userExists, prefilledAddress, couponCode, discountAmount } = orderForm;
 
   // Local Tab Index State
   const [tabIndex, setTabIndex] = useState(0);
@@ -55,7 +58,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
-
   const {
     control,
     handleSubmit,
@@ -71,6 +73,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
       city: addressDetails.city,
       state: addressDetails.state,
       pincode: addressDetails.pincode,
+      country: addressDetails.country || 'India',
     },
   });
 
@@ -91,6 +94,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
       setValue('city', addressDetails.city);
       setValue('state', addressDetails.state);
       setValue('pincode', addressDetails.pincode);
+      setValue('country', addressDetails.country || 'India');
     }
   }, [userDetails, addressDetails, setValue, open]);
 
@@ -118,7 +122,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
   };
-  // 
+
   const onSubmitUserDetails = async (data) => {
     setIsLoading(true);
     try {
@@ -129,7 +133,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
       const response = await axios.get('/api/user/check', {
         params: { phoneNumber: data.phoneNumber },
       });
-      console.log(response.data);
 
       if (response.data.exists) {
         dispatch(setUserExists(true));
@@ -150,7 +153,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
     } catch (error) {
       console.error('Error checking/creating user:', error);
       const errorMessage =
-        error.response?.data?.message || 'An error occurred while processing your request.';
+        error.response?.data?.message || 'Payment Cancelled';
       showSnackbar(errorMessage, 'error');
     } finally {
       setIsLoading(false);
@@ -163,15 +166,19 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
     try {
       dispatch(setAddressDetails(data));
 
+      const totalAmount = calculateTotalAmount(cartItems, paymentModeConfig, discountAmount);
+
       const orderResponse = await axios.post('/api/checkout/order/create', {
         userId: orderForm.userDetails.userId,
         phoneNumber: orderForm.userDetails.phoneNumber,
         items: cartItems.map((item) => ({
-          productId: item.productId,
+          product: item.productId,
+          name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+            ? item.productDetails.category?.name.slice(0, -1)
+            : item.productDetails.category?.name}`,
           quantity: item.quantity,
           priceAtPurchase: item.productDetails.price,
-          discount: 0,
-          extraCharges: [],
+          sku: item.productDetails.sku,
         })),
         paymentModeId: paymentModeConfig._id,
         address: {
@@ -182,22 +189,26 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
           city: data.city,
           state: data.state,
           pincode: data.pincode,
+          country: data.country || 'India',
         },
-        totalAmount: calculateTotalAmount(cartItems, paymentModeConfig),
-        couponCode: orderForm.couponCode,
+        totalAmount: totalAmount,
+        discountAmount: discountAmount,
+        extraCharges: paymentModeConfig.extraCharge ? [{
+          chargesName: 'Extra Charge',
+          chargesAmount: paymentModeConfig.extraCharge,
+        }] : [],
+        couponCode: couponCode || null,
       });
 
       const { orderId, message, paymentDetails } = orderResponse.data;
 
       dispatch(setLastOrderId(orderId));
 
-
-      if (paymentDetails.amountPaidOnline > 0) {
+      if (paymentDetails.amountDueOnline > 0) {
         const paymentInitResponse = await axios.post(
           '/api/checkout/order/payment/create-razorpay-order',
           {
-            price: paymentDetails.amountPaidOnline,
-            orderId: orderId,
+            orderId: orderId, // Internal orderId
           }
         );
 
@@ -207,12 +218,25 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
           const paymentResult = await makePayment({
             customerName: orderForm.userDetails.name || '',
             customerMobile: orderForm.userDetails.phoneNumber,
-            orderId,
+            orderId, // Internal orderId
             razorpayOrder, // Pass the entire razorpayOrder object
           });
 
           if (paymentResult) {
+            // Track Purchase Event
             showSnackbar('Payment Successful!', 'success');
+            purchase({
+              orderId: orderId,
+              totalAmount: paymentDetails.amountPaidOnline + paymentDetails.amountPaidCod,
+              items: cartItems.map(item => ({
+                product: item.productId,
+                name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+                  ? item.productDetails.category?.name.slice(0, -1)
+                  : item.productDetails.category?.name}`,
+                quantity: item.quantity,
+                priceAtPurchase: item.productDetails.price,
+              })),
+            });
           } else {
             showSnackbar('Payment failed. Please try again.', 'error');
           }
@@ -222,11 +246,11 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
       } else {
         showSnackbar(`Please pay ₹${paymentDetails.amountDueCod} via COD upon delivery.`, 'info');
       }
-
       dispatch(clearCart());
       dispatch(resetOrderForm());
       reset();
       handleClose();
+      router.push(`/orders/myorder/${orderId}`);
     } catch (error) {
       console.error('Error creating order or processing payment:', error);
       const errorMessage =
@@ -237,8 +261,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
       setIsPaymentProcessing(false);
     }
   };
-
-
 
   // Handle dialog close with conditions
   const handleClose = useCallback(() => {
@@ -283,15 +305,14 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
         disableEscapeKeyDown={isPaymentProcessing} // Prevent closing with Escape key
       >
         <DialogContent >
-          <Tabs sx={{padding: '0rem 5rem'}} value={tabIndex} onChange={handleTabChange} variant="fullWidth">
-            <Tab label="Part 1" />
-            <Tab label="Part 2" disabled={tabIndex !== 1} />
+          <Tabs sx={{ padding: '0rem 5rem' }} value={tabIndex} onChange={handleTabChange} variant="fullWidth">
+            <Tab label="User Details" />
+            <Tab label="Address Details" disabled={tabIndex !== 1} />
           </Tabs>
 
           <Box
-
             component="form"
-            sx={{ mt: 2}}
+            sx={{ mt: 2 }}
             onSubmit={
               tabIndex === 0
                 ? handleSubmit(onSubmitUserDetails)
@@ -299,7 +320,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
             }
           >
             {tabIndex === 0 && (
-              <Box sx={{ padding: '0rem 4rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
+              <Box sx={{ padding: '0rem 4rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <Controller
                   name="name"
                   control={control}
@@ -363,7 +384,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
             )}
 
             {tabIndex === 1 && (
-              <Box sx={{ padding: '0rem 4rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
+              <Box sx={{ padding: '0rem 4rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <Controller
                   name="addressLine1"
                   control={control}
@@ -372,7 +393,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                     <TextField
                       variant='standard'
                       {...field}
-                      label="Address"
+                      label="Address Line 1"
                       fullWidth
                       margin="normal"
                       error={!!errors.addressLine1}
@@ -475,6 +496,25 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                       onChange={(e) => {
                         field.onChange(e);
                         dispatch(setAddressDetails({ pincode: e.target.value }));
+                      }}
+                    />
+                  )}
+                />
+                <Controller
+                  name="country"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      variant='standard'
+                      {...field}
+                      label="Country"
+                      fullWidth
+                      margin="normal"
+                      disabled={isLoading || isPaymentProcessing}
+                      value={field.value || 'India'}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        dispatch(setAddressDetails({ country: e.target.value }));
                       }}
                     />
                   )}

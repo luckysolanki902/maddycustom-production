@@ -33,6 +33,8 @@ const FloatingActionBar = () => {
 
   if (pathname === '/viewcart') return null;
 
+  if (totalQuantity < 1) return null
+
   return (
     <div className={styles.container}>
       <div className={styles.actionBar}>

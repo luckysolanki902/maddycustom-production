@@ -1,0 +1,52 @@
+.mainC {
+    padding-top: 2rem;
+    padding: 2rem 1rem;
+}
+
+.mainH {
+    font-family: 'Krona One';
+    text-align: center;
+    font-size: 2rem;
+    border-bottom: 3px solid black;
+    margin: 0 38%;
+}
+
+.sec {
+    text-align: center;
+    font-family: Jost;
+    max-width: 900px;
+    margin: auto;
+    margin-top: 2rem;
+}
+
+.bolder {
+    font-weight: 700;
+}
+
+.hashtag {
+    font-family: 'Krona One';
+    text-align: center;
+    font-size: 1.3rem;
+    font-style: italic;
+}
+
+
+@media only screen and (min-width: 600px) and (max-width: 1100px) {
+    .mainH {
+        font-family: 'Krona One';
+        text-align: center;
+        font-size: 2rem;
+        border-bottom: 3px solid black;
+        margin: 0 30%;
+    }
+}
+
+@media(width<600px) {
+    .mainH {
+        font-family: 'Krona One';
+        text-align: center;
+        font-size: 1.6rem;
+        border-bottom: 3px solid black;
+        margin: 0 28%;
+    }
+}

@@ -25,6 +25,7 @@ import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import Image from 'next/image';
 
+
 const drawerWidth = 300;
 
 // Inline Styles
@@ -128,7 +129,7 @@ const Sidebar = (props) => {
                     {[
                         { text: 'Home', href: '/' },
                         { text: 'Contact Us', href: '/#homecontactdiv' },
-                        { text: 'Search Categories', href: '/#searchyourbikeinput' },
+                        { text: 'Search Categories', href: '/#searchcategories' },
                         { text: 'Track Your Order', href: '/order/track' },
                     ].map((item, index) => (
                         <ListItem
@@ -175,15 +176,15 @@ const Sidebar = (props) => {
 
             {/* Contact Icons at the Bottom */}
             <Box style={contactBoxStyle}>
-                <a href="https://wa.me/8112673988" className="sideiconhover">
+                <Link style={{cursor:'pointer'}} href="https://wa.me/8112673988" className="sideiconhover">
                     <WhatsAppIcon style={iconStyle} />
-                </a>
-                <a href="mailto:contact.maddycustoms@gmail.com" className="sideiconhover">
+                </Link>
+                <Link style={{cursor:'pointer'}} href="mailto:contact.maddycustoms@gmail.com" className="sideiconhover">
                     <EmailIcon style={iconStyle} />
-                </a>
-                <a href="https://instagram.com/maddycustom?igshid=NGVhN2U2NjQ0Yg==" className="sideiconhover">
+                </Link>
+                <Link style={{cursor:'pointer'}} href="https://instagram.com/maddycustom?igshid=NGVhN2U2NjQ0Yg==" className="sideiconhover">
                     <InstagramIcon style={iconStyle} />
-                </a>
+                </Link>
             </Box>
         </Box>
     );

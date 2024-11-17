@@ -1,9 +1,10 @@
 .main {
     display: flex;
     justify-content: space-evenly;
-    margin: auto;
-    max-width: 700px;
+    /* margin: auto; */
+    /* max-width: 700px; */
     font-family: Jost;
+    width: 100%;
 }
 
 .item {
@@ -25,4 +26,10 @@
     width: 5.5rem;
     height: auto;
 
+}
+
+@media (width < 600px) {
+    .item img {
+        width: 4.5rem;   
+    }
 }
