@@ -1,15 +1,16 @@
 import HeroSection from '@/components/page-sections/homepage/HeroSection'
 import React from 'react'
 import styles from '@/styles/page-styles/home.module.css'
-import CategorySearchBox from '@/components/page-sections/utilities/CategorySearchBox'
-import ChooseCategory from '@/components/page-sections/utilities/ChoseCategory'
-import Sidebar from '@/components/page-sections/utilities/Sidebar'
-import ProductCard from '@/components/cards/ProductCard'
-import MainPage from '@/components/cards/mainPage'
+import CategorySearchBox from '@/components/page-sections/homepage/CategorySearchBox'
+import ChooseCategory from '@/components/page-sections/homepage/ChoseCategory'
+import Sidebar from '@/components/layouts/Sidebar';
+import ContactUs from '@/components/layouts/ContactUs'
+
 export default function page() {
   return (
     <>
-    <Sidebar/>
+      <Sidebar />
+
       <main>
         {/* Logo and Main Carousel */}
         <HeroSection />
@@ -18,7 +19,7 @@ export default function page() {
         <CategorySearchBox />
         {/* Category cards like Helmet, Tank, Bonnet to choose from */}
         <ChooseCategory />
-    <MainPage/>
+        <ContactUs />
 
       </main>
     </>

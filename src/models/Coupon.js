@@ -1,12 +1,13 @@
-/**
- * Coupon Schema
- * Represents a coupon code in the system.
- */
+// /models/Coupon.js
 
 const mongoose = require('mongoose');
 
 const CouponSchema = new mongoose.Schema(
   {
+    showAsCard: {
+      type: Boolean,
+      default: false,
+    },
     // Coupon code
     // Example: "FESTIVE500"
     code: {
@@ -39,44 +40,36 @@ const CouponSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-    // Array of conditions for the coupon
-    conditions: [
-      {
-        // Type of condition
-        conditionType: {
-          type: String,
-          required: true,
-          enum: [
-            'minimumAmount',
-            'minimumQuantity',
-            'specificProduct',
-            'category',
-          ],
-        },
-        // Value of the condition
-        value: mongoose.Schema.Types.Mixed,
-      },
-    ],
-    // Number of times the coupon can be used per user
-    usageLimit: {
+    minimumPurchasePrice: {
       type: Number,
-      default: 1,
-      min: 1,
+      default: 0,
+      min: 0,
     },
-    // If true, coupon can be used unlimited times
-    isUnlimitedUse: {
-      type: Boolean,
-      default: false,
+    usagePerUser: {
+      type: Number,
+      default: 100,
+    },
+    usageCount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     // Coupon valid from this date
     validFrom: {
       type: Date,
       required: true,
+      default: Date.now,
     },
     // Coupon valid until this date
     validUntil: {
       type: Date,
       required: true,
+      validate: {
+        validator: function (value) {
+          return value > this.validFrom;
+        },
+        message: 'validUntil must be after validFrom',
+      },
     },
     // Indicates if the coupon is currently active
     isActive: {

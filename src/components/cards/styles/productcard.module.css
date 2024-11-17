@@ -1,154 +1,91 @@
-.container {
-  width: 100%;
-  height: auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: all 0.3s ease;
+.mainCardDiv {
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(145, 145, 145, 0.08);
+  padding: 0.2rem 0.5rem 1rem 0.5rem;
+  position: relative;
 }
 
-.imageContainer {
+.taptozoom {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  color: gray;
+  width: 100%;
   cursor: pointer;
-  transition: transform 0.3s ease;
-
+  margin-left: 0.5rem;
 }
 
 .image {
-
-  /* Adjusted CSS */
   width: 100%;
   height: auto;
-  transition: transform 0.3s ease;
   max-height: 440px;
-
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  will-change: transform;
 }
 
 .increaseBrightness {
   filter: brightness(110%);
 }
 
-.rotated2 {
-  transform: rotate(90deg);
-}
-
-.rotated3 {
-  transform: rotate(270deg);
-  font-family: Jost;
-  font-size: 1rem;
-}
-
-.zoomed {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 9999;
-  background-color: rgba(255, 255, 255, 1);
-  /* 
+.productDescription {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden; */
-
+  flex-direction: column;
+  padding-top: 1rem;
+  padding-left: 1.5rem;
 }
 
-.zoomed .image {
-  width: 80vh;
-  height: auto;
-  /* This sets the height to 100% of the viewport height */
-  object-fit: contain;
-}
-
-
-
-.showcaseVideo{
-  width: 30%;
-  height: auto;
-  border: none;
-outline: none;
-}
-
-.showcaseVideoP{
-  width: 100%;
-  height: auto;
-  border-radius: 1rem;
-  border: none;
-outline: none;
-
-
-}
-.showcaseVideoCard{
-  width: 100%;
-  height: auto;
-  max-height: 440px;
-  border: none;
-  outline: none;
-}
-
-.showcaseVideoCardP{
-  width: 100%;
-  aspect-ratio: 1.6;
-  height: auto;
-  border-radius: 1rem;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  max-height: 460px;
-
-}
-
-@media (width<600px) {
-  .chooseImage {
-      width: 30%;
-  }
-  .belowMainHeading{
-      font-size: 0.7rem;
-      text-align: center;
-      width: 100%;
-      margin-top: -1.8rem;
-      font-family: 'Montserrat';
-      transform: translateX(40px);
-      color: #9C9C9C;
-      letter-spacing: 1.5px;
-  }
-  .showcaseVideo{
-      width: 70%;
-      height: auto;
-  }
-  
-  .showcaseVideoP{
-      width: 100%;
-      height: auto;
-  }
-  .showcaseVideoCard{
-    width: 50%;
-    height: auto;
-}
-
-.showcaseVideoCardP{
-    width: 60%;
-    height: auto;
-}
-}
-
-
-.zoomed .imageContainer {
-  cursor: zoom-out;
-}
-
-.things {
-  margin-top: 10px;
+.prodDescRow1 {
   display: flex;
+  gap: 2rem;
   align-items: center;
   justify-content: space-between;
   padding-right: 1rem;
 }
 
-.bikeName {
+.prodDescRow3 {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  margin-top: 1rem;
+}
 
-  margin-left: 20px;
+.offer5 {
+  background-color: rgba(149, 229, 171, 0.23);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.3rem;
+  border-radius: 0.7rem;
+  font-family: Jost, sans-serif;
+  width: 5.5rem;
+}
+
+.offer5Line1 {
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+  width: 50%;
+  font-size: 0.8rem;
+}
+
+.offer5Line2 {
+  font-size: 0.5rem;
+  margin-top: -0.3rem;
+  text-align: justify;
+  font-weight: 400;
+}
+
+.offer5Line3 {
+  font-size: 0.3rem;
+  margin-top: 0rem;
+  margin-left: 0.6rem;
+}
+
+.productName {
   color: rgba(0, 0, 0, 0.7);
-  /* text-align: center; */
   font-size: 1.2rem;
   font-style: normal;
   font-weight: 800;
@@ -157,93 +94,38 @@ outline: none;
   text-transform: capitalize;
   display: flex;
   flex-direction: column;
-
 }
 
-.wrapDescription{
-  font-family: 'Jost', sans-serif;
-  font-size: 0.8rem;
-  color: rgba(0, 0, 0, 0.6);
-  margin-left: 1.2rem;
-  margin-top: 0.5rem;
-  margin-bottom: 0.1rem;
-  line-height: 0.8rem;
-
-
+.prodDescLastRow {
+  margin-top: 1rem;
+  margin-left: -1rem;
 }
 
-.orderpng {
-  margin-left: 20px;
-}
-
-.studdspng img {
-  margin-left: 20px;
-  width: 4rem;
-  height: auto;
-}
-
-.studdspngincard img {
-  width: 4rem;
-  height: auto;
-}
-
-@media (width<600px) {
-  .studdspngincard img {
-    width: 2.5em;
-    height: auto;
-  }
-}
-
-.orderpng img {
-  width: 6rem;
+.prodDescLastRow img {
+  width: 7rem;
   height: auto;
   opacity: 0.9;
 }
 
+.productCardSubtitles {
+  font-family: 'Jost', sans-serif;
+  font-size: 0.85rem;
+  color: rgba(22, 22, 22, 0.6);
+  margin-top: 0.5rem;
+  margin-bottom: 0.1rem;
+  line-height: 0.8rem;
+  letter-spacing: 0.06rem;
+}
+
 .price {
-  /* border: 1px solid red; */
-  position: relative;
   display: flex;
-  flex-direction: column;
-  /* align-items: center; */
-  margin-left: 20px;
-  /* margin-top: 1rem; */
+  align-items: center;
+  gap: 0;
 }
-
-.stockleft {
-  font-size: 0.8rem;
-  font-family: Jua;
-  /* border: 1.5px solid black; */
-  padding: 0.2rem;
-  text-align: center;
-  border-radius: 0.2rem;
-  right: 1rem;
-  /* margin-left: 2rem; */
-  margin-top: 1rem;
-  /* max-width: 80px; */
-  display: inline;
-  /* animation: pulse 2s infinite; */
-  font-size: '1.2rem'
-    /* opacity */
-}
-
-@media (width>800px) {
-  .stockleft {
-    font-size: 1.3rem;
-  }
-}
-
-@media (width<=800px) {
-  .stockleft {
-    font-size: 1.1rem;
-  }
-}
-
 
 .rupees {
   color: rgba(0, 0, 0, 0.54);
-  text-align: center;
-  font-size: 0.9rem;
+  font-size: 2rem;
   font-style: normal;
   font-weight: 500;
   letter-spacing: 0.15969rem;
@@ -251,61 +133,24 @@ outline: none;
 
 .actualPrice {
   color: rgba(0, 0, 0, 0.54);
-  text-align: center;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   font-style: normal;
   font-weight: 500;
   letter-spacing: 0.08875rem;
 }
 
-
-.tutorial {
-  position: absolute;
-  top: 10%;
-  left: 66%;
-  transform: translate(-50%, -50%);
-  background-color: rgba(0, 0, 0, 1);
-  color: white;
-  padding: 10px;
-  border-radius: 5px;
-  font-size: 1rem;
-  z-index: 999;
-  animation: fadeOut 3s ease-in-out;
-  font-size: 0.9rem;
-  word-break: keep-all;
-  width: 10rem;
-  font-family: Jost;
-
-}
-
-
-
-.rotateSecondTutorial {
-  transform: rotate(90deg);
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
-}
-
-@keyframes fadeOut {
-  0% {
-    opacity: 1;
+@media (max-width: 600px) {
+  .mainCardDiv {
+    padding: 0;
+    padding-bottom: 1rem;
   }
-
-  33% {
-    opacity: 1;
+  
+  .taptozoom {
+    margin-left: 0.5rem;
   }
-
-  100% {
-    opacity: 0;
-    display: none;
+  
+  .studdspngincard img {
+    width: 2.5em;
+    height: auto;
   }
-}
-
-.boxShadow {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(145, 145, 145, 0.08);
-}
-
-.mainCardDiv {
-  margin-bottom: 120px;
-  cursor: pointer;
 }

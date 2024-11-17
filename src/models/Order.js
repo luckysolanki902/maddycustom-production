@@ -1,8 +1,3 @@
-/**
- * Order Schema
- * Represents an order placed by a user.
- */
-
 const mongoose = require('mongoose');
 
 const OrderSchema = new mongoose.Schema(
@@ -12,7 +7,7 @@ const OrderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-      index: true, // Index added for efficient querying by user
+      index: true, // Index for efficient querying
     },
     // Array of order items
     items: [
@@ -22,6 +17,7 @@ const OrderSchema = new mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Product',
           required: true,
+          index: true,
         },
         // Quantity of the product
         quantity: {
@@ -30,37 +26,31 @@ const OrderSchema = new mongoose.Schema(
           min: 1,
           default: 1,
         },
-        // Price of the product at the time of purchase
+        // Price at purchase time
         priceAtPurchase: {
           type: Number,
           required: true,
           min: 0,
         },
-        // Selected variant
-        variant: {
-          type: String,
+        // Discount applied
+        discount: {
+          type: Number,
+          min: 0,
+          default: 0,
         },
-        // Selected color
-        color: {
-          type: String,
-        },
-        // Custom fields for additional information
-        customFields: {
-          // Example: "Hero Splendor Plus"
-          bikeModel: {
-            type: String,
+        // Extra charges, if any
+        extraCharges: [
+          {
+            chargesName: {
+              type: String,
+            },
+            chargesAmount: {
+              type: Number,
+              min: 0,
+              default: 0,
+            },
           },
-          // Example: "Honda City"
-          carModel: {
-            type: String,
-          },
-          // Helmet size
-          // Example: "M"
-          size: {
-            type: String,
-            enum: ['S', 'M', 'L', 'XL'],
-          },
-        },
+        ],
       },
     ],
     // Total order amount
@@ -71,24 +61,25 @@ const OrderSchema = new mongoose.Schema(
     },
     // Payment details
     paymentDetails: {
-      // Payment mode
-      // Example: "fifty"
+      // Payment mode (Reference to ModeOfPayment)
       mode: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ModeOfPayment',
         required: true,
       },
       // Amount paid online
-      amountPaid: {
+      amountPaidOnline: {
         type: Number,
         required: true,
         min: 0,
+        default: 0,
       },
-      // Amount to be paid on delivery
-      amountDue: {
+      // Amount due via COD
+      amountDueCod: {
         type: Number,
         required: true,
         min: 0,
+        default: 0,
       },
       // Payment gateway details
       razorpayDetails: {
@@ -107,7 +98,7 @@ const OrderSchema = new mongoose.Schema(
       receiverPhoneNumber: {
         type: String,
         required: true,
-        match: /^\+\d{10,15}$/,
+        match: /^\d{10}$/,
       },
       addressLine1: {
         type: String,
@@ -143,9 +134,9 @@ const OrderSchema = new mongoose.Schema(
     status: {
       type: String,
       required: true,
-      enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
+      enum: ['pending', 'paid', 'shipped', 'delivered', 'cancelled'],
       default: 'pending',
-      index: true, // Index added for efficient querying by status
+      index: true, // Index for efficient querying
     },
     // Purchase verification statuses
     purchaseStatus: {
@@ -158,13 +149,6 @@ const OrderSchema = new mongoose.Schema(
         default: false,
       },
     },
-    // Offers applied to this order
-    offersApplied: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Offer',
-      },
-    ],
     // Coupon applied to this order
     couponApplied: {
       type: mongoose.Schema.Types.ObjectId,

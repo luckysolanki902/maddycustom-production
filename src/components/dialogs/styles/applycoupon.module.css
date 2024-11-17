@@ -1,0 +1,46 @@
+.inputMain {
+    background-color: #E6F0E6;
+    font-family: Jost, sans-serif;
+    padding: 0.5rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    /* margin: 1rem 2rem; */
+    border-radius: 0.6rem;
+
+}
+
+.inputMain input {
+    border: none;
+    outline: none;
+    background-color: #E6F0E6;
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 1rem;
+    flex: 1;
+    margin-right: 1rem;
+    text-transform: uppercase;
+}
+
+.inputMain input::placeholder {
+    font-family: Jost, sans-serif;
+    /* font-weight: 100; */
+    /* letter-spacing: 2px; */
+    text-transform: none;
+}
+
+.couponCardsSection {
+    padding: 1rem;
+    margin: 1rem;
+    display: flex;
+    justify-content: flex-start;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+@media(width<600px) {
+    .couponCardsSection {
+        justify-content: space-between;
+
+    }
+}

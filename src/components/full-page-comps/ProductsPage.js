@@ -1,36 +1,60 @@
-// @models/full-page-comps/ProductsPage.js
-import React from 'react';
+// pages/ProductsPage.js
+"use client";
+import Image from 'next/image';
+import React, { useState } from 'react';
+import styles from './styles/products.module.css';
+import { useMediaQuery } from '@mui/material';
+import ProductsWrapper from '../cards/ProductsWrapper';
+import Tags from '../page-sections/products-page/Tags';
 
-export default function ProductsPage({ variant, products }) {
+export default function ProductsPage({ variant, products, category }) {
+  // Constants
+  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+
+  // State for tag filter and sort filter
+  const [tagFilter, setTagFilter] = useState(null);
+  const [sortBy, setSortBy] = useState('default');
+
+  // Get the unique tags from the products
+  const allTags = [
+    ...new Set(
+      products.flatMap((product) =>
+        product.mainTags.map((tag) => tag.trim())
+      )
+    ),
+  ];
+
+
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h1>{variant.name}</h1>
-        <p>{variant.description}</p>
+    <div>
+      <header>
+        <div className={styles.headContainer}>
+          <div className={styles.headingFlex}>
+            <h1 className={styles.bikeHeading}>{variant.name}</h1>
+            {variant?.subtitles.length > 0 && variant?.subtitles[0] && (
+              variant.variantCode === 'hel' ?
+                <>
+                  <h2 className={styles.helmetTagline}>&quot;Best designed helmets of india <br /> with safety of&quot;</h2>
+                  <Image className={styles.studds} src={`${baseImageUrl}${variant?.availableBrands[0]?.brandLogo}`} width={1103 / 5} height={394 / 5} alt={'studds'}></Image></>
+                :
+                <h2 className={styles.belowMainHeading} >{variant?.subtitles[0]}</h2>
+
+            )}
+
+          </div>
+        </div>
       </header>
-      <section style={styles.productsSection}>
-        <h2>Products:</h2>
-        {products.length === 0 ? (
-          <p>No products found for this category variant.</p>
-        ) : (
-          <ul style={styles.productList}>
-            {products.map((product) => (
-              <li key={product._id} style={styles.productItem}>
-                <h3>{product.name}</h3>
-                <p>{product.description}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+
+      <Tags setTagFilter={setTagFilter} tags={allTags} />
+      {/* <SortBy setSortBy={setSortBy} /> */}
+
+      <ProductsWrapper
+        variant={variant}
+        products={products}
+        category={category}
+        tagFilter={tagFilter}
+        sortBy={sortBy}
+      />
     </div>
   );
 }
-
-const styles = {
-  container: { padding: '20px', maxWidth: '800px', margin: '0 auto' },
-  header: { marginBottom: '40px' },
-  productsSection: { marginTop: '20px' },
-  productList: { listStyleType: 'none', padding: 0 },
-  productItem: { borderBottom: '1px solid #ddd', padding: '10px 0' },
-};
