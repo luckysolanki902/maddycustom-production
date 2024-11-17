@@ -21,15 +21,13 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       maxlength: 100,
       trim: true,
     },
-    commonPrice: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    subtitles: [{
-      type: String,
-      maxlength: 300,
-    }],
+    subtitles: [
+      {
+        type: String,
+        maxlength: 300,
+        trim: true,
+      }
+    ],
     cardCaptions: [{
       type: String,
       maxlength: 300,
@@ -41,6 +39,8 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
     keywords: [
       {
         type: String,
+        maxlength: 100,
+        trim: true,
       },
     ],
     pageSlug: {
@@ -62,24 +62,12 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
         name: {
           type: String,
         },
-        detail: {
-          type: String,
-        },
       },
     ],
     available: {
       type: Boolean,
       default: true,
     },
-    showInSearch: {
-      type: Boolean,
-      default: true,
-    },
-    thumbnails: [
-      {
-        type: String,
-      },
-    ],
     showCase: [{
       available: {
         type: Boolean,
@@ -93,9 +81,9 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    stock: {
-      type: Number,
-      default: 1000,
+    imageFolderPath: {
+      type: String,
+      required: true,
     },
     availableBrands: [
       {
@@ -126,10 +114,25 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
     },
     variantInfo: {
       type: String,
-      default: '', // Empty by default
-      maxlength: 500, // Optional: adjust as needed
+      default: '',
+      maxlength: 500,
     },
-    // New Field: dimensions
+    freebies: {
+      available: {
+        type: Boolean,
+        default: false,
+      },
+      description: {
+        type: String,
+      },
+      image: {
+        type: String,
+      },
+    },
+    productDescription: {
+      type: String,
+      maxlength: 500,
+    },
     dimensions: {
       length: {
         type: Number,
@@ -153,4 +156,5 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
 );
 
 
-module.exports = mongoose.models.SpecificCategoryVariant || mongoose.model('SpecificCategoryVariant', SpecificCategoryVariantSchema);
+
+module.exports = mongoose.models.SpecificCategoryVariant ||  mongoose.model('SpecificCategoryVariant', SpecificCategoryVariantSchema);
