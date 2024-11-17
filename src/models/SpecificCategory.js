@@ -15,24 +15,10 @@ const SpecificCategorySchema = new mongoose.Schema(
       maxlength: 100,
       trim: true,
     },
-    commonPrice: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    subtitles: [{
-      type: String,
-      maxlength: 300,
-    }],
     description: {
       type: String,
       maxlength: 500,
     },
-    keywords: [
-      {
-        type: String,
-      },
-    ],
     pageSlug: {
       type: String,
       required: true,
@@ -52,36 +38,6 @@ const SpecificCategorySchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    showInSearch: {
-      type: Boolean,
-      default: true,
-    },
-    thumbnails: [
-      {
-        type: String,
-      },
-    ],
-    availableSpecificCategoryVariants: [
-      {
-        variantCode: {
-          type: String,
-          maxlength: 100,
-          trim: true,
-        },
-        name: {
-          type: String,
-          maxlength: 100,
-          trim: true,
-        },
-        helperText: {
-          type: String,
-          maxlength: 300,
-        },
-        image: {
-          type: String,
-        },
-      },
-    ],
   },
   { timestamps: true }
 );

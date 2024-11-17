@@ -29,7 +29,7 @@ export async function GET(request) {
     }
 
     // Load products data from JSON file
-    const productsFilePath = path.join(process.cwd(), 'public', 'json', 'MaddyCustom.products.json');
+    const productsFilePath = path.join(process.cwd(), 'public', 'json', 'MaddyCustom2.products.json');
     let originalProducts;
     try {
       const productsContent = fs.readFileSync(productsFilePath, 'utf-8');
@@ -122,7 +122,7 @@ export async function GET(request) {
       const bikeCode = prod.BikeCode;
       const bikeFullName = prod.BikeFullName;
       const displayOrder = prod.sortOrder || 0;
-      const stockQuantity = parseInt(prod.StockLeft || 0, 10);
+      const stockQuantity = parseInt(prod.StockLeft || 0, 10); // Note: 'stock' field removed
 
       // Skip products not in the specified bike codes
       if (!fbwBikeCodes.includes(bikeCode) && !nonFbwBikeCodes.includes(bikeCode)) {
@@ -148,8 +148,6 @@ export async function GET(request) {
         console.debug(`Assigned name: '${uniqueName}'.`);
       }
 
-      // Captions and description
-      let captions = [];
       let description = '';
 
       let createdAt;
@@ -177,9 +175,6 @@ export async function GET(request) {
       const tagsField = prod.Tags || '';
       const tags = tagsField ? [tagsField.split(',')[0].trim()] : [];
 
-      // Search keywords
-      const searchKeywords = casualName.match(/\b\w+\b/g) || [];
-
       // SKU
       const sku = prod.Name;
       if (!sku) {
@@ -205,6 +200,7 @@ export async function GET(request) {
           console.warn(`Specific Category Variant not found for variantCode '${bikeCode}'. Skipping product '${uniqueName}'.`);
           continue;
         }
+        pageSlug = `${specificCategory.pageSlug}/${casualNameUrl}`;
       } else {
         const specificCategoryCode = variantToCategoryCode[bikeCode];
         if (!specificCategoryCode) {
@@ -261,41 +257,23 @@ export async function GET(request) {
         nameSuffix++;
       }
 
-      // Freebies: only available with win wraps
-      let freebies = {
-        available: false,
-        description: '',
-        image: ''
-      };
-      if (bikeCode === 'win') {
-        freebies = {
-          available: true,
-          description: 'Tools to apply at home e.g., cutter, slider etc.',
-          image: '/products/wraps/car-wraps/window-pillar-wraps/freebies/tools.jpg'
-        };
-      }
-
-      // Assemble the product document
+      // Assemble the product document without removed fields
       const product = {
         _id: productId,
         name: uniqueNameFinal,
-        captions: captions,
         title: `${uniqueNameFinal} ${specificCategory.name.endsWith('s') ? specificCategory.name.slice(0, -1) : specificCategory.name}`,
         description: description,
         mainTags: tags,
-        searchKeywords: searchKeywords,
-        pageSlug: `${specificCategoryVariant.pageSlug}/${casualNameUrl}`,
+        pageSlug: uniquePageSlug, // Use uniquePageSlug after ensuring uniqueness
         images: images,
         category: category,
         subCategory: subCategory,
         specificCategory: specificCategory._id,
         specificCategoryVariant: specificCategoryVariant._id,
-        deliveryCost: 100,
-        price: prod.Price || 0,
+        deliveryCost: 100, // Default value as per schema
+        price: prod.Price || 1, // Ensure minimum price as per schema
         sku: sku,
-        stock: stockQuantity,
         displayOrder: displayOrder,
-        freebies: freebies,
         designTemplate: {
           designCode: sku,
           imageUrl: `${specificCategoryVariant.designTemplateFolderPath}/${sku}.png`
@@ -306,11 +284,6 @@ export async function GET(request) {
           numberOfRatings: 0
         },
         available: true,
-        showInSearch: true,
-        dominantColor: {},
-        createdAt: createdAt,
-        updatedAt: createdAt,
-        _v: 0
       };
 
       productList.push(product);

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
-import Product from '@/models/Product'; // Ensure Product model is imported
 
 export async function GET(request, { params }) {
   const { orderId } = await params; // Retrieve orderId from params
