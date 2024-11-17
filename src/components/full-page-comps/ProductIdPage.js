@@ -26,7 +26,11 @@ export default function ProductIdPage({ product, variant, category }) {
       {!isZoomed && <div className={styles.details}>
         <h1 style={{ fontSize: '2rem', margin: '0.5rem 0' }} className={styles.title}>{product.title}</h1>
         {variant?.cardCaptions?.length > 0 && <p>{variant?.cardCaptions[0]}</p>}
-        <div className={styles.description}>{viewFullDescription ? product.description : product.description.slice(0, 100)} <p style={{display:'inline', cursor:'pointer', color:'black'}} onClick={()=> setViewFullDescription(!viewFullDescription)}>{ viewFullDescription? 'view less': '...view more'}</p></div>
+        <div className={styles.description}>{viewFullDescription ?
+         'product.description' :
+          "product.description.slice(0, 100)"
+          }
+           <p style={{display:'inline', cursor:'pointer', color:'black'}} onClick={()=> setViewFullDescription(!viewFullDescription)}>{ viewFullDescription? ' view less': '...view more'}</p></div>
       </div>}
       {/* Conditionally render OrderSpecifications based on zoom state */}
       {!isZoomed && (

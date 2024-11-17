@@ -11,7 +11,7 @@ export async function GET(request) {
     await connectToDatabase();
 
     // Fetch all specific categories
-    const categories = await SpecificCategory.find({ showInSearch: true }).lean();
+    const categories = await SpecificCategory.find({ available: true }).lean();
 
     // Create a map of category IDs to category names for easy lookup
     const categoryMap = categories.reduce((map, category) => {
@@ -20,7 +20,7 @@ export async function GET(request) {
     }, {});
 
     // Fetch all specific category variants
-    const variants = await SpecificCategoryVariant.find({ showInSearch: true }).lean();
+    const variants = await SpecificCategoryVariant.find({ available: true }).lean();
 
     // Structure the response
     const responseData = {

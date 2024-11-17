@@ -43,6 +43,10 @@ const HappyCustomerSchema = new mongoose.Schema(
     placements: [
       PlacementSchema
     ],
+    showOnHomepage: {
+      type: Boolean,
+      default: false
+    },
     globalDisplayOrder:{
       type: Number,
       required: true,
