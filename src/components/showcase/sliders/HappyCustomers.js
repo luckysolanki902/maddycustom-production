@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import styles from './styles/happycustomers.module.css';
 
-export default function HappyCustomers({ parentSpecificCategoryVariantId, noShadow, noHeading }) {
+export default function HappyCustomers({ parentSpecificCategoryId, noShadow, noHeading }) {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const [happyCustomers, setHappyCustomers] = useState([]);
 
@@ -12,7 +12,10 @@ export default function HappyCustomers({ parentSpecificCategoryVariantId, noShad
   useEffect(() => {
     async function fetchHappyCustomers() {
       try {
-        const response = await fetch(`/api/showcase/happy-customers?parentSpecificCategoryVariantId=${parentSpecificCategoryVariantId}`);
+        const queryParam = parentSpecificCategoryId
+          ? `?parentSpecificCategoryId=${parentSpecificCategoryId}`
+          : '?homepage=true';
+        const response = await fetch(`/api/showcase/happy-customers${queryParam}`);
         const data = await response.json();
 
         if (data?.happyCustomers) {
@@ -25,10 +28,8 @@ export default function HappyCustomers({ parentSpecificCategoryVariantId, noShad
       }
     }
 
-    if (parentSpecificCategoryVariantId) {
-      fetchHappyCustomers();
-    }
-  }, [parentSpecificCategoryVariantId]);
+    fetchHappyCustomers();
+  }, [parentSpecificCategoryId]);
 
   if (!happyCustomers.length) return null;
 

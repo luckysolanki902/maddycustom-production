@@ -267,7 +267,7 @@ export async function GET(request) {
           description: description,
           keywords: keywords,
           cardCaptions: cardCaptions, // Set only for 'win' variant
-          pug: pageSlug,
+          pageSlug: pageSlug,
           designTemplateFolderPath: designTemplateFolderPath,
           imageFolderPath: `products/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${variant_code.toLowerCase()}`,
           specificCategory: specific_category._id,

@@ -148,7 +148,15 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       },
       weight: {
         type: Number,
+        default: 0.08,
+      },
+      boxWeight: {
+        type: Number,
         default: 0.3,
+      },
+      boxCapacity: {
+        type: Number,
+        default: 4,
       },
     },
   },

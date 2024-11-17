@@ -10,8 +10,11 @@ import FlexibleLargePoster from '@/components/showcase/posters/FlexibleLargePost
 import HelmetSlider from '@/components/showcase/sliders/HelmetSlider';
 import FeaturedFullBikeWraps from '@/components/page-sections/homepage/FeaturedFullBikeWraps';
 import HalfBikes from '@/components/page-sections/homepage/halfBikes';
+import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
+import Image from 'next/image';
 
 export default function page() {
+  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   return (
     <>
       <Sidebar />
@@ -41,6 +44,13 @@ export default function page() {
 
         {/* Featured Full Bike Wraps */}
         <FeaturedFullBikeWraps />
+
+        {/* Happycustomers here */}
+        <div className={styles.featuredHead}>
+                <Image width={940} height={256} alt='heading - featured products' src={`${baseImageUrl}/assets/icons/happycustomers.png`}></Image>
+            </div>
+        <HappyCustomers noHeading={true} noShadow={true}/>
+
 
         {/* Animated Half Bikes */}
         <HalfBikes />

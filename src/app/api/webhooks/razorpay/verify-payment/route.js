@@ -91,6 +91,10 @@ export async function POST(request) {
       // Extract internalOrderId from notes
       const internalOrderId = payment.notes.orderId;
 
+      if (!internalOrderId) {
+        return NextResponse.json({ error: 'Missing internal order ID in payment notes.' }, { status: 400 });
+      }
+
       // Start a MongoDB session for transaction
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -164,14 +168,29 @@ export async function POST(request) {
           ['allPaid', 'paidPartially'].includes(order.paymentStatus)
         ) {
           if (!order.shiprocketOrderId && order.deliveryStatus === 'pending') {
-            const { length, breadth, height, weight } = getDimensionsAndWeight(order.items);
+            let dimensionsAndWeight;
+            try {
+              dimensionsAndWeight = await getDimensionsAndWeight(order.items);
+            } catch (dimError) {
+              // If dimension calculation fails, abort the transaction
+              await session.abortTransaction();
+              session.endSession();
+              return NextResponse.json(
+                { error: dimError.message },
+                { status: 400 }
+              );
+            }
+
+            const { length, breadth, height, weight } = dimensionsAndWeight;
+
             const [firstName, ...lastNameParts] = order.address.receiverName.split(' ');
             const lastName = lastNameParts.join(' ');
+
             const shiprocketOrderData = {
               order_id: internalOrderId, // Use internal MongoDB order ID
               order_date: new Date().toISOString().split('T')[0],
               billing_customer_name: firstName,
-              billing_last_name: lastName,
+              billing_last_name: lastName || '', // Handle single name scenarios
               billing_address: `${order.address.addressLine1} ${
                 order.address.addressLine2 || ''
               }`,
@@ -183,13 +202,16 @@ export async function POST(request) {
               shipping_is_billing: true,
               order_items: order.items.map((item) => ({
                 name: item.name,
-                sku: item.sku, // Use product ID as SKU
+                sku: item.sku, // Use SKU from order item
                 units: item.quantity,
                 selling_price: item.priceAtPurchase,
               })),
               payment_method:
-              order.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
-              sub_total: order.paymentDetails.amountDueCod > 0 ? order.paymentDetails.amountDueCod : order.paymentDetails.amountPaidOnline,
+                order.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
+              sub_total:
+                order.paymentDetails.amountDueCod > 0
+                  ? order.paymentDetails.amountDueCod
+                  : order.paymentDetails.amountPaidOnline,
               length: length,
               breadth: breadth,
               height: height,
@@ -217,6 +239,7 @@ export async function POST(request) {
               // On error, abort the transaction
               await session.abortTransaction();
               session.endSession();
+              console.error('Shiprocket Order Creation Error:', shiprocketError);
               return NextResponse.json(
                 { error: 'Failed to create Shiprocket order.' },
                 { status: 500 }
@@ -243,6 +266,7 @@ export async function POST(request) {
         // On any transaction error, abort the transaction
         await session.abortTransaction();
         session.endSession();
+        console.error('Transaction error:', err);
         return NextResponse.json({ error: 'Internal Server Error.' }, { status: 500 });
       }
     }
@@ -251,6 +275,7 @@ export async function POST(request) {
     return NextResponse.json({ message: 'Event type not handled.' }, { status: 200 });
   } catch (error) {
     // Handle any unexpected errors
+    console.error('Webhook handler error:', error);
     return NextResponse.json({ error: 'Internal Server Error.' }, { status: 500 });
   }
 }
