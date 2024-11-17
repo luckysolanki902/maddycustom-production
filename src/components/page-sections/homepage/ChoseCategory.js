@@ -44,7 +44,7 @@ const ChooseCategory = () => {
 
                 <div className={styles.mainCard}>
 
-                    <Link href={'/shop/wraps/bike-wraps/tank-wraps/slim'} className={styles.chooseCard}>
+                    <Link href={'/shop/wraps/bike-wraps/tank-wraps/slim-tank-wraps'} className={styles.chooseCard}>
                         <div >
                             <Image className={styles.chooseImage} src={`${baseurl}/assets/category-cards/tank_wrap_category.jpg`} alt='bike' width={1500 * 2} height={1500 * 2}></Image>
                         </div>

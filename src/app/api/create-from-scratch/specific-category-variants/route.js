@@ -1,4 +1,5 @@
 // /app/api/create-from-scratch/specific-category-variant/route.js
+
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategory from '@/models/SpecificCategory';
@@ -12,7 +13,7 @@ export async function GET(request) {
     await connectToDatabase();
 
     // Define file paths
-    const productsFilePath = path.join(process.cwd(), 'public', 'json', 'MaddyCustom.products.json');
+    const productsFilePath = path.join(process.cwd(), 'public', 'json', 'MaddyCustom2.products.json');
 
     // Load products data
     let productsData;
@@ -45,12 +46,10 @@ export async function GET(request) {
       const features = [
         {
           name: "Easy Replacement",
-          detail: "Quick and hassle-free replacement process.",
           imageUrl: "/assets/icons/boxorder.png"
         },
         {
           name: "UV Ray Protection",
-          detail: "Protects against harmful UV rays to prevent fading and damage.",
           imageUrl: "/assets/icons/uvprotection.png"
         }
       ];
@@ -58,13 +57,11 @@ export async function GET(request) {
       if (isHelVariant) {
         features.splice(1, 0, {
           name: "Safety of Brands",
-          detail: "Ensures top-quality brands are safely integrated.",
           imageUrl: "/assets/icons/safe.png"
         });
       } else {
         features.splice(1, 0, {
           name: "3 Layers Protection",
-          detail: "Provides triple-layered defense against scratches, dents, and weather.",
           imageUrl: "/assets/icons/3L.png"
         });
       }
@@ -93,7 +90,6 @@ export async function GET(request) {
     for (const specific_category of specificCategories) {
       const code = specific_category.specificCategoryCode;
       const page_slug = specific_category.pageSlug;
-      const aws_slug_base = `/products${page_slug}`;
 
       if (code === "fbw") {
         // Full Bike Wraps: Generate variants based on fbw_bike_codes
@@ -109,19 +105,19 @@ export async function GET(request) {
             continue;
           }
 
-          const designTemplateFolderPath = `/design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${code_variant}/`;
+          const designTemplateFolderPath = `design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${code_variant}/`;
           const isHelVariant = (code_variant.toLowerCase() === 'hel');
 
           // SEO-friendly description
           const description = `Enhance and protect your ${fullname} with Maddy Custom’s premium Full Bike Wraps. Our wraps are crafted from high-quality vinyl, ensuring durability and a flawless finish. Choose from a variety of colors and designs to customize your bike to perfection.`;
 
-          // Keywords
+          // Define keywords for FBW variants
           const keywords = [
-            "full bike wrap",
-            "custom bike wraps",
-            "bike transformation",
-            "vehicle wraps",
-            fullname.toLowerCase().replace(/ /g, ' ')
+            `${fullname.toLowerCase()} bike wrap`,
+            `custom ${fullname.toLowerCase()} wrap`,
+            `${fullname.toLowerCase()} vinyl wrap`,
+            `bike customization`,
+            `durable ${fullname.toLowerCase()} wrap`
           ];
 
           // Construct the variant object
@@ -129,27 +125,19 @@ export async function GET(request) {
             variantCode: code_variant,
             variantType: "modelVariant",
             name: fullname,
-            cardCaptions: [], // Empty array as per requirement
-            commonPrice: specific_category.commonPrice,
+            cardCaptions: [],
             subtitles: [`Give your bike a complete new look`],
             description: description,
             keywords: keywords,
             pageSlug: `${page_slug}/${url_friendly(fullname)}`,
             designTemplateFolderPath: designTemplateFolderPath,
-
-            thumbnails: [
-              `/assets/images/${code_variant}/thumbnail1.jpg`,
-              `/assets/images/${code_variant}/thumbnail2.jpg`
-            ],
+            imageFolderPath: `products/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${code_variant.toLowerCase()}`,
             specificCategory: specific_category._id,
             available: false,
-            showInSearch: true,
             showCase: [],
-            stock: 1000,
             features: generate_features(isHelVariant),
             sizes: generate_sizes(isHelVariant),
-            // Set variantInfo for Full Bike Wraps
-            variantInfo: fullname, // e.g., "Apache 160 4V"
+            variantInfo: fullname,
           };
 
           // If it's a 'hel' variant, add availableBrands
@@ -182,13 +170,7 @@ export async function GET(request) {
               "slim vinyl tank wraps"
             ],
             pageSlug: `${page_slug}/slim-tank-wraps`,
-            designTemplateFolderPath: `/design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-s`,
-            thumbnails: [
-              `/assets/images/tw-s/thumbnail1.jpg`,
-              `/assets/images/tw-s/thumbnail2.jpg`
-            ],
-            helperText: "Choose this if you prefer a slim design for your tank.",
-            // variantInfo for tw-s
+            designTemplateFolderPath: `design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-s`,
             variantInfo: "Choose if your bike has a plain slim tank like: pulsar, xtream, splendor, etc.",
           },
           "tw-m": {
@@ -203,15 +185,7 @@ export async function GET(request) {
               "medium vinyl tank wraps"
             ],
             pageSlug: `${page_slug}/medium-tank-wraps`,
-
-            designTemplateFolderPath: `/design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-m`,
-
-            thumbnails: [
-              `/assets/images/tw-m/thumbnail1.jpg`,
-              `/assets/images/tw-m/thumbnail2.jpg`
-            ],
-            helperText: "Choose this for a medium-sized enhancement to your tank.",
-            // variantInfo for tw-m
+            designTemplateFolderPath: `design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-m`,
             variantInfo: "Choose if your bike has a little thick tank like: classic350, jawa, etc.",
           },
           "tw-w": {
@@ -226,14 +200,7 @@ export async function GET(request) {
               "wide vinyl tank wraps"
             ],
             pageSlug: `${page_slug}/wide-tank-wraps`,
-            designTemplateFolderPath: `/design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-w`,
-
-            thumbnails: [
-              `/assets/images/tw-w/thumbnail1.jpg`,
-              `/assets/images/tw-w/thumbnail2.jpg`
-            ],
-            helperText: "Choose this for a wide and bold tank design.",
-            // variantInfo for tw-w
+            designTemplateFolderPath: `design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-w`,
             variantInfo: "Choose if your bike has a wide matte finish in between tank or wide sticker from before: tvs-raider, gixxer, apache, continental-gt, etc.",
           }
         };
@@ -251,22 +218,18 @@ export async function GET(request) {
             variantCode: variant_code,
             variantType: variant_info.variantType,
             name: variant_info.name,
-            commonPrice: specific_category.commonPrice,
             subtitles: [],
             description: description,
             keywords: keywords,
             cardCaptions: [], // Empty array as per requirement
             pageSlug: variant_info.pageSlug,
             designTemplateFolderPath: variant_info.designTemplateFolderPath,
-            thumbnails: variant_info.thumbnails,
+            imageFolderPath: `products/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${variant_code.toLowerCase()}`,
             specificCategory: specific_category._id,
             available: true,
-            showInSearch: true,
             showCase: [],
-            stock: 1000,
             features: generate_features(isHelVariant),
             sizes: generate_sizes(isHelVariant),
-            // Set variantInfo for Tank Wraps
             variantInfo: variant_info.variantInfo,
           };
 
@@ -286,11 +249,7 @@ export async function GET(request) {
           "custom wraps"
         ];
         const pageSlug = `${page_slug}/win-wraps`;
-        const thumbnails = [
-          `/assets/images/win/thumbnail1.jpg`,
-          `/assets/images/win/thumbnail2.jpg`
-        ];
-        const designTemplateFolderPath = `/design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${variant_code}`;
+        const designTemplateFolderPath = `design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${variant_code}`;
         const showCase = [{
           available: true,
           url: '/assets/videos/header-videos/win_wrap_showcase1.mp4'
@@ -304,20 +263,16 @@ export async function GET(request) {
           variantCode: variant_code,
           variantType: "designVariant",
           name: variant_name,
-          commonPrice: specific_category.commonPrice,
           subtitles: ["car window pillar wraps"],
           description: description,
           keywords: keywords,
           cardCaptions: cardCaptions, // Set only for 'win' variant
-          pageSlug: pageSlug,
+          pug: pageSlug,
           designTemplateFolderPath: designTemplateFolderPath,
-          thumbnails: thumbnails,
+          imageFolderPath: `products/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${variant_code.toLowerCase()}`,
           specificCategory: specific_category._id,
           available: true,
-          showInSearch: true,
           showCase: showCase,
-          stock: 1000,
-          availableBrands: [], // No brands for Win Wraps
           features: generate_features(isHelVariant),
           sizes: generate_sizes(isHelVariant),
           variantInfo: '', // Empty for non-tank and non-fbw variants
@@ -339,12 +294,7 @@ export async function GET(request) {
           "stylish helmets"
         ];
         const pageSlug = `${page_slug}/helmet-store`;
-        const designTemplateFolderPath = `/design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${variant_code}`;
-
-        const thumbnails = [
-          `/assets/images/hel/thumbnail1.jpg`,
-          `/assets/images/hel/thumbnail2.jpg`
-        ];
+        const designTemplateFolderPath = `design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${variant_code}`;
 
         const availableBrands = [
           {
@@ -366,19 +316,16 @@ export async function GET(request) {
           variantCode: variant_code,
           variantType: "designVariant",
           name: variant_name,
-          commonPrice: specific_category.commonPrice,
-          subtitles: ["Best designed helmets of india with safety of"],
+          subtitles: ["Best designed helmets of India with safety"],
           description: description,
           keywords: keywords,
           cardCaptions: [], // Empty array as per requirement
           pageSlug: pageSlug,
           designTemplateFolderPath: designTemplateFolderPath,
-          thumbnails: thumbnails,
+          imageFolderPath: `products/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${variant_code.toLowerCase()}`,
           specificCategory: specific_category._id,
           available: true,
-          showInSearch: true,
           showCase: [],
-          stock: 1000,
           availableBrands: availableBrands, // Set only for 'hel' variant
           features: generate_features(isHelVariant),
           sizes: generate_sizes(isHelVariant),
@@ -400,12 +347,7 @@ export async function GET(request) {
           "vinyl bonnet wraps"
         ];
         const pageSlug = `${page_slug}/bonnet-strip-wraps`;
-        const designTemplateFolderPath = `/design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${variant_code}`;
-
-        const thumbnails = [
-          `/assets/images/bsw/thumbnail1.jpg`,
-          `/assets/images/bsw/thumbnail2.jpg`
-        ];
+        const designTemplateFolderPath = `design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${variant_code}`;
 
         const isHelVariant = false;
 
@@ -413,20 +355,16 @@ export async function GET(request) {
           variantCode: variant_code,
           variantType: "designVariant",
           name: variant_name,
-          commonPrice: specific_category.commonPrice,
           subtitles: [], // No subtitles for Bonnet Strip Wraps
           description: description,
           keywords: keywords,
           cardCaptions: [], // Empty array as per requirement
           pageSlug: pageSlug,
           designTemplateFolderPath: designTemplateFolderPath,
-          thumbnails: thumbnails,
+          imageFolderPath: `products/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/${variant_code.toLowerCase()}`,
           specificCategory: specific_category._id,
           available: true,
-          showInSearch: true,
           showCase: [],
-          stock: 1000,
-          availableBrands: [], // No brands for Bonnet Strip Wraps
           features: generate_features(isHelVariant),
           sizes: generate_sizes(isHelVariant),
           variantInfo: '', // Empty for non-tank and non-fbw variants
@@ -453,8 +391,7 @@ export async function GET(request) {
             availableSpecificCategoryVariants: {
               variantCode: variant.variantCode,
               name: variant.name,
-              helperText: variant.subtitles.length > 0 ? variant.subtitles[0] : "",
-              image: variant.thumbnails[0] || ""
+              image: variant.features.length > 0 ? variant.features[0].imageUrl : ""
             }
           }
         }
