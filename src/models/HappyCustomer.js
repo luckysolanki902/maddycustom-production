@@ -4,12 +4,12 @@ const mongoose = require('mongoose');
 const PlacementSchema = new mongoose.Schema({
   refType: {
     type: String,
-    enum: ['SpecificCategory', 'SpecificCategoryVariant', 'Product'],
+    enum: ['SpecificCategoryVariant'],
     required: true,
   },
   refId: {
     type: mongoose.Schema.Types.ObjectId,
-    refPath: 'placements.refType',
+    refPath: 'specificCategoryVariant',
     required: true,
   },
   displayOrder: {
@@ -17,7 +17,7 @@ const PlacementSchema = new mongoose.Schema({
     required: true,
     default: 0,
   },
-}, { _id: false });
+});
 
 const HappyCustomerSchema = new mongoose.Schema(
   {
@@ -43,6 +43,12 @@ const HappyCustomerSchema = new mongoose.Schema(
     placements: [
       PlacementSchema
     ],
+    globalDisplayOrder:{
+      type: Number,
+      required: true,
+      default: 0,
+      index: true
+    },
     // Indicates if the testimonial is active
     isActive: {
       type: Boolean,
@@ -52,11 +58,5 @@ const HappyCustomerSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-// Indexes for efficient querying
-HappyCustomerSchema.index({ isGlobal: 1 });
-HappyCustomerSchema.index({ 'placements.refType': 1, 'placements.refId': 1 });
-HappyCustomerSchema.index({ 'placements.displayOrder': 1 });
-HappyCustomerSchema.index({ isActive: 1 });
 
 module.exports = mongoose.models.HappyCustomer || mongoose.model('HappyCustomer', HappyCustomerSchema);

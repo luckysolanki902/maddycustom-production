@@ -9,10 +9,18 @@ export async function GET(request) {
     // Connect to the database
     await connectToDatabase();
 
+    // Global dimensions for Shiprocket orders
+    const globalDimensions = {
+      length: 8,
+      breadth: 8,
+      height: 39,
+      weight: 0.3,
+    };
+
     // Define the specific categories
     const specificCategories = [
       {
-        specificCategoryCode: "flw",
+        specificCategoryCode: "fbw",
         name: "Full Bike Wraps",
         commonPrice: 2199,
         subtitles: ["Give Your Bike A Complete New Look"],
@@ -34,6 +42,7 @@ export async function GET(request) {
           "/assets/images/full-bike-wrap2.jpg"
         ],
         availableSpecificCategoryVariants: [], // Left blank as per instructions
+        dimensions: globalDimensions, // Added dimensions
       },
       {
         specificCategoryCode: "win",
@@ -58,6 +67,7 @@ export async function GET(request) {
           "/assets/images/window-pillar-wrap2.jpg"
         ],
         availableSpecificCategoryVariants: [], // Left blank as per instructions
+        dimensions: globalDimensions, // Added dimensions
       },
       {
         specificCategoryCode: "bw",
@@ -82,6 +92,7 @@ export async function GET(request) {
           "/assets/images/bonnet-wrap2.jpg"
         ],
         availableSpecificCategoryVariants: [], // Left blank as per instructions
+        dimensions: globalDimensions, // Added dimensions
       },
       {
         specificCategoryCode: "hel",
@@ -106,6 +117,7 @@ export async function GET(request) {
           "/assets/images/graphic-helmet2.jpg"
         ],
         availableSpecificCategoryVariants: [], // Left blank as per instructions
+        dimensions: globalDimensions, // Added dimensions
       },
       {
         specificCategoryCode: "tw",
@@ -130,16 +142,15 @@ export async function GET(request) {
           "/assets/images/tank-wrap2.jpg"
         ],
         availableSpecificCategoryVariants: [], // Left blank as per instructions
+        dimensions: globalDimensions, // Added dimensions
       }
     ];
 
     // Delete all existing documents in the SpecificCategory collection
     await SpecificCategory.deleteMany({});
-    console.log("All existing SpecificCategory documents have been deleted.");
 
     // Insert new specific categories
     await SpecificCategory.insertMany(specificCategories);
-    console.log("New SpecificCategory documents have been inserted successfully.");
 
     return NextResponse.json({ message: "Specific categories have been successfully reset and populated." }, { status: 200 });
   } catch (error) {

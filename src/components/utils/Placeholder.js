@@ -8,7 +8,7 @@ const Placeholder = () => {
 
             <div className={styles.placeCont}>
                 <div className={styles.placeholder}>
-                    <Image src='/images/assets/gifs/helmetloadinggif.gif' width={2000/10} height={2000/10} style={{width:'50%', height:'auto', objectFit:'cover'}} loop={true} alt='loading' />
+                    <Image unoptimized src='/images/assets/gifs/helmetloadinggif.gif' width={2000/10} height={2000/10} style={{width:'50%', height:'auto', objectFit:'cover'}} loop={true} alt='loading' />
                 </div>
                 <div className={styles.orderPlaceh1}>
                 </div>

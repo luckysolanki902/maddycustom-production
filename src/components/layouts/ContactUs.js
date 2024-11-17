@@ -11,8 +11,8 @@ const ContactUs = () => {
     // };
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
     return (
-        <div>
-            <div className={styles.contactContainer} id='homecontactdiv'>
+        <div id='homecontactdiv'>
+            <div className={styles.contactContainer} >
                 <div className={styles.contactHeading}>
                     Contact Us
                 </div>
@@ -23,8 +23,8 @@ const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
                     <span style={{ cursor: 'pointer' }} 
                     // onClick={handleContact}
                     >
-                        <a className={styles.contactLink} style={{ color: 'white' }} href="tel:8112673988">8112673988</a>, 
-                        <a className={styles.contactLink} style={{ color: 'white' }} href="tel:9027495997">9027495997</a>
+                        <a className={styles.contactLink} style={{ color: 'white' }} href="tel:8112673988">8112673988</a>
+                        {/* <a className={styles.contactLink} style={{ color: 'white' }} href="tel:9027495997">9027495997</a> */}
                     </span>
                 </div>
                 <div className={styles.contactContent}>
@@ -49,8 +49,8 @@ const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
                 </div>
 
                 <div className={styles.tnc}>
-                    <Link href={'/about-us'} style={{ color: 'white', textDecoration: 'none' }}>About Us</Link> | 
-                    <Link href={'/termsandconditions'} style={{ color: 'white', textDecoration: 'none' }}>Terms and Conditions</Link>
+                    <Link href={'/about-us'} style={{ color: 'white', textDecoration: 'none' }} className={styles.contactLink}>About Us</Link> | 
+                    <Link href={'/termsandconditions'} style={{ color: 'white', textDecoration: 'none' }} className={styles.contactLink}>Terms and Conditions</Link>
                 </div>
             </div>
         </div>

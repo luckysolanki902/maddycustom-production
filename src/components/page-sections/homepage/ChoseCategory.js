@@ -11,7 +11,7 @@ const ChooseCategory = () => {
 
                 <div className={styles.mainCard}>
 
-                    <Link href={'/bike/helmet-wraps'} className={styles.chooseCard}>
+                    <Link href={'/shop/accessories/safety/graphic-helmets/helmet-store'} className={styles.chooseCard}>
                         <div >
                             <Image className={styles.chooseImage} src={`${baseurl}/assets/category-cards/helmetcatalog.jpg`} alt='bike' width={1500 * 2} height={1500 * 2}></Image>
                         </div>
@@ -21,7 +21,7 @@ const ChooseCategory = () => {
 
                 <div className={styles.mainCard}>
 
-                    <Link href={'/bike/win-wraps'} className={styles.chooseCard}>
+                    <Link href={'/shop/wraps/car-wraps/window-pillar-wraps/win-wraps'} className={styles.chooseCard}>
                         <div >
                             <Image className={styles.chooseImage} src={`${baseurl}/assets/category-cards/win_wrap_category.jpg`} alt='bike' width={1500 * 2} height={1500 * 2}></Image>
                         </div>
@@ -44,7 +44,7 @@ const ChooseCategory = () => {
 
                 <div className={styles.mainCard}>
 
-                    <Link href={'/bike/tank-wraps-classic'} className={styles.chooseCard}>
+                    <Link href={'/shop/wraps/bike-wraps/tank-wraps/slim'} className={styles.chooseCard}>
                         <div >
                             <Image className={styles.chooseImage} src={`${baseurl}/assets/category-cards/tank_wrap_category.jpg`} alt='bike' width={1500 * 2} height={1500 * 2}></Image>
                         </div>
@@ -55,7 +55,7 @@ const ChooseCategory = () => {
 
                 <div className={styles.mainCard}>
 
-                    <Link href={'/bike/bonnet-strip-wraps'} className={styles.chooseCard}>
+                    <Link href={'/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps'} className={styles.chooseCard}>
                         <div >
                             <Image className={styles.chooseImage} src={`${baseurl}/assets/category-cards/bonnet_wrap_category.jpg`} alt='bike' width={1500 * 2} height={1500 * 2}></Image>
                         </div>

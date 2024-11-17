@@ -34,7 +34,6 @@ export async function GET(request) {
     try {
       const productsContent = fs.readFileSync(productsFilePath, 'utf-8');
       originalProducts = JSON.parse(productsContent);
-      console.log(`Loaded original products data from '${productsFilePath}'.`);
     } catch (err) {
       console.error(`Failed to load products data from '${productsFilePath}':`, err);
       return NextResponse.json({ error: "Failed to load products data." }, { status: 500 });
@@ -156,21 +155,21 @@ export async function GET(request) {
       let createdAt;
 
       if (fbwBikeCodes.includes(bikeCode)) {
-        description = `Transform your ${bikeFullName} with the ${uniqueName} full bike wrap from Maddy Custom. Crafted from high-quality vinyl, this wrap offers unmatched durability and style. Customize your ride with a unique design that reflects your personality. Shop now for premium customizations and give your bike a complete new look.`;
-        createdAt = new Date('2023-11-01T14:00:00')
+        description = `Revamp your ${bikeFullName} with the premium ${uniqueName} full bike wrap from Maddy Custom. Made with durable, high-quality vinyl, this wrap is designed to stand up to the elements while keeping your bike looking brand new. Showcase your personality on the road with unique, eye-catching designs that reflect your style. Achieve a flawless, professional look easily—no paint required! Elevate your ride with top-tier customization that turns heads.`;
+        createdAt = new Date('2023-11-01T14:00:00');
       } else {
         if (bikeCode === 'win') {
-          description = `Enhance your car's pillars with the ${uniqueName} window pillar wrap from Maddy Custom. Car pillar wraps offer an easy, budget-friendly way to customize your vehicle. Designed to fit perfectly on your car’s B-pillars, these wraps are simple to apply, adding an instant style boost without professional help. With a durable finish and eye-catching design, they’re the ideal choice for affordable, DIY customization.`;
-          createdAt = new Date('2024-06-01T14:00:00')
+          description = `Give your car’s pillars a stylish makeover with the ${uniqueName} window pillar wrap from Maddy Custom. These wraps are crafted to perfectly fit and enhance your car’s B-pillars, offering a sleek, professional look without the high price tag. Made from durable, weather-resistant vinyl, they add a modern edge to your vehicle while protecting the original finish. Easy to apply, these DIY wraps offer an affordable, high-impact way to boost your car’s aesthetics. Make a statement and drive with style!`;
+          createdAt = new Date('2024-06-01T14:00:00');
         } else if (bikeCode === 'hel') {
-          description = `Discover the ${uniqueName} helmet from Maddy Custom's Helmet Store. Combining style and safety, this helmet features high-impact resistant materials and customizable graphics. Ride with confidence and express your personality with this premium helmet.`;
-          createdAt = new Date('2024-04-01T14:00:00')
+          description = `Ride in style and safety with the ${uniqueName} helmet from Maddy Custom’s Helmet Store. Designed with high-impact resistant materials, this helmet offers superior protection, while the customizable graphics make it uniquely yours. Show off your personality and turn heads on the road with a helmet that blends function with fashion. Whether you're a casual rider or a seasoned biker, this helmet is your ideal companion for safe, stylish rides.`;
+          createdAt = new Date('2024-04-01T14:00:00');
         } else if (bikeCode === 'bsw') {
-          description = `Upgrade your car with the ${uniqueName} bonnet strip wrap from Maddy Custom. Our bonnet strip wraps are designed for unmatched durability and style. Protect your car's bonnet while enhancing its aesthetics with our high-quality, easy-to-apply vinyl wraps. Transform your ride with a sleek and professional look.`;
-          createdAt = new Date('2024-08-01T14:00:00')
+          description = `Enhance your car’s appearance with the ${uniqueName} bonnet strip wrap from Maddy Custom. Crafted from top-grade, durable vinyl, our bonnet wraps not only protect your car’s surface but also deliver a sleek, eye-catching design. Perfect for a sporty, polished look, these wraps add personality and sophistication to your vehicle without the hassle of a paint job. Experience quick, DIY installation for a bold new style that’s as unique as your ride.`;
+          createdAt = new Date('2024-08-01T14:00:00');
         } else {
-          description = `Upgrade your vehicle with the ${uniqueName} from Maddy Custom. Our wraps and accessories are designed for unmatched durability and style. Transform your ride with unique designs tailored to your taste, from budget-friendly options to premium customizations.`;
-          createdAt = new Date('2024-09-01T14:00:00')
+          description = `Elevate your vehicle’s aesthetics with the ${uniqueName} from Maddy Custom. Our collection of wraps and accessories is meticulously designed for style, durability, and a flawless finish. Choose from a wide array of unique designs tailored to suit every taste and budget. From economical upgrades to luxurious customizations, transform your ride into a stunning reflection of your personality and drive with confidence.`;
+          createdAt = new Date('2024-09-01T14:00:00');
         }
       }
 
@@ -195,9 +194,9 @@ export async function GET(request) {
       let specificCategoryVariant = null;
 
       if (fbwBikeCodes.includes(bikeCode)) {
-        specificCategory = specificCategoryMap.get('flw');
+        specificCategory = specificCategoryMap.get('fbw');
         if (!specificCategory) {
-          console.error("Specific Category for Full Bike Wraps ('flw') not found. Skipping product.");
+          console.error("Specific Category for Full Bike Wraps ('fbw') not found. Skipping product.");
           continue;
         }
         const bikeFullNameUrl = encodeURIComponent(bikeFullName.toLowerCase().replace(/\s+/g, '-'));
@@ -281,7 +280,7 @@ export async function GET(request) {
         _id: productId,
         name: uniqueNameFinal,
         captions: captions,
-        title: `${uniqueNameFinal} ${specificCategory.name}`,
+        title: `${uniqueNameFinal} ${specificCategory.name.endsWith('s') ? specificCategory.name.slice(0, -1) : specificCategory.name}`,
         description: description,
         mainTags: tags,
         searchKeywords: searchKeywords,
@@ -315,16 +314,13 @@ export async function GET(request) {
       };
 
       productList.push(product);
-      console.log(`Processed product: '${uniqueNameFinal}' with SKU '${sku}'.`);
     }
 
     // Delete all existing Product documents
     await Product.deleteMany({});
-    console.log("All existing Product documents have been deleted.");
 
     // Insert new products into the database
     await Product.insertMany(productList);
-    console.log("New Product documents have been inserted successfully.");
 
     return NextResponse.json({ message: "Products have been successfully reset and populated." }, { status: 200 });
 

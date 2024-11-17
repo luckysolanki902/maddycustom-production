@@ -24,9 +24,7 @@ export async function POST(request) {
     // Attempt to find Product by pageSlug first
     const product = await Product.findOne({ pageSlug: slug }).lean().exec();
 
-    if (product) {
-      console.info(`Found Product: ${product.name}`);
-      
+    if (product) {      
       // Fetch the associated SpecificCategoryVariant if it exists
       const variant = await SpecificCategoryVariant.findById(product.specificCategoryVariant).lean().exec();
 

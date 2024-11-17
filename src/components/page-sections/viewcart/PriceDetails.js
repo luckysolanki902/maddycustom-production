@@ -9,7 +9,7 @@ import styles from './styles/viewcart.module.css';
 const PriceDetails = ({
   deliveryCost,
   couponState,
-  finalDiscount,
+  discountAmount,
   totalCostWithDelivery,
   onOpenCoupon,
   onRemoveCoupon,
@@ -28,7 +28,7 @@ const PriceDetails = ({
       <div className={styles.priceDetailRow}>
         <div className={styles.priceField}>Discount</div>
         <div className={styles.priceValue}>
-          ₹{finalDiscount.toFixed(2)}
+          ₹{discountAmount.toFixed(2)}
         </div>
       </div>
     )}

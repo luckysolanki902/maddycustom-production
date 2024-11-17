@@ -14,7 +14,6 @@ const Tags = ({ setTagFilter, tags }) => {
       setActiveTag(tag);
       setTagFilter(tag); // Set the tag filter
     }
-    console.log('Selected Tag:', tag);
   };
   
 
