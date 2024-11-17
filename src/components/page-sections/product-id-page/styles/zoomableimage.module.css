@@ -1,0 +1,92 @@
+.imgContainer {
+    display: flex;
+    justify-content: center;
+    margin: 10px auto;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+}
+
+
+
+.image {
+    width: 80%;
+    height: auto;
+    border-radius: 1rem;
+    filter: brightness(110%);
+    transition: transform 0.3s ease;
+    /* color: #e3f8e3; */
+}
+
+.zoomed .image {
+    scale: 1.1;
+    margin: 0;
+    width: 80vh;
+    height: auto;
+    /* This sets the height to 100% of the viewport height */
+    object-fit: contain;
+}
+
+
+
+.zoomed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    background-color: rgb(255, 255, 255);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+
+.rotated {
+    transform: rotate(90deg);
+}
+
+
+@media (width>800px) {
+
+    .zoomed {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9999;
+        background-color: rgb(255, 255, 255);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        margin: 0;
+        padding: 5rem;
+        cursor: zoom-out;
+    }
+
+    .rotated {
+        transform: none;
+    }
+
+
+}
+
+@media (width>750px) {
+    .image {
+        width: 30%;
+    }
+
+}
+
+
+@media (width>1250px) {
+    .image {
+        width: 30%;
+    }
+}

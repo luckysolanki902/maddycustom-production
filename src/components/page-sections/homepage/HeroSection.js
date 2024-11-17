@@ -22,10 +22,10 @@ export default function HeroSection() {
             <div id='searchyourbikeinput'>
                 <div className={styles.carouseldiv}>
                     <FullWidthRoundCornerLandscapeCarousel images={[
-                        `${baseUrl}/assets/carousel/homepage-main/first-three-products-banner.jpg`,
-                        `${baseUrl}/assets/carousel/homepage-main/car-pillar-wraps-shinobi.jpg`,
-                        `${baseUrl}/assets/carousel/homepage-main/bonnet-strip-wraps-assassin.jpg`,
-                        `${baseUrl}/assets/carousel/homepage-main/tank-wraps-peace.jpg`
+                        `${baseUrl}/assets/carousels/homepage-main/first-three-products-banner.jpg`,
+                        `${baseUrl}/assets/carousels/homepage-main/car-pillar-wraps-shinobi.jpg`,
+                        `${baseUrl}/assets/carousels/homepage-main/bonnet-strip-wraps-assassin.jpg`,
+                        `${baseUrl}/assets/carousels/homepage-main/tank-wraps-peace.jpg`
                     ]} />
                 </div>
             </div>

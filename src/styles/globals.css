@@ -28,6 +28,12 @@ a {
     font-family: Jost, sans-serif;
 
 }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 
 /* Utility Classes */
 .black {
