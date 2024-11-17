@@ -16,7 +16,7 @@ export async function generateMetadata({ params }) {
   return createMetadata({
     canonical: canonicalUrl,
     title: `${productData.type === 'product' ? productData.product.title : productData.variant.name} | Maddy Custom`,
-    description: productData.type === 'product' ? productData.product.description : productData.variant.description,
+    description: productData.type === 'product' ? productData.variant.description : productData.variant.description,
   });
 }
 
