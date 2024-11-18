@@ -1,6 +1,7 @@
 // /models/SpecificCategoryVariant.js
 const mongoose = require('mongoose');
 
+
 const SpecificCategoryVariantSchema = new mongoose.Schema(
   {
     variantCode: {
@@ -20,6 +21,12 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       required: true,
       maxlength: 100,
       trim: true,
+    },
+    title:{
+      type:String,
+      required:true,
+      maxlength:200,
+      trim:true
     },
     subtitles: [
       {
@@ -150,18 +157,19 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
         type: Number,
         default: 0.08,
       },
-      boxWeight: {
+      boxWeight:{
         type: Number,
-        default: 0.3,
+        default:0.3
       },
-      boxCapacity: {
+      boxCapacity:{
         type: Number,
-        default: 4,
+        default:4
       },
     },
   },
   { timestamps: true }
 );
+
 
 
 

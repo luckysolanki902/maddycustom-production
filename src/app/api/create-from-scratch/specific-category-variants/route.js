@@ -123,10 +123,12 @@ export async function GET(request) {
           // Construct the variant object
           const variant = {
             variantCode: code_variant,
+            productDescription: "Wrap Your Passion in Style! Evolve your {fullBikename} with Maddy Custom's {uniqueName} full bike wraps combine art and protection. Durable vinyl, precise fitment and easy maintenance. Choose from unique designs. Upgrade your bike's look, enhance its value",
             variantType: "modelVariant",
             name: fullname,
             cardCaptions: [],
-            subtitles: [`Give your bike a complete new look`],
+            title: "Full Bike Wraps for a Bold New Look | Maddy Custom",
+            subtitles: ["Give your bike a complete new look"],
             description: description,
             keywords: keywords,
             pageSlug: `${page_slug}/${url_friendly(fullname)}`,
@@ -138,6 +140,14 @@ export async function GET(request) {
             features: generate_features(isHelVariant),
             sizes: generate_sizes(isHelVariant),
             variantInfo: fullname,
+            dimensions: {
+              length: 31,
+              breadth: 8,
+              height: 8.5,
+              weight: 0.07,
+              boxWeight: 0.22,
+              boxCapacity: 2
+            }
           };
 
           // If it's a 'hel' variant, add availableBrands
@@ -155,13 +165,15 @@ export async function GET(request) {
           variants.push(variant);
         }
 
-      } else if (code === "tw") {
+      } else if (code === "tw") { 
         // Tank Wraps: Generate variants tw-s, tw-m, tw-w
         const tank_variants = {
           "tw-s": {
             variantType: "designVariant",
             name: "Slim Tank Wraps",
-            description: "Slim Tank Wraps offer a sleek and streamlined look for your vehicle's tank. Perfect for those seeking a minimalistic design without compromising on protection.",
+            title: "Bike Tank Wraps for a Bold New Look | Maddy Custom",
+            productDescription: "Upgrade your bike’s style with Maddy Custom's {uniqueName} tank wraps. Durable, scratch-resistant, and easy to apply, these premium vinyl wraps offer seamless fitment and stunning designs. Protect your tank and make your bike stand out effortlessly!",
+            description: "Personalize your bike’s fuel tank with our high-quality wraps. Available in various designs and finishes to give your bike a standout appearance",
             keywords: [
               "slim tank wrap",
               "tank wrap slim",
@@ -172,11 +184,21 @@ export async function GET(request) {
             pageSlug: `${page_slug}/slim-tank-wraps`,
             designTemplateFolderPath: `design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-s`,
             variantInfo: "Choose if your bike has a plain slim tank like: pulsar, xtream, splendor, etc.",
+            dimensions: {
+              length: 20,
+              breadth: 6,
+              height: 6,
+              weight: 0.02,
+              boxWeight: 0.15,
+              boxCapacity: 4
+            }
           },
           "tw-m": {
             variantType: "designVariant",
             name: "Medium Tank Wraps",
-            description: "Medium Tank Wraps strike the perfect balance between style and protection. Ideal for those who want a noticeable yet tasteful enhancement to their vehicle's tank.",
+            title: "Bike Tank Wraps for a Bold New Look | Maddy Custom",
+            productDescription: "Upgrade your bike’s style with Maddy Custom's {uniqueName} tank wraps. Durable, scratch-resistant, and easy to apply, these premium vinyl wraps offer seamless fitment and stunning designs. Protect your tank and make your bike stand out effortlessly!",
+            description: "Personalize your bike’s fuel tank with our high-quality wraps. Available in various designs and finishes to give your bike a standout appearance",
             keywords: [
               "medium tank wrap",
               "tank wrap medium",
@@ -187,11 +209,21 @@ export async function GET(request) {
             pageSlug: `${page_slug}/medium-tank-wraps`,
             designTemplateFolderPath: `design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-m`,
             variantInfo: "Choose if your bike has a little thick tank like: classic350, jawa, etc.",
+            dimensions: {
+              length: 20,
+              breadth: 6,
+              height: 6,
+              weight: 0.02,
+              boxWeight: 0.15,
+              boxCapacity: 4
+            }
           },
           "tw-w": {
             variantType: "designVariant",
             name: "Wide Tank Wraps",
-            description: "Wide Tank Wraps provide a bold and expansive look for your vehicle's tank. Designed for maximum visual impact and comprehensive protection.",
+            title: "Bike Tank Wraps for a Bold New Look | Maddy Custom",
+            productDescription: "Upgrade your bike’s style with Maddy Custom's {uniqueName} tank wraps. Durable, scratch-resistant, and easy to apply, these premium vinyl wraps offer seamless fitment and stunning designs. Protect your tank and make your bike stand out effortlessly!",
+            description: "Personalize your bike’s fuel tank with our high-quality wraps. Available in various designs and finishes to give your bike a standout appearance",
             keywords: [
               "wide tank wrap",
               "tank wrap wide",
@@ -202,6 +234,14 @@ export async function GET(request) {
             pageSlug: `${page_slug}/wide-tank-wraps`,
             designTemplateFolderPath: `design-templates/${specific_category.category.toLowerCase().replace(/\s+/g, '-')}/${specific_category.subCategory.toLowerCase().replace(/\s+/g, '-')}/${specific_category.name.toLowerCase().replace(/\s+/g, '-')}/tw-w`,
             variantInfo: "Choose if your bike has a wide matte finish in between tank or wide sticker from before: tvs-raider, gixxer, apache, continental-gt, etc.",
+            dimensions: {
+              length: 20,
+              breadth: 6,
+              height: 6,
+              weight: 0.02,
+              boxWeight: 0.15,
+              boxCapacity: 4
+            }
           }
         };
 
@@ -209,8 +249,7 @@ export async function GET(request) {
           const isHelVariant = false; // Not applicable for tank wraps
 
           // SEO-friendly description
-          const description = `Enhance and protect your vehicle with Maddy Custom’s ${variant_info.name} Tank Wraps. Our high-quality vinyl wraps provide a stylish and protective layer for your tank, ensuring durability and a flawless finish. Choose from our ${variant_info.name.toLowerCase()} designs tailored to your unique style.`;
-
+          const description = "Personalize your bike’s fuel tank with our high-quality wraps. Available in various designs and finishes to give your bike a standout appearance";
           // Keywords
           const keywords = variant_info.keywords;
 
@@ -218,8 +257,10 @@ export async function GET(request) {
             variantCode: variant_code,
             variantType: variant_info.variantType,
             name: variant_info.name,
+            title: "Bike Tank Wraps for a Bold New Look | Maddy Custom",
             subtitles: [],
             description: description,
+            productDescription: "Upgrade your bike’s style with Maddy Custom's {uniqueName} tank wraps. Durable, scratch-resistant, and easy to apply, these premium vinyl wraps offer seamless fitment and stunning designs. Protect your tank and make your bike stand out effortlessly!",
             keywords: keywords,
             cardCaptions: [], // Empty array as per requirement
             pageSlug: variant_info.pageSlug,
@@ -231,6 +272,14 @@ export async function GET(request) {
             features: generate_features(isHelVariant),
             sizes: generate_sizes(isHelVariant),
             variantInfo: variant_info.variantInfo,
+            dimensions: {
+              length: 20,
+              breadth: 6,
+              height: 6,
+              weight: 0.02,
+              boxWeight: 0.15,
+              boxCapacity: 4
+            }
           };
 
           variants.push(variant);
@@ -240,7 +289,7 @@ export async function GET(request) {
         // Window Pillar Wraps
         const variant_code = "win";
         const variant_name = "Win Wraps";
-        const description = "Car pillar wraps offer an easy, budget-friendly way to customize your vehicle. Designed to fit perfectly on your car’s B-pillars, these wraps are simple to apply, adding an instant style boost without professional help. With a durable finish and eye-catching design, they’re the ideal choice for affordable, DIY customization.";
+        const description = "Make your vehicle's style unrivaled with MaddyCustom's Window Pillar Wraps. Available in a range of colors and finishes; these wraps add a sleek and modern touch to any car, ensuring long-lasting protection";
         const keywords = [
           "win wrap",
           "window pillar wrap",
@@ -265,6 +314,8 @@ export async function GET(request) {
           name: variant_name,
           subtitles: ["car window pillar wraps"],
           description: description,
+          title: "Shield Your Style with Premium Window Pillar Wraps | Maddy Custom",
+          productDescription: "Enhance your car's pillars with the {uniqueName} window pillar wrap from Maddy Custom. Car pillar wraps offer an easy, budget-friendly way to customize your vehicle. Designed to fit perfectly on your car’s B-pillars, these wraps are simple to apply, adding an instant style boost without professional help. With a durable finish and eye-catchy design, they’re the ideal choice for affordable, DIY customization",
           keywords: keywords,
           cardCaptions: cardCaptions, // Set only for 'win' variant
           pageSlug: pageSlug,
@@ -275,7 +326,15 @@ export async function GET(request) {
           showCase: showCase,
           features: generate_features(isHelVariant),
           sizes: generate_sizes(isHelVariant),
-          variantInfo: '', // Empty for non-tank and non-fbw variants
+          variantInfo: '', // Empty for non-tank and non-fbw variants,
+          dimensions: {
+            length: 31,
+            breadth: 8.5,
+            height: 8.5,
+            weight: 0.08,
+            boxWeight: 0.23,
+            boxCapacity: 4
+          }
         };
 
         variants.push(variant);
@@ -284,7 +343,7 @@ export async function GET(request) {
         // Graphic Helmets
         const variant_code = "hel";
         const variant_name = "Helmet Store";
-        const description = "Explore Maddy Custom’s Helmet Store, offering the best-designed helmets in India with uncompromised safety. Our helmets feature high-impact resistant materials and customizable graphics to reflect your personality while ensuring maximum protection.";
+        const description = "Protect your ride and express your style with MaddyCustom's Graphic Helmets. Custom designs and premium quality. Durable, scratch-resistant and comfortable";
         const keywords = [
           "helmet store",
           "graphic helmets",
@@ -316,8 +375,10 @@ export async function GET(request) {
           variantCode: variant_code,
           variantType: "designVariant",
           name: variant_name,
+          productDescription: "Explore the {uniqueName} helmet from Maddy Custom's Helmet Store. Combining style and safety, this helmet features high-impact resistant materials and customizable graphics. Ride with confidence and flaunt your personality with this premium helmet",
           subtitles: ["Best designed helmets of India with safety"],
           description: description,
+          title: "Helmet Goals: Achieved! | Maddy Custom",
           keywords: keywords,
           cardCaptions: [], // Empty array as per requirement
           pageSlug: pageSlug,
@@ -330,6 +391,14 @@ export async function GET(request) {
           features: generate_features(isHelVariant),
           sizes: generate_sizes(isHelVariant),
           variantInfo: '', // Empty for non-tank and non-fbw variants
+          dimensions: {
+            length: 34,
+            breadth: 34,
+            height: 28,
+            weight: 1,
+            boxWeight: 0.1,
+            boxCapacity: 1
+          }
         };
 
         variants.push(variant);
@@ -338,7 +407,7 @@ export async function GET(request) {
         // Bonnet Strip Wraps
         const variant_code = "bsw";
         const variant_name = "Bonnet Strip Wraps";
-        const description = "Bonnet Strip Wraps offer a sleek and protective layer for your car's bonnet. Designed for easy application, these wraps enhance your vehicle's aesthetics while safeguarding against scratches and minor damages. Enjoy a stylish upgrade without the need for professional installation.";
+        const description = "Make a bold statement with our high-quality bonnet wraps. Choose from matte, glossy or carbon fiber finishes to give your car a distinctive look that stands out on the road";
         const keywords = [
           "bonnet strip wrap",
           "car bonnet protection",
@@ -355,6 +424,8 @@ export async function GET(request) {
           variantCode: variant_code,
           variantType: "designVariant",
           name: variant_name,
+          productDescription: "Transform Your Ride's Frontline with Maddy Custom's {uniqueName} bonnet wraps which offer unrivaled customization. Select from various materials, colors and finishes. Stand out from the crowd, upgrade your car today!",
+          title: "Bonnet Strip Wraps for a Bold New Look | Maddy Custom",
           subtitles: [], // No subtitles for Bonnet Strip Wraps
           description: description,
           keywords: keywords,
@@ -367,7 +438,15 @@ export async function GET(request) {
           showCase: [],
           features: generate_features(isHelVariant),
           sizes: generate_sizes(isHelVariant),
-          variantInfo: '', // Empty for non-tank and non-fbw variants
+          variantInfo: '', // Empty for non-tank and non-fbw variants,
+          dimensions: {
+            length: 31,
+            breadth: 8,
+            height: 8.5,
+            weight: 0.07,
+            boxWeight: 0.22,
+            boxCapacity: 2
+          }
         };
 
         variants.push(variant);

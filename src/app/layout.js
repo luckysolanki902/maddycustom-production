@@ -1,15 +1,12 @@
 // layout.js
 
 import '@/styles/globals.css';
-import FacebookPixel from '@/components/analytics/FacebookPixel';
-import GoogleAnalytics from '@/components/analytics/GoogleAnalytics';
-import Clarity from '@/components/analytics/Clarity';
-import Razorpay from '@/components/analytics/Razorpay';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { generateWebsiteSchema, generateOrganizationSchema } from '@/lib/metadata/generateProductSchema';
 import ReduxProvider from '@/components/layouts/ReduxProvider';
 import FloatingActionBar from '@/components/utils/FloatingActionButton';
 import TopLoadingBar from '@/components/utils/TopLoadingBar';
+import AnalyticsHead from '@/components/layouts/AnalyticsHead';
 
 export async function generateMetadata() {
   return createMetadata();
@@ -22,10 +19,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <FacebookPixel />
-        <GoogleAnalytics />
-        <Clarity />
-        <Razorpay />
+        <AnalyticsHead />
 
         {/* JSON-LD Structured Data */}
         <script

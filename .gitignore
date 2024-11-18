@@ -41,5 +41,5 @@ next-env.d.ts
 
 
 # apis
-# Ignore API routes in src directory
-/src/pages/api/**/*
+/src/app/api/private/**/
+/src/app/api/create-from-scratch/**/
