@@ -28,25 +28,26 @@ import {
   setUserExists,
   setPrefilledAddress,
   setLastOrderId,
-  setCoupon, // Ensure this action exists in your Redux slice
-  removeCoupon, // Ensure this action exists in your Redux slice
+  setCoupon,
+  removeCoupon,
 } from '../../store/slices/orderFormSlice';
 import { makePayment } from '../../lib/payments/makePayment';
 import { useRouter } from 'next/navigation';
 import CustomSnackbar from '../notifications/CustomSnackbar';
-import { calculateTotalAmount, getPaymentButtonText } from '../../lib/utils/orderFormUtils';
+import {  getPaymentButtonText } from '../../lib/utils/orderFormUtils';
 import { styled } from '@mui/material/styles';
 import theme from '@/styles/theme';
 import { ThemeProvider } from '@mui/material';
 import { purchase } from '@/lib/metadata/faceboookPixels';
 
-const OrderForm = ({ open, onClose, paymentModeConfig }) => {
+const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) => {
+  console.log({couponCode, totalCost})
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
   const orderForm = useSelector((state) => state.orderForm);
 
-  const { userDetails, addressDetails, userExists, prefilledAddress, couponCode, discountAmount } = orderForm;
+  const { userDetails, addressDetails, userExists, prefilledAddress, discountAmount } = orderForm;
 
   // Local Tab Index State
   const [tabIndex, setTabIndex] = useState(0);
@@ -110,6 +111,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
 
       // Move to Address tab after prefill
       setTabIndex(1);
+      showSnackbar('Address pre-filled from your last order.', 'info');
     }
   }, [userExists, prefilledAddress, dispatch]);
 
@@ -133,8 +135,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
       const response = await axios.get('/api/user/check', {
         params: { phoneNumber: data.phoneNumber },
       });
-
-      if (response.data.exists) {
+      if (response.data.exists && response.data.latestAddress.length > 0) {
         dispatch(setUserExists(true));
         dispatch(setPrefilledAddress(response.data.latestAddress));
         dispatch(setUserDetails({ userId: response.data.userId })); // Store userId
@@ -153,7 +154,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
     } catch (error) {
       console.error('Error checking/creating user:', error);
       const errorMessage =
-        error.response?.data?.message || 'Payment Cancelled';
+        error.response?.data?.message || 'An error occurred while processing your details.';
       showSnackbar(errorMessage, 'error');
     } finally {
       setIsLoading(false);
@@ -164,9 +165,26 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
     setIsLoading(true);
     setIsPaymentProcessing(true);
     try {
+      // First, add/update the address using the provided API
+      const addAddressResponse = await axios.post('/api/user/add-address', {
+        phoneNumber: orderForm.userDetails.phoneNumber,
+        address: {
+          receiverName: orderForm.userDetails.name || '',
+          receiverPhoneNumber: orderForm.userDetails.phoneNumber,
+          addressLine1: data.addressLine1,
+          addressLine2: data.addressLine2,
+          city: data.city,
+          state: data.state,
+          pincode: data.pincode,
+          country: data.country || 'India',
+        },
+      });
+
+      // Update Redux store with the latest address details
       dispatch(setAddressDetails(data));
 
-      const totalAmount = calculateTotalAmount(cartItems, paymentModeConfig, discountAmount);
+      // Proceed with order creation
+      const totalAmount = totalCost
 
       const orderResponse = await axios.post('/api/checkout/order/create', {
         userId: orderForm.userDetails.userId,
@@ -193,10 +211,14 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
         },
         totalAmount: totalAmount,
         discountAmount: discountAmount,
-        extraCharges: paymentModeConfig.extraCharge ? [{
-          chargesName: 'Extra Charge',
-          chargesAmount: paymentModeConfig.extraCharge,
-        }] : [],
+        extraCharges: paymentModeConfig.extraCharge
+          ? [
+            {
+              chargesName: 'Extra Charge',
+              chargesAmount: paymentModeConfig.extraCharge,
+            },
+          ]
+          : [],
         couponCode: couponCode || null,
       });
 
@@ -227,12 +249,14 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
             showSnackbar('Payment Successful!', 'success');
             purchase({
               orderId: orderId,
-              totalAmount: paymentDetails.amountPaidOnline + paymentDetails.amountPaidCod,
-              items: cartItems.map(item => ({
+              totalAmount:
+                paymentDetails.amountPaidOnline + paymentDetails.amountPaidCod,
+              items: cartItems.map((item) => ({
                 product: item.productId,
                 name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-                  ? item.productDetails.category?.name.slice(0, -1)
-                  : item.productDetails.category?.name}`,
+                    ? item.productDetails.category?.name.slice(0, -1)
+                    : item.productDetails.category?.name
+                  }`,
                 quantity: item.quantity,
                 priceAtPurchase: item.productDetails.price,
               })),
@@ -244,7 +268,10 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
           showSnackbar('Failed to initiate payment.', 'error');
         }
       } else {
-        showSnackbar(`Please pay ₹${paymentDetails.amountDueCod} via COD upon delivery.`, 'info');
+        showSnackbar(
+          `Please pay ₹${paymentDetails.amountDueCod} via COD upon delivery.`,
+          'info'
+        );
       }
       dispatch(clearCart());
       dispatch(resetOrderForm());
@@ -301,11 +328,15 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
         fullWidth
         // maxWidth="xs"
         sx={{}}
-
         disableEscapeKeyDown={isPaymentProcessing} // Prevent closing with Escape key
       >
-        <DialogContent >
-          <Tabs sx={{ padding: '0rem 5rem' }} value={tabIndex} onChange={handleTabChange} variant="fullWidth">
+        <DialogContent>
+          <Tabs
+            sx={{ padding: '0rem 5rem' }}
+            value={tabIndex}
+            onChange={handleTabChange}
+            variant="fullWidth"
+          >
             <Tab label="User Details" />
             <Tab label="Address Details" disabled={tabIndex !== 1} />
           </Tabs>
@@ -320,7 +351,14 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
             }
           >
             {tabIndex === 0 && (
-              <Box sx={{ padding: '0rem 4rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <Box
+                sx={{
+                  padding: '0rem 4rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                }}
+              >
                 <Controller
                   name="name"
                   control={control}
@@ -330,7 +368,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                   }}
                   render={({ field }) => (
                     <TextField
-                      variant='standard'
+                      variant="standard"
                       {...field}
                       label="Name"
                       fullWidth
@@ -357,7 +395,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                   }}
                   render={({ field }) => (
                     <TextField
-                      variant='standard'
+                      variant="standard"
                       {...field}
                       label="Mobile Number"
                       fullWidth
@@ -384,14 +422,21 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
             )}
 
             {tabIndex === 1 && (
-              <Box sx={{ padding: '0rem 4rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <Box
+                sx={{
+                  padding: '0rem 4rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                }}
+              >
                 <Controller
                   name="addressLine1"
                   control={control}
                   rules={{ required: 'Address is required' }}
                   render={({ field }) => (
                     <TextField
-                      variant='standard'
+                      variant="standard"
                       {...field}
                       label="Address Line 1"
                       fullWidth
@@ -411,7 +456,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                   control={control}
                   render={({ field }) => (
                     <TextField
-                      variant='standard'
+                      variant="standard"
                       {...field}
                       label="Address Line 2 (Optional)"
                       fullWidth
@@ -430,7 +475,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                   rules={{ required: 'City is required' }}
                   render={({ field }) => (
                     <TextField
-                      variant='standard'
+                      variant="standard"
                       {...field}
                       label="City"
                       fullWidth
@@ -461,7 +506,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                       value={field.value || ''}
                       renderInput={(params) => (
                         <TextField
-                          variant='standard'
+                          variant="standard"
                           {...params}
                           label="State"
                           margin="normal"
@@ -485,7 +530,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                   }}
                   render={({ field }) => (
                     <TextField
-                      variant='standard'
+                      variant="standard"
                       {...field}
                       label="Pincode"
                       fullWidth
@@ -505,7 +550,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig }) => {
                   control={control}
                   render={({ field }) => (
                     <TextField
-                      variant='standard'
+                      variant="standard"
                       {...field}
                       label="Country"
                       fullWidth

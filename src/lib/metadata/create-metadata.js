@@ -1,7 +1,9 @@
+import { mainDescription } from "../constants/seoConsts";
+
 export async function createMetadata({
     canonical = 'https://maddycustom.com',
-    title = 'Maddy Custom | Personalize Your Ride with Custom Helmets & Wraps',
-    description = "Discover Maddy Custom’s extensive collection of vehicle wraps and helmet graphics, designed for unmatched durability and style. Shop now for top-quality, affordable custom wraps, including anime helmets, N160 wraps, car pillar wraps and KTM RC 390 wraps. Transform your ride with unique designs tailored to your taste, from budget-friendly options to premium customizations. Elevate your vehicle's look with our best-selling motorcycle wraps and helmet designs.",
+    title = "MaddyCustom - India's Leading Vehicle Personalization Experts",
+    description = mainDescription,
     favicon = '/images/metadata/favicon.ico',
     seoImage = '/images/metadata/logoforlink.png',
     siteName = 'Maddy Custom',

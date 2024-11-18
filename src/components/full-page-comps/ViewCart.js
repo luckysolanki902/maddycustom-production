@@ -239,6 +239,7 @@ const handleBack = useCallback(() => {
         onClose={() => setIsOrderFormOpen(false)}
         paymentModeConfig={selectedPaymentMode}
         couponCode={couponState.couponApplied ? couponState.couponName : null}
+        totalCost={totalCostWithDelivery}
       />
 
       {/* Custom Snackbar for Feedback */}
