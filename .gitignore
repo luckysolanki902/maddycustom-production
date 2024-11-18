@@ -43,3 +43,4 @@ next-env.d.ts
 # apis
 /src/app/api/private/**/
 /src/app/api/create-from-scratch/**/
+/src/app/sitemap
