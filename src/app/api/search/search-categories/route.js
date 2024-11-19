@@ -20,7 +20,7 @@ export async function GET(request) {
     }, {});
 
     // Fetch all specific category variants
-    const variants = await SpecificCategoryVariant.find({ available: true }).lean();
+    const variants = await SpecificCategoryVariant.find({ }).lean();
 
     // Structure the response
     const responseData = {
