@@ -1,17 +1,16 @@
 .submitButton {
     border: none;
-    padding: 5px;
+    padding: 0.5rem 2rem;
     color: white;
-    width: 9.4375rem;
-    height: 3.375rem;
-    border-radius: 0.625rem;
+    width: 8.4375rem;
+    border-radius: 0.525rem;
     background-color: rgb(35, 35, 35);
     text-align: center;
     font-size: 1rem;
     font-style: normal;
-    font-weight: 700;
+    font-weight: 400;
     line-height: normal;
-    letter-spacing: 0.1rem;
+    letter-spacing: 0.05rem;
 
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
