@@ -1,5 +1,3 @@
-// app/api/user/check/route.js
-
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import User from '@/models/User';
@@ -22,13 +20,16 @@ export async function GET(request) {
     // Find the user by phone number and get the latest address
     const user = await User.findOne(
       { phoneNumber },
+      { addresses: { $slice: -1 } } // Fetch only the latest address
     );
     if (user) {
       const latestAddress =
         user.addresses && user.addresses.length > 0
           ? user.addresses[user.addresses.length - 1]
-          : '';
-console.log({latestAddress})
+          : null; // Use null instead of empty string
+
+      console.log({ latestAddress });
+
       return NextResponse.json({
         exists: true,
         latestAddress,

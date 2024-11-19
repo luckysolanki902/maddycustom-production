@@ -1,5 +1,3 @@
-// components/dialogs/OrderForm.js
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -34,14 +32,14 @@ import {
 import { makePayment } from '../../lib/payments/makePayment';
 import { useRouter } from 'next/navigation';
 import CustomSnackbar from '../notifications/CustomSnackbar';
-import {  getPaymentButtonText } from '../../lib/utils/orderFormUtils';
+import { getPaymentButtonText } from '../../lib/utils/orderFormUtils';
 import { styled } from '@mui/material/styles';
 import theme from '@/styles/theme';
 import { ThemeProvider } from '@mui/material';
 import { purchase } from '@/lib/metadata/faceboookPixels';
 
 const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) => {
-  console.log({couponCode, totalCost})
+  console.log({ couponCode, totalCost });
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
@@ -111,9 +109,33 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
 
       // Move to Address tab after prefill
       setTabIndex(1);
-      showSnackbar('Address pre-filled from your last order.', 'info');
+    } else if (userExists && !prefilledAddress) {
+      // If API doesn't provide latestAddress, check Redux store
+      if (
+        addressDetails.addressLine1 ||
+        addressDetails.addressLine2 ||
+        addressDetails.city ||
+        addressDetails.state ||
+        addressDetails.pincode ||
+        addressDetails.country
+      ) {
+        setTabIndex(1); // Move to Address tab
+        showSnackbar('Please enter your address details.', 'info');
+      }
     }
-  }, [userExists, prefilledAddress, dispatch]);
+  }, [userExists, prefilledAddress, dispatch, addressDetails]);
+
+  // Synchronize form fields with addressDetails from Redux store
+  useEffect(() => {
+    if (open) {
+      setValue('addressLine1', addressDetails.addressLine1);
+      setValue('addressLine2', addressDetails.addressLine2);
+      setValue('city', addressDetails.city);
+      setValue('state', addressDetails.state);
+      setValue('pincode', addressDetails.pincode);
+      setValue('country', addressDetails.country || 'India');
+    }
+  }, [addressDetails, setValue, open]);
 
   const handleTabChange = (event, newValue) => {
     setTabIndex(newValue);
@@ -135,10 +157,34 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
       const response = await axios.get('/api/user/check', {
         params: { phoneNumber: data.phoneNumber },
       });
-      if (response.data.exists && response.data.latestAddress.length > 0) {
-        dispatch(setUserExists(true));
-        dispatch(setPrefilledAddress(response.data.latestAddress));
-        dispatch(setUserDetails({ userId: response.data.userId })); // Store userId
+
+      if (response.data.exists) {
+        const latestAddress = response.data.latestAddress;
+        const userId = response.data.userId;
+
+        dispatch(setUserDetails({ userId }));
+
+        if (latestAddress) {
+          dispatch(setUserExists(true));
+          dispatch(setPrefilledAddress(latestAddress));
+        } else {
+          // If latestAddress is not available from API, check Redux store
+          const reduxAddress = addressDetails;
+          if (
+            reduxAddress.addressLine1 ||
+            reduxAddress.addressLine2 ||
+            reduxAddress.city ||
+            reduxAddress.state ||
+            reduxAddress.pincode ||
+            reduxAddress.country
+          ) {
+            dispatch(setUserExists(true));
+            dispatch(setPrefilledAddress(reduxAddress));
+          } else {
+            dispatch(setUserExists(false));
+            dispatch(setPrefilledAddress(null));
+          }
+        }
       } else {
         // Create new user using POST request
         const createResponse = await axios.post('/api/user/create', {
@@ -165,7 +211,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
     setIsLoading(true);
     setIsPaymentProcessing(true);
     try {
-      // First, add/update the address using the provided API
+      // Add/update the address using the provided API
       const addAddressResponse = await axios.post('/api/user/add-address', {
         phoneNumber: orderForm.userDetails.phoneNumber,
         address: {
@@ -180,20 +226,27 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
         },
       });
 
-      // Update Redux store with the latest address details
-      dispatch(setAddressDetails(data));
+      // Handle API response
+      if (addAddressResponse.data.message === 'Address already exists.') {
+        console.log('This address already exists.', 'info')
+      } else if (addAddressResponse.data.message === 'Address added successfully.') {
 
-      // Proceed with order creation
-      const totalAmount = totalCost
+        // Update Redux store with the latest address details from API response
+        dispatch(setAddressDetails(addAddressResponse.data.latestAddress));
+        console.log('Address added successfully.', 'success')
+      }
 
+      // Proceed with order creation only if address was added or already exists
+      // Create order via separate API call
       const orderResponse = await axios.post('/api/checkout/order/create', {
         userId: orderForm.userDetails.userId,
         phoneNumber: orderForm.userDetails.phoneNumber,
         items: cartItems.map((item) => ({
           product: item.productId,
           name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-            ? item.productDetails.category?.name.slice(0, -1)
-            : item.productDetails.category?.name}`,
+              ? item.productDetails.category?.name.slice(0, -1)
+              : item.productDetails.category?.name
+            }`,
           quantity: item.quantity,
           priceAtPurchase: item.productDetails.price,
           sku: item.productDetails.sku,
@@ -209,7 +262,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
           pincode: data.pincode,
           country: data.country || 'India',
         },
-        totalAmount: totalAmount,
+        totalAmount: totalCost,
         discountAmount: discountAmount,
         extraCharges: paymentModeConfig.extraCharge
           ? [
@@ -273,6 +326,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
           'info'
         );
       }
+
       dispatch(clearCart());
       dispatch(resetOrderForm());
       reset();

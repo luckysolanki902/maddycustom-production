@@ -11,7 +11,8 @@ const areAddressesEqual = (addr1, addr2) => {
         (addr1.addressLine2?.trim().toLowerCase() === (addr2.addressLine2 || '').trim().toLowerCase()) &&
         addr1.city.trim().toLowerCase() === addr2.city.trim().toLowerCase() &&
         addr1.state.trim().toLowerCase() === addr2.state.trim().toLowerCase() &&
-        addr1.pincode.trim() === addr2.pincode.trim()
+        addr1.pincode.trim() === addr2.pincode.trim() &&
+        (addr1.country?.trim().toLowerCase() === (addr2.country || 'india').trim().toLowerCase())
     );
 };
 
@@ -23,7 +24,7 @@ export async function POST(request) {
         // Validate required fields
         if (!phoneNumber || !address) {
             return NextResponse.json(
-                { message: 'Phone number and address are required' },
+                { message: 'Phone number and address are required.' },
                 { status: 400 }
             );
         }
@@ -33,9 +34,23 @@ export async function POST(request) {
         for (const field of requiredAddressFields) {
             if (!address[field] || typeof address[field] !== 'string' || address[field].trim() === '') {
                 return NextResponse.json(
-                    { message: `Address field '${field}' is required and must be a non-empty string` },
+                    { message: `Address field '${field}' is required and must be a non-empty string.` },
                     { status: 400 }
                 );
+            }
+        }
+
+        // Optional field: country (default to 'India' if not provided)
+        if (!address.country || typeof address.country !== 'string' || address.country.trim() === '') {
+            address.country = 'India';
+        } else {
+            address.country = address.country.trim();
+        }
+
+        // Trim all string fields in the address to maintain consistency
+        for (const key in address) {
+            if (typeof address[key] === 'string') {
+                address[key] = address[key].trim();
             }
         }
 
@@ -46,7 +61,7 @@ export async function POST(request) {
         const user = await User.findOne({ phoneNumber });
         if (!user) {
             return NextResponse.json(
-                { message: 'User not found' },
+                { message: 'User not found.' },
                 { status: 404 }
             );
         }
@@ -56,7 +71,7 @@ export async function POST(request) {
 
         if (addressExists) {
             return NextResponse.json(
-                { message: 'Address already exists' },
+                { message: 'Address already exists.', addresses: user.addresses },
                 { status: 200 }
             );
         }
@@ -65,9 +80,12 @@ export async function POST(request) {
         user.addresses.push(address);
         await user.save();
 
-        // Respond with success and the updated addresses
+        // Retrieve the latest address (the one just added)
+        const latestAddress = user.addresses[user.addresses.length - 1];
+
+        // Respond with success and the latest address
         return NextResponse.json(
-            { message: 'Address added successfully', addresses: user.addresses },
+            { message: 'Address added successfully.', latestAddress, addresses: user.addresses },
             { status: 200 }
         );
     } catch (error) {
@@ -75,9 +93,8 @@ export async function POST(request) {
 
         // Respond with a generic error message
         return NextResponse.json(
-            { message: 'Internal Server Error' },
+            { message: 'Internal Server Error.' },
             { status: 500 }
         );
     }
 }
-
