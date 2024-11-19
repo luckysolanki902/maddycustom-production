@@ -9,6 +9,12 @@
     font-family: jost, sans-serif;
 }
 
+.customImg{
+    width: 150px;
+    height: auto;
+    border-radius: 0.7rem;
+}
+
 
 @media (width<600px) {
     .bikeStyleMain {
@@ -21,5 +27,8 @@
         cursor: pointer;
         font-family: jost, sans-serif;
         margin-top: 1.5rem;
+    }
+    .customImg{
+        width: 100px;
     }
 }
