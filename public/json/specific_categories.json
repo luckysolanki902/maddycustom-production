@@ -1,0 +1,249 @@
+[
+    {
+        "specificCategoryCode": "flw",
+        "name": "Full Bike Wraps",
+        "commonPrice": 2199,
+        "subtitles": [
+            "Give Your Bike A Complete New Look"
+        ],
+        "description": "Transform your bike with our Full Bike Wraps, offering a complete new appearance with high-quality materials and professional installation. Enhance the aesthetics and protect your bike's surface with our durable and customizable vinyl wraps.",
+        "keywords": [
+            "full bike wrap",
+            "custom bike wraps",
+            "bike transformation",
+            "vehicle wraps",
+            "vinyl bike wrap"
+        ],
+        "pageSlug": "/wraps/bike-wraps/full-bike-wraps",
+        "parentSubCategory": "Bike Wraps",
+        "available": true,
+        "showInSearch": true,
+        "thumbnails": [
+            "/assets/images/full-bike-wrap1.jpg",
+            "/assets/images/full-bike-wrap2.jpg"
+        ],
+        "allowedTags": [
+            "bike",
+            "wrap",
+            "custom",
+            "vehicle",
+            "aesthetic"
+        ],
+        "features": [
+            {
+                "imageUrl": "/assets/icons/high-quality-material.png",
+                "name": "High-Quality Material",
+                "detail": "Durable and long-lasting vinyl wraps that protect and enhance your bike."
+            }
+        ],
+        "createdAt": {
+            "$date": "2024-04-24T00:00:00Z"
+        },
+        "updatedAt": {
+            "$date": "2024-04-24T00:00:00Z"
+        },
+        "_id": {
+            "$oid": "671b8a457082a5fe366cfa94"
+        }
+    },
+    {
+        "specificCategoryCode": "win",
+        "name": "Window Pillar Wraps",
+        "commonPrice": 499,
+        "subtitles": [
+            "Protect and Enhance Your Car's Pillars"
+        ],
+        "description": "Window Pillar Wraps provide both protection and style to your vehicle's pillars. Our high-quality wraps ensure durability and a seamless look, enhancing the overall aesthetics of your car while safeguarding the pillars from scratches and wear.",
+        "keywords": [
+            "window pillar wrap",
+            "car pillar protection",
+            "vehicle pillars",
+            "custom wraps",
+            "vinyl pillar wraps"
+        ],
+        "pageSlug": "/wraps/car-wraps/window-pillar-wraps",
+        "parentSubCategory": "Car Wraps",
+        "available": true,
+        "showInSearch": true,
+        "thumbnails": [
+            "/assets/images/window-pillar-wrap1.jpg",
+            "/assets/images/window-pillar-wrap2.jpg"
+        ],
+        "allowedTags": [
+            "formal",
+            "stylish",
+            "anime"
+        ],
+        "features": [
+            {
+                "imageUrl": "/assets/icons/durable-material.png",
+                "name": "Durable Material",
+                "detail": "Our wraps are made from high-quality vinyl, ensuring long-lasting protection."
+            },
+            {
+                "imageUrl": "/assets/icons/seamless-application.png",
+                "name": "Seamless Application",
+                "detail": "Achieve a flawless and professional finish with our expert installation."
+            }
+        ],
+        "createdAt": {
+            "$date": "2024-04-24T00:00:00Z"
+        },
+        "updatedAt": {
+            "$date": "2024-04-24T00:00:00Z"
+        },
+        "_id": {
+            "$oid": "671b8a457082a5fe366cfa95"
+        }
+    },
+    {
+        "specificCategoryCode": "bw",
+        "name": "Bonnet Wraps",
+        "commonPrice": 599,
+        "subtitles": [
+            "Enhance and Protect Your Car's Bonnet"
+        ],
+        "description": "Bonnet Wraps offer a sleek and protective layer for your car's bonnet. Designed to resist wear and tear, our wraps provide both aesthetic appeal and functional protection, keeping your bonnet looking new while guarding against scratches and minor damages.",
+        "keywords": [
+            "bonnet wrap",
+            "car bonnet protection",
+            "vehicle bonnet",
+            "custom car wraps",
+            "vinyl bonnet wraps"
+        ],
+        "pageSlug": "/wraps/car-wraps/bonnet-wraps",
+        "parentSubCategory": "Car Wraps",
+        "available": true,
+        "showInSearch": true,
+        "thumbnails": [
+            "/assets/images/bonnet-wrap1.jpg",
+            "/assets/images/bonnet-wrap2.jpg"
+        ],
+        "allowedTags": [
+            "formal",
+            "stylish",
+            "anime"
+        ],
+        "features": [
+            {
+                "imageUrl": "/assets/icons/high-quality-vinyl.png",
+                "name": "High-Quality Vinyl",
+                "detail": "Premium vinyl material ensures durability and a high-gloss finish."
+            },
+            {
+                "imageUrl": "/assets/icons/professional-installation.png",
+                "name": "Professional Installation",
+                "detail": "Expert installers guarantee a perfect fit and seamless appearance."
+            }
+        ],
+        "createdAt": {
+            "$date": "2024-04-24T00:00:00Z"
+        },
+        "updatedAt": {
+            "$date": "2024-04-24T00:00:00Z"
+        },
+        "_id": {
+            "$oid": "671b8a457082a5fe366cfa96"
+        }
+    },
+    {
+        "specificCategoryCode": "hel",
+        "name": "Graphic Helmets",
+        "commonPrice": 800,
+        "subtitles": [
+            "Stylish and Safe Helmets"
+        ],
+        "description": "Our Graphic Helmets combine style and safety, providing top-notch protection with customizable designs that reflect your personality. Lightweight and durable, these helmets ensure maximum comfort and security.",
+        "keywords": [
+            "graphic helmets",
+            "safety helmets",
+            "custom helmets",
+            "motorcycle helmets",
+            "stylish helmets"
+        ],
+        "pageSlug": "/accessories/safety/graphic-helmets",
+        "parentSubCategory": "Safety",
+        "available": true,
+        "showInSearch": true,
+        "thumbnails": [
+            "/assets/images/graphic-helmet1.jpg",
+            "/assets/images/graphic-helmet2.jpg"
+        ],
+        "allowedTags": [
+            "formal",
+            "stylish",
+            "anime"
+        ],
+        "features": [
+            {
+                "imageUrl": "/assets/icons/high-impact-resistance.png",
+                "name": "High Impact Resistance",
+                "detail": "Engineered to withstand high impacts, ensuring rider safety."
+            },
+            {
+                "imageUrl": "/assets/icons/custom-designs.png",
+                "name": "Custom Designs",
+                "detail": "Personalize your helmet with unique graphics and colors."
+            }
+        ],
+        "createdAt": {
+            "$date": "2024-04-24T00:00:00Z"
+        },
+        "updatedAt": {
+            "$date": "2024-04-24T00:00:00Z"
+        },
+        "_id": {
+            "$oid": "671b8a457082a5fe366cfa97"
+        }
+    },
+    {
+        "specificCategoryCode": "tw",
+        "name": "Tank Wraps",
+        "commonPrice": 999,
+        "subtitles": [
+            "Customize Your Vehicle's Tank"
+        ],
+        "description": "Tank Wraps provide a stylish and protective layer for your vehicle's tank. Our high-quality vinyl wraps ensure durability and a flawless finish, enhancing both aesthetics and protection.",
+        "keywords": [
+            "tank wrap",
+            "custom tank wraps",
+            "vehicle tank protection",
+            "vinyl tank wraps",
+            "car tank customization"
+        ],
+        "pageSlug": "/wraps/car-wraps/tank-wraps",
+        "parentSubCategory": "Car Wraps",
+        "available": true,
+        "showInSearch": true,
+        "thumbnails": [
+            "/assets/images/tank-wrap1.jpg",
+            "/assets/images/tank-wrap2.jpg"
+        ],
+        "allowedTags": [
+            "formal",
+            "stylish",
+            "anime"
+        ],
+        "features": [
+            {
+                "imageUrl": "/assets/icons/high-quality-vinyl.png",
+                "name": "High-Quality Vinyl",
+                "detail": "Premium vinyl material ensures durability and a high-gloss finish."
+            },
+            {
+                "imageUrl": "/assets/icons/custom-designs.png",
+                "name": "Custom Designs",
+                "detail": "Personalize your tank with unique graphics and colors."
+            }
+        ],
+        "createdAt": {
+            "$date": "2024-04-24T00:00:00Z"
+        },
+        "updatedAt": {
+            "$date": "2024-04-24T00:00:00Z"
+        },
+        "_id": {
+            "$oid": "671b8a457082a5fe366cfa98"
+        }
+    }
+]
