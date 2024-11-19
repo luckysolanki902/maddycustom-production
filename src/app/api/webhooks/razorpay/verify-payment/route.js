@@ -20,6 +20,7 @@ export const config = {
  */
 export async function POST(request) {
   try {
+    console.log(`received a request at ${(new Date()).toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true })}`)
     // Retrieve the raw body for signature verification
     const rawBody = await request.text();
 
