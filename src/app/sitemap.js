@@ -2,7 +2,7 @@ export default async function sitemap() {
     const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/seo/sitemap-data`);
     const { products, variants } = await response.json();
   
-    const baseUrl = 'https://maddycustom.com';
+    const baseUrl = 'https://www.maddycustom.com';
   
     // Core pages of your site
     const staticRoutes = [
