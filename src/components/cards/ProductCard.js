@@ -9,6 +9,7 @@ import { useMediaQuery } from '@mui/material';
 import { useSpring, animated } from '@react-spring/web';
 import { useRouter } from 'next/navigation';
 import AddToCartButton from '../utils/AddToCartButton';
+
 // import Placeholder from '../ui/Placeholder';
 
 const ProductCard = ({ product, loading }) => {
@@ -16,7 +17,7 @@ const ProductCard = ({ product, loading }) => {
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const [isZoomed, setIsZoomed] = useState(false);
   const router = useRouter();
-console.log(`${baseImageUrl}${product.variantDetails.available ? '/assets/icons/order.png' : '/assets/icons/comingsoon.png'}`)
+  console.log(`${baseImageUrl}${product.variantDetails.available ? '/assets/icons/order.png' : '/assets/icons/comingsoon.png'}`)
   // Define the animation properties using React Spring
   const animationProps = useSpring({
     transform: isZoomed ? 'scale(2) rotate(90deg)' : 'scale(1) rotate(0deg)',
@@ -133,7 +134,7 @@ console.log(`${baseImageUrl}${product.variantDetails.available ? '/assets/icons/
           <div style={{ position: 'relative', cursor: 'zoom-out' }}>
             <animated.div style={animationProps}>
               <Image
-              unoptimized={product.images && product.images.length > 0 ? false : true}
+                unoptimized={product.images && product.images.length > 0 ? false : true}
                 className={`${styles.image} ${product?.category?.specificCategoryCode === 'fbw' ? styles.increaseBrightness : ''}`}
                 src={
                   product.images && product.images.length > 0
@@ -197,8 +198,21 @@ console.log(`${baseImageUrl}${product.variantDetails.available ? '/assets/icons/
 
       <div className={styles.productDescription}>
         <div className={styles.prodDescRow1}>
-          <div className={styles.productName}>{product.name}</div>
+          <div className={styles.prodDescRow1} style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div className={styles.productName}>{product.name}</div>
+            <div> <div className={styles.prodDescLastRow}>
+              <Image
+                width={500}
+                height={250}
 
+                src={
+                  `${baseImageUrl}${product.variantDetails.available ? '/assets/icons/order.png' : '/assets/icons/comingsoon.png'}`
+                }
+                alt=""
+                priority
+              />
+            </div></div>
+          </div>
           {product.variantDetails.available && <div className={styles.addToCart} >
             <AddToCartButton product={product} />
           </div>}
@@ -212,6 +226,7 @@ console.log(`${baseImageUrl}${product.variantDetails.available ? '/assets/icons/
               </React.Fragment>
             ))}
           </div>
+
         </div>
         <div className={styles.prodDescRow3}>
           <div className={styles.price}>
@@ -222,27 +237,18 @@ console.log(`${baseImageUrl}${product.variantDetails.available ? '/assets/icons/
                 : product.price}
             </span>
           </div>
-          <div className={styles.offer5}>
-            <div className={styles.offer5Line1}>
-              <span>5%</span>
-              <span>off</span>
-            </div>
-            <div className={styles.offer5Line2}>on every order</div>
-            <div className={styles.offer5Line3}>Valid till 30/11/24</div>
-          </div>
+
         </div>
-        <div className={styles.prodDescLastRow}>
-          <Image
-            width={565.66}
-            height={310.66}
-            src={
-              `${baseImageUrl}${product.variantDetails.available ? '/assets/icons/order.png' : '/assets/icons/comingsoon.png'}`
-            }
-            alt=""
-            priority
-          />
+        <div className={styles.offer5}>
+          <div className={styles.offer5Line1}>
+            <span>5%</span>
+            <span>off</span>
+          </div>
+          <div className={styles.offer5Line2}>on every order</div>
+          <div className={styles.offer5Line3}>Valid till 30/11/24</div>
         </div>
       </div>
+
     </div>
   );
 };
@@ -380,7 +386,7 @@ export default React.memo(ProductCard);
 //             </div>
 //           </div>
 //         </div>
-//       </div>  
+//       </div>
 //     </div>
 //   );
 // };

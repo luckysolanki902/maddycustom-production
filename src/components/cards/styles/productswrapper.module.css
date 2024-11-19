@@ -2,7 +2,7 @@
 
 /* Container for the grid of products */
 .productsGrid {
-  margin-top: 5rem;
+  margin-top: 2rem;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   /* 2 columns for desktop and tablet */
@@ -92,7 +92,7 @@
   }
 
   .videoCard {
-    width: 80%;
+    width: 95%;
     margin: auto;
     display: flex;
     justify-content: center;
@@ -103,4 +103,5 @@
   .videoCard video{
     border-radius: 1rem;
   }
+  
 }
