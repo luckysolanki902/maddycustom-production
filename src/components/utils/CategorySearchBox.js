@@ -156,6 +156,8 @@ const CategorySearchBox = () => {
     const handleSuggestionClick = (suggestion) => {
         // Determine if the suggestion is a variant
         const variant = variants.find(v => v.name.toLowerCase() === suggestion.toLowerCase());
+
+        console.log({suggestion, variants})
         if (variant && variant.pageSlug) {
             router.push(`/shop/${variant.pageSlug}`);
         } else {
@@ -163,7 +165,9 @@ const CategorySearchBox = () => {
             const category = categories.find(c => c.name.toLowerCase() === suggestion.toLowerCase());
             if (category) {
                 const firstVariant = variants.find(v => String(v.specificCategory) === String(category.id));
+                // console.log({firstVariant})
                 if (firstVariant && firstVariant.pageSlug) {
+                    //  console.log({firstVariant})
                     router.push(`/shop/${firstVariant.pageSlug}`);
                 } else {
                     console.warn('No variant found for category:', category.name);
