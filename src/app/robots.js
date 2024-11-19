@@ -13,8 +13,8 @@ export default function robots() {
       ],
       sitemap: [
         'https://maddycustom.com/sitemap.xml',
-        'https://maddycustom.com/api/seo/image-sitemap',
-        'https://maddycustom.com/api/seo/video-sitemap',
+        'https://maddycustom.com/seo/sitemaps/video-sitemap.xml',
+        'https://maddycustom.com/seo/sitemaps/image-sitemap.xml',
       ],
     };
   }
