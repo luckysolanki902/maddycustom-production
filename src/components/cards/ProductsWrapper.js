@@ -4,10 +4,12 @@ import React, { useEffect, useState } from 'react';
 import ProductCard from './ProductCard';
 import styles from './styles/productswrapper.module.css';
 import { filterProductsByTag, sortProducts } from '@/lib/utils/productsPageFunctions';
+import { useMediaQuery } from '@mui/material';
 
 const ProductsWrapper = ({ variant, products, category, tagFilter=null, sortBy='default', showVideo= true }) => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const [loading, setLoading] = useState(true);
+  const isSmallDevice = useMediaQuery('(max-width: 600px)');
 
   useEffect(() => {
     // Set loading to true whenever tagFilter or sortBy changes
@@ -27,7 +29,7 @@ const ProductsWrapper = ({ variant, products, category, tagFilter=null, sortBy='
   const sortedProducts = sortProducts(filteredProducts, sortBy);
   return (
     <div className={styles.productsGrid}>
-      {variant.showCase?.[0]?.available && showVideo &&(
+      {variant.showCase?.[0]?.available && showVideo && !isSmallDevice &&(
         <div
           className={styles.videoCard}
           aria-description="product video"
