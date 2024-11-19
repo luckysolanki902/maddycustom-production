@@ -42,7 +42,7 @@ export default function HappyCustomers({ parentSpecificCategoryId, noShadow, noH
         {happyCustomers.map((customer, index) => (
           <div className={styles.slide} key={index}>
             <Image
-              src={`${baseImageUrl}${customer.photo}`}
+              src={`${baseImageUrl}/${customer.photo}`.trim()}
               alt={`${customer.name}'s photo`}
               width={500}
               height={500}
