@@ -9,23 +9,17 @@ export async function GET() {
     const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
     const baseUrl = 'https://www.maddycustom.com';
 
-    const products = await Product.find({}, { pageSlug: 1, images: 1, title: 1, description: 1 }).lean().exec();
+    const products = await Product.find({}, { pageSlug: 1, images: 1, title: 1, description: 1 }).lean();
 
-    const sitemapData = products.map((product) => {
-      const formattedTitle = product.title.endsWith('s')
-        ? product.title.slice(0, -1)
-        : product.title;
-
-      return {
-        url: `${baseUrl}/shop${product.pageSlug}`,
-        images: product.images.slice(0, 1).map((image) => ({
-          loc: `${baseImageUrl}${image}`,
-          title: `${formattedTitle} - Buy Now | Maddy Custom`,
-          caption: product.description,
-          alt: `${formattedTitle} - Custom Wraps and Graphics`,
-        })),
-      };
-    });
+    const sitemapData = products.map((product) => ({
+      url: `${baseUrl}/shop${product.pageSlug}`,
+      images: product.images.map((image) => ({
+        loc: `${baseImageUrl}${image}`,
+        title: `${product.title} - Buy Now | Maddy Custom`,
+        caption: product.description || product.title,
+        alt: `${product.title} - Custom Wraps and Graphics`,
+      })),
+    }));
 
     return NextResponse.json({ sitemapData });
   } catch (error) {
