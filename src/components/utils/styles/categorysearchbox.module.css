@@ -52,6 +52,7 @@ max-width: 900px;
     font-weight: 400;
     line-height: 0.43531rem;
     letter-spacing: 0.133rem;
+    font-family: 'Jost';
 }
 
 .inputField::placeholder {
@@ -61,6 +62,7 @@ max-width: 900px;
     font-weight: 400;
     line-height: 0.43531rem;
     letter-spacing: 0.133rem;
+    font-family: 'Jost';
 }
 
 @media screen and (min-width: 700px) {

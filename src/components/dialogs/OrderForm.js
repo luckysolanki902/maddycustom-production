@@ -332,13 +332,13 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
       >
         <DialogContent>
           <Tabs
-            sx={{ padding: '0rem 5rem' }}
+            
             value={tabIndex}
             onChange={handleTabChange}
             variant="fullWidth"
           >
-            <Tab label="User Details" />
-            <Tab label="Address Details" disabled={tabIndex !== 1} />
+            <Tab sx={{fontSize:"1rem",}} label="Part 1" />
+            <Tab sx={{fontSize:"1rem"}} label="Part 2" disabled={tabIndex !== 1} />
           </Tabs>
 
           <Box
@@ -353,7 +353,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
             {tabIndex === 0 && (
               <Box
                 sx={{
-                  padding: '0rem 4rem',
+                  padding: '0rem',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '1rem',
@@ -380,6 +380,24 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                         field.onChange(e);
                         dispatch(setUserDetails({ name: e.target.value }));
                       }}
+                      InputLabelProps={{
+                      style: {
+                        fontSize: '0.75rem',  // Adjust the size of the label
+                        color: '#9e9e9e',     // Set the label color to grey
+                      },
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                      
+                      },
+                      margin: {
+                      xs: '0px 0', // Less margin for mobile view
+                      sm: 'normal', // Default margin for larger screens
+                    },'& .MuiInputLabel-root': {
+                      lineHeight: '2', // Further fine-tune the label spacing
+                    },
+                    }}
                     />
                   )}
                 />
@@ -395,19 +413,37 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                   }}
                   render={({ field }) => (
                     <TextField
-                      variant="standard"
-                      {...field}
-                      label="Mobile Number"
-                      fullWidth
-                      margin="normal"
-                      error={!!errors.phoneNumber}
-                      helperText={errors.phoneNumber ? errors.phoneNumber.message : ''}
-                      disabled={isLoading || isPaymentProcessing}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        dispatch(setUserDetails({ phoneNumber: e.target.value }));
-                      }}
-                    />
+                    variant="standard"
+                    {...field}
+                    label="Mobile Number"
+                    fullWidth
+                    margin="normal"
+                    error={!!errors.phoneNumber}
+                    helperText={errors.phoneNumber ? errors.phoneNumber.message : ''}
+                    disabled={isLoading || isPaymentProcessing}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      dispatch(setUserDetails({ phoneNumber: e.target.value }));
+                    }}
+                    InputLabelProps={{
+                      style: {
+                        fontSize: '0.75rem',  // Adjust the size of the label
+                        color: '#9e9e9e',     // Set the label color to grey
+                      },
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                      
+                      },
+                      margin: {
+                      xs: '0px 0', // Less margin for mobile view
+                      sm: 'normal', // Default margin for larger screens
+                    },'& .MuiInputLabel-root': {
+                      lineHeight: '2', // Further fine-tune the label spacing
+                    },
+                    }}
+                  />
                   )}
                 />
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
@@ -424,10 +460,10 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
             {tabIndex === 1 && (
               <Box
                 sx={{
-                  padding: '0rem 4rem',
+                  padding: '0rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '1rem',
+                  gap: '0.5rem',
                 }}
               >
                 <Controller
@@ -448,10 +484,28 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                         field.onChange(e);
                         dispatch(setAddressDetails({ addressLine1: e.target.value }));
                       }}
+                      InputLabelProps={{
+                      style: {
+                        fontSize: '0.75rem',  // Adjust the size of the label
+                        color: '#9e9e9e',     // Set the label color to grey
+                      },
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                      
+                      },
+                      margin: {
+                      xs: '0px 0', // Less margin for mobile view
+                      sm: 'normal', // Default margin for larger screens
+                    },'& .MuiInputLabel-root': {
+                      lineHeight: '2', // Further fine-tune the label spacing
+                    },
+                    }}
                     />
                   )}
                 />
-                <Controller
+                {/* <Controller
                   name="addressLine2"
                   control={control}
                   render={({ field }) => (
@@ -466,9 +520,25 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                         field.onChange(e);
                         dispatch(setAddressDetails({ addressLine2: e.target.value }));
                       }}
+                      InputLabelProps={{
+                      style: {
+                        fontSize: '0.75rem',  // Adjust the size of the label
+                        color: '#9e9e9e',     // Set the label color to grey
+                      },
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                      
+                      },
+                      margin: {
+                      xs: '0px 0', // Less margin for mobile view
+                      sm: 'normal', // Default margin for larger screens
+                    },
+                    }}
                     />
                   )}
-                />
+                /> */}
                 <Controller
                   name="city"
                   control={control}
@@ -487,6 +557,24 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                         field.onChange(e);
                         dispatch(setAddressDetails({ city: e.target.value }));
                       }}
+                      InputLabelProps={{
+                      style: {
+                        fontSize: '0.75rem',  // Adjust the size of the label
+                        color: '#9e9e9e',     // Set the label color to grey
+                      },
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                      
+                      },
+                      margin: {
+                      xs: '0px 0', // Less margin for mobile view
+                      sm: 'normal', // Default margin for larger screens
+                    },'& .MuiInputLabel-root': {
+                      lineHeight: '2', // Further fine-tune the label spacing
+                    },
+                    }}
                     />
                   )}
                 />
@@ -513,10 +601,30 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                           error={!!errors.state}
                           helperText={errors.state ? errors.state.message : ''}
                           disabled={isLoading || isPaymentProcessing}
+                          InputLabelProps={{
+                      style: {
+                        fontSize: '0.75rem',  // Adjust the size of the label
+                        color: '#9e9e9e',     // Set the label color to grey
+                      },
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                      
+                      },
+                      margin: {
+                      xs: '0px 0', // Less margin for mobile view
+                      sm: 'normal', // Default margin for larger screens
+                    },'& .MuiInputLabel-root': {
+                      lineHeight: '2', // Further fine-tune the label spacing
+                    },
+                    
+                    }}
                         />
                       )}
                     />
                   )}
+                  
                 />
                 <Controller
                   name="pincode"
@@ -542,6 +650,24 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                         field.onChange(e);
                         dispatch(setAddressDetails({ pincode: e.target.value }));
                       }}
+                      InputLabelProps={{
+                      style: {
+                        fontSize: '0.75rem',  // Adjust the size of the label
+                        color: '#9e9e9e',     // Set the label color to grey
+                      },
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                      
+                      },
+                      margin: {
+                      xs: '0px 0', // Less margin for mobile view
+                      sm: 'normal', // Default margin for larger screens
+                    },'& .MuiInputLabel-root': {
+                      lineHeight: '2', // Further fine-tune the label spacing
+                    },
+                    }}
                     />
                   )}
                 />
@@ -561,10 +687,28 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                         field.onChange(e);
                         dispatch(setAddressDetails({ country: e.target.value }));
                       }}
+                      InputLabelProps={{
+                      style: {
+                        fontSize: '0.75rem',  // Adjust the size of the label
+                        color: '#9e9e9e',     // Set the label color to grey
+                      },
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                      
+                      },
+                      margin: {
+                      xs: '0px 0', // Less margin for mobile view
+                      sm: 'normal', // Default margin for larger screens
+                    },'& .MuiInputLabel-root': {
+                      lineHeight: '2', // Further fine-tune the label spacing
+                    },
+                    }}
                     />
                   )}
                 />
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5,}}>
                   <BlackButton
                     isLoading={isLoading}
                     buttonText={getPaymentButtonText(paymentModeConfig)} // Use utility function
