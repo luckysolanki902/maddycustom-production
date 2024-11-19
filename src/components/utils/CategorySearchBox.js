@@ -246,7 +246,7 @@ const CategorySearchBox = () => {
                                 style={{ cursor: 'pointer' }}
                             />
                         </IconButton>
-                        <Typography sx={{ ml: 2, flex: 1, color: 'black' }} variant="h6" component="div">
+                        <Typography sx={{ ml: 2, flex: 1, color: 'black' , fontFamily:'Jost'}} variant="h6" component="div">
                             Search Your Bike
                         </Typography>
                     </Toolbar>
@@ -299,7 +299,7 @@ const CategorySearchBox = () => {
                                         </ListItemIcon>
                                         <ListItemText primary={
                                             <Box display='flex' alignItems='center'>
-                                                <Typography variant="body1" component="span">
+                                                <Typography variant="body1" component="span" sx={{fontFamily:'Jost'}}>
                                                     {suggestion}
                                                 </Typography>
                                                 {(['helmet', 'tank', 'pillar', 'bonnet'].some(word => suggestion?.toLowerCase().includes(word))) && (
@@ -311,7 +311,7 @@ const CategorySearchBox = () => {
                                 ))}
                             </List>
                         ) : (
-                            <Typography variant="h6" align="center" sx={{ mt: 4 }}>
+                            <Typography variant="h6" align="center" sx={{ mt: 4 , fontFamily:'Jost'}}>
                                 No results found
                             </Typography>
                         )}
