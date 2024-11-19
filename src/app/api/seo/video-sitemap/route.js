@@ -1,4 +1,3 @@
-// app/api/seo/video-sitemap/route.js
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import { NextResponse } from 'next/server';
@@ -12,20 +11,19 @@ export async function GET() {
     const variants = await SpecificCategoryVariant.find(
       { 'showCase.available': true },
       { pageSlug: 1, showCase: 1, name: 1, description: 1, keywords: 1 }
-    ).lean().exec();
+    ).lean();
 
     const sitemapData = variants.map((variant) => ({
       url: `${baseUrl}/shop${variant.pageSlug}`,
-      videos: variant.showCase
-        .filter((showcase) => showcase.available)
-        .map((showcase) => ({
-          title: variant.name ? `${variant.name} - Maddy Custom` : 'Maddy Custom',
-          description: variant.description || 'Explore our top-notch custom graphic videos.',
-          contentLoc: `${baseImageUrl}${showcase.url}`,
-          playerLoc: `${baseUrl}/videoplayer?video=${showcase.videoId}`,
-          duration: showcase.duration || 600,
-          tags: variant.keywords?.join(', ') || 'custom graphics, video showcase',
-        })),
+      videos: variant.showCase.map((showcase) => ({
+        thumbnailLoc: `${baseImageUrl}${showcase.thumbnail}`,
+        title: `${variant.name || 'Maddy Custom'} - Video Showcase`,
+        description: variant.description || 'Explore our custom graphics videos.',
+        contentLoc: `${baseImageUrl}${showcase.url}`,
+        playerLoc: `${baseUrl}/videoplayer?video=${showcase.videoId}`,
+        duration: showcase.duration || 600,
+        tags: variant.keywords?.join(', ') || 'custom graphics, video showcase',
+      })),
     }));
 
     return NextResponse.json({ sitemapData });
