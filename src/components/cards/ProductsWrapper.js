@@ -25,7 +25,6 @@ const ProductsWrapper = ({ variant, products, category, tagFilter=null, sortBy='
 
   // Sort products based on sortBy
   const sortedProducts = sortProducts(filteredProducts, sortBy);
-
   return (
     <div className={styles.productsGrid}>
       {variant.showCase?.[0]?.available && showVideo &&(

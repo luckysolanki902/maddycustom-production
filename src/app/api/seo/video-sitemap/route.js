@@ -30,7 +30,6 @@ export async function GET() {
               .filter((showcase) => showcase.available)
               .map((showcase) => `
               <video:video>
-                <video:thumbnail_loc>${baseVideoUrl}${showcase.thumbnailUrl}</video:thumbnail_loc>
                 <video:title><![CDATA[${seoTitle}]]></video:title>
                 <video:description><![CDATA[${seoDescription}]]></video:description>
                 <video:content_loc>${baseVideoUrl}${showcase.url}</video:content_loc>

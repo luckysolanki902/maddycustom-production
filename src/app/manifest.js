@@ -1,8 +1,10 @@
+import { mainDescription } from "@/lib/constants/seoConsts";
+
 export default function manifest() {
     return {
       name: 'Maddy Custom',
       short_name: 'Maddy Custom',
-      description: 'Discover Maddy Custom’s unique vehicle wraps and helmet graphics for unmatched durability and style.',
+      description: mainDescription,
       start_url: '/',
       display: 'standalone',
       background_color: '#ffffff',

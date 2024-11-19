@@ -16,7 +16,7 @@ const ProductCard = ({ product, loading }) => {
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const [isZoomed, setIsZoomed] = useState(false);
   const router = useRouter();
-
+console.log(`${baseImageUrl}${product.variantDetails.available ? '/assets/icons/order.png' : '/assets/icons/comingsoon.png'}`)
   // Define the animation properties using React Spring
   const animationProps = useSpring({
     transform: isZoomed ? 'scale(2) rotate(90deg)' : 'scale(1) rotate(0deg)',

@@ -5,6 +5,7 @@ import ProductIdPage from '@/components/full-page-comps/ProductIdPage';
 import { fetchProducts } from '@/lib/utils/fetchutils';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { generateProductSchema } from '@/lib/metadata/generateProductSchema';
+import { notFound } from 'next/navigation';
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -15,14 +16,25 @@ export async function generateMetadata({ params }) {
 
   return createMetadata({
     canonical: canonicalUrl,
-    title: `${productData.type === 'product' ? productData.product.title : productData.variant.name} | Maddy Custom`,
-    description: productData.type === 'product' ? productData.product.description : productData.variant.description,
+    title: `${productData.type === 'product' ? productData?.product?.title : productData?.variant?.title}`,
+    description: productData.type === 'product'
+    ? productData.variant.productDescription
+        .replace(/{uniqueName}/g, productData.product?.name)
+        .replace(/{fullBikename}/g, productData.variant?.name)
+    : productData.variant?.description,
   });
 }
 
 export default async function ShopPage({ params }) {
   const { slug } = await params;
   const data = await fetchProducts(slug);
+
+  const productDescription =
+    data.type === 'product'
+      ? data.variant.productDescription
+          .replace(/{uniqueName}/g, data.product.name)
+          .replace(/{fullBikename}/g, data.variant.name)
+      : data.variant?.description;
 
   if (data.type === 'variant') {
     return (
@@ -42,6 +54,7 @@ export default async function ShopPage({ params }) {
         url: canonicalUrl,
       },
     });
+ 
 
     return (
       <section>
@@ -54,8 +67,12 @@ export default async function ShopPage({ params }) {
           product={data.product}
           variant={data.variant}
           category={data.specificCategory}
+          description={productDescription}
         />
       </section>
     );
+  }
+  else if (data.type === 'not-found') {
+    notFound();
   }
 }

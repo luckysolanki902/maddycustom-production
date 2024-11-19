@@ -118,12 +118,13 @@ ProductSchema.index(
   {
     weights: {
       title: 5,
-      searchKeywords: 4,
       mainTags: 3,
       description: 1,
     },
     name: 'TextIndex',
   }
 );
+
+
 
 module.exports = mongoose.models.Product || mongoose.model('Product', ProductSchema);

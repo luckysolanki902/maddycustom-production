@@ -28,7 +28,7 @@ export async function GET(request) {
         user.addresses && user.addresses.length > 0
           ? user.addresses[user.addresses.length - 1]
           : '';
-
+console.log({latestAddress})
       return NextResponse.json({
         exists: true,
         latestAddress,

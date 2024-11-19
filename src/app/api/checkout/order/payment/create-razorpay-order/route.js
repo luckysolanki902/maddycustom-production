@@ -63,7 +63,7 @@ export async function POST(request) {
     const actualAmount = Math.floor(amountToPayOnline * 100); // Assuming amount is in INR
     const amount = isTesting ? 100 : actualAmount; // in paise
     const currency = 'INR';
-
+console.log({amountToPayOnline, actualAmount, amount})
     const receipt = shortid.generate(); // Generate a short, unique receipt ID
 
     const options = {

@@ -31,7 +31,7 @@ const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
         fetchFeaturedFullBikeWraps();
     }, []);
 
-    if (loading) return <p>Loading...</p>;
+    if (loading) return null;
 
     return (
         <div>

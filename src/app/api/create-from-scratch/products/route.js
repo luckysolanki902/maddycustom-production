@@ -200,29 +200,34 @@ export async function GET(request) {
           console.warn(`Specific Category Variant not found for variantCode '${bikeCode}'. Skipping product '${uniqueName}'.`);
           continue;
         }
-        pageSlug = `${specificCategory.pageSlug}/${casualNameUrl}`;
+        pageSlug = `${specificCategoryVariant.pageSlug}/${casualNameUrl}`;
       } else {
         const specificCategoryCode = variantToCategoryCode[bikeCode];
         if (!specificCategoryCode) {
           console.warn(`No Specific Category Code mapping found for BikeCode '${bikeCode}'. Skipping product '${uniqueName}'.`);
           continue;
         }
+
         specificCategory = specificCategoryMap.get(specificCategoryCode);
         if (!specificCategory) {
           console.warn(`No Specific Category found for SpecificCategoryCode '${specificCategoryCode}'. Skipping product '${uniqueName}'.`);
           continue;
         }
-        pageSlug = `${specificCategory.pageSlug}/${casualNameUrl}`;
+
         const variantCode = variantToCategoryVariantCode[bikeCode];
         if (!variantCode) {
           console.warn(`No Specific Category Variant Code mapping found for BikeCode '${bikeCode}'. Skipping product '${uniqueName}'.`);
           continue;
         }
+
         specificCategoryVariant = specificCategoryVariantMap.get(variantCode);
         if (!specificCategoryVariant) {
           console.warn(`No Specific Category Variant found for VariantCode '${variantCode}'. Skipping product '${uniqueName}'.`);
           continue;
         }
+
+        // Now that specificCategoryVariant is retrieved, construct the pageSlug
+        pageSlug = `${specificCategoryVariant.pageSlug}/${casualNameUrl}`;
       }
 
       // Images

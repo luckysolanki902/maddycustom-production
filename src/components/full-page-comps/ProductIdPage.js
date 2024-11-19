@@ -5,10 +5,10 @@ import { useState } from 'react';
 import ZoomableImage from '../page-sections/product-id-page/ZoomableImage';
 import OrderSpecifications from '../page-sections/product-id-page/OrderSpecifications';
 import PriceAndChat from '../page-sections/product-id-page/PriceAndChat';
-// import HappyCustomers from '../showcase/sliders/HappyCustomers';
+import HappyCustomers from '../showcase/sliders/HappyCustomers';
 import AddToCartButton from '../utils/AddToCartButton';
 
-export default function ProductIdPage({ product, variant, category }) {
+export default function ProductIdPage({ product, variant, category, description }) {
   const [viewFullDescription, setViewFullDescription] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -27,8 +27,8 @@ export default function ProductIdPage({ product, variant, category }) {
         <h1 style={{ fontSize: '2rem', margin: '0.5rem 0' }} className={styles.title}>{product.title}</h1>
         {variant?.cardCaptions?.length > 0 && <p>{variant?.cardCaptions[0]}</p>}
         <div className={styles.description}>{viewFullDescription ?
-         'product.description' :
-          "product.description.slice(0, 100)"
+         description :
+          description.slice(0, 100)
           }
            <p style={{display:'inline', cursor:'pointer', color:'black'}} onClick={()=> setViewFullDescription(!viewFullDescription)}>{ viewFullDescription? ' view less': '...view more'}</p></div>
       </div>}
@@ -47,7 +47,7 @@ export default function ProductIdPage({ product, variant, category }) {
           />
         </div>}
 
-      {/* {!isZoomed && <HappyCustomers parentSpecificCategory={variant.parentSpecificCategory} />} */}
+      {!isZoomed && <HappyCustomers  parentSpecificCategoryId={category._id}/>}
     </div>
   );
 }

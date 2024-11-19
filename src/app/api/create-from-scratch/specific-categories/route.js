@@ -23,7 +23,7 @@ export async function GET(request) {
       {
         specificCategoryCode: "win",
         name: "Window Pillar Wraps",
-        description: "Make your vehicle's style unrivaled with MaddyCustom's Window Pillar Wraps. Available in a range of colors and finishes; these wraps add a sleek and modern touch to any car, ensuring long-lasting protection.",
+        description: "Make your vehicle's style unrivaled with MaddyCustom's Window Pillar Wraps. Available in a range of colors and finishes; these wraps add a sleek and modern touch to any car, ensuring long-lasting protection",
         pageSlug: "/wraps/car-wraps/window-pillar-wraps",
         subCategory: "Car Wraps",
         category: "Wraps",
@@ -32,7 +32,7 @@ export async function GET(request) {
       {
         specificCategoryCode: "bw",
         name: "Bonnet Wraps",
-        description: "Make a bold statement with our high-quality bonnet wraps. Choose from matte, glossy or carbon fiber finishes to give your car a distinctive look that stands out on the road. Our sleek and protective vinyl wraps are designed to resist wear and tear, providing both aesthetic appeal and functional protection. Maintain the pristine look of your car's bonnet while guarding against scratches and minor damages with our high-quality, customizable wraps.",
+        description: "Make a bold statement with our high-quality bonnet wraps. Choose from matte, glossy or carbon fiber finishes to give your car a distinctive look that stands out on the road",
         pageSlug: "/wraps/car-wraps/bonnet-wraps",
         subCategory: "Car Wraps",
         category: "Wraps",
@@ -50,7 +50,7 @@ export async function GET(request) {
       {
         specificCategoryCode: "tw",
         name: "Tank Wraps",
-        description: "Personalize your bike's fuel tank with our high-quality wraps. Available in various designs and finishes to give your bike a standout appearance.",
+        description: "Personalize your bike’s fuel tank with our high-quality wraps. Available in various designs and finishes to give your bike a standout appearance.",
         pageSlug: "/wraps/bike-wraps/tank-wraps",
         subCategory: "Bike Wraps",
         category: "Wraps",
