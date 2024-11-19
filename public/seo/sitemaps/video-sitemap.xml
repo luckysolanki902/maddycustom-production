@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-      <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-              xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
-        
-              <url>
-                <loc>https://www.maddycustom.com/shop/wraps/car-wraps/window-pillar-wraps/win-wraps</loc>
-                
-                  <video:video>
-                    <video:title><![CDATA[Win Wraps - Maddy Custom]]></video:title>
-                    <video:description><![CDATA[Make your vehicle's style unrivaled with MaddyCustom's Window Pillar Wraps. Available in a range of colors and finishes; these wraps add a sleek and modern touch to any car, ensuring long-lasting protection]]></video:description>
-                    <video:content_loc>https://d26w01jhwuuxpo.cloudfront.net/assets/videos/header-videos/win_wrap_showcase1.mp4</video:content_loc>
-                    <video:player_loc>https://www.maddycustom.com/videoplayer?video=undefined</video:player_loc>
-                    <video:duration>600</video:duration>
-                    <video:tag><![CDATA[win wrap, window pillar wrap, car pillar protection, vehicle pillars, custom wraps]]></video:tag>
-                  </video:video>
-              </url>
-            
-      </urlset>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
+  <url>
+    <loc>https://www.maddycustom.com/shop/wraps/car-wraps/window-pillar-wraps/win-wraps</loc>
+    <video:video>
+      <video:thumbnail_loc>https://d26w01jhwuuxpo.cloudfront.netundefined</video:thumbnail_loc>
+      <video:title><![CDATA[Win Wraps - Video Showcase]]></video:title>
+      <video:description><![CDATA[Make your vehicle's style unrivaled with MaddyCustom's Window Pillar Wraps. Available in a range of colors and finishes; these wraps add a sleek and modern touch to any car, ensuring long-lasting protection]]></video:description>
+      <video:content_loc>https://d26w01jhwuuxpo.cloudfront.net/assets/videos/header-videos/win_wrap_showcase1.mp4</video:content_loc>
+      <video:player_loc>https://www.maddycustom.com/videoplayer?video=undefined</video:player_loc>
+      <video:duration>600</video:duration>
+      <video:tag><![CDATA[win wrap, window pillar wrap, car pillar protection, vehicle pillars, custom wraps]]></video:tag>
+    </video:video>
+  </url>
+</urlset>
