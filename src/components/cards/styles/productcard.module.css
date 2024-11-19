@@ -49,7 +49,7 @@
   display: flex;
   gap: 1.5rem;
   align-items: center;
-  margin-top: 1rem;
+  margin-top: 0.3rem;
 }
 
 .offer5 {
@@ -60,7 +60,7 @@
   padding: 0.3rem;
   border-radius: 0.7rem;
   font-family: Jost, sans-serif;
-  width: 5.5rem;
+  width: 5rem;
 }
 
 .offer5Line1 {
@@ -102,7 +102,7 @@
 }
 
 .prodDescLastRow img {
-  width: 7rem;
+  width: 6rem;
   height: auto;
   opacity: 0.9;
 }
@@ -125,7 +125,7 @@
 
 .rupees {
   color: rgba(0, 0, 0, 0.54);
-  font-size: 2rem;
+  font-size: 1.3rem;
   font-style: normal;
   font-weight: 500;
   letter-spacing: 0.15969rem;
@@ -133,7 +133,7 @@
 
 .actualPrice {
   color: rgba(0, 0, 0, 0.54);
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-style: normal;
   font-weight: 500;
   letter-spacing: 0.08875rem;

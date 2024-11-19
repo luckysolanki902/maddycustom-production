@@ -3,6 +3,8 @@
 import Image from 'next/image';
 import React, { useState } from 'react';
 import styles from './styles/products.module.css';
+import ScrollToTop from '@/components/utils/scrolltotop';
+import style from '../cards/styles/productswrapper.module.css'
 import { useMediaQuery } from '@mui/material';
 import ProductsWrapper from '../cards/ProductsWrapper';
 import Tags from '../page-sections/products-page/Tags';
@@ -16,6 +18,7 @@ export default function ProductsPage({ variant, products, category }) {
   // State for tag filter and sort filter
   const [tagFilter, setTagFilter] = useState(null);
   const [sortBy, setSortBy] = useState('default');
+  const isSmallDevice = useMediaQuery('(max-width: 600px)');
 
   // Get the unique tags from the products
   const allTags = [
@@ -29,7 +32,7 @@ export default function ProductsPage({ variant, products, category }) {
 
   return (
     <div>
-      <Sidebar/>
+      <Sidebar />
       <header>
         <div className={styles.headContainer}>
           <div className={styles.headingFlex}>
@@ -46,11 +49,26 @@ export default function ProductsPage({ variant, products, category }) {
           </div>
         </div>
       </header>
+     <div className={style.productsGrid}>
+      {variant.showCase?.[0]?.available && isSmallDevice && (
+        <div
+          className={style.videoCard}
+          aria-description="product video"
+          aria-describedby="product video"
+        >
+          <video autoPlay muted playsInline loop controls={false}>
+            <source src={`${baseImageUrl}${variant.showCase[0].url}`} type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+          <h1>Maddy Custom</h1>
+        </div>
+      )}
+      </div>
 
       <Tags setTagFilter={setTagFilter} tags={allTags} />
       {/* <SortBy setSortBy={setSortBy} /> */}
 
-      <ChangeVariantButton category={category} /> 
+      <ChangeVariantButton category={category} />
 
       <ProductsWrapper
         variant={variant}
