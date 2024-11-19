@@ -14,6 +14,7 @@ const initialState = {
     city: '',
     state: '',
     pincode: '',
+    country: 'India', // Added country with default value
   },
   userExists: false,
   prefilledAddress: null,

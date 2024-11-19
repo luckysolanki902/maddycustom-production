@@ -1,9 +1,6 @@
-// app/api/webhooks/razorpay/verify-payment/route.js
-
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
-import ProcessedEvent from '@/models/ProcessedEvent';
 import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shiprocket';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
@@ -19,7 +16,7 @@ export const config = {
 
 /**
  * Handles POST requests from Razorpay webhooks to verify payments.
- * Ensures idempotency by checking processed events and order statuses.
+ * Ensures idempotency by checking paymentStatus and deliveryStatus.
  */
 export async function POST(request) {
   try {
@@ -35,6 +32,7 @@ export async function POST(request) {
 
     // Retrieve the raw body for signature verification
     const rawBody = await request.text();
+    console.log('Raw Body:', rawBody); // Log raw body
 
     // Retrieve the webhook secret from environment variables
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -86,6 +84,7 @@ export async function POST(request) {
     let event;
     try {
       event = JSON.parse(rawBody);
+      console.log('Parsed Event:', event); // Log parsed event
     } catch (parseError) {
       console.error('Invalid JSON payload.', parseError);
       return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
@@ -93,27 +92,6 @@ export async function POST(request) {
 
     // Connect to the database
     await connectToDatabase();
-
-    // Attempt to create a ProcessedEvent to ensure idempotency
-    const processedEvent = new ProcessedEvent({
-      provider: 'razorpay',
-      eventId,
-      eventType: event.event,
-      resourceId: event.payload.payment.entity.id,
-    });
-
-    try {
-      await processedEvent.save();
-    } catch (saveError) {
-      if (saveError.code === 11000) {
-        // Duplicate event detected
-        console.info('Duplicate event detected. Already processed.');
-        return NextResponse.json({ message: 'Duplicate event. Already processed.' }, { status: 200 });
-      }
-      // Other errors
-      console.error('Error saving ProcessedEvent:', saveError);
-      return NextResponse.json({ error: 'Internal Server Error.' }, { status: 500 });
-    }
 
     // Handle only relevant events
     if (!['payment.captured', 'payment.failed'].includes(event.event)) {
@@ -135,7 +113,15 @@ export async function POST(request) {
     }
 
     // Find the order by the internalOrderId
-    const order = await Order.findById(internalOrderId).populate('paymentDetails.mode');
+    const order = await Order.findById(internalOrderId)
+      .populate('paymentDetails.mode')
+      .populate({
+        path: 'items.product',
+        populate: {
+          path: 'specificCategoryVariant',
+          model: 'SpecificCategoryVariant',
+        },
+      });
 
     if (!order) {
       console.warn('Order not found for ID:', internalOrderId);
@@ -163,6 +149,7 @@ export async function POST(request) {
     // Update payment details based on the event type
     if (event.event === 'payment.captured') {
       const paymentAmount = payment.amount / 100; // Convert paise to INR
+      console.log(`Processing payment.captured for Order ID: ${internalOrderId}, Payment ID: ${paymentId}, Amount: ${paymentAmount}`);
 
       // Atomic update to prevent race conditions
       const updatedOrder = await Order.findOneAndUpdate(
@@ -202,34 +189,42 @@ export async function POST(request) {
       }
 
       await updatedOrder.save();
+      console.log(`Order payment status updated to '${updatedOrder.paymentStatus}' for Order ID: ${internalOrderId}`);
 
       // Create Shiprocket Order if payment is complete or partially complete
       if (['allPaid', 'paidPartially'].includes(updatedOrder.paymentStatus)) {
         if (!updatedOrder.shiprocketOrderId && updatedOrder.deliveryStatus === 'pending') {
+          console.log(`Creating Shiprocket order for Order ID: ${internalOrderId}`);
+
+          // Populate the order with product and variant details
+          await updatedOrder.populate({
+            path: 'items.product',
+            populate: {
+              path: 'specificCategoryVariant',  // Populate specificCategoryVariant within each product
+              model: 'SpecificCategoryVariant',
+            },
+          });
+
           let dimensionsAndWeight;
           try {
+            // Pass populated items to the getDimensionsAndWeight function
             dimensionsAndWeight = await getDimensionsAndWeight(updatedOrder.items);
+            console.log('Calculated Dimensions and Weight:', dimensionsAndWeight);
           } catch (dimError) {
             console.error('Dimension and Weight Calculation Error:', dimError);
-            return NextResponse.json(
-              { error: dimError.message },
-              { status: 400 }
-            );
+            return NextResponse.json({ error: dimError.message }, { status: 400 });
           }
 
           const { length, breadth, height, weight } = dimensionsAndWeight;
-
           const [firstName, ...lastNameParts] = updatedOrder.address.receiverName.split(' ');
           const lastName = lastNameParts.join(' ');
 
           const shiprocketOrderData = {
-            order_id: internalOrderId.toString(), // Use internal MongoDB order ID
-            order_date: new Date().toISOString().split('T')[0],
+            order_id: internalOrderId.toString(),
+            order_date: new Date().toISOString(),
             billing_customer_name: firstName,
-            billing_last_name: lastName || '', // Handle single name scenarios
-            billing_address: `${updatedOrder.address.addressLine1} ${
-              updatedOrder.address.addressLine2 || ''
-            }`,
+            billing_last_name: lastName || '',
+            billing_address: `${updatedOrder.address.addressLine1} ${updatedOrder.address.addressLine2 || ''}`,
             billing_city: updatedOrder.address.city,
             billing_pincode: updatedOrder.address.pincode,
             billing_state: updatedOrder.address.state,
@@ -238,80 +233,60 @@ export async function POST(request) {
             shipping_is_billing: true,
             order_items: updatedOrder.items.map((item) => ({
               name: item.name,
-              sku: item.sku, // Use SKU from order item
+              sku: item.sku,
               units: item.quantity,
               selling_price: item.priceAtPurchase,
             })),
-            payment_method:
-              updatedOrder.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
-            sub_total:
-              updatedOrder.paymentDetails.amountDueCod > 0
-                ? updatedOrder.paymentDetails.amountDueCod
-                : updatedOrder.paymentDetails.amountPaidOnline,
+            payment_method: updatedOrder.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
+            sub_total: updatedOrder.items.reduce((total, item) => total + item.priceAtPurchase * item.quantity, 0),
             length: length,
             breadth: breadth,
             height: height,
             weight: weight,
           };
 
+          console.log('Shiprocket Order Data:', JSON.stringify(shiprocketOrderData, null, 2)); // Log complete Shiprocket order data
+
           try {
             // Create the Shiprocket order
             const response = await createShiprocketOrder(shiprocketOrderData);
+            console.log('Shiprocket API Response:', response); // Log Shiprocket API response
 
-            if (response.success) {
-              // Atomic update to set Shiprocket order details
+            // Check if Shiprocket order creation was successful
+            if (response.status_code === 1 && !response.packaging_box_error) {
               await Order.findByIdAndUpdate(updatedOrder._id, {
                 shiprocketOrderId: response.order_id,
                 deliveryStatus: 'orderCreated',
               }).exec();
+              console.log(`Shiprocket order created successfully with Order ID: ${response.order_id}`);
             } else {
               console.error('Failed to create Shiprocket order:', response);
-              return NextResponse.json(
-                { error: 'Failed to create Shiprocket order.' },
-                { status: 500 }
-              );
+              return NextResponse.json({ error: 'Failed to create Shiprocket order.' }, { status: 500 });
             }
           } catch (shiprocketError) {
-            console.error('Shiprocket Order Creation Error:', shiprocketError);
-            return NextResponse.json(
-              { error: 'Failed to create Shiprocket order.' },
-              { status: 500 }
-            );
+            console.error('Error in Shiprocket order creation:', shiprocketError);
+            return NextResponse.json({ error: 'Error in Shiprocket order creation.' }, { status: 500 });
           }
+        } else {
+          console.log('Shiprocket order already exists or delivery status is not pending.');
         }
       }
+
+      return NextResponse.json({ message: 'Webhook processed successfully.' }, { status: 200 });
+    } else if (event.event === 'payment.failed') {
+      await Order.findByIdAndUpdate(internalOrderId, {
+        'paymentDetails.razorpayDetails.paymentId': paymentId,
+        paymentStatus: 'failed',
+      }).exec();
+      console.log(`Payment failed for Order ID: ${internalOrderId}`);
+
+      return NextResponse.json({ message: 'Payment failed.' }, { status: 200 });
+    } else {
+      console.info(`Unsupported event type: ${event.event}`);
+      return NextResponse.json({ message: 'Unsupported event type.' }, { status: 400 });
     }
-
-    if (event.event === 'payment.failed') {
-      // Atomic update to set payment status to 'failed'
-      const updatedOrder = await Order.findOneAndUpdate(
-        {
-          _id: internalOrderId,
-          paymentStatus: { $nin: ['allPaid', 'paidPartially', 'failed'] },
-        },
-        {
-          $set: {
-            'paymentDetails.razorpayDetails.paymentId': paymentId,
-            'paymentDetails.razorpayDetails.signature': signatureDetail,
-            paymentStatus: 'failed',
-          },
-        },
-        { new: true }
-      ).exec();
-
-      if (!updatedOrder) {
-        console.warn('Order update for failed payment failed. It might have been updated concurrently.');
-        return NextResponse.json({ message: 'Order already updated.' }, { status: 200 });
-      }
-
-      // Additional logic for failed payments can be implemented here
-    }
-
-    console.info('Webhook handled successfully.');
-    return NextResponse.json({ message: 'Webhook handled successfully.' }, { status: 200 });
   } catch (error) {
-    // Handle any unexpected errors
-    console.error('Webhook handler error:', error);
+    console.error('Error in webhook processing:', error);
     return NextResponse.json({ error: 'Internal Server Error.' }, { status: 500 });
   }
 }
