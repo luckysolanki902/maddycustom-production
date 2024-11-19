@@ -13,8 +13,20 @@
 }
 
 
+
 .carouseldiv {
     margin: auto 1rem;
+    /* padding-bottom: 2; */
+    /* margin-bottom: 20px; */
+    overflow: hidden;
+
+    /* border-radius: 0 0  50px 50px;  */
+    
+}
+.carouseldiv img {
+    width: 100%; 
+    height: auto;
+    display: block; /* Prevent extra gaps below images */
 }
 
 @media (min-width: 800px) {
