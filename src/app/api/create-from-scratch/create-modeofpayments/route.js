@@ -17,7 +17,7 @@ export async function GET(request) {
     const paymentModes = [
       {
         name: 'online',
-        caption: '',
+        caption: 'online',
         description: 'Cards, UPI, Wallets',
         extraCharge: 0,
         configuration: {

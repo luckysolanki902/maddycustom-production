@@ -130,7 +130,7 @@ const Sidebar = (props) => {
                         { text: 'Home', href: '/' },
                         { text: 'Contact Us', href: '/#homecontactdiv' },
                         { text: 'Search Categories', href: '/#searchcategories' },
-                        { text: 'Track Your Order', href: '/order/track' },
+                        { text: 'Track Your Order', href: '/orders/track' },
                     ].map((item, index) => (
                         <ListItem
                             key={item.text}

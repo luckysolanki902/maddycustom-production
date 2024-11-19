@@ -1,5 +1,3 @@
-// app/api/checkout/order/create/route.js
-
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
@@ -32,65 +30,24 @@ export async function POST(request) {
 
     await connectToDatabase();
 
-    // Find user
+    // Find or create user
     let user = null;
     if (userId) {
       user = await User.findById(userId);
     } else if (phoneNumber) {
       user = await User.findOne({ phoneNumber });
-      if (user) {
-        userId = user._id.toString();
+      if (!user) {
+        // Create a new user if not found
+        user = new User({ phoneNumber });
+        await user.save();
       }
+      userId = user._id.toString();
     }
 
     if (!user) {
       return NextResponse.json(
         { message: 'User not found' },
         { status: 404 }
-      );
-    }
-
-    // Find the latest existing pending order for the user
-    const existingOrder = await Order.findOne({
-      user: userId,
-      paymentStatus: { $in: ['pending', 'paidPartially'] },
-    }).sort({ createdAt: -1 });
-
-    // Function to compare items arrays
-    const itemsAreEqual = (items1, items2) => {
-      if (items1.length !== items2.length) return false;
-
-      const map1 = new Map();
-      items1.forEach((item) => {
-        const key = item.productId ? item.productId.toString() : item.product.toString();
-        map1.set(key, item);
-      });
-
-      for (const item of items2) {
-        const key = item.productId ? item.productId.toString() : item.product.toString();
-        const item1 = map1.get(key);
-        if (!item1) return false;
-
-        if (
-          item.quantity !== item1.quantity ||
-          item.priceAtPurchase !== item1.priceAtPurchase
-        ) {
-          return false;
-        }
-      }
-
-      return true;
-    };
-
-    // If an existing pending order with matching items is found, return that order's data
-    if (existingOrder && itemsAreEqual(items, existingOrder.items)) {
-      return NextResponse.json(
-        {
-          message: 'Existing pending order found',
-          orderId: existingOrder._id,
-          paymentDetails: existingOrder.paymentDetails,
-        },
-        { status: 200 }
       );
     }
 
