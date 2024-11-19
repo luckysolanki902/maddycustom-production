@@ -50,17 +50,18 @@ export async function trackShiprocketOrder(orderId) {
  * @param {Array} items - Array of order items.
  * @returns {Object} - Total length, breadth, height, and weight.
  */
+
 export const getDimensionsAndWeight = async (items) => {
-    // Extract all SKUs from the items
-    const skus = items.map(item => item.sku);
+    // Extract all specificCategoryVariant IDs from the items
+    const variantIds = items.map(item => item.specificCategoryVariant);
     
     // Fetch all variants in a single query
-    const variants = await SpecificCategoryVariant.find({ variantCode: { $in: skus } });
+    const variants = await SpecificCategoryVariant.find({ _id: { $in: variantIds } });
     
     // Create a map for quick variant lookup
     const variantMap = {};
     variants.forEach(variant => {
-        variantMap[variant.variantCode] = variant.dimensions;
+        variantMap[variant._id.toString()] = variant.dimensions;
     });
 
     let totalWrapWeight = 0;
@@ -70,10 +71,10 @@ export const getDimensionsAndWeight = async (items) => {
     let totalHeight = 0;
 
     for (const item of items) {
-        const variant = variantMap[item.sku];
+        const variant = variantMap[item.specificCategoryVariant.toString()];
 
         if (!variant) {
-            throw new Error(`Variant with SKU ${item.sku} not found.`);
+            throw new Error(`Variant with ID ${item.specificCategoryVariant} not found.`);
         }
 
         const { length, breadth, height, weight: wrapWeight, boxWeight, boxCapacity } = variant;
@@ -88,8 +89,6 @@ export const getDimensionsAndWeight = async (items) => {
         totalBoxWeight += boxWeight * numberOfBoxes;
 
         // Accumulate dimensions
-        // Assuming dimensions are fixed per box, total dimensions can be the maximum required
-        // Alternatively, you might sum them or handle differently based on your shipping requirements
         totalLength += length * numberOfBoxes;
         totalBreadth += breadth * numberOfBoxes;
         totalHeight += height * numberOfBoxes;
