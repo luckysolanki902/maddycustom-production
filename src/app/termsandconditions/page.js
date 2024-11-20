@@ -7,10 +7,11 @@ import { createMetadata } from '@/lib/metadata/create-metadata';
 
 export async function generateMetadata() {
     return createMetadata({
-      canonical: 'https://www.maddycustom.com/termsandconditions',
+        title: 'Terms & Conditions - Maddy Custom',
+        canonical: 'https://www.maddycustom.com/termsandconditions',
     });
-  }
-  
+}
+
 
 const index = () => {
     return (
