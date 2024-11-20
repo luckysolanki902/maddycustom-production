@@ -37,8 +37,8 @@ export default function TrackPage() {
                     {/* Logo */}
                     <Image
                         src={`${baseImageUrl}/assets/logos/md_logo_with_subtitle.png`}
-                        width={800}
-                        height={800}
+                        width={1200}
+                        height={1200}
                         className={styles.mdLogo}
                         alt='MD Wraps'
                     />
