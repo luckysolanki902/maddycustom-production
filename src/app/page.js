@@ -25,6 +25,7 @@ import {
 
 export async function generateMetadata() {
   return createMetadata({
+    title: "MaddyCustom - India's Leading Vehicle Personalization Experts",
     canonical: 'https://www.maddycustom.com',
   });
 }
