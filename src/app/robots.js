@@ -7,7 +7,9 @@ export default function robots() {
           disallow: [
             '/api/',  
             '/order/myorders/',
-            // 'bike/'
+            '/error',
+            '/not-found',
+            'bike/'
           ],
         },
       ],
