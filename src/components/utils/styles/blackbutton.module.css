@@ -20,9 +20,8 @@
 }
 
 .submitButton:hover {
-    scale: 0.95;
+    scale: 0.99;
     opacity: 0.9;
-    letter-spacing: 0.3rem;
     background-color: rgb(35, 35, 35);
 
 }

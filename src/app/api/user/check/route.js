@@ -28,7 +28,6 @@ export async function GET(request) {
           ? user.addresses[user.addresses.length - 1]
           : null; // Use null instead of empty string
 
-      console.log({ latestAddress });
 
       return NextResponse.json({
         exists: true,

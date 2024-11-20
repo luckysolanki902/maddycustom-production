@@ -14,11 +14,11 @@ const initialState = {
     city: '',
     state: '',
     pincode: '',
-    country: 'India', // Added country with default value
+    country: 'India',
   },
   userExists: false,
   prefilledAddress: null,
-  lastOrderId: '', // Added lastOrderId
+  lastOrderId: '', 
 };
 
 const orderFormSlice = createSlice({

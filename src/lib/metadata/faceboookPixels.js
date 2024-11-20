@@ -1,3 +1,6 @@
+// @/lib/metadata/facebookPixels.js
+
+'use client';
 import { v4 as uuidv4 } from 'uuid';
 
 const getClientIp = async () => {
@@ -42,6 +45,14 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       ...otherOptions,
     };
 
+    if (formData.email) {
+      eventParams.emails = [formData.email];
+    }
+
+    if (formData.phoneNumber) {
+      eventParams.phones = [formData.phoneNumber];
+    }
+
     if (window.fbq) {
       window.fbq('track', name, eventParams);
     } else {
@@ -49,7 +60,7 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
     }
 
     await sendToServer(name, eventParams);
-
+    console.log('Event tracked successfully.');
   } catch (error) {
     console.error('Error tracking event:', error);
   }
@@ -65,20 +76,19 @@ export const addToCart = async (product) => {
         quantity: product.quantity || 1,
         item_price: product.price || 0,
       }],
-      content_name: `${product.name} ${product.category?.name?.endsWith('s')
-        ? product.category?.name.slice(0, -1)
-        : product.category?.name}`,
+      content_name: `${product.name} ${product.category?.name?.endsWith('s') ? product.category?.name.slice(0, -1) : product.category?.name}`,
       content_category: product.category,
       content_type: 'product',
     });
+    console.log('AddToCart event sent successfully.');
   } catch (error) {
     console.error('Error in addToCart function:', error);
   }
 };
 
-export const purchase = async (order) => {
+export const purchase = async (order, userData = {}) => {
   try {
-    await trackEvent('Purchase', {}, {
+    await trackEvent('Purchase', userData, {
       value: order.totalAmount,
       currency: 'INR',
       orderId: order.orderId,
@@ -88,14 +98,15 @@ export const purchase = async (order) => {
         item_price: item.priceAtPurchase,
       })),
     });
+    console.log('Purchase event sent successfully.');
   } catch (error) {
     console.error('Error in purchase function:', error);
   }
 };
 
-export const viewContent = async (product) => {
+export const viewContent = async (product, userData = {}) => {
   try {
-    await trackEvent('ViewContent', {}, {
+    await trackEvent('ViewContent', userData, {
       content_name: product.name,
       content_ids: [product.id || product._id],
       content_category: product.category,
@@ -105,6 +116,7 @@ export const viewContent = async (product) => {
         item_price: product.price || 0,
       }],
     });
+    console.log('ViewContent event sent successfully.');
   } catch (error) {
     console.error('Error in viewContent function:', error);
   }
