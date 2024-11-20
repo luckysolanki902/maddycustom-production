@@ -1,3 +1,4 @@
+// @/lib/mongodb.js
 import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -14,23 +15,27 @@ if (!cached) {
 
 async function connectToDatabase() {
   if (cached.conn) {
-    return cached.conn;
+    // Check if the connection is already open
+    if (cached.conn.readyState === 1) { // 1 = connected
+      return cached.conn;
+    }
+    // If not connected, reset the cache
+    cached.conn = null;
   }
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      maxPoolSize: 10, 
+      maxPoolSize: 10, // Adjust based on your needs
+      // Additional options can be added here
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      mongoose.connection.on('connected', () => {
-        console.log('Mongoose connected');
-      });
-      mongoose.connection.on('error', (err) => {
-        console.error("Database connection error:", err);
-      });
+      console.log('Mongoose connected');
       return mongoose;
+    }).catch((err) => {
+      cached.promise = null;
+      throw err;
     });
   }
 
