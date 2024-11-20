@@ -9,7 +9,7 @@ import { notFound } from 'next/navigation';
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const canonicalUrl = `https://maddycustom.com/shop/${slug.join('/')}`;
+  const canonicalUrl = `https://www.maddycustom.com/shop/${slug.join('/')}`;
 
   // Fetch product data for SEO fields
   const productData = await fetchProducts(slug);
@@ -45,7 +45,7 @@ export default async function ShopPage({ params }) {
       />
     );
   } else if (data.type === 'product') {
-    const canonicalUrl = `https://maddycustom.com/shop/${slug.join('/')}`;
+    const canonicalUrl = `https://www.maddycustom.com/shop/${slug.join('/')}`;
     
     // Generate JSON-LD structured data
     const jsonLd = generateProductSchema({

@@ -12,6 +12,13 @@ import FeaturedFullBikeWraps from '@/components/page-sections/homepage/FeaturedF
 import HalfBikes from '@/components/page-sections/homepage/halfBikes';
 import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
 import Image from 'next/image';
+import { createMetadata } from '@/lib/metadata/create-metadata';
+
+export async function generateMetadata() {
+  return createMetadata({
+    canonical: 'https://www.maddycustom.com',
+  });
+}
 
 export default function page() {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -50,7 +57,6 @@ export default function page() {
                 <Image width={940} height={256} alt='heading - featured products' src={`${baseImageUrl}/assets/icons/happycustomers.png`}></Image>
             </div>
         <HappyCustomers noHeading={true} noShadow={true}/>
-
 
         {/* Animated Half Bikes */}
         <HalfBikes />

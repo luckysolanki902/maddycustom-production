@@ -7,14 +7,14 @@ export default function robots() {
           disallow: [
             '/api/',  
             '/order/myorders/',
-            'bike/'
+            // 'bike/'
           ],
         },
       ],
       sitemap: [
-        'https://maddycustom.com/sitemap.xml',
-        'https://maddycustom.com/seo/sitemaps/video-sitemap.xml',
-        'https://maddycustom.com/seo/sitemaps/image-sitemap.xml',
+        'https://www.maddycustom.com/sitemap.xml',
+        'https://www.maddycustom.com/seo/sitemaps/video-sitemap.xml',
+        'https://www.maddycustom.com/seo/sitemaps/image-sitemap.xml',
       ],
     };
   }

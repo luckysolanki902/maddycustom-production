@@ -33,7 +33,7 @@ export function generateProductSchema({ product, currency = 'INR' }) {
       '@context': 'https://schema.org',
       '@type': 'WebSite',
       name: 'Maddy Custom',
-      url: 'https://maddycustom.com',
+      url: 'https://www.maddycustom.com',
       description: mainDescription,
       publisher: {
         '@type': 'Organization',
@@ -52,7 +52,7 @@ export function generateProductSchema({ product, currency = 'INR' }) {
       '@context': 'https://schema.org',
       '@type': 'Organization',
       name: 'Maddy Custom',
-      url: 'https://maddycustom.com',
+      url: 'https://www.maddycustom.com',
       logo: `/images/metadata/500500.png`,
       description: mainDescription,
       sameAs: [

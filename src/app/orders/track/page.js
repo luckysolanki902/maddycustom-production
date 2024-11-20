@@ -4,7 +4,7 @@ import React from 'react'
 
 export async function generateMetadata() {
   return createMetadata({
-    canonical: 'https://maddycustom.com/orders/track',
+    canonical: 'https://www.maddycustom.com/orders/track',
   });
 }
 
