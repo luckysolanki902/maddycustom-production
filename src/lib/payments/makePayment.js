@@ -35,7 +35,7 @@ export const makePayment = async ({ customerName, customerMobile, orderId, razor
           });
 
           if (verificationData.status === 200) {
-            console.info('Payment verification succeeded:', response);
+            console.info('Payment verification succeeded:');
             resolve(response); // Payment verified
           } else {
             const verificationResult = await verificationData.json();
