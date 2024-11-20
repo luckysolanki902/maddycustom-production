@@ -1,9 +1,11 @@
-import HeroSection from '@/components/page-sections/homepage/HeroSection'
-import React from 'react'
-import styles from '@/styles/home.module.css'
-import ChooseCategory from '@/components/page-sections/homepage/ChoseCategory'
+// @/app/page.js
+
+import React from 'react';
+import HeroSection from '@/components/page-sections/homepage/HeroSection';
+import styles from '@/styles/home.module.css';
+import ChooseCategory from '@/components/page-sections/homepage/ChoseCategory';
 import Sidebar from '@/components/layouts/Sidebar';
-import ContactUs from '@/components/layouts/ContactUs'
+import ContactUs from '@/components/layouts/ContactUs';
 import CategorySearchBox from '@/components/utils/CategorySearchBox';
 import OurUniqueProductCarousel from '@/components/showcase/carousels/OurUniqueProductCarousel';
 import FlexibleLargePoster from '@/components/showcase/posters/FlexibleLargePoster';
@@ -13,6 +15,13 @@ import HalfBikes from '@/components/page-sections/homepage/halfBikes';
 import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
 import Image from 'next/image';
 import { createMetadata } from '@/lib/metadata/create-metadata';
+import { 
+  fetchOurUniqueProducts, 
+  fetchHelmetSlides, 
+  fetchFeaturedFullBikeWraps, 
+  fetchHappyCustomers,
+  fetchSearchCategories
+} from '@/lib/utils/fetchutils';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -20,50 +29,102 @@ export async function generateMetadata() {
   });
 }
 
-export default function page() {
+const HomePage = async () => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-  return (
-    <>
-      <Sidebar />
 
-      <main>
-        {/* Logo and Main Carousel */}
-        <HeroSection />
+  try {
+    // Fetch all necessary data concurrently
+    const [
+      ourUniqueProductsData,
+      helmetSlidesData,
+      featuredBikeWrapsData,
+      happyCustomersData,
+      searchCategoriesData
+    ] = await Promise.all([
+      fetchOurUniqueProducts(),
+      fetchHelmetSlides(),
+      fetchFeaturedFullBikeWraps(),
+      fetchHappyCustomers(null), // Pass parameters if needed
+      fetchSearchCategories()
+    ]);
 
-        {/* SearchBox */}
-        <div className={styles.chooseDiv}>CHOOSE</div>
-        <CategorySearchBox />
+    // Destructure categories and variants from searchCategoriesData
+    const { categories, variants } = searchCategoriesData;
 
-        {/* Category cards like Helmet, Tank, Bonnet to choose from */}
-        <ChooseCategory />
+    return (
+      <>
+        <Sidebar />
 
-        {/* Our Unique Products */}
-        <OurUniqueProductCarousel />
+        <main>
+          {/* Logo and Main Carousel */}
+          <HeroSection />
 
-        {/* Helmet Poster */}
-        <FlexibleLargePoster imageSlugForPc='helmetposterpc' imageSlugForPhone='helmetposterphone' link={'/shop/accessories/safety/graphic-helmets/helmet-store'} />
+          {/* SearchBox */}
+          <div className={styles.chooseDiv}>CHOOSE</div>
+          <CategorySearchBox 
+            categories={categories} 
+            variants={variants} 
+          />
 
-        {/* Helmet Slider */}
-        <HelmetSlider />
+          {/* Category cards like Helmet, Tank, Bonnet to choose from */}
+          <ChooseCategory />
 
-        {/* Bonnet Strip Wrap Poster */}
-        <FlexibleLargePoster imageSlugForPc='bonnetstrippc' imageSlugForPhone='bonnetstripphone' link={'/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps'} />
+          {/* Our Unique Products */}
+          <OurUniqueProductCarousel products={ourUniqueProductsData} />
 
-        {/* Featured Full Bike Wraps */}
-        <FeaturedFullBikeWraps />
+          {/* Helmet Poster */}
+          <FlexibleLargePoster 
+            imageSlugForPc='helmetposterpc' 
+            imageSlugForPhone='helmetposterphone' 
+            link='/shop/accessories/safety/graphic-helmets/helmet-store' 
+          />
 
-        {/* Happycustomers here */}
-        <div className={styles.featuredHead}>
-                <Image width={940} height={256} alt='heading - featured products' src={`${baseImageUrl}/assets/icons/happycustomers.png`}></Image>
-            </div>
-        <HappyCustomers noHeading={true} noShadow={true}/>
+          {/* Helmet Slider */}
+          <HelmetSlider slides={helmetSlidesData} />
 
-        {/* Animated Half Bikes */}
-        <HalfBikes />
-        {/* Footer */}
-        <ContactUs />
+          {/* Bonnet Strip Wrap Poster */}
+          <FlexibleLargePoster 
+            imageSlugForPc='bonnetstrippc' 
+            imageSlugForPhone='bonnetstripphone' 
+            link='/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps' 
+          />
 
-      </main>
-    </>
-  )
-}
+          {/* Featured Full Bike Wraps */}
+          <FeaturedFullBikeWraps data={featuredBikeWrapsData} />
+
+          {/* Happy Customers */}
+          <div className={styles.featuredHead}>
+            <Image 
+              width={940} 
+              height={256} 
+              alt='heading - featured products' 
+              src={`${baseImageUrl}/assets/icons/happycustomers.png`} 
+            />
+          </div>
+          <HappyCustomers 
+            data={happyCustomersData} 
+            noHeading={true} 
+            noShadow={true} 
+          />
+
+          {/* Animated Half Bikes */}
+          <HalfBikes />
+
+          {/* Footer */}
+          <ContactUs />
+        </main>
+      </>
+    );
+  } catch (error) {
+    // Handle errors gracefully, perhaps render an error component or message
+    console.error("Error loading homepage data:", error);
+    return (
+      <div className={styles.errorContainer}>
+        <h1>Something went wrong</h1>
+        <p>Please try refreshing the page or come back later.</p>
+      </div>
+    );
+  }
+};
+
+export default HomePage;

@@ -1,53 +1,118 @@
 // @/lib/utils/fetchutils.js
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
+// Products-Slug Page
 export async function fetchProducts(slug) {
-    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const apiUrl = `${BASE_URL}/api/shop/products`;
     const fullSlug = Array.isArray(slug) ? slug.join('/') : slug;
-  
+
     try {
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: fullSlug }),
-        cache: 'no-cache',
-      });
-  
-      if (res.status === 404) {
-        return { type: 'not-found' }; // Indicate not found without redirect
-      } else if (!res.ok) {
-        throw new Error(`Failed to fetch data. Status: ${res.status}`);
-      }
-  
-      const data = await res.json();
-      return data;
+        const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: fullSlug }),
+            cache: 'no-cache',
+        });
+
+        if (res.status === 404) {
+            return { type: 'not-found' }; // Indicate not found without redirect
+        } else if (!res.ok) {
+            throw new Error(`Failed to fetch data. Status: ${res.status}`);
+        }
+
+        const data = await res.json();
+        return data;
     } catch (error) {
-      console.error('Error fetching data:', error);
-      throw error; // Next.js will handle redirection to /error
+        console.error('Error fetching data:', error);
+        throw error; // Next.js will handle redirection to /error
     }
-  }
-  
-  export async function fetchOrder(orderId) {
-    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+}
+
+// MyOrder Page
+export async function fetchOrder(orderId) {
     const apiUrl = `${BASE_URL}/api/order/${orderId}`;
-  
+
     try {
-      const res = await fetch(apiUrl, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-cache',
-      });
-  
-      if (res.status === 404) {
-        return { type: 'not-found' }; // Indicate not found without redirect
-      } else if (!res.ok) {
-        throw new Error(`Failed to fetch order. Status: ${res.status}`);
-      }
-  
-      const data = await res.json();
-      return data;
+        const res = await fetch(apiUrl, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-cache',
+        });
+
+        if (res.status === 404) {
+            return { type: 'not-found' }; // Indicate not found without redirect
+        } else if (!res.ok) {
+            throw new Error(`Failed to fetch order. Status: ${res.status}`);
+        }
+
+        const data = await res.json();
+        return data;
     } catch (error) {
-      console.error('Error fetching order:', error);
-      throw error; // Next.js will handle redirection to /error
+        console.error('Error fetching order:', error);
+        throw error; // Next.js will handle redirection to /error
     }
-  }
+}
+
+// Homepage Fetch Utilities
+
+// Our Unique Products
+export async function fetchOurUniqueProducts() {
+    const res = await fetch(`${BASE_URL}/api/showcase/our-unique-products`, {
+        cache: 'no-store', // Adjust caching as needed
+    });
+    if (!res.ok) {
+        throw new Error('Failed to fetch our unique products');
+    }
+    return res.json();
+}
+
+// Helmet Slides
+export async function fetchHelmetSlides() {
+    const res = await fetch(`${BASE_URL}/api/showcase/helmet-slider`, {
+        cache: 'no-store',
+    });
+    if (!res.ok) {
+        throw new Error('Failed to fetch helmet slides');
+    }
+    return res.json();
+}
+
+// Featured Full Bike Wraps
+export async function fetchFeaturedFullBikeWraps() {
+    const res = await fetch(`${BASE_URL}/api/showcase/featured-full-bike-wraps`, {
+        cache: 'no-store',
+    });
+    if (!res.ok) {
+        throw new Error('Failed to fetch featured full bike wraps');
+    }
+    return res.json();
+}
+
+// Happy Customers
+export async function fetchHappyCustomers(parentSpecificCategoryId) {
+    let url = `${BASE_URL}/api/showcase/happy-customers`;
+    if (parentSpecificCategoryId) {
+        url += `?parentSpecificCategoryId=${parentSpecificCategoryId}`;
+    } else {
+        url += '?homepage=true';
+    }
+    const res = await fetch(url, {
+        cache: 'no-store',
+    });
+    if (!res.ok) {
+        throw new Error('Failed to fetch happy customers');
+    }
+    return res.json();
+}
+
+// Search Categories (for CategorySearchBox)
+export async function fetchSearchCategories() {
+    const res = await fetch(`${BASE_URL}/api/search/search-categories`, {
+        cache: 'no-store',
+    });
+    if (!res.ok) {
+        throw new Error('Failed to fetch search categories');
+    }
+    return res.json();
+}

@@ -1,8 +1,8 @@
 'use client'; // Ensure client-side rendering
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation'; // Ensure correct import based on your router
+import { useRouter } from 'next/navigation';
 import Typewriter from 'typewriter-effect';
 import searchStyles from './styles/categorysearchbox.module.css';
 
@@ -20,52 +20,32 @@ import {
     ListItemIcon,
     ListItemText,
 } from '@mui/material';
-import { usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation';
 
 // Transition Component for Dialog
 const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="down" ref={ref} {...props} />;
 });
 
-const CategorySearchBox = () => {
+const CategorySearchBox = ({ categories, variants }) => { // Receive categories and variants as props
     const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
     const router = useRouter();
     const [onSearch, setOnSearch] = useState(false);
     const [searchText, setSearchText] = useState('');
     const [suggestions, setSuggestions] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [variants, setVariants] = useState([]);
     const mainSearchBoxRef = useRef(null); // Separate ref for main search box
     const dialogSearchBoxRef = useRef(null); // Separate ref for Dialog search box
     const [dynamicMaxHeight, setDynamicMaxHeight] = useState(500); // Example default value
     const currentPath = usePathname();
 
-    // Fetch data on initial render
+    // Initialize suggestions with all categories and variants
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const res = await fetch('/api/search/search-categories');
-                if (!res.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const data = await res.json();
-                setCategories(data.categories);
-                setVariants(data.variants);
-                setSuggestions(data.categories.map(cat => cat.name));
-
-                // Verify each variant has a pageSlug
-                data.variants.forEach(variant => {
-                    if (!variant.pageSlug) {
-                        console.warn(`Variant with id ${variant.id} is missing a pageSlug.`);
-                    }
-                });
-            } catch (error) {
-                console.error('Error fetching search categories:', error);
-            }
-        };
-
-        fetchData();
-    }, []);
+        const initialSuggestions = [
+            ...categories.map(cat => cat.name),
+            ...variants.map(variant => variant.name)
+        ];
+        setSuggestions(initialSuggestions.slice(0, 10)); // Limit to top 10 suggestions
+    }, [categories, variants]);
 
     // Handle dynamic maxHeight based on viewport
     useEffect(() => {
@@ -149,7 +129,11 @@ const CategorySearchBox = () => {
             const combinedSuggestions = [...filteredCategories, ...filteredVariants].slice(0, 10);
             setSuggestions(combinedSuggestions);
         } else {
-            setSuggestions(categories.map(cat => cat.name));
+            const initialSuggestions = [
+                ...categories.map(cat => cat.name),
+                ...variants.map(variant => variant.name)
+            ];
+            setSuggestions(initialSuggestions.slice(0, 10));
         }
     };
 
@@ -157,7 +141,7 @@ const CategorySearchBox = () => {
         // Determine if the suggestion is a variant
         const variant = variants.find(v => v.name.toLowerCase() === suggestion.toLowerCase());
 
-        console.log({suggestion, variants})
+        console.log({ suggestion, variants });
         if (variant && variant.pageSlug) {
             router.push(`/shop/${variant.pageSlug}`);
         } else {

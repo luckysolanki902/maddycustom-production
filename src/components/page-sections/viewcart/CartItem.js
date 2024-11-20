@@ -44,6 +44,7 @@ const CartItem = ({ item, onRemove }) => {
         }
         alt={item.productDetails.name}
         className={styles.productImage}
+        unoptimized={item.productDetails.images && item.productDetails.images.length > 0 ? false : true}
       />
 
       <div className={styles.productDetails}>
