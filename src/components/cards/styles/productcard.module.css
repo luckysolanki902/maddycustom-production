@@ -18,7 +18,7 @@
 .image {
   width: 100%;
   height: auto;
-  max-height: 440px;
+  /* max-height: 440px; */
   cursor: pointer;
   display: flex;
   justify-content: center;
@@ -49,7 +49,7 @@
   display: flex;
   gap: 1.5rem;
   align-items: center;
-  margin-top: 0.3rem;
+  margin-top: 0.5rem;
 }
 
 .offer5 {
@@ -97,12 +97,13 @@
 }
 
 .prodDescLastRow {
-  margin-top: 1rem;
+  /* display: none; */
+  margin-top: -0.3rem;
   margin-left: -1rem;
 }
 
 .prodDescLastRow img {
-  display: none;
+  /* display: none; */
   width: 6rem;
   height: auto;
   opacity: 0.9;

@@ -200,18 +200,7 @@ const ProductCard = ({ product, loading }) => {
         <div className={styles.prodDescRow1}>
           <div className={styles.prodDescRow1} style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div className={styles.productName}>{product.name}</div>
-            <div> <div className={styles.prodDescLastRow}>
-              <Image
-                width={500}
-                height={250}
 
-                src={
-                  `${baseImageUrl}${product.variantDetails.available ? '/assets/icons/order.png' : '/assets/icons/comingsoon.png'}`
-                }
-                alt=""
-                priority
-              />
-            </div></div>
           </div>
           {product.variantDetails.available && <div className={styles.addToCart} >
             <AddToCartButton product={product} />
@@ -237,15 +226,27 @@ const ProductCard = ({ product, loading }) => {
                 : product.price}
             </span>
           </div>
+            <div className={styles.offer5}>
+              <div className={styles.offer5Line1}>
+                <span>5%</span>
+                <span>off</span>
+              </div>
+              <div className={styles.offer5Line2}>on every order</div>
+              <div className={styles.offer5Line3}>Valid till 30/11/24</div>
+            </div>
 
         </div>
-        <div className={styles.offer5}>
-          <div className={styles.offer5Line1}>
-            <span>5%</span>
-            <span>off</span>
-          </div>
-          <div className={styles.offer5Line2}>on every order</div>
-          <div className={styles.offer5Line3}>Valid till 30/11/24</div>
+
+        <div className={styles.prodDescLastRow}>
+          <Image
+            width={500}
+            height={250}
+            src={
+              `${baseImageUrl}${product.variantDetails.available ? '/assets/icons/order.png' : '/assets/icons/comingsoon.png'}`
+            }
+            alt=""
+            priority
+          />
         </div>
       </div>
 
