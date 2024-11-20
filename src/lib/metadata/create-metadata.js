@@ -1,7 +1,7 @@
 import { mainDescription } from "../constants/seoConsts";
 
 export async function createMetadata({
-    canonical = 'https://maddycustom.com',
+    canonical = 'https://www.maddycustom.com',
     title = "MaddyCustom - India's Leading Vehicle Personalization Experts",
     description = mainDescription,
     favicon = '/images/metadata/favicon.ico',
