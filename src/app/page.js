@@ -12,7 +12,7 @@ import FlexibleLargePoster from '@/components/showcase/posters/FlexibleLargePost
 import HelmetSlider from '@/components/showcase/sliders/HelmetSlider';
 import FeaturedFullBikeWraps from '@/components/page-sections/homepage/FeaturedFullBikeWraps';
 import HalfBikes from '@/components/page-sections/homepage/halfBikes';
-import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
+// import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
 import Image from 'next/image';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { 
@@ -101,11 +101,11 @@ const HomePage = async () => {
               src={`${baseImageUrl}/assets/icons/happycustomers.png`} 
             />
           </div>
-          <HappyCustomers 
+          {/* <HappyCustomers 
             data={happyCustomersData} 
             noHeading={true} 
             noShadow={true} 
-          />
+          /> */}
 
           {/* Animated Half Bikes */}
           <HalfBikes />
