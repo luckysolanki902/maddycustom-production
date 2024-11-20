@@ -27,6 +27,7 @@ import {
   calculateDiscountAmount,
   calculateTotalCostAfterDiscount,
 } from '@/lib/utils/cartCalculations';
+import HappyCustomers from '../showcase/sliders/HappyCustomers';
 
 const ViewCart = () => {
   const dispatch = useDispatch();
@@ -122,18 +123,18 @@ const ViewCart = () => {
     dispatch(removeItem({ productId }));
   };
 
-// Updated handleBack function
-const handleBack = useCallback(() => {
-  if (isOrderFormOpen) {
-    setIsOrderFormOpen(false);
-  } else {
-    if (window.history.length > 2) {
-      router.back(); // Go back if there’s a history
+  // Updated handleBack function
+  const handleBack = useCallback(() => {
+    if (isOrderFormOpen) {
+      setIsOrderFormOpen(false);
     } else {
-      router.push('/'); // Go to homepage if no history to go back to
+      if (window.history.length > 2) {
+        router.back(); // Go back if there’s a history
+      } else {
+        router.push('/'); // Go to homepage if no history to go back to
+      }
     }
-  }
-}, [isOrderFormOpen, router]);
+  }, [isOrderFormOpen, router]);
 
 
 
@@ -214,6 +215,7 @@ const handleBack = useCallback(() => {
           />
         </section>
       )}
+      <HappyCustomers headingText='Past Orders'/>
 
       {/* Total Cost and Checkout */}
       {totalQuantity > 0 && (

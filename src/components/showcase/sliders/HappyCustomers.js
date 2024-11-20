@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import styles from './styles/happycustomers.module.css';
 
-export default function HappyCustomers({ parentSpecificCategoryId, noShadow, noHeading }) {
+export default function HappyCustomers({ parentSpecificCategoryId, noShadow, noHeading, headingText = 'Happy Customers' }) {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const [happyCustomers, setHappyCustomers] = useState([]);
 
@@ -36,7 +36,7 @@ export default function HappyCustomers({ parentSpecificCategoryId, noShadow, noH
   return (
     <div className={`${styles.main} ${!noShadow && styles.shadow}`}>
       <div className={styles.pastOrdersMain}>
-        {!noHeading && <div className={styles.pastOrdersH}>Happy Customers</div>}
+        {!noHeading && <div className={styles.pastOrdersH}>{headingText}</div>}
       </div>
       <div className={styles.slider}>
         {happyCustomers.map((customer, index) => (
