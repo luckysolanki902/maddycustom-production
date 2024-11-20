@@ -13,6 +13,12 @@ export default async function sitemap() {
         priority: 1,
       },
       {
+        url: `${baseUrl}/orders/track`,
+        lastModified: new Date(),
+        changeFrequency: 'monthly',
+        priority: 0.7,
+      },
+      {
         url: `${baseUrl}/about-us`,
         lastModified: new Date(),
         changeFrequency: 'monthly',
