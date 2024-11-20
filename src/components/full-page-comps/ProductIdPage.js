@@ -5,8 +5,8 @@ import { useState } from 'react';
 import ZoomableImage from '../page-sections/product-id-page/ZoomableImage';
 import OrderSpecifications from '../page-sections/product-id-page/OrderSpecifications';
 import PriceAndChat from '../page-sections/product-id-page/PriceAndChat';
-import HappyCustomers from '../showcase/sliders/HappyCustomers';
 import AddToCartButton from '../utils/AddToCartButton';
+import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
 
 export default function ProductIdPage({ product, variant, category, description }) {
   const [viewFullDescription, setViewFullDescription] = useState(false);
@@ -47,7 +47,7 @@ export default function ProductIdPage({ product, variant, category, description 
           />
         </div>}
 
-      {!isZoomed && <HappyCustomers  parentSpecificCategoryId={category._id}/>}
+      {!isZoomed && <HappyCustomersClient  parentSpecificCategoryId={category._id}/>}
     </div>
   );
 }

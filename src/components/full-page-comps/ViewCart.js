@@ -27,7 +27,7 @@ import {
   calculateDiscountAmount,
   calculateTotalCostAfterDiscount,
 } from '@/lib/utils/cartCalculations';
-import HappyCustomers from '../showcase/sliders/HappyCustomers';
+import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
 
 const ViewCart = () => {
   const dispatch = useDispatch();
@@ -215,7 +215,7 @@ const ViewCart = () => {
           />
         </section>
       )}
-      <HappyCustomers headingText='Past Orders'/>
+      <HappyCustomersClient headingText='Past Orders'/>
 
       {/* Total Cost and Checkout */}
       {totalQuantity > 0 && (
