@@ -6,7 +6,7 @@ import { createMetadata } from '@/lib/metadata/create-metadata';
 
 export async function generateMetadata() {
     return createMetadata({
-      title: 'About | Maddy Custom',
+      title: 'About Us | Maddy Custom',
       canonical: 'https://www.maddycustom.com/about',
     });
   }
