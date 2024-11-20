@@ -67,3 +67,9 @@
   .trackButton:hover{
 scale: 0.96;
   }
+
+  @media (width>600px){
+    .mdLogo{
+       width: 40%;
+    }
+  }
