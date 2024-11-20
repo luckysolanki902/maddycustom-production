@@ -1,7 +1,6 @@
-"use client"
-// @/app/components/OurUniqueProductCarousel.js
+"use client";
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import 'swiper/css/pagination';
@@ -38,25 +37,11 @@ const Card = ({ imageSrc, name, price, link }) => {
     );
 };
 
-const OurUniqueProductCarousel = () => {
+const OurUniqueProductCarousel = ({ products }) => { // Accept products as props
     const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
-    const [cardData, setCardData] = useState([]);
-    const [isImageLoaded, setIsImageLoaded] = useState(false);
+    const [isImageLoaded, setIsImageLoaded] = React.useState(false);
     const isSmallScreen = useMediaQuery('(max-width: 768px)');
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await fetch('/api/showcase/our-unique-products');
-                const data = await response.json();
-                setCardData(data);
-            } catch (error) {
-                console.error("Error fetching carousel data:", error);
-            }
-        };
-        fetchData();
-    }, []);
 
     return (
         <div className={styles.mainCarDiv} style={{ position: 'relative' }}>
@@ -91,10 +76,10 @@ const OurUniqueProductCarousel = () => {
                     spaceBetween={isSmallScreen ? 40 : 80}
                     autoplay={{ delay: 3000, disableOnInteraction: false }}
                 >
-                    {cardData.map((card, index) => (
+                    {products.map((card, index) => (
                         <SwiperSlide key={index} style={{ background: 'transparent', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
                             <Card
-                                imageSrc={`${baseImageUrl}${card.images[0]}`}  // assuming first image is used in carousel
+                                imageSrc={`${baseImageUrl}${card.images[0]}`} // assuming first image is used in carousel
                                 name={card.name}
                                 price={card.price}
                                 link={`/shop${card.pageSlug}`}

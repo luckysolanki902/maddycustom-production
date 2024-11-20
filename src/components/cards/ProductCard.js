@@ -178,7 +178,7 @@ const ProductCard = ({ product, loading }) => {
 
           <Image
             className={`${styles.image} ${product?.category?.specificCategoryCode === 'fbw' ? styles.increaseBrightness : ''}`}
-
+            unoptimized={loading ? true : product.images && product.images.length > 0 ? false : true}
             src={
               loading
                 ? '/images/assets/gifs/helmetloadinggiflandscape2.gif'
