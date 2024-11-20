@@ -1,4 +1,3 @@
-// @/lib/middleware/connectToDb
 import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -21,11 +20,12 @@ async function connectToDatabase() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      maxPoolSize: 10, 
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      // Ensure all models are initialized to avoid OverwriteModelError
       mongoose.connection.on('connected', () => {
+        console.log('Mongoose connected');
       });
       mongoose.connection.on('error', (err) => {
         console.error("Database connection error:", err);
