@@ -18,7 +18,7 @@ export const calculateDiscountAmount = (totalCost, couponState) => {
 if (!couponState.couponApplied) return 0;
 const { discountType, couponDiscount } = couponState;
 return discountType === 'percentage'
-  ? (totalCost * couponDiscount) / 100
+  ? Math.floor((totalCost * couponDiscount) / 100)
   : couponDiscount;
 };
 
