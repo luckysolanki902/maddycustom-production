@@ -19,8 +19,30 @@ const PriceDetails = ({
     <div className={styles.priceDetailRow}>
       <div className={styles.priceField}>Delivery Cost</div>
       <div className={styles.priceValue}>
-        <span className={styles.rupee}>₹</span>{deliveryCost.toFixed(2)}
+        <span className={`${styles.rupee}`} >₹</span>
+        {/* {deliveryCost} */}
+        <span style={{textDecoration:'line-through'}}>
+        100
+        </span>
       </div>
+      <span
+                      style={{
+                        padding: '0rem 0.6rem',
+                        marginLeft: '0.5rem',
+                        borderRadius: '0.5rem',
+                        fontWeight: '400',
+                        fontFamily: 'Roboto',
+                        display: 'flex',
+                        fontSize: '0.8rem',
+                        backgroundColor: 'white',
+                        alignItems:'center',
+                        color:'#34C759',
+                        boxShadow: 'rgba(0, 0, 0, 0.12) 0px 1px 2px 1px',
+                      }}
+                      className={styles.patch}
+                    >
+                       <span>Free</span>
+                    </span>
     </div>
 
     {/* Discount */}
@@ -28,7 +50,7 @@ const PriceDetails = ({
       <div className={styles.priceDetailRow}>
         <div className={styles.priceField}>Discount</div>
         <div className={styles.priceValue}>
-          ₹{discountAmount.toFixed(2)}
+          ₹{discountAmount}
         </div>
       </div>
     )}
@@ -37,7 +59,7 @@ const PriceDetails = ({
     <div className={styles.priceDetailRow}>
       <div className={styles.priceField}>Total Cost</div>
       <div className={styles.priceValue}>
-        ₹{totalCostWithDelivery.toFixed(2)}
+        ₹{totalCostWithDelivery}
       </div>
     </div>
 

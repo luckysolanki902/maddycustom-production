@@ -103,7 +103,7 @@ const ViewCart = () => {
   );
 
   // Delivery Cost (Default or based on payment mode)
-  const deliveryCost = 100; // Default delivery cost
+  const deliveryCost = 0; // Default delivery cost
 
   // Extra Charge based on Payment Mode
   const extraCharge =

@@ -14,8 +14,8 @@ const Footer = ({ totalCost, originalTotal, onCheckout }) => (
         Total Cost
       </Typography>
       <Typography variant="body1" sx={{ marginLeft: '0.3rem', color: 'rgba(0,0,0,0.7)' }}>
-        <span style={{ fontSize: '0.7rem', marginRight: '0.2rem' }}>₹</span>{totalCost.toFixed(2)}  {originalTotal && (
-        <span className={styles.originalTotal}>₹{originalTotal.toFixed(2)}</span>
+        <span style={{ fontSize: '0.7rem', marginRight: '0.2rem' }}>₹</span>{totalCost}  {originalTotal && (
+        <span className={styles.originalTotal}>₹{originalTotal}</span>
       )}
       </Typography>
      
