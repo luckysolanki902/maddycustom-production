@@ -17,15 +17,12 @@ export const config = {
   },
 };
 
-// Helper function to create a delay ** Just For Testing **
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Handles POST requests from Razorpay webhooks to verify payments.
  * Ensures idempotency by checking paymentStatus and deliveryStatus.
  */
 export async function POST(request) {
-  await delay(5000); // Wait for 5 seconds
   const session = await mongoose.startSession(); // Start a MongoDB session
   session.startTransaction(); // Start a transaction
   try {
