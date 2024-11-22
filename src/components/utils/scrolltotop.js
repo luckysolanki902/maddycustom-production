@@ -43,13 +43,18 @@ const ScrollToTop = () => {
         ...springProps,
         position: "fixed",
         right: "2rem",
-        bottom: "1rem",
+        bottom: "8rem",
         zIndex: 99999,
         cursor: "pointer",
       }}
       onClick={scrollToTop}
     >
-      <KeyboardArrowUpIcon style={{ color: "gray", fontSize: "2rem" }} />
+      <div style={{backgroundColor:'white', borderRadius:'50%', width:'40px', height:'40px', display:'flex', justifyContent:'center', alignItems:'center'
+        ,boxShadow:"0px 4px 4px rgba(0, 0, 0, 0.25)"
+      }}>
+
+      <KeyboardArrowUpIcon style={{ color: "black", fontSize: "2rem" }} />
+      </div>
     </animated.div>
   );
 };
