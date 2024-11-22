@@ -1,0 +1,30 @@
+.parentChatWithUs {
+    position: fixed;
+    bottom: 5rem;
+    right: 1rem;
+    height: 4rem;
+    z-index: 999999999999;
+    display: flex;
+    align-items: center;
+    font-family: Jost;
+    font-weight: 800;
+    font-size: 1.2rem;
+}
+
+.chatwithus{
+    width: 12rem;
+    height: auto;
+    filter: drop-shadow(-5px 3px 3px rgba(0,0,0,0.7));
+    transition: all 0.3s ease;
+}
+.chatwithus:hover{
+    scale: 0.98;
+}
+
+@media (width<600px){
+    .chatwithus{
+        width: 8rem;
+    filter: drop-shadow(-5px 3px 3px rgba(0,0,0,0.5));
+
+    }
+}

@@ -1,34 +1,155 @@
-.bikeStyleMain {
-    font-size: 1.2rem;
-    margin-left: 1.5rem;
-    background-color: rgba(118, 246, 255, 0.371);
-    max-width: fit-content;
-    padding: 0.5rem 0.9rem;
-    border-radius: 0.7rem;
+/* @/components/page-sections/products-page/styles/changevariantbutton.module.css */
+
+
+/* Styling for the "Change Variant" button */
+.bikeStyle {
+    background-color: rgba(156, 248, 255, 0.31);
+    color: black;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 400;
     cursor: pointer;
-    font-family: jost, sans-serif;
+    transition: background-color 0.3s ease;
+    text-align: center;
+    width: fit-content;
+    margin-left: 1.4rem;
+    margin-top: 1rem;
+    font-family: Jost, sans-serif;
 }
 
-.customImg{
-    width: 150px;
-    height: auto;
-    border-radius: 0.7rem;
+.bikeStyle:hover {
+    background-color: rgba(156, 248, 255, 0.41); /* Darker shade on hover */
 }
 
+/* Utility class for applying the 'Jost' font family */
+.jostFam {
+    font-family: 'Jost', sans-serif;
+}
 
-@media (width<600px) {
-    .bikeStyleMain {
-        font-size: 1.1rem;
-        margin-left: 1.4rem;
-        background-color: rgba(118, 246, 255, 0.371);
-        max-width: fit-content;
-        padding: 0.5rem 0.9rem;
-        border-radius: 0.7rem;
-        cursor: pointer;
-        font-family: jost, sans-serif;
-        margin-top: 1.5rem;
+/* Styling for the main dialog heading ("CHOOSE") */
+.maindialogHeading {
+    font-size: 2.4rem;
+    font-weight: 400;
+    text-align: center;
+    padding: 1rem 0;
+    text-decoration: underline;
+    text-underline-offset: 8px;
+    text-decoration-thickness: 2px;
+    text-decoration-color: #000;
+    
+
+}
+
+.categoryName {
+    font-size: 1.5rem;
+    margin-top: 1rem;
+    text-align: center;
+    color: #000; /* Optional: Adjust color as needed */
+    margin-bottom: 1rem;
+}
+
+/* Styling for the Divider component */
+.divider {
+    margin: 20px 0;
+    border-top: 1px solid #e0e0e0; /* Light gray line */
+}
+
+/* Container for each variant box */
+.variantBox {
+    cursor: pointer;
+    padding: 1rem;
+    border-radius: 1rem;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    background-color: #D9D9D9;
+    gap: 1.5rem;
+    transition: background-color 0.3s ease;
+}
+
+.variantBox:hover {
+    background-color: #c0c0c0; /* Optional: Slightly darker on hover */
+}
+
+/* Styling for the variant image */
+.customImg {
+    border-radius: 8px; /* Optional: Rounded corners for images */
+    object-fit: cover;
+}
+
+/* Styling for the variant button */
+.variantButton {
+    background-color: black;
+    color: white;
+    font-weight: 300;
+    text-transform: none;
+    border-radius: 10px;
+    padding: 5px 15px;
+    max-width: 150px;
+    font-size: 12px;
+    box-shadow: none;
+    transition: background-color 0.3s ease;
+}
+
+.variantButton:hover {
+    background-color: black; /* Maintain the same color on hover */
+}
+
+/* Styling for the variant description text */
+.variantDescription {
+    color: #555;
+    font-size: 11px;
+    font-family: 'Jost', sans-serif;
+    line-height: 1.5;
+}
+
+/* Responsive styles for screens with max-width 600px */
+@media (max-width: 600px) {
+    .variantButton {
+        font-size: 10px;
+        padding: 5px 10px;
+        max-width: 120px; /* Optional: Adjust max-width for smaller screens */
     }
-    .customImg{
-        width: 100px;
+
+    .variantDescription {
+        font-size: 10px;
     }
+
+    .bikeStyle {
+        font-size: 14px; /* Optional: Adjust button font size for smaller screens */
+        padding: 0.5rem 1rem;
+    }
+
+    .maindialogHeading {
+        font-size: 2rem;
+        padding: 0.75rem 0;
+        text-underline-offset: 8px;
+        text-decoration-thickness: 1.2px;
+        text-decoration-color: #000;
+    }
+
+}
+
+/* Styling for the DialogContent component */
+.dialogContent {
+    padding: 2rem 0.5rem 1rem 0.5rem;
+}
+
+/* Additional utility classes (if needed) */
+
+/* Example: Centering content vertically and horizontally */
+.centerContent {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Example: Adding margin to elements */
+.mt-30 {
+    margin-top: 30px;
+}
+
+.mb-20 {
+    margin-bottom: 20px;
 }

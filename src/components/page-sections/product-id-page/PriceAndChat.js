@@ -20,11 +20,11 @@ export default function PriceAndChat({price}) {
                 {price}
             </div>
             {/* Chat with us */}
-            {/* <div className={styles.chatwithusMain}>
-                <Link href={'https://wa.me/8112673988'} onClick={handleChatClick}>
+            <div className={styles.chatwithusMain}>
+                <Link href={'https://wa.me/8112673988'} >
                     <Image className={styles.chatwithus} src={`${imageBaseUrl}/assets/icons/chatwithus.png`} width={1400} height={400} alt='chat with us'></Image>
                 </Link>
-            </div> */}
+            </div>
         </div>
     )
 }
