@@ -4,7 +4,7 @@ import ProductsPage from '@/components/full-page-comps/ProductsPage';
 import ProductIdPage from '@/components/full-page-comps/ProductIdPage';
 import { fetchProducts } from '@/lib/utils/fetchutils';
 import { createMetadata } from '@/lib/metadata/create-metadata';
-import { generateProductSchema } from '@/lib/metadata/generateProductSchema';
+import { generateProductSchema } from '@/lib/metadata/json-lds';
 import { notFound } from 'next/navigation';
 
 export async function generateMetadata({ params }) {
