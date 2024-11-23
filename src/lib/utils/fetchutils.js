@@ -1,9 +1,11 @@
 // @/lib/utils/fetchutils.js
 
+import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
+
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
-// Products-Slug Page
-export async function fetchProducts(slug) {
+// Unified fetchProducts function handling both 'product' and 'variant' types
+export async function fetchProducts(slug, page = 1, limit = ITEMS_PER_PAGE, tagFilter = null, sortBy = 'default') {
     const apiUrl = `${BASE_URL}/api/shop/products`;
     const fullSlug = Array.isArray(slug) ? slug.join('/') : slug;
 
@@ -11,7 +13,7 @@ export async function fetchProducts(slug) {
         const res = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug: fullSlug }),
+            body: JSON.stringify({ slug: fullSlug, page, limit, tagFilter, sortBy }),
             cache: 'no-cache',
         });
 
@@ -28,6 +30,38 @@ export async function fetchProducts(slug) {
         throw error; // Next.js will handle redirection to /error
     }
 }
+
+
+
+// Fetch details for a single product
+export async function fetchProductDetails(slug) {
+    const apiUrl = `${BASE_URL}/api/shop/product-details`;
+    const fullSlug = Array.isArray(slug) ? slug.join('/') : slug;
+
+    try {
+        const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: fullSlug }),
+            cache: 'no-cache',
+        });
+
+        if (res.status === 404) {
+            return { type: 'not-found' };
+        } else if (!res.ok) {
+            throw new Error(`Failed to fetch product details. Status: ${res.status}`);
+        }
+
+        const data = await res.json();
+        return data;
+    } catch (error) {
+        console.error('Error fetching product details:', error);
+        throw error; // Next.js will handle redirection to /error
+    }
+}
+
+
+
 
 // MyOrder Page
 export async function fetchOrder(orderId) {

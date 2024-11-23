@@ -1,24 +1,34 @@
-// pages/ProductsPage.js
-"use client";
+// components/full-page-comps/ProductsPage.js
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import React, { useState } from 'react';
 import styles from './styles/products.module.css';
 import ScrollToTop from '@/components/utils/scrolltotop';
-import style from '../cards/styles/productswrapper.module.css'
-import { useMediaQuery } from '@mui/material';
+import style from '../cards/styles/productswrapper.module.css';
+import { useMediaQuery, Pagination, Stack, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import ProductsWrapper from '../cards/ProductsWrapper';
 import Tags from '../page-sections/products-page/Tags';
 import Sidebar from '../layouts/Sidebar';
 import ChangeVariantButton from '../page-sections/products-page/ChangeVariantButton';
+import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
+import debounce from 'lodash.debounce';
+import { PaginationStyles } from '@/styles/PaginationStyles';
 
-export default function ProductsPage({ variant, products, category }) {
+export default function ProductsPage({ slug, variant, products, category, initialPage, totalPages }) {
   // Constants
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   // State for tag filter and sort filter
   const [tagFilter, setTagFilter] = useState(null);
   const [sortBy, setSortBy] = useState('default');
+  const [currentPage, setCurrentPage] = useState(initialPage || 1);
+  const [totalPageCount, setTotalPageCount] = useState(totalPages || 1);
+  const [currentProducts, setCurrentProducts] = useState(products || []);
+  const [loading, setLoading] = useState(false);
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
+  const [scrollToTopOnPageChange, setScrollToTopOnPageChange] = useState(true);
+  const [sortSelectInTheUi, setSortSelectInTheUi] = useState(false); // Controlled by a constant
 
   // Get the unique tags from the products
   const allTags = [
@@ -29,6 +39,81 @@ export default function ProductsPage({ variant, products, category }) {
     ),
   ];
 
+  const fetchPageData = useCallback(async (page, tag, sort) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/shop/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: Array.isArray(slug) ? slug.join('/') : slug,
+          page: page,
+          limit: ITEMS_PER_PAGE,
+          tagFilter: tag,
+          sortBy: sort,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.type === 'variant') {
+          setCurrentProducts(data.products);
+          setTotalPageCount(data.totalPages);
+          setCurrentPage(data.currentPage);
+        } else {
+          // Handle other types if necessary
+        }
+      } else {
+        console.error('Failed to fetch data');
+      }
+    } catch (error) {
+      console.error('Error fetching page data:', error);
+    }
+    setLoading(false);
+  }, [slug]);
+
+  // Debounced version of fetchPageData for tag and sort changes
+  const debouncedFetchPageData = useCallback(
+    debounce((page, tag, sort) => {
+      fetchPageData(page, tag, sort);
+    }, 300),
+    [fetchPageData]
+  );
+
+  // Handle tag filter changes
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page on tag change
+    debouncedFetchPageData(1, tagFilter, sortBy);
+    // Cleanup on unmount
+    return () => {
+      debouncedFetchPageData.cancel();
+    };
+  }, [tagFilter, sortBy, debouncedFetchPageData]);
+
+  // Handle sort changes
+  const handleSortChange = (event) => {
+    const newSort = event.target.value;
+    setSortBy(newSort);
+    setCurrentPage(1); // Reset to first page on sort change
+    debouncedFetchPageData(1, tagFilter, newSort);
+  };
+
+  // Handle page changes
+  const handlePageChange = (event, value) => {
+    setCurrentPage(value);
+    fetchPageData(value, tagFilter, sortBy);
+    if (value !== 1 && value > totalPageCount) {
+      // Adjust if page exceeds total
+      setCurrentPage(totalPageCount);
+    }
+  };
+
+  // Scroll to top on page change
+  useEffect(() => {
+    if (scrollToTopOnPageChange) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage, scrollToTopOnPageChange]);
 
   return (
     <div>
@@ -40,44 +125,72 @@ export default function ProductsPage({ variant, products, category }) {
             {variant?.subtitles.length > 0 && variant?.subtitles[0] && (
               variant.variantCode === 'hel' ?
                 <>
-                  <h2 className={styles.helmetTagline}>&quot;Best designed helmets of india <br /> with safety of&quot;</h2>
+                  <h2 className={styles.helmetTagline}>&quot;Best designed helmets of India <br /> with safety of&quot;</h2>
                   <Image className={styles.studds} src={`${baseImageUrl}${variant?.availableBrands[0]?.brandLogo}`} width={1103 / 5} height={394 / 5} alt={'studds'}></Image></>
                 :
                 <h2 className={styles.belowMainHeading} >{variant?.subtitles[0]}</h2>
             )}
-
           </div>
         </div>
       </header>
-     <div className={style.productsGrid}>
-      {variant.showCase?.[0]?.available && isSmallDevice && (
-        <div
-          className={style.videoCard}
-          aria-description="product video"
-          aria-describedby="product video"
-        >
-          <video autoPlay muted playsInline loop controls={false}>
-            <source src={`${baseImageUrl}${variant.showCase[0].url}`} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-          <h1>Maddy Custom</h1>
-        </div>
-      )}
+      <div className={style.productsGrid}>
+        {variant.showCase?.[0]?.available && isSmallDevice && (
+          <div
+            className={style.videoCard}
+            aria-description="product video"
+            aria-describedby="product video"
+          >
+            <video autoPlay muted playsInline loop controls={false}>
+              <source src={`${baseImageUrl}${variant.showCase[0].url}`} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+            <h1>Maddy Custom</h1>
+          </div>
+        )}
       </div>
 
       <Tags setTagFilter={setTagFilter} tags={allTags} />
-      {/* <SortBy setSortBy={setSortBy} /> */}
+
+      {sortSelectInTheUi && (
+        <FormControl variant="outlined" className={styles.sortSelect}>
+          <InputLabel id="sort-select-label">Sort By</InputLabel>
+          <Select
+            labelId="sort-select-label"
+            id="sort-select"
+            value={sortBy}
+            onChange={handleSortChange}
+            label="Sort By"
+          >
+            <MenuItem value="default">Default</MenuItem>
+            <MenuItem value="priceLowToHigh">Price: Low to High</MenuItem>
+            <MenuItem value="priceHighToLow">Price: High to Low</MenuItem>
+            <MenuItem value="latestFirst">Latest First</MenuItem>
+            <MenuItem value="oldestFirst">Oldest First</MenuItem>
+          </Select>
+        </FormControl>
+      )}
 
       <ChangeVariantButton category={category} />
 
       <ProductsWrapper
         variant={variant}
-        products={products}
+        products={currentProducts}
         category={category}
-        tagFilter={tagFilter}
         sortBy={sortBy}
+        loading={loading}
       />
-      <ScrollToTop/>
+      <PaginationStyles>
+
+        <Pagination
+          count={totalPageCount}
+          page={currentPage}
+          onChange={handlePageChange}
+          color="primary"
+          disabled={loading}
+        />
+
+      </PaginationStyles>
+      <ScrollToTop />
     </div>
   );
 }
