@@ -1,6 +1,6 @@
 import '@/styles/globals.css';
 import { createMetadata } from '@/lib/metadata/create-metadata';
-import { generateWebsiteSchema, generateOrganizationSchema } from '@/lib/metadata/generateProductSchema';
+import { generateWebsiteSchema, generateOrganizationSchema } from '@/lib/metadata/json-lds';
 import ReduxProvider from '@/components/layouts/ReduxProvider';
 import FloatingActionBar from '@/components/utils/FloatingActionButton';
 import TopLoadingBar from '@/components/utils/TopLoadingBar';

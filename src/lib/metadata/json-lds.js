@@ -1,4 +1,4 @@
-// @/lib/metadata/generateProductSchema.js
+// @/lib/metadata/json-lds.js
 import { mainDescription } from "../constants/seoConsts";
 
 // For product pages
