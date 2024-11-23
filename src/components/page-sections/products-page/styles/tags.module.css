@@ -2,7 +2,7 @@
     overflow: hidden;
     padding: 0;
     margin: 20px;
-    position: relative; /* Add position relative to create a stacking context */
+    position: relative; 
   }
   @media(width<600px){
     .tagMainContainer{
@@ -30,7 +30,6 @@
     justify-content: center;
     align-items: center;
     border-radius: 0.7rem;
-    background-color: white;
     color: black;
     border: 1px solid black;
     cursor: pointer;
@@ -58,7 +57,7 @@
   }
   
   .tags {
-    transition: background-color 0.3s ease;
+    transition: width 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
   
 
