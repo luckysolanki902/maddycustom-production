@@ -1,10 +1,18 @@
-// components/Tags.js
-import React, { useState } from 'react';
+// /components/Tags.js
+import React, { useState, useEffect } from 'react';
 import styles from './styles/tags.module.css';
 import ClearIcon from '@mui/icons-material/Clear';
 
 const Tags = ({ setTagFilter, tags }) => {
   const [activeTag, setActiveTag] = useState('');
+  const [uniqueTags, setUniqueTags] = useState([]);
+
+  useEffect(() => {
+    // Convert all tags to lowercase and remove duplicates
+    const lowerCaseTags = tags.map(tag => tag.toLowerCase());
+    const unique = Array.from(new Set(lowerCaseTags));
+    setUniqueTags(unique);
+  }, [tags]);
 
   const handleSelectTag = (tag) => {
     if (tag === activeTag) {
@@ -15,12 +23,11 @@ const Tags = ({ setTagFilter, tags }) => {
       setTagFilter(tag); // Set the tag filter
     }
   };
-  
 
   return (
     <div className={styles.tagMainContainer}>
       <div className={styles.tagContainer}>
-        {tags.map((tag) => (
+        {uniqueTags.map((tag) => (
           <div
             key={tag}
             className={`${styles.tags} ${activeTag === tag ? styles.activeTag : ''}`}

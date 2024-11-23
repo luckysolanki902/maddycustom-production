@@ -9,6 +9,8 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       required: true,
       maxlength: 100,
       trim: true,
+      index: true,
+      unique: true,
     },
     variantType: {
       type: String,
@@ -54,6 +56,7 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      index: true,
     },
     specificCategory: {
       type: mongoose.Schema.Types.ObjectId,
@@ -74,6 +77,7 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
     available: {
       type: Boolean,
       default: true,
+      index: true,
     },
     showCase: [{
       available: {
@@ -87,6 +91,7 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
     designTemplateFolderPath: {
       type: String,
       required: true,
+      index: true,
     },
     imageFolderPath: {
       type: String,
