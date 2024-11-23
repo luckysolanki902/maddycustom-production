@@ -141,7 +141,6 @@ const CategorySearchBox = ({ categories, variants }) => { // Receive categories 
         // Determine if the suggestion is a variant
         const variant = variants.find(v => v.name.toLowerCase() === suggestion.toLowerCase());
 
-        console.log({ suggestion, variants });
         if (variant && variant.pageSlug) {
             router.push(`/shop/${variant.pageSlug}`);
         } else {

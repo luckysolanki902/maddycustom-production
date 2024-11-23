@@ -1,4 +1,5 @@
-// /components/Tags.js
+// components/page-sections/products-page/Tags.js
+
 import React, { useState, useEffect } from 'react';
 import styles from './styles/tags.module.css';
 import ClearIcon from '@mui/icons-material/Clear';
