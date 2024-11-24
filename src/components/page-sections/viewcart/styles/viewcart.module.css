@@ -1,200 +1,220 @@
-
 .container {
-    background-color: #F1FFFC;
-    min-height: 100vh;
-    padding: 1.2rem;
-    margin: 0;
-    padding-bottom: 15rem;
-  }
-  
-  .header {
-    display: flex;
-    align-items: center;
-  }
-  
-  .heading {
-    margin: 0;
-    margin-left: 1rem;
-    text-align: center;
-    display: flex;
-    align-items: center;
-  }
-  
-  
-  .heading span {
-    margin-left: 0.5rem;
-    color: #676767;
-    font-weight: 400;
-    font-size: 1.5rem;
-  }
-  
-  .subHeading {
-    position: absolute;
-    right: 20px;
-  }
-  
+  background-color: #F1FFFC;
+  min-height: 100vh;
+  padding: 1.2rem;
+  margin: 0;
+  padding-bottom: 15rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+}
+
+.heading {
+  margin: 0;
+  margin-left: 1rem;
+  text-align: center;
+  display: flex;
+  align-items: center;
+}
+
+
+.heading span {
+  margin-left: 0.5rem;
+  color: #676767;
+  font-weight: 400;
+  font-size: 1.5rem;
+}
+
+.subHeading {
+  position: absolute;
+  right: 20px;
+}
+
+.cartList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin-bottom: 40px;
+  margin-top: 30px;
+}
+
+
+@media (min-width: 600px) {
   .cartList {
-    display: flex;
-    flex-direction: column;
+
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 1.2rem;
     margin-bottom: 40px;
-    margin-top: 30px;
+    margin-top: 40px;
   }
-  
-  
-  @media (min-width: 600px) {
-    .cartList {
-      
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.2rem;
-      margin-bottom: 40px;
-      margin-top: 40px;
-    }
-  }
-  
-  .cartItem {
-    color: black;
-    
-    display: flex;
-    align-items: center;
-    background-color: #ffffff;
-    border-radius: 10px;
-    padding: 10px;
-    box-shadow: 0 2px 4px 4px #b7fffb2c, 0 2px 1px 1px #a5e4ff18;
-    min-height: 110px;
-    border-radius: 1.2rem;
-  }
-  
-  .priceDetails {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 1.5rem;
-    gap: 1rem;
-  
-  }
-  
-  
-  .priceField {
-    min-width: 150px;
-    text-align: left;
-    font-size: 1.1rem;
-    display: flex;
-  }
-  .mopBox{
-    padding-left: 1.5rem;
-    align-items: flex-start;
-    padding: 1.5rem;
-  
-  }
-  .patch{
-    background-color: #fafa7d;
-  }
-  .priceDetailRow {
-    display: flex;
-  }
-  
-  .rupee {
-    font-size: 0.7rem;
-  }
-  
-  .productImage {
-    width: 100px;
-    height: auto;
-    object-fit: cover;
-    border-radius: 5px;
-    margin-right: 15px;
-  }
-  
-  .priceValue {
-    font-size: 1.1rem;
-    color: gray;
-  
-  }
-  
-  .productDetails {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
-  
-  .categoryName {
-    flex-grow: 1;
-    font-size: 0.9rem;
-    font-weight: 600;
-    line-height: 1rem;
-  }
-  
-  .productName {
-    flex-grow: 1;
-    font-size: 0.8rem;
-    color: gray;
-  }
+}
 
-  .leftSection{
-    display: flex;
-    gap: 1.5rem;
-    align-items: center;
+.cartItem {
+  color: black;
 
-  }
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 2px 4px 4px #b7fffb2c, 0 2px 1px 1px #a5e4ff18;
+  min-height: 110px;
+  border-radius: 1.2rem;
+}
 
-  .borderRt{
-    border-right: 1px solid gray;
-    padding-right: 1rem;
+.priceDetails {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1.5rem;
+  gap: 1rem;
 
-  }
+}
 
-  .paymentText{
-    font-weight: 500;
-    font-size: 0.9rem;
-    line-height: 0.9rem;
-  }
 
-  .amount{
-    margin-left: 0.5rem;
-    font-weight: 400;
-    font-size: 0.8rem;
-  }
-  
-  .footer {
-    margin-top: 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100vw;
-    padding: 1rem;
-    background-color: #EEFEFC;
-    box-shadow: 0px -5px 5px 3px rgba(0, 0, 0, 0.1);
-    transition: height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
+.priceField {
+  min-width: 150px;
+  text-align: left;
+  font-size: 1.1rem;
+  display: flex;
+}
 
-  .partialCosts{
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-  }
-  
-  .totalCost {
-    font-size: 20px;
-    font-weight: bold;
-    display: flex;
-    flex-direction: column;
-    /* gap: 1.5rem; */
-  }
-  
-  .checkoutButton {
-    padding: 10px 20px;
-    font-size: 16px;
-  }
+.mopBox {
+  padding-left: 1.5rem;
+  align-items: flex-start;
+  padding: 1.5rem;
 
-  .originalTotal{
-    text-decoration: line-through;
-    color: gray;
-    font-size: 0.8rem;
-    margin-left: 0.4rem;
-  }
+}
+
+.patch {
+  background-color: #fafa7d;
+}
+
+.priceDetailRow {
+  display: flex;
+}
+
+.rupee {
+  font-size: 0.7rem;
+}
+
+.productImage {
+  width: 100px;
+  height: auto;
+  object-fit: cover;
+  border-radius: 5px;
+  margin-right: 15px;
+}
+
+.priceValue {
+  font-size: 1.1rem;
+  color: gray;
+
+}
+
+.productDetails {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.categoryName {
+  flex-grow: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1rem;
+}
+
+.productName {
+  flex-grow: 1;
+  font-size: 0.8rem;
+  color: gray;
+}
+
+.leftSection {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+
+.paymentSplitMainDiv {
+  display: flex;
+  flex-direction: column;
+  gap: 0rem;
+}
+
+
+.paymentSplit {
+  display: flex;
+  align-items: center;
+}
+
+.paymentText {
+  font-weight: 500;
+  font-size: 0.8rem;
+  line-height: 0.9rem;
+}
+
+.amount {
+  margin-left: 0.1rem;
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: gray;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  padding: 1rem;
+  background-color: #EEFEFC;
+  box-shadow: 0px -5px 5px 3px rgba(0, 0, 0, 0.1);
+  transition: height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.partialCosts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.totalCost {
+  font-size: 1.1rem;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  /* gap: 1.5rem; */
+}
+
+
+.checkoutButton {
+  padding: 10px 20px;
+  font-size: 16px;
+}
+
+.originalTotal {
+  text-decoration: line-through;
+  color: gray;
+  font-size: 0.8rem;
+  margin-left: 0.4rem;
+}
+
+
+@media (width > 600px) {
+
+.leftSection{
+  gap: 2.5rem;
+}
+.originalTotal{
+  color: gray;
+}
+}

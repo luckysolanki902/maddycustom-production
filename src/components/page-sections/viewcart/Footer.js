@@ -2,10 +2,9 @@
 
 import React from 'react';
 import { useTransition, animated } from '@react-spring/web';
-import { Typography } from '@mui/material';
+import { Typography, Divider } from '@mui/material';
 import BlackButton from '@/components/utils/BlackButton';
 import styles from './styles/viewcart.module.css';
-
 const Footer = ({ totalCost, originalTotal, onCheckout, onlineAmount, codAmount }) => {
   const showSplit = codAmount > 0 && onlineAmount > 0;
 
@@ -18,22 +17,19 @@ const Footer = ({ totalCost, originalTotal, onCheckout, onlineAmount, codAmount 
 
   return (
     <footer className={styles.footer}>
-      <div       className={`
-            ${styles.leftSection} 
-            ${showSplit ? styles.borderRt : ''}
-          `}>
-        {/* Animated Split Payment Section */}
+      <div className={`${styles.leftSection} ${showSplit ? styles.borderRt : ''}  `}>
+
         {transitions((style, item) =>
           item ? (
             <animated.div style={style} className={styles.paymentSplitMainDiv}>
               <div className={styles.paymentSplit}>
-                <Typography variant="body1" className={styles.paymentText}>
+                <Typography variant="body1" className={styles.paymentText} sx={{fontSize:'0.9rem'}}>
                   Online <br /> Payment <span className={styles.amount}>₹{onlineAmount}</span>
                 </Typography>
               </div>
-              <hr />
+              <hr style={{height:'2px', width:'100%'}}/>
               <div className={styles.paymentSplit}>
-                <Typography variant="body1" className={styles.paymentText}>
+                <Typography variant="body1" className={styles.paymentText} sx={{fontSize:'0.9rem'}}>
                   Pay on <br /> Delivery <span className={styles.amount}>₹{codAmount}</span>
                 </Typography>
               </div>
@@ -48,8 +44,8 @@ const Footer = ({ totalCost, originalTotal, onCheckout, onlineAmount, codAmount 
           
           `}
         >
-          <Typography variant="h6" className={styles.totalCostLabel}>
-            Total Cost
+          <Typography variant="h6" className={styles.totalCostLabel} sx={{fontSize: { xs: '1.2rem', sm: '1.5rem' }}}>
+            Total
           </Typography>
           <Typography variant="body1" className={styles.totalCostValue}>
             <span className={styles.rupee}>₹</span>{totalCost}
@@ -59,6 +55,8 @@ const Footer = ({ totalCost, originalTotal, onCheckout, onlineAmount, codAmount 
           </Typography>
         </div>
       </div>
+
+      <Divider orientation="vertical" flexItem  />
 
       {/* Right Section: Total Cost and Checkout Button */}
       <div className={styles.rightSection}>
