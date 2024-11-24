@@ -1,4 +1,5 @@
 // @/components/full-page-comps/ViewCart.js
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -118,6 +119,16 @@ const ViewCart = () => {
   // Original Total (for display when coupon applied)
   const originalTotal = totalCostBeforeDiscount + deliveryCost + extraCharge;
 
+  // Calculate Payment Splits based on selected payment mode
+  const onlinePercentage = selectedPaymentMode?.configuration?.onlinePercentage;
+  const codPercentage = selectedPaymentMode?.configuration?.codPercentage;
+
+  const onlineAmount = Math.floor((totalCostAfterDiscount * onlinePercentage) / 100);
+  const codAmount = Math.ceil((totalCostAfterDiscount * codPercentage) / 100);
+
+  useEffect(() => {
+    console.log({onlineAmount, codAmount, selectedPaymentMode});
+  }, [selectedPaymentMode, onlineAmount, codAmount]);
   // Handle removing a cart item
   const handleRemoveItem = (productId) => {
     dispatch(removeItem({ productId }));
@@ -135,8 +146,6 @@ const ViewCart = () => {
       }
     }
   }, [isOrderFormOpen, router]);
-
-
 
   // Handle Checkout button click
   const handleCheckout = () => {
@@ -223,6 +232,8 @@ const ViewCart = () => {
           totalCost={totalCostWithDelivery}
           originalTotal={couponState.couponApplied ? originalTotal : null}
           onCheckout={handleCheckout}
+          onlineAmount={onlineAmount}
+          codAmount={codAmount}
         />
       )}
 
@@ -243,6 +254,7 @@ const ViewCart = () => {
         couponCode={couponState.couponApplied ? couponState.couponName : null}
         totalCost={totalCostWithDelivery}
       />
+
 
       {/* Custom Snackbar for Feedback */}
       <CustomSnackbar

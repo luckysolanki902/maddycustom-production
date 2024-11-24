@@ -132,6 +132,31 @@
     font-size: 0.8rem;
     color: gray;
   }
+
+  .leftSection{
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+
+  }
+
+  .borderRt{
+    border-right: 1px solid gray;
+    padding-right: 1rem;
+
+  }
+
+  .paymentText{
+    font-weight: 500;
+    font-size: 0.9rem;
+    line-height: 0.9rem;
+  }
+
+  .amount{
+    margin-left: 0.5rem;
+    font-weight: 400;
+    font-size: 0.8rem;
+  }
   
   .footer {
     margin-top: 30px;
@@ -145,6 +170,13 @@
     padding: 1rem;
     background-color: #EEFEFC;
     box-shadow: 0px -5px 5px 3px rgba(0, 0, 0, 0.1);
+    transition: height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .partialCosts{
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
   }
   
   .totalCost {
@@ -152,6 +184,7 @@
     font-weight: bold;
     display: flex;
     flex-direction: column;
+    /* gap: 1.5rem; */
   }
   
   .checkoutButton {
