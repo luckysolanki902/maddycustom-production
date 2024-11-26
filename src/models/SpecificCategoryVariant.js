@@ -24,11 +24,11 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       maxlength: 100,
       trim: true,
     },
-    title:{
-      type:String,
-      required:true,
-      maxlength:200,
-      trim:true
+    title: {
+      type: String,
+      required: true,
+      maxlength: 200,
+      trim: true
     },
     subtitles: [
       {
@@ -145,37 +145,25 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       type: String,
       maxlength: 500,
     },
-    dimensions: {
-      length: {
-        type: Number,
-        default: 8,
+    packagingDetails: {
+      boxId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'PackagingBox',
+        // required: true,
+        index: true,
       },
-      breadth: {
+      productWeight: {
         type: Number,
-        default: 8,
+        // required: true,
       },
-      height: {
-        type: Number,
-        default: 39,
-      },
-      weight: {
-        type: Number,
-        default: 0.08,
-      },
-      boxWeight:{
-        type: Number,
-        default:0.3
-      },
-      boxCapacity:{
-        type: Number,
-        default:4
-      },
-    },
+    }
   },
   { timestamps: true }
 );
 
+if(mongoose.models.SpecificCategoryVariant) {
+  delete mongoose.models.SpecificCategoryVariant;
+}
 
 
-
-module.exports = mongoose.models.SpecificCategoryVariant ||  mongoose.model('SpecificCategoryVariant', SpecificCategoryVariantSchema);
+module.exports = mongoose.models.SpecificCategoryVariant || mongoose.model('SpecificCategoryVariant', SpecificCategoryVariantSchema);
