@@ -161,9 +161,6 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-if(mongoose.models.SpecificCategoryVariant) {
-  delete mongoose.models.SpecificCategoryVariant;
-}
 
 
 module.exports = mongoose.models.SpecificCategoryVariant || mongoose.model('SpecificCategoryVariant', SpecificCategoryVariantSchema);
