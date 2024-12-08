@@ -26,6 +26,7 @@ export default function ProductIdPage({ product, variant, category, description 
   }, [product, email, phoneNumber]);
 
   return (
+    <>
     <div className={styles.container}>
       <ZoomableImage
         src={`${imageBaseUrl}${product?.images[0]}`}
@@ -45,7 +46,7 @@ export default function ProductIdPage({ product, variant, category, description 
             <p
               style={{ display: 'inline', cursor: 'pointer', color: 'black' }}
               onClick={() => setViewFullDescription(!viewFullDescription)}
-            >
+              >
               {viewFullDescription ? ' view less' : '...view more'}
             </p>
           </div>
@@ -65,7 +66,8 @@ export default function ProductIdPage({ product, variant, category, description 
         </div>
       )}
       {!isZoomed && <HappyCustomersClient parentSpecificCategoryId={category._id} />}
-      {!isZoomed && <ContactUs />}
     </div>
+      {!isZoomed && <ContactUs />}
+      </>
   );
 }
