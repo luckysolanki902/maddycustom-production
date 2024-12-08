@@ -52,7 +52,6 @@ export default async function ShopPage({ params }) {
           initialPage={data.currentPage}
           totalPages={data.totalPages}
         />
-        <ContactUs />
       </>
     );
   } else if (data.type === 'product') {
