@@ -1,3 +1,5 @@
+// @/components/OrderForm.js
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -37,14 +39,15 @@ import { getPaymentButtonText } from '../../lib/utils/orderFormUtils';
 import { styled } from '@mui/material/styles';
 import theme from '@/styles/theme';
 import { ThemeProvider } from '@mui/material';
-import { purchase } from '@/lib/metadata/faceboookPixels';
+import { purchase } from '@/lib/metadata/facebookPixels';
+
 
 const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) => {
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
   const orderForm = useSelector((state) => state.orderForm);
-  const utmDetails = useSelector((state) => state.utm)
+  const utmDetails = useSelector((state) => state.utm);
   const { userDetails, addressDetails, userExists, prefilledAddress, discountAmount } = orderForm;
 
   // Local Tab Index State
@@ -76,10 +79,14 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
     },
   });
 
+  // Prevent multiple submissions by tracking if purchase has been initiated
+  const [purchaseInitiated, setPurchaseInitiated] = useState(false);
+
   // Reset tabIndex to 0 when dialog opens
   useEffect(() => {
     if (open) {
       setTabIndex(0);
+      setPurchaseInitiated(false); // Reset purchase initiation flag
     }
   }, [open]);
 
@@ -208,6 +215,11 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
   };
 
   const onSubmitAddressDetails = async (data) => {
+    if (purchaseInitiated) {
+      // Prevent multiple submissions
+      return;
+    }
+    setPurchaseInitiated(true);
     setIsLoading(true);
     setIsPaymentProcessing(true);
     try {
@@ -228,8 +240,8 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
 
       // Handle API response
       if (addAddressResponse.data.message === 'Address already exists.') {
+        // Address already exists, proceed
       } else if (addAddressResponse.data.message === 'Address added successfully.') {
-
         // Update Redux store with the latest address details from API response
         dispatch(setAddressDetails(addAddressResponse.data.latestAddress));
       }
@@ -271,7 +283,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
           ]
           : [],
         couponCode: couponCode || null,
-        utmDetails: utmDetails.utmDetails || null, 
+        utmDetails: utmDetails.utmDetails || null,
       });
 
       const { orderId, message, paymentDetails } = orderResponse.data;
@@ -297,7 +309,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
           });
 
           if (paymentResult) {
-            // Track Purchase Event
+            // Track Purchase Event with orderId as eventID for idempotency
             showSnackbar('Payment Successful!', 'success');
             await purchase({
               orderId: orderId,
@@ -324,6 +336,20 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
           `Please pay ₹${paymentDetails.amountDueCod} via COD upon delivery.`,
           'info'
         );
+        // Track Purchase Event for COD orders
+        await purchase({
+          orderId: orderId,
+          totalAmount: paymentDetails.amountPaidCod,
+          items: cartItems.map((item) => ({
+            product: item.productId,
+            name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+              ? item.productDetails.category?.name.slice(0, -1)
+              : item.productDetails.category?.name
+              }`,
+            quantity: item.quantity,
+            priceAtPurchase: item.priceAtPurchase,
+          })),
+        });
       }
 
       dispatch(clearUTMDetails());
@@ -337,6 +363,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
       const errorMessage =
         error.response?.data?.message || 'An error occurred while processing your order.';
       showSnackbar(errorMessage, 'error');
+      setPurchaseInitiated(false); // Reset purchase initiation flag on error
     } finally {
       setIsLoading(false);
       setIsPaymentProcessing(false);
@@ -386,7 +413,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
       >
         <DialogContent>
           <Tabs
-
             value={tabIndex}
             onChange={handleTabChange}
             variant="fullWidth"
@@ -443,7 +469,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                       sx={{
                         '& .MuiInputBase-root': {
                           fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
-
                         },
                         margin: {
                           xs: '0px 0', // Less margin for mobile view
@@ -488,7 +513,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                       sx={{
                         '& .MuiInputBase-root': {
                           fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
-
                         },
                         margin: {
                           xs: '0px 0', // Less margin for mobile view
@@ -505,7 +529,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                     isLoading={isLoading}
                     buttonText="Next"
                     onClick={handleSubmit(onSubmitUserDetails)}
-                    disabled={isPaymentProcessing}
+                    disabled={isPaymentProcessing || isLoading}
                   />
                 </Box>
               </Box>
@@ -547,7 +571,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                       sx={{
                         '& .MuiInputBase-root': {
                           fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
-
                         },
                         margin: {
                           xs: '0px 0', // Less margin for mobile view
@@ -559,6 +582,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                     />
                   )}
                 />
+                {/* Uncomment if Address Line 2 is needed */}
                 {/* <Controller
                   name="addressLine2"
                   control={control}
@@ -575,21 +599,20 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                         dispatch(setAddressDetails({ addressLine2: e.target.value }));
                       }}
                       InputLabelProps={{
-                      style: {
-                        fontSize: '0.75rem',  // Adjust the size of the label
-                        color: '#9e9e9e',     // Set the label color to grey
-                      },
-                    }}
-                    sx={{
-                      '& .MuiInputBase-root': {
-                        fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
-                      
-                      },
-                      margin: {
-                      xs: '0px 0', // Less margin for mobile view
-                      sm: 'normal', // Default margin for larger screens
-                    },
-                    }}
+                        style: {
+                          fontSize: '0.75rem',  // Adjust the size of the label
+                          color: '#9e9e9e',     // Set the label color to grey
+                        },
+                      }}
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                        },
+                        margin: {
+                          xs: '0px 0', // Less margin for mobile view
+                          sm: 'normal', // Default margin for larger screens
+                        },
+                      }}
                     />
                   )}
                 /> */}
@@ -620,7 +643,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                       sx={{
                         '& .MuiInputBase-root': {
                           fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
-
                         },
                         margin: {
                           xs: '0px 0', // Less margin for mobile view
@@ -664,7 +686,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                           sx={{
                             '& .MuiInputBase-root': {
                               fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
-
                             },
                             margin: {
                               xs: '0px 0', // Less margin for mobile view
@@ -672,13 +693,11 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                             }, '& .MuiInputLabel-root': {
                               lineHeight: '2', // Further fine-tune the label spacing
                             },
-
                           }}
                         />
                       )}
                     />
                   )}
-
                 />
                 <Controller
                   name="pincode"
@@ -713,7 +732,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                       sx={{
                         '& .MuiInputBase-root': {
                           fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
-
                         },
                         margin: {
                           xs: '0px 0', // Less margin for mobile view
@@ -750,7 +768,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                       sx={{
                         '& .MuiInputBase-root': {
                           fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
-
                         },
                         margin: {
                           xs: '0px 0', // Less margin for mobile view
@@ -762,12 +779,12 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                     />
                   )}
                 />
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5, }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
                   <BlackButton
                     isLoading={isLoading}
                     buttonText={getPaymentButtonText(paymentModeConfig)} // Use utility function
                     type="submit"
-                    disabled={isPaymentProcessing}
+                    disabled={isPaymentProcessing || isLoading || purchaseInitiated} // Disable if purchase is initiated
                   />
                 </Box>
               </Box>

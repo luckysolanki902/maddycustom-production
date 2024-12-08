@@ -3,7 +3,7 @@ import React from 'react';
 import styles from './styles/contact.module.css';
 import Image from 'next/image';
 import Link from 'next/link';
-import { contactFbq } from '@/lib/metadata/faceboookPixels';
+import { contactFbq } from '@/lib/metadata/facebookPixels';
 
 const ContactUs = () => {
     // const handleContact = async () => {
