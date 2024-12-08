@@ -19,6 +19,7 @@ import axios from 'axios';
 import indianStates from '../../lib/constants/indianStates';
 import { useSelector, useDispatch } from 'react-redux';
 import { clearCart } from '../../store/slices/cartSlice';
+import { clearUTMDetails } from '@/store/slices/utmSlice';
 import {
   resetOrderForm,
   setUserDetails,
@@ -43,7 +44,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
   const orderForm = useSelector((state) => state.orderForm);
-
+  const utmDetails = useSelector((state) => state.utm)
   const { userDetails, addressDetails, userExists, prefilledAddress, discountAmount } = orderForm;
 
   // Local Tab Index State
@@ -227,12 +228,10 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
 
       // Handle API response
       if (addAddressResponse.data.message === 'Address already exists.') {
-        console.log('This address already exists.', 'info')
       } else if (addAddressResponse.data.message === 'Address added successfully.') {
 
         // Update Redux store with the latest address details from API response
         dispatch(setAddressDetails(addAddressResponse.data.latestAddress));
-        console.log('Address added successfully.', 'success')
       }
 
       // Proceed with order creation only if address was added or already exists
@@ -272,6 +271,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
           ]
           : [],
         couponCode: couponCode || null,
+        utmDetails: utmDetails.utmDetails || null, 
       });
 
       const { orderId, message, paymentDetails } = orderResponse.data;
@@ -326,6 +326,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
         );
       }
 
+      dispatch(clearUTMDetails());
       dispatch(clearCart());
       dispatch(resetOrderForm());
       reset();

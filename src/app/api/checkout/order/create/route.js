@@ -1,3 +1,5 @@
+// app/api/checkout/order/create/route.js
+
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
@@ -18,8 +20,8 @@ export async function POST(request) {
       totalAmount,
       discountAmount,
       extraCharges,
+      utmDetails,
     } = await request.json();
-
     // Validate input
     if ((!userId && !phoneNumber) || !items || !paymentModeId || !address || totalAmount == null) {
       return NextResponse.json(
@@ -80,12 +82,7 @@ export async function POST(request) {
         );
       }
 
-      if (coupon.usageCount >= coupon.usagePerUser) {
-        return NextResponse.json(
-          { message: 'Coupon usage limit reached' },
-          { status: 400 }
-        );
-      }
+      // Will check for usage limit in future
     }
 
     // Calculate payment splits based on payment mode configuration
@@ -135,9 +132,9 @@ export async function POST(request) {
       extraCharges: extraCharges || [],
       couponApplied: coupon
         ? {
-            couponCode: coupon.code,
-            discountAmount: discountAmount,
-          }
+          couponCode: coupon.code,
+          discountAmount: discountAmount,
+        }
         : null,
       paymentDetails: {
         mode: paymentModeId,
@@ -159,6 +156,7 @@ export async function POST(request) {
       },
       paymentStatus: paymentStatus,
       deliveryStatus: 'pending',
+      utmDetails: utmDetails,
     });
 
     await newOrder.save();

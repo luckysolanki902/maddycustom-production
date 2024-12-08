@@ -14,6 +14,7 @@ import ChangeVariantButton from '../page-sections/products-page/ChangeVariantBut
 import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
 import debounce from 'lodash.debounce';
 import { PaginationStyles } from '@/styles/PaginationStyles';
+import ContactUs from '../layouts/ContactUs';
 
 export default function ProductsPage({ slug, variant, products, category, initialPage, totalPages }) {
   // Constants
@@ -191,6 +192,7 @@ export default function ProductsPage({ slug, variant, products, category, initia
 
       </PaginationStyles>
       <ScrollToTop />
+      <ContactUs />
     </div>
   );
 }

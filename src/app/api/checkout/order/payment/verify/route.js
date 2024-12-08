@@ -71,8 +71,6 @@ export async function POST(request) {
     }
 
     await order.save();
-    console.log(`Order ID: ${orderId} payment verified and updated via API.`);
-
     return NextResponse.json({ message: 'Payment verified successfully.' }, { status: 200 });
   } catch (error) {
     console.error('Error in payment verification API:', error);

@@ -1,5 +1,6 @@
 // models/Order.js
 
+const { default: index } = require('@/app/termsandconditions/page');
 const mongoose = require('mongoose');
 
 
@@ -22,7 +23,7 @@ const OrderSchema = new mongoose.Schema(
           required: true,
           index: true,
         },
-        name:{
+        name: {
           type: String,
           required: true
         },
@@ -177,7 +178,34 @@ const OrderSchema = new mongoose.Schema(
       default: 'pending',
       index: true, // Index for efficient querying
     },
+
+    // Utm details
+      utmDetails: {
+        source: {
+          type: String,
+          default: 'direct',
+          maxlength: 100,
+          index: true,
+        },
+        medium: {
+          type: String,
+          maxlength: 100,
+        },
+        campaign: {
+          type: String,
+          maxlength: 100,
+        },
+        term: {
+          type: String,
+          maxlength: 100,
+        },
+        content: {
+          type: String,
+          maxlength: 100,
+        },
+      },
   },
+
   { timestamps: true }
 );
 

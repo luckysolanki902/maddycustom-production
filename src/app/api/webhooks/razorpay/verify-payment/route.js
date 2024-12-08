@@ -23,15 +23,14 @@ export const config = {
  * Ensures idempotency by checking paymentStatus and deliveryStatus.
  */
 export async function POST(request) {
+  // if(process.env.IS_TESTING === 'true') return NextResponse.json({ message: 'Webhook request received.' }, { status: 200 });
   const session = await mongoose.startSession(); // Start a MongoDB session
   session.startTransaction(); // Start a transaction
   try {
     const requestReceivedTime = new Date();
-    console.log(`[${requestReceivedTime.toISOString()}] Received webhook request.`);
 
     // Retrieve the raw body for signature verification
     const rawBody = await request.text();
-    console.log(`[${requestReceivedTime.toISOString()}] Raw Body: ${rawBody}`);
 
     // Retrieve the webhook secret from environment variables
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -83,7 +82,6 @@ export async function POST(request) {
     let event;
     try {
       event = JSON.parse(rawBody);
-      console.log(`[${requestReceivedTime.toISOString()}] Parsed Event: ${JSON.stringify(event)}`);
     } catch (parseError) {
       console.error('Invalid JSON payload.', parseError);
       return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
@@ -143,7 +141,6 @@ export async function POST(request) {
         // Update payment details based on the event type
         if (event.event === 'payment.captured') {
           const paymentAmount = payment.amount / 100; // Convert paise to INR
-          console.log(`[${requestReceivedTime.toISOString()}] Processing payment.captured for Order ID: ${internalOrderId}, Payment ID: ${paymentId}, Amount: ${paymentAmount}`);
 
           // Atomic update to prevent race conditions
           const updatedOrder = await Order.findOneAndUpdate(
@@ -185,13 +182,11 @@ export async function POST(request) {
           }
 
           await updatedOrder.save({ session });
-          console.log(`[${requestReceivedTime.toISOString()}] Order payment status updated to '${updatedOrder.paymentStatus}' for Order ID: ${internalOrderId}`);
         } else if (event.event === 'payment.failed') {
           await Order.findByIdAndUpdate(internalOrderId, {
             'paymentDetails.razorpayDetails.paymentId': paymentId,
             paymentStatus: 'failed',
           }, { session }).exec();
-          console.log(`[${requestReceivedTime.toISOString()}] Payment failed for Order ID: ${internalOrderId}`);
 
           await session.commitTransaction(); // Commit transaction
           session.endSession();
@@ -224,7 +219,6 @@ export async function POST(request) {
       latestOrder.deliveryStatus === 'pending' &&
       !latestOrder.shiprocketOrderId
     ) {
-      console.log(`[${requestReceivedTime.toISOString()}] Initiating Shiprocket order creation for Order ID: ${internalOrderId}`);
 
       // Populate the order with product and variant details
       await latestOrder.populate({
@@ -239,7 +233,6 @@ export async function POST(request) {
       try {
         // Pass populated items to the getDimensionsAndWeight function
         dimensionsAndWeight = await getDimensionsAndWeight(latestOrder.items);
-        console.log(`[${requestReceivedTime.toISOString()}] Calculated Dimensions and Weight: ${JSON.stringify(dimensionsAndWeight)}`);
       } catch (dimError) {
         console.error(`[${requestReceivedTime.toISOString()}] Dimension and Weight Calculation Error: ${dimError.message}`);
         await session.abortTransaction(); // Abort transaction
@@ -277,12 +270,10 @@ export async function POST(request) {
         weight: weight,
       };
 
-      console.log(`[${requestReceivedTime.toISOString()}] Shiprocket Order Data: ${JSON.stringify(shiprocketOrderData, null, 2)}`);
 
       try {
         // Create the Shiprocket order
         const response = await createShiprocketOrder(shiprocketOrderData);
-        console.log(`[${requestReceivedTime.toISOString()}] Shiprocket API Response: ${JSON.stringify(response)}`);
 
         // Check if Shiprocket order creation was successful
         if (response.status_code === 1 && !response.packaging_box_error) {
@@ -290,7 +281,6 @@ export async function POST(request) {
             shiprocketOrderId: response.order_id,
             deliveryStatus: 'orderCreated',
           }, { session }).exec();
-          console.log(`[${requestReceivedTime.toISOString()}] Shiprocket order created successfully with Order ID: ${response.order_id}`);
         } else {
           console.error(`[${requestReceivedTime.toISOString()}] Failed to create Shiprocket order: ${JSON.stringify(response)}`);
           // Optionally, implement a retry mechanism or mark the order for manual review
@@ -306,7 +296,6 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Error in Shiprocket order creation.' }, { status: 500 });
       }
     } else {
-      console.log(`[${requestReceivedTime.toISOString()}] No Shiprocket order creation needed for Order ID: ${internalOrderId}`);
     }
 
     await session.commitTransaction(); // Commit transaction
