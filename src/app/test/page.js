@@ -15,7 +15,6 @@ const TestPage = () => {
         }
         const data = await response.json();
         setDimensions(data.dimensionsAndWeight);
-        console.log("Order Data:", data.order); // Debug: populated order
       } catch (err) {
         setError(err.message);
         console.error(err);

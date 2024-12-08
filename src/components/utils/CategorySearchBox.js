@@ -148,9 +148,7 @@ const CategorySearchBox = ({ categories, variants }) => { // Receive categories 
             const category = categories.find(c => c.name.toLowerCase() === suggestion.toLowerCase());
             if (category) {
                 const firstVariant = variants.find(v => String(v.specificCategory) === String(category.id));
-                // console.log({firstVariant})
                 if (firstVariant && firstVariant.pageSlug) {
-                    //  console.log({firstVariant})
                     router.push(`/shop/${firstVariant.pageSlug}`);
                 } else {
                     console.warn('No variant found for category:', category.name);

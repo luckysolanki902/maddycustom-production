@@ -8,6 +8,7 @@ import PriceAndChat from '../page-sections/product-id-page/PriceAndChat';
 import AddToCartButton from '../utils/AddToCartButton';
 import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
 import { viewContent } from '@/lib/metadata/faceboookPixels';
+import ContactUs from '../layouts/ContactUs';
 
 export default function ProductIdPage({ product, variant, category, description }) {
   const [viewFullDescription, setViewFullDescription] = useState(false);
@@ -64,6 +65,7 @@ export default function ProductIdPage({ product, variant, category, description 
         </div>
       )}
       {!isZoomed && <HappyCustomersClient parentSpecificCategoryId={category._id} />}
+      {!isZoomed && <ContactUs />}
     </div>
   );
 }

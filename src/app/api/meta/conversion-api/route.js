@@ -71,7 +71,6 @@ export async function POST(request) {
     }
 
     // Log received event data
-    console.log(`Received event: ${eventName}`);
 
     // Hash user data if present
     const hashedEmails = options.emails
@@ -126,7 +125,6 @@ export async function POST(request) {
           stack: error.stack,
         });
         if (attempt < MAX_RETRIES) {
-          console.log(`Retrying in ${RETRY_DELAY * attempt}ms...`);
           await delay(RETRY_DELAY * attempt);
         } else {
           throw error; // Rethrow error after max retries

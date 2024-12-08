@@ -98,7 +98,6 @@ export const purchase = async (order, userData = {}) => {
         item_price: item.priceAtPurchase,
       })),
     });
-    console.log('Purchase event sent successfully.');
   } catch (error) {
     console.error('Error in purchase function:', error);
   }
@@ -116,7 +115,6 @@ export const viewContent = async (product, userData = {}) => {
         item_price: product.price || 0,
       }],
     });
-    console.log('ViewContent event sent successfully.');
   } catch (error) {
     console.error('Error in viewContent function:', error);
   }

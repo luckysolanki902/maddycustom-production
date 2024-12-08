@@ -127,7 +127,6 @@ const ViewCart = () => {
   const codAmount = Math.ceil((totalCostAfterDiscount * codPercentage) / 100);
 
   useEffect(() => {
-    console.log({onlineAmount, codAmount, selectedPaymentMode});
   }, [selectedPaymentMode, onlineAmount, codAmount]);
   // Handle removing a cart item
   const handleRemoveItem = (productId) => {
