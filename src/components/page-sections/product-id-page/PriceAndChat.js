@@ -1,5 +1,5 @@
 "use client"
-// import { contactFbq } from '@/lib/metadata/faceboookPixels';
+// import { contactFbq } from '@/lib/metadata/facebookPixels';
 import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'

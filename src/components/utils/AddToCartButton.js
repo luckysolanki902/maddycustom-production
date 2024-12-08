@@ -13,7 +13,7 @@ import {
   decrementQuantity,
   removeItem,
 } from '../../store/slices/cartSlice';
-import { addToCart as trackAddToCart } from '@/lib/metadata/faceboookPixels';
+import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
 
 export default function AddToCartButton({ product, isBlackButton = false, isLarge = false }) {
   const dispatch = useDispatch();

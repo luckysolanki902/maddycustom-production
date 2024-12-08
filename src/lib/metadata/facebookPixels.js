@@ -30,12 +30,12 @@ const sendToServer = async (eventName, options) => {
 
 const trackEvent = async (name, formData = {}, otherOptions = {}) => {
   try {
-    const eventId = uuidv4();
+    const eventId = otherOptions.eventID || uuidv4(); // Allow passing eventID
     const eventTime = Math.floor(Date.now() / 1000);
     const client_ip_address = await getClientIp();
     const client_user_agent = navigator.userAgent;
     const eventParams = {
-      eventID: eventId,
+      eventID: eventId, // Use the provided eventID or generate a new one
       event_time: eventTime,
       event_name: name,
       action_source: 'website',
@@ -89,6 +89,7 @@ export const addToCart = async (product) => {
 export const purchase = async (order, userData = {}) => {
   try {
     await trackEvent('Purchase', userData, {
+      eventID: order.orderId, // Use orderId as eventID for idempotency
       value: order.totalAmount,
       currency: 'INR',
       orderId: order.orderId,

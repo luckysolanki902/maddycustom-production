@@ -7,7 +7,7 @@ import OrderSpecifications from '../page-sections/product-id-page/OrderSpecifica
 import PriceAndChat from '../page-sections/product-id-page/PriceAndChat';
 import AddToCartButton from '../utils/AddToCartButton';
 import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
-import { viewContent } from '@/lib/metadata/faceboookPixels';
+import { viewContent } from '@/lib/metadata/facebookPixels';
 import ContactUs from '../layouts/ContactUs';
 
 export default function ProductIdPage({ product, variant, category, description }) {
