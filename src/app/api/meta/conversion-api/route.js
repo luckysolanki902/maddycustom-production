@@ -133,7 +133,7 @@ export async function POST(request) {
     }
 
     // Log Facebook API Response
-    console.log('Event successfully tracked for event:', eventName, 'with options:', options, 'response:', response);
+    // console.log('Event successfully tracked for event:', eventName, 'with options:', options, 'response:', response);
     return NextResponse.json(
       { message: 'Event sent successfully', response },
       { status: 200 }
