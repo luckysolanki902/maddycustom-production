@@ -1,3 +1,5 @@
+// app/api/showcase/happy-customers/route.js
+
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import HappyCustomer from '@/models/HappyCustomer';
