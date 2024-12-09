@@ -135,15 +135,7 @@ const ViewCart = () => {
 
   // Updated handleBack function
   const handleBack = useCallback(() => {
-    if (isOrderFormOpen) {
-      setIsOrderFormOpen(false);
-    } else {
-      if (window.history.length > 2) {
-        router.back(); // Go back if there’s a history
-      } else {
-        router.push('/'); // Go to homepage if no history to go back to
-      }
-    }
+    router.back(); // Go back if there’s a history
   }, [isOrderFormOpen, router]);
 
   // Handle Checkout button click
