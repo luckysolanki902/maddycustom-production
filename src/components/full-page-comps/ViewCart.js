@@ -81,11 +81,6 @@ const ViewCart = () => {
         }
       } catch (error) {
         console.error('Error fetching payment modes:', error);
-        setSnackbar({
-          open: true,
-          message: 'An error occurred while fetching payment modes.',
-          severity: 'error',
-        });
       } finally {
         setIsLoadingPaymentModes(false);
       }
