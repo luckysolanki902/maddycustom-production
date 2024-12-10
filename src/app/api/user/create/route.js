@@ -1,3 +1,5 @@
+// app/api/user/create-user/route.js
+
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import User from '@/models/User';
@@ -9,6 +11,7 @@ export async function POST(request) {
 
     // Validate input
     if (!name || !phoneNumber) {
+      console.warn('Create User failed: Missing name or phoneNumber.');
       return NextResponse.json(
         { message: 'Name and phone number are required' },
         { status: 400 }
@@ -22,6 +25,7 @@ export async function POST(request) {
     const existingUser = await User.findOne({ phoneNumber });
 
     if (existingUser) {
+      console.warn(`Create User skipped: User already exists with phoneNumber=${phoneNumber}.`);
       return NextResponse.json(
         {
           message: 'User already exists',
@@ -41,6 +45,7 @@ export async function POST(request) {
 
     await newUser.save();
     // Return success response
+    console.info(`User created successfully with userId=${newUser._id}.`);
     return NextResponse.json(
       {
         message: 'User created successfully',
@@ -55,7 +60,7 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating user:', error);
+    console.error('Error creating user:', error.message);
     return NextResponse.json(
       { message: 'Internal Server Error' },
       { status: 500 }

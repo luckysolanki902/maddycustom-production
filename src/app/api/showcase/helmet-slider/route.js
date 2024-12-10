@@ -1,4 +1,4 @@
-// @/app/api/showcase/helmet-slider/route.js
+// app/api/showcase/helmet-slider/route.js
 
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
@@ -12,6 +12,11 @@ export async function GET() {
     // Find SpecificCategoryVariants with variantCode 'hel'
     const helmetVariants = await SpecificCategoryVariant.find({ variantCode: 'hel' });
 
+    if (!helmetVariants || helmetVariants.length === 0) {
+      console.warn("Helmet Slider: No variants found with variantCode 'hel'.");
+      return NextResponse.json({ message: "No helmet variants found." }, { status: 404 });
+    }
+
     // Get the IDs of these variants
     const helmetVariantIds = helmetVariants.map(variant => variant._id);
 
@@ -21,9 +26,14 @@ export async function GET() {
       { $sample: { size: 10 } }  // Randomly select 10 products
     ]);
 
-    return NextResponse.json(helmetProducts);
+    if (!helmetProducts || helmetProducts.length === 0) {
+      console.warn('Helmet Slider: No products found for the selected helmet variants.');
+    }
+
+    console.info('Helmet Slider products fetched successfully.');
+    return NextResponse.json(helmetProducts, { status: 200 });
   } catch (error) {
-    console.error("Error fetching helmet products:", error);
+    console.error("Error fetching helmet products:", error.message);
     return NextResponse.json({ message: "Error fetching helmet products" }, { status: 500 });
   }
 }

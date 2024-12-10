@@ -5,24 +5,37 @@
 import React from 'react';
 import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
+import { styled } from '@mui/material/styles';
+
+// Create a styled version of MuiAlert with a white background
+const WhiteAlert = styled(MuiAlert)(({ theme }) => ({
+  backgroundColor: 'white',
+  boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)',
+  color: 'black', // Set text color to black or any desired color
+  // Override the icon color if you want to customize or remove it
+  '& .MuiAlert-icon': {
+    color: 'black', // Set icon color to black or any desired color
+  },
+}));
+
+
 
 const CustomSnackbar = ({ open, message, severity, handleClose }) => {
-
   return (
     <Snackbar
       open={open}
-      autoHideDuration={1000}
+      autoHideDuration={3000} // Increased duration for better visibility
       onClose={handleClose}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
     >
-      <MuiAlert
+      <WhiteAlert
         onClose={handleClose}
-        severity={severity}
+        severity={severity} // You can still pass severity if you want to use different icons
         elevation={6}
-        variant="filled"
+        variant="filled" // Use 'filled' to maintain consistency
       >
         {message}
-      </MuiAlert>
+      </WhiteAlert>
     </Snackbar>
   );
 };
