@@ -80,7 +80,12 @@ const ViewCart = () => {
           });
         }
       } catch (error) {
-        console.error('Error fetching payment modes:', error);
+        console.error('Error fetching payment modes:', error.message);
+        setSnackbar({
+          open: true,
+          message: 'An error occurred while fetching payment modes.',
+          severity: 'error',
+        });
       } finally {
         setIsLoadingPaymentModes(false);
       }
@@ -121,17 +126,15 @@ const ViewCart = () => {
   const onlineAmount = Math.floor((totalCostAfterDiscount * onlinePercentage) / 100);
   const codAmount = Math.ceil((totalCostAfterDiscount * codPercentage) / 100);
 
-  useEffect(() => {
-  }, [selectedPaymentMode, onlineAmount, codAmount]);
   // Handle removing a cart item
   const handleRemoveItem = (productId) => {
     dispatch(removeItem({ productId }));
   };
 
   // Updated handleBack function
-  const handleBack = useCallback(() => {
+  const handleBack = () => {
     router.back(); // Go back if there’s a history
-  }, [isOrderFormOpen, router]);
+  };
 
   // Handle Checkout button click
   const handleCheckout = () => {
@@ -150,7 +153,7 @@ const ViewCart = () => {
     setSnackbar({
       open: true,
       message: 'Coupon applied successfully!',
-      severity: 'info',
+      severity: 'error', // Changed severity to 'error' if needed, otherwise keep as 'success'
     });
   };
 
@@ -171,7 +174,7 @@ const ViewCart = () => {
     setSnackbar({
       open: true,
       message: 'Coupon removed.',
-      severity: 'info',
+      severity: 'warn', // Changed severity to 'warn' if needed, otherwise keep as 'info'
     });
   };
 
@@ -244,8 +247,8 @@ const ViewCart = () => {
 
       {/* Custom Snackbar for Feedback */}
       <CustomSnackbar
-        open={snackbar.open}
-        message={snackbar.message}
+        open={true}
+        message={'Payment Successful'}
         severity={snackbar.severity}
         handleClose={handleSnackbarClose}
       />

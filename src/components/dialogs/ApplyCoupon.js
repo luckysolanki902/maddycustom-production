@@ -42,7 +42,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
                 });
             }
         } catch (error) {
-            console.error('Error fetching coupons:', error);
+            console.error('Error fetching coupons:', error.message);
             setSnackbar({
                 open: true,
                 message: 'An error occurred. Please try again.',
@@ -81,7 +81,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
                 });
             }
         } catch (error) {
-            console.error('Error applying coupon:', error);
+            console.error('Error applying coupon:', error.message);
             setSnackbar({
                 open: true,
                 message: 'An error occurred. Please try again.',
@@ -116,7 +116,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
                 });
             }
         } catch (error) {
-            console.error('Error applying coupon:', error);
+            console.error('Error applying coupon:', error.message);
             setSnackbar({
                 open: true,
                 message: 'An error occurred. Please try again.',

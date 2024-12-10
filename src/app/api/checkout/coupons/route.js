@@ -1,3 +1,5 @@
+// app/api/checkout/coupons/route.js
+
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Coupon from '@/models/Coupon';
 import { NextResponse } from 'next/server';
@@ -13,9 +15,9 @@ export async function GET() {
       validUntil: { $gte: currentDate },
     }).select('-__v -createdAt -updatedAt');
 
-    return NextResponse.json({ coupons });
+    return NextResponse.json({ coupons }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching coupons:', error);
+    console.error('Error fetching active coupons:', error.message);
     return NextResponse.json({ message: 'Server error. Please try again.' }, { status: 500 });
   }
 }

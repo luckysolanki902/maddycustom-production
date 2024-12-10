@@ -5,7 +5,6 @@ const SpecificCategoryVariant = require('@/models/SpecificCategoryVariant');
 const Product = require('@/models/Product');
 const PackagingBox = require('@/models/PackagingBox');
 
-
 /**
  * Function to get Shiprocket token
  */
@@ -78,82 +77,85 @@ export const getDimensionsAndWeight = async (items) => {
     return null;
   }).filter(id => id !== null);
 
-  // Fetch all variants with their packaging details using nested populate
-  const variants = await SpecificCategoryVariant.find({ _id: { $in: variantIds } })
-    .populate({
-      path: 'packagingDetails.boxId',
-      model: 'PackagingBox',
+  try {
+    // Fetch all variants with their packaging details using nested populate
+    const variants = await SpecificCategoryVariant.find({ _id: { $in: variantIds } })
+      .populate({
+        path: 'packagingDetails.boxId',
+        model: 'PackagingBox',
+      });
+
+    const variantMap = {};
+    variants.forEach(variant => {
+      const { boxId, productWeight } = variant.packagingDetails || {};
+      variantMap[variant._id.toString()] = {
+        box: boxId,
+        productWeight: productWeight || 0,
+      };
     });
 
-  const variantMap = {};
-  variants.forEach(variant => {
-    const { boxId, productWeight } = variant.packagingDetails || {};
-    variantMap[variant._id.toString()] = {
-      box: boxId,
-      productWeight: productWeight || 0,
+    const boxGroupMap = {};
+
+    for (const item of items) {
+      const variantId = item.product.specificCategoryVariant._id.toString();
+      const variantData = variantMap[variantId];
+
+      if (!variantData) {
+        throw new Error(`Variant with ID ${variantId} not found.`);
+      }
+
+      const { box, productWeight } = variantData;
+
+      if (!box) {
+        throw new Error(`Box details missing for variant ID ${variantId}.`);
+      }
+
+      // Group by box ID
+      if (!boxGroupMap[box._id]) {
+        boxGroupMap[box._id] = {
+          box,
+          totalQuantity: 0,
+          totalWeight: 0,
+        };
+      }
+
+      // Accumulate quantities and weights for this box group
+      boxGroupMap[box._id].totalQuantity += item.quantity;
+      boxGroupMap[box._id].totalWeight += productWeight * item.quantity;
+    }
+
+    let totalWrapWeight = 0;
+    let totalBoxWeight = 0;
+    let totalLength = 0;
+    let totalBreadth = 0;
+    let totalHeight = 0;
+
+    Object.values(boxGroupMap).forEach(({ box, totalQuantity, totalWeight }) => {
+      const numberOfBoxes = Math.ceil(totalQuantity / box.capacity);
+
+      // Calculate total box weight
+      totalBoxWeight += box.weight * numberOfBoxes;
+
+      // Accumulate dimensions (multiplied by the number of boxes)
+      totalLength += box.dimensions.length * numberOfBoxes;
+      totalBreadth += box.dimensions.breadth * numberOfBoxes;
+      totalHeight += box.dimensions.height * numberOfBoxes;
+
+      // Accumulate wrap weight (product weight)
+      totalWrapWeight += totalWeight;
+    });
+
+    // Total weight is the sum of wrap weight and box weight
+    const totalWeight = totalWrapWeight + totalBoxWeight;
+
+    return {
+      length: totalLength,
+      breadth: totalBreadth,
+      height: totalHeight,
+      weight: totalWeight,
     };
-  });
-
-  const boxGroupMap = {};
-
-  for (const item of items) {
-    const variantId = item.product.specificCategoryVariant._id.toString();
-    const variantData = variantMap[variantId];
-
-    if (!variantData) {
-      throw new Error(`Variant with ID ${variantId} not found.`);
-    }
-
-    const { box, productWeight } = variantData;
-
-    if (!box) {
-      throw new Error(`Box details missing for variant ID ${variantId}.`);
-    }
-
-    // Group by box ID
-    if (!boxGroupMap[box._id]) {
-      boxGroupMap[box._id] = {
-        box,
-        totalQuantity: 0,
-        totalWeight: 0,
-      };
-    }
-
-    // Accumulate quantities and weights for this box group
-    boxGroupMap[box._id].totalQuantity += item.quantity;
-    boxGroupMap[box._id].totalWeight += productWeight * item.quantity;
+  } catch (error) {
+    console.error('Error calculating dimensions and weight:', error.message);
+    throw error;
   }
-
-  let totalWrapWeight = 0;
-  let totalBoxWeight = 0;
-  let totalLength = 0;
-  let totalBreadth = 0;
-  let totalHeight = 0;
-
-  Object.values(boxGroupMap).forEach(({ box, totalQuantity, totalWeight }) => {
-    const numberOfBoxes = Math.ceil(totalQuantity / box.capacity);
-
-    // Calculate total box weight
-    totalBoxWeight += box.weight * numberOfBoxes;
-
-    // Accumulate dimensions (multiplied by the number of boxes)
-    totalLength += box.dimensions.length * numberOfBoxes;
-    totalBreadth += box.dimensions.breadth * numberOfBoxes;
-    totalHeight += box.dimensions.height * numberOfBoxes;
-
-    // Accumulate wrap weight (product weight)
-    totalWrapWeight += totalWeight;
-  });
-
-  // Total weight is the sum of wrap weight and box weight
-  const totalWeight = totalWrapWeight + totalBoxWeight;
-
-  return {
-    length: totalLength,
-    breadth: totalBreadth,
-    height: totalHeight,
-    weight: totalWeight,
-  };
 };
-
-

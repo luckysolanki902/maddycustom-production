@@ -1,4 +1,4 @@
-// @/app/api/showcase/our-unique-products/route.js
+// app/api/showcase/our-unique-products/route.js
 
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
@@ -12,6 +12,13 @@ export async function GET() {
     // Fetch the first four variants with variantCode 'win' and 'tw-s'
     const winVariants = await SpecificCategoryVariant.find({ variantCode: 'win' }).limit(4);
     const twsVariants = await SpecificCategoryVariant.find({ variantCode: 'tw-s' }).limit(4);
+
+    if (!winVariants || winVariants.length === 0) {
+      console.warn("Our Unique Products: No variants found with variantCode 'win'.");
+    }
+    if (!twsVariants || twsVariants.length === 0) {
+      console.warn("Our Unique Products: No variants found with variantCode 'tw-s'.");
+    }
 
     // Extract the variant IDs
     const winVariantIds = winVariants.map(variant => variant._id);
@@ -28,6 +35,10 @@ export async function GET() {
       { $sample: { size: 4 } }
     ]);
 
+    if ((!winProducts || winProducts.length === 0) && (!twsProducts || twsProducts.length === 0)) {
+      console.warn('Our Unique Products: No products found for the selected variants.');
+    }
+
     // Combine in alternating order
     const combinedProducts = [];
     for (let i = 0; i < 4; i++) {
@@ -35,9 +46,10 @@ export async function GET() {
       if (twsProducts[i]) combinedProducts.push(twsProducts[i]);
     }
 
-    return NextResponse.json(combinedProducts);
+    console.info('Our Unique Products fetched and combined successfully.');
+    return NextResponse.json(combinedProducts, { status: 200 });
   } catch (error) {
-    console.error("Error fetching showcase products:", error);
+    console.error("Error fetching showcase products:", error.message);
     return NextResponse.json({ message: "Error fetching showcase products" }, { status: 500 });
   }
 }

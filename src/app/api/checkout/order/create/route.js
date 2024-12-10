@@ -24,6 +24,7 @@ export async function POST(request) {
     } = await request.json();
     // Validate input
     if ((!userId && !phoneNumber) || !items || !paymentModeId || !address || totalAmount == null) {
+      console.warn('Order creation failed: Missing required fields.');
       return NextResponse.json(
         { message: 'Missing required fields' },
         { status: 400 }
@@ -47,6 +48,7 @@ export async function POST(request) {
     }
 
     if (!user) {
+      console.warn(`User not found during order creation: userId=${userId}, phoneNumber=${phoneNumber}`);
       return NextResponse.json(
         { message: 'User not found' },
         { status: 404 }
@@ -56,6 +58,7 @@ export async function POST(request) {
     // Find payment mode
     const paymentMode = await ModeOfPayment.findById(paymentModeId);
     if (!paymentMode || !paymentMode.isActive) {
+      console.warn(`Invalid or inactive payment mode attempted: paymentModeId=${paymentModeId}`);
       return NextResponse.json(
         { message: 'Invalid or inactive payment mode' },
         { status: 400 }
@@ -67,6 +70,7 @@ export async function POST(request) {
     if (couponCode) {
       coupon = await Coupon.findOne({ code: couponCode, isActive: true });
       if (!coupon) {
+        console.warn(`Invalid or inactive coupon code attempted: ${couponCode}`);
         return NextResponse.json(
           { message: 'Invalid or inactive coupon code' },
           { status: 400 }
@@ -76,6 +80,7 @@ export async function POST(request) {
       // Ensure coupon is applicable based on usage, validity, etc.
       const now = new Date();
       if (now < coupon.validFrom || now > coupon.validUntil) {
+        console.warn(`Coupon code not valid at this time: ${couponCode}`);
         return NextResponse.json(
           { message: 'Coupon is not valid at this time' },
           { status: 400 }
@@ -98,6 +103,7 @@ export async function POST(request) {
 
       const totalPercentage = onlinePercentage + codPercentage;
       if (totalPercentage !== 100) {
+        console.warn(`Payment mode percentages do not sum up to 100 for paymentModeId=${paymentModeId}`);
         return NextResponse.json(
           { message: 'Payment mode percentages do not sum up to 100' },
           { status: 400 }
@@ -132,9 +138,9 @@ export async function POST(request) {
       extraCharges: extraCharges || [],
       couponApplied: coupon
         ? {
-          couponCode: coupon.code,
-          discountAmount: discountAmount,
-        }
+            couponCode: coupon.code,
+            discountAmount: discountAmount,
+          }
         : null,
       paymentDetails: {
         mode: paymentModeId,
@@ -172,7 +178,7 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating order:', error);
+    console.error('Error creating order:', error.message);
     return NextResponse.json(
       { message: 'Internal Server Error' },
       { status: 500 }

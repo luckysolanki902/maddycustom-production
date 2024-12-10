@@ -1,4 +1,4 @@
-// /pages/api/webhook.js
+// src/app/api/webhooks/razorpay/verify-payment/route.js
 
 // Import necessary modules
 import { NextResponse } from 'next/server';
@@ -7,8 +7,10 @@ import Order from '@/models/Order';
 import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shiprocket';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import axios from 'axios';
-const SpecificCategoryVariant = require('@/models/SpecificCategoryVariant');
+import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
+import Product from '@/models/Product';
+import ModeOfPayment from '@/models/ModeOfPayment';
+
 
 // Configuration to disable body parsing for raw body access.
 export const config = {
@@ -17,18 +19,17 @@ export const config = {
   },
 };
 
-
 /**
  * Handles POST requests from Razorpay webhooks to verify payments.
  * Ensures idempotency by checking paymentStatus and deliveryStatus.
  */
 export async function POST(request) {
-  // if(process.env.IS_TESTING === 'true') return NextResponse.json({ message: 'Webhook request received.' }, { status: 200 });
+  console.info('Razorpay webhook request received');
+
   const session = await mongoose.startSession(); // Start a MongoDB session
   session.startTransaction(); // Start a transaction
-  try {
-    const requestReceivedTime = new Date();
 
+  try {
     // Retrieve the raw body for signature verification
     const rawBody = await request.text();
 
@@ -129,14 +130,20 @@ export async function POST(request) {
     // Prevent double processing if the payment ID is already recorded
     if (order.paymentDetails.razorpayDetails.paymentId === paymentId) {
       console.info('Payment already captured. Ignoring webhook.');
-      // Even if payment is already recorded, ensure Shiprocket order is created if necessary
-      // Proceed to Shiprocket order creation logic
+
+      // Optionally, log if Shiprocket order is already created or needs to be created
+      if (order.shiprocketOrderId) {
+        console.info(`Shiprocket order already exists for Order ID: ${internalOrderId}`);
+      } else {
+        console.warn(`Shiprocket order missing for Order ID: ${internalOrderId}`);
+      }
+
+      // Proceed to Shiprocket order creation logic if needed
     } else {
       // Handle payment events only if payment ID is new
       // If the order is already fully or partially paid, skip updates
       if (['allPaid', 'paidPartially'].includes(order.paymentStatus)) {
         console.info(`Order already in status '${order.paymentStatus}'. Skipping payment updates.`);
-        // Continue to Shiprocket order creation logic
       } else {
         // Update payment details based on the event type
         if (event.event === 'payment.captured') {
@@ -174,20 +181,27 @@ export async function POST(request) {
             updatedOrder.paymentDetails.amountDueCod <= 0
           ) {
             updatedOrder.paymentStatus = 'allPaid';
+            console.info(`Order ID: ${internalOrderId} marked as 'allPaid'.`);
           } else if (
             updatedOrder.paymentDetails.amountPaidOnline > 0 &&
             updatedOrder.paymentDetails.amountDueCod > 0
           ) {
             updatedOrder.paymentStatus = 'paidPartially';
+            console.info(`Order ID: ${internalOrderId} marked as 'paidPartially'.`);
           }
 
           await updatedOrder.save({ session });
         } else if (event.event === 'payment.failed') {
-          await Order.findByIdAndUpdate(internalOrderId, {
-            'paymentDetails.razorpayDetails.paymentId': paymentId,
-            paymentStatus: 'failed',
-          }, { session }).exec();
+          await Order.findByIdAndUpdate(
+            internalOrderId,
+            {
+              'paymentDetails.razorpayDetails.paymentId': paymentId,
+              paymentStatus: 'failed',
+            },
+            { session }
+          ).exec();
 
+          console.info(`Order ID: ${internalOrderId} marked as 'failed'.`);
           await session.commitTransaction(); // Commit transaction
           session.endSession();
           return NextResponse.json({ message: 'Payment failed.' }, { status: 200 });
@@ -219,12 +233,13 @@ export async function POST(request) {
       latestOrder.deliveryStatus === 'pending' &&
       !latestOrder.shiprocketOrderId
     ) {
+      console.info(`Initiating Shiprocket order creation for Order ID: ${internalOrderId}`);
 
       // Populate the order with product and variant details
       await latestOrder.populate({
         path: 'items.product',
         populate: {
-          path: 'specificCategoryVariant',  // Populate specificCategoryVariant within each product
+          path: 'specificCategoryVariant', // Populate specificCategoryVariant within each product
           model: 'SpecificCategoryVariant',
         },
       });
@@ -234,7 +249,9 @@ export async function POST(request) {
         // Pass populated items to the getDimensionsAndWeight function
         dimensionsAndWeight = await getDimensionsAndWeight(latestOrder.items);
       } catch (dimError) {
-        console.error(`[${requestReceivedTime.toISOString()}] Dimension and Weight Calculation Error: ${dimError.message}`);
+        console.error(
+          `Dimension and Weight Calculation Error for Order ID ${internalOrderId}: ${dimError.message}`
+        );
         await session.abortTransaction(); // Abort transaction
         session.endSession();
         return NextResponse.json({ error: dimError.message }, { status: 400 });
@@ -270,36 +287,51 @@ export async function POST(request) {
         weight: weight,
       };
 
-
       try {
         // Create the Shiprocket order
         const response = await createShiprocketOrder(shiprocketOrderData);
 
         // Check if Shiprocket order creation was successful
         if (response.status_code === 1 && !response.packaging_box_error) {
-          await Order.findByIdAndUpdate(latestOrder._id, {
-            shiprocketOrderId: response.order_id,
-            deliveryStatus: 'orderCreated',
-          }, { session }).exec();
+          await Order.findByIdAndUpdate(
+            latestOrder._id,
+            {
+              shiprocketOrderId: response.order_id,
+              deliveryStatus: 'orderCreated',
+            },
+            { session }
+          ).exec();
+
+          console.info(`Shiprocket order created successfully for Order ID: ${internalOrderId}, Shiprocket Order ID: ${response.order_id}`);
         } else {
-          console.error(`[${requestReceivedTime.toISOString()}] Failed to create Shiprocket order: ${JSON.stringify(response)}`);
+          console.error(
+            `Failed to create Shiprocket order for Order ID ${internalOrderId}: ${JSON.stringify(response)}`
+          );
           // Optionally, implement a retry mechanism or mark the order for manual review
           await session.abortTransaction(); // Abort transaction
           session.endSession();
           return NextResponse.json({ error: 'Failed to create Shiprocket order.' }, { status: 500 });
         }
       } catch (shiprocketError) {
-        console.error(`[${requestReceivedTime.toISOString()}] Error in Shiprocket order creation: ${shiprocketError.message}`);
+        console.error(
+          `Error in Shiprocket order creation for Order ID ${internalOrderId}: ${shiprocketError.message}`
+        );
         // Optionally, implement a retry mechanism or mark the order for manual review
         await session.abortTransaction(); // Abort transaction
         session.endSession();
         return NextResponse.json({ error: 'Error in Shiprocket order creation.' }, { status: 500 });
       }
     } else {
+      if (['allPaid', 'paidPartially'].includes(latestOrder.paymentStatus)) {
+        console.info(`No Shiprocket order creation needed for Order ID: ${internalOrderId}. Current delivery status: '${latestOrder.deliveryStatus}', Shiprocket Order ID: '${latestOrder.shiprocketOrderId || 'Not Created'}'.`);
+      } else {
+        console.info(`Order ID: ${internalOrderId} payment status '${latestOrder.paymentStatus}' does not qualify for Shiprocket order creation.`);
+      }
     }
 
     await session.commitTransaction(); // Commit transaction
     session.endSession();
+    console.info(`Webhook processed successfully for Order ID: ${internalOrderId}`);
     return NextResponse.json({ message: 'Webhook processed successfully.' }, { status: 200 });
   } catch (error) {
     await session.abortTransaction(); // Abort transaction in case of error

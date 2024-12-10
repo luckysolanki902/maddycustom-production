@@ -127,7 +127,8 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
         addressDetails.country
       ) {
         setTabIndex(1); // Move to Address tab
-        showSnackbar('Please enter your address details.', 'info');
+        // Optional: If you decide to keep any info logs, you can uncomment the line below
+        // console.info('Please enter your address details.');
       }
     }
   }, [userExists, prefilledAddress, dispatch, addressDetails]);
@@ -205,7 +206,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
         setTabIndex(1);
       }
     } catch (error) {
-      console.error('Error checking/creating user:', error);
+      console.error('Error checking/creating user:', error.message);
       const errorMessage =
         error.response?.data?.message || 'An error occurred while processing your details.';
       showSnackbar(errorMessage, 'error');
@@ -310,7 +311,8 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
 
           if (paymentResult) {
             // Track Purchase Event with orderId as eventID for idempotency
-            showSnackbar('Payment Successful!', 'success');
+            // Uncomment if you decide to use any info logs for tracking
+            // console.info('Payment Successful for orderId:', orderId);
             await purchase({
               orderId: orderId,
               totalAmount:
@@ -325,6 +327,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
                 priceAtPurchase: item.priceAtPurchase, // Corrected from item.productDetails.price
               })),
             });
+            showSnackbar('Payment Successful!', 'success');
           } else {
             showSnackbar('Payment failed. Please try again.', 'error');
           }
@@ -332,10 +335,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
           showSnackbar('Failed to initiate payment.', 'error');
         }
       } else {
-        showSnackbar(
-          `Please pay ₹${paymentDetails.amountDueCod} via COD upon delivery.`,
-          'info'
-        );
+        
         // Track Purchase Event for COD orders
         await purchase({
           orderId: orderId,
@@ -359,10 +359,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
       handleClose();
       router.push(`/orders/myorder/${orderId}`);
     } catch (error) {
-      console.error('Error creating order or processing payment:', error);
-      const errorMessage =
-        error.response?.data?.message || 'An error occurred while processing your order.';
-      showSnackbar(errorMessage, 'error');
+      console.error('Error creating order or processing payment:', error.message);
       setPurchaseInitiated(false); // Reset purchase initiation flag on error
     } finally {
       setIsLoading(false);

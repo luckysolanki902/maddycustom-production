@@ -1,3 +1,5 @@
+// app/api/checkout/order/payment/verify/route.js
+
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
@@ -12,13 +14,13 @@ export async function POST(request) {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature, orderId } = await request.json();
 
     if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !orderId) {
-      console.warn('Missing required fields in API request.');
+      console.warn('Payment verification failed: Missing required fields in API request.');
       return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
     }
 
     const razorpaySecret = process.env.RAZORPAY_SECRET;
     if (!razorpaySecret) {
-      console.error('RAZORPAY_SECRET is not set.');
+      console.error('Payment verification failed: RAZORPAY_SECRET is not set.');
       return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
     }
 
@@ -34,11 +36,11 @@ export async function POST(request) {
       );
 
       if (!isValidSignature) {
-        console.warn('Invalid Razorpay signature in API request.');
+        console.warn('Payment verification failed: Invalid Razorpay signature in API request.');
         return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 });
       }
     } catch (signatureError) {
-      console.error('Error during signature verification:', signatureError);
+      console.error('Payment verification failed: Error during signature verification.', signatureError.message);
       return NextResponse.json({ error: 'Invalid signature format.' }, { status: 400 });
     }
 
@@ -46,12 +48,12 @@ export async function POST(request) {
 
     const order = await Order.findById(orderId).exec();
     if (!order) {
-      console.warn(`Order not found for ID: ${orderId} in API request.`);
+      console.warn(`Payment verification failed: Order not found for ID: ${orderId}`);
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
     if (['allPaid', 'paidPartially'].includes(order.paymentStatus)) {
-      console.info(`Order ID: ${orderId} already in status '${order.paymentStatus}'.`);
+      console.warn(`Payment verification skipped: Order ID: ${orderId} already in status '${order.paymentStatus}'.`);
       return NextResponse.json({ message: 'Order already processed.' }, { status: 200 });
     }
 
@@ -73,7 +75,7 @@ export async function POST(request) {
     await order.save();
     return NextResponse.json({ message: 'Payment verified successfully.' }, { status: 200 });
   } catch (error) {
-    console.error('Error in payment verification API:', error);
+    console.error('Error in payment verification API:', error.message);
     return NextResponse.json({ error: 'Internal Server Error.' }, { status: 500 });
   }
 }

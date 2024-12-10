@@ -13,6 +13,10 @@ export async function GET(request) {
     // Fetch all specific categories
     const categories = await SpecificCategory.find({ available: true }).lean();
 
+    if (!categories || categories.length === 0) {
+      console.warn('No specific categories found with available=true.');
+    }
+
     // Create a map of category IDs to category names for easy lookup
     const categoryMap = categories.reduce((map, category) => {
       map[category._id.toString()] = category.name;
@@ -21,6 +25,10 @@ export async function GET(request) {
 
     // Fetch all specific category variants
     const variants = await SpecificCategoryVariant.find({ }).lean();
+
+    if (!variants || variants.length === 0) {
+      console.warn('No specific category variants found.');
+    }
 
     // Structure the response
     const responseData = {
@@ -39,6 +47,8 @@ export async function GET(request) {
           const categoryName = categoryMap[variant.specificCategory.toString()];
           if (categoryName) {
             variantName = `${variantName} ${categoryName}`;
+          } else {
+            console.warn(`No matching category found for variant ID: ${variant._id}`);
           }
         }
 
@@ -47,14 +57,14 @@ export async function GET(request) {
           name: variantName,
           pageSlug: variant.pageSlug,
           specificCategory: variant.specificCategory, // Reference to parent category
-          // Add other necessary fields if needed
         };
       }),
     };
 
+    console.info('Successfully fetched search categories and variants.');
     return NextResponse.json(responseData, { status: 200 });
   } catch (error) {
-    console.error('Error fetching search categories:', error);
+    console.error('Error fetching search categories:', error.message);
     return NextResponse.json({ error: 'Failed to fetch search categories' }, { status: 500 });
   }
 }

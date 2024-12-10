@@ -1,3 +1,5 @@
+// lib/payments/makePayment.js
+
 export const makePayment = async ({ customerName, customerMobile, orderId, razorpayOrder }) => {
   const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
@@ -35,15 +37,14 @@ export const makePayment = async ({ customerName, customerMobile, orderId, razor
           });
 
           if (verificationData.status === 200) {
-            console.info('Payment verification succeeded:');
             resolve(response); // Payment verified
           } else {
             const verificationResult = await verificationData.json();
-            console.warn('Payment verification failed with server response:', verificationResult);
+            console.warn('Payment verification failed:', verificationResult.message || 'Unknown error');
             reject(new Error(`Payment verification failed: ${verificationResult.message || "Unknown error"}`));
           }
         } catch (error) {
-          console.error('Verification failed:', error);
+          console.error('Verification failed:', error.message);
           reject(new Error('Verification failed: ' + error.message));
         }
       },
@@ -64,8 +65,8 @@ export const makePayment = async ({ customerName, customerMobile, orderId, razor
     paymentObject.open();
 
     paymentObject.on("payment.failed", function (response) {
-      console.error('Payment failed:', response.error);
-      reject(new Error(`Payment failed: ${response.error.reason}`));
+      console.error('Payment failed:', response.error ? response.error.description : 'Unknown error');
+      reject(new Error(`Payment failed: ${response.error ? response.error.description : 'Unknown error'}`));
     });
   });
 };
