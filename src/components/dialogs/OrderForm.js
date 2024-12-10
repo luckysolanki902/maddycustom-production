@@ -127,8 +127,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
         addressDetails.country
       ) {
         setTabIndex(1); // Move to Address tab
-        // Optional: If you decide to keep any info logs, you can uncomment the line below
-        // console.info('Please enter your address details.');
       }
     }
   }, [userExists, prefilledAddress, dispatch, addressDetails]);
@@ -312,7 +310,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
           if (paymentResult) {
             // Track Purchase Event with orderId as eventID for idempotency
             // Uncomment if you decide to use any info logs for tracking
-            // console.info('Payment Successful for orderId:', orderId);
             await purchase({
               orderId: orderId,
               totalAmount:

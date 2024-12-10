@@ -8,8 +8,6 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
-    console.info("Received request to /api/shop/products with POST method");
-
     const { slug, page = 1, limit = 15, tagFilter = null, sortBy = 'default' } = await request.json();
     const fullSlug = Array.isArray(slug) ? `/${slug.join('/')}` : `/${slug}`;
 
@@ -19,8 +17,6 @@ export async function POST(request) {
     }
 
     await connectToDatabase();
-    console.info("Connected to the database successfully");
-
     // Attempt to find Product by pageSlug first
     const product = await Product.findOne({ pageSlug: fullSlug }).lean().exec();
 
@@ -52,8 +48,6 @@ export async function POST(request) {
     const variant = await SpecificCategoryVariant.findOne({ pageSlug: fullSlug }).lean().exec();
 
     if (variant) {
-      console.info(`Found SpecificCategoryVariant: ${variant.name}`);
-
       // Fetch the associated SpecificCategory
       const specificCategory = await SpecificCategory.findById(variant.specificCategory).lean().exec();
 
