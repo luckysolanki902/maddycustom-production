@@ -247,8 +247,8 @@ const ViewCart = () => {
 
       {/* Custom Snackbar for Feedback */}
       <CustomSnackbar
-        open={true}
-        message={'Payment Successful'}
+        open={snackbar.open}
+        message={snackbar.message}
         severity={snackbar.severity}
         handleClose={handleSnackbarClose}
       />
