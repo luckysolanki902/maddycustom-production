@@ -32,7 +32,6 @@ export async function GET(request, { params }) {
     // Implement authentication and authorization as needed
 
     // Return the order details
-    console.info(`Order fetched successfully for orderId=${orderId}.`);
     return NextResponse.json({ order }, { status: 200 });
   } catch (error) {
     console.error('Error fetching order:', error.message);

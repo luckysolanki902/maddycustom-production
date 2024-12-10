@@ -88,7 +88,6 @@ export async function POST(request) {
     // Retrieve the latest address (the one just added)
     const latestAddress = user.addresses[user.addresses.length - 1];
 
-    console.info(`Address added successfully for userId=${user._id}.`);
     return NextResponse.json(
       { message: 'Address added successfully.', latestAddress, addresses: user.addresses },
       { status: 200 }

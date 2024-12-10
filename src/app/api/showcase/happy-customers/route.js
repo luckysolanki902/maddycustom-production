@@ -47,7 +47,6 @@ export async function GET(req) {
       console.warn('Happy Customers: No happy customers found with the given filters.');
     }
 
-    console.info('Happy Customers fetched successfully.');
     return NextResponse.json({ happyCustomers }, { status: 200 });
   } catch (error) {
     console.error('Error fetching happy customers:', error.message);

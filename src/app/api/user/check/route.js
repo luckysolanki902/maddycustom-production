@@ -31,7 +31,6 @@ export async function GET(request) {
           ? user.addresses[user.addresses.length - 1]
           : null; // Use null instead of empty string
 
-      console.info(`Check User Address: Found userId=${user._id} with latestAddress=${latestAddress ? latestAddress._id : 'None'}.`);
       return NextResponse.json({
         exists: true,
         latestAddress,

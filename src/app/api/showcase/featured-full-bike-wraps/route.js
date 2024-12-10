@@ -47,7 +47,6 @@ export async function GET() {
       console.warn('Featured Full Bike Wraps: No products found for the selected variants.');
     }
 
-    console.info('Featured Full Bike Wraps fetched successfully.');
     return NextResponse.json({
       category,
       variants,

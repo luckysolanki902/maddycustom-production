@@ -46,7 +46,6 @@ export async function GET() {
       if (twsProducts[i]) combinedProducts.push(twsProducts[i]);
     }
 
-    console.info('Our Unique Products fetched and combined successfully.');
     return NextResponse.json(combinedProducts, { status: 200 });
   } catch (error) {
     console.error("Error fetching showcase products:", error.message);

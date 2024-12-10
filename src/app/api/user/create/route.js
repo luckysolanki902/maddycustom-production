@@ -45,7 +45,6 @@ export async function POST(request) {
 
     await newUser.save();
     // Return success response
-    console.info(`User created successfully with userId=${newUser._id}.`);
     return NextResponse.json(
       {
         message: 'User created successfully',

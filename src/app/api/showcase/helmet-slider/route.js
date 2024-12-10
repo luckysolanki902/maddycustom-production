@@ -30,7 +30,6 @@ export async function GET() {
       console.warn('Helmet Slider: No products found for the selected helmet variants.');
     }
 
-    console.info('Helmet Slider products fetched successfully.');
     return NextResponse.json(helmetProducts, { status: 200 });
   } catch (error) {
     console.error("Error fetching helmet products:", error.message);

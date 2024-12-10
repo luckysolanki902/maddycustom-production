@@ -61,7 +61,6 @@ export async function GET(request) {
       }),
     };
 
-    console.info('Successfully fetched search categories and variants.');
     return NextResponse.json(responseData, { status: 200 });
   } catch (error) {
     console.error('Error fetching search categories:', error.message);
