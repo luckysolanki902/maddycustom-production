@@ -65,8 +65,8 @@ export default function ProductIdPage({ product, variant, category, description 
           />
         </div>
       )}
-      {!isZoomed && <HappyCustomersClient parentSpecificCategoryId={category._id} />}
     </div>
+      {!isZoomed && <HappyCustomersClient parentSpecificCategoryId={category._id} />}
       {!isZoomed && <ContactUs />}
       </>
   );
