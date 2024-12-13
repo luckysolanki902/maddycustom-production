@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const { MONGODB_URI, NODE_ENV } = process.env;
+const { MONGODB_URI } = process.env;
 
 if (!MONGODB_URI) {
   console.error('MONGODB_URI environment variable not defined.');
@@ -38,7 +38,7 @@ async function connectToDatabase() {
   }
 
   // Create a new connection if none exist
-  console.info(`MongoDB: ${NODE_ENV === 'development' ? 'Dev mode' : 'Prod mode'} - Initiating new connection...`);
+  console.info(`MongoDB: Initiating new connection...`);
 
   cached.promise = mongoose.connect(MONGODB_URI, options).then((mongooseInstance) => {
     console.info('MongoDB: Successfully connected.');
