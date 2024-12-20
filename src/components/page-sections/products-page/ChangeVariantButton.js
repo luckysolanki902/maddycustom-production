@@ -21,7 +21,7 @@ export default function ChangeVariantButton({ category }) {
 
     // Access variant preferences from Redux for this category
     const categoryPreferences = useSelector(
-      (state) => state.variantPreference[category._id]
+        (state) => state.variantPreference[category._id]
     );
 
     const hasSeenVariantPopup = categoryPreferences?.hasSeenVariantPopup || false;
@@ -57,6 +57,7 @@ export default function ChangeVariantButton({ category }) {
     const handleVariantClick = (slug) => {
         dispatch(setPageSlug({ categoryId: category._id, pageSlug: slug })); // Update Redux state
         router.push(`/shop${slug}`);
+        setShowPopup(false);
     };
 
 
@@ -94,18 +95,19 @@ export default function ChangeVariantButton({ category }) {
                                 key={variant.id}
                                 onClick={() => handleVariantClick(variant.pageSlug)}
                                 className={styles.variantBox}
+                                style={{ cursor: 'pointer' }}
                             >
                                 {variant.image && (
                                     <Image
                                         src={`${baseImageUrl}${variant.image}`}
                                         className={styles.customImg}
                                         alt={variant.name}
-                                        width={360*1.5}
-                                        height={150*1.5}
+                                        width={360 * 1.5}
+                                        height={150 * 1.5}
                                     />
                                 )}
-                                <Box  
-                                className={styles.variantInfoParentBox}>
+                                <Box
+                                    className={styles.variantInfoParentBox}>
                                     <button
                                         variant="contained"
                                         className={styles.variantButton}
@@ -113,7 +115,7 @@ export default function ChangeVariantButton({ category }) {
                                         {variant?.name?.toLowerCase().includes('tank')
                                             ? variant.name.split(' ')[0]
                                             : variant.name
-                                            }
+                                        }
                                     </button>
                                     <div className={styles.variantDescription}>
                                         {variant.variantInfo}
