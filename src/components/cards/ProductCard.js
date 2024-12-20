@@ -194,7 +194,7 @@ const ProductCard = ({ product, loading }) => {
         <div className={styles.prodDescRow3}>
           <div className={styles.price}>
             <span className={styles.rupees}>₹</span>
-            <span className={styles.actualPrice}>
+            <span className={styles.priceValue}>
               {product.variantDetails?.availableBrands?.length > 0
                 ? product.variantDetails.availableBrands[0].brandBasePrice + product.price
                 : product.price}
@@ -203,10 +203,10 @@ const ProductCard = ({ product, loading }) => {
           <div className={styles.offer5}>
             <div className={styles.offer5Line1}>
               <span>5%</span>
-              <span>off</span>
+              <span style={{marginLeft:'0.4rem'}}>off</span>
             </div>
-            <div className={styles.offer5Line2}>on every order</div>
-            <div className={styles.offer5Line3}>Valid till 30/11/24</div>
+            {/* <div className={styles.offer5Line2}>on every order</div>
+            <div className={styles.offer5Line3}>Valid till 30/11/24</div> */}
           </div>
         </div>
 

@@ -57,18 +57,18 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.3rem;
-  border-radius: 0.7rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.5rem;
   font-family: Jost, sans-serif;
-  width: 5rem;
+  align-items: flex-start;
+  gap: 0.2rem;
 }
 
 .offer5Line1 {
   font-weight: 500;
   display: flex;
   justify-content: space-between;
-  width: 50%;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .offer5Line2 {
@@ -86,11 +86,10 @@
 
 .productName {
   color: rgba(0, 0, 0, 0.7);
-  font-size: 1.2rem;
-  font-style: normal;
-  font-weight: 800;
+  font-family: Jost, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
   letter-spacing: 0.07963rem;
-  font-family: Jost;
   text-transform: capitalize;
   display: flex;
   flex-direction: column;
@@ -104,7 +103,7 @@
 
 .prodDescLastRow img {
   /* display: none; */
-  width: 6rem;
+  width: 5rem;
   height: auto;
   opacity: 0.9;
 }
@@ -113,8 +112,8 @@
   font-family: 'Jost', sans-serif;
   font-size: 0.85rem;
   color: rgba(22, 22, 22, 0.6);
-  margin-top: 0.5rem;
-  margin-bottom: 0.1rem;
+  margin-top: 0.1rem;
+  margin-bottom: 0.6rem;
   line-height: 0.8rem;
   letter-spacing: 0.06rem;
 }
@@ -127,18 +126,17 @@
 
 .rupees {
   color: rgba(0, 0, 0, 0.54);
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-style: normal;
   font-weight: 500;
   letter-spacing: 0.15969rem;
 }
 
-.actualPrice {
+.priceValue {
   color: rgba(0, 0, 0, 0.54);
-  font-size: 1.2rem;
+  font-size: 0.95rem;
   font-style: normal;
   font-weight: 500;
-  letter-spacing: 0.08875rem;
 }
 
 @media (max-width: 600px) {
