@@ -31,6 +31,7 @@ export async function GET(req) {
         name: variant.name,
         image: firstImage,
         pageSlug: variant.pageSlug,
+        variantInfo: variant.variantInfo,
       };
     })
   );

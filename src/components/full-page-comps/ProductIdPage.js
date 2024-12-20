@@ -5,10 +5,11 @@ import { useSelector } from 'react-redux';
 import ZoomableImage from '../page-sections/product-id-page/ZoomableImage';
 import OrderSpecifications from '../page-sections/product-id-page/OrderSpecifications';
 import PriceAndChat from '../page-sections/product-id-page/PriceAndChat';
-import AddToCartButton from '../utils/AddToCartButton';
+// import AddToCartButton from '../utils/AddToCartButton';
 import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
 import { viewContent } from '@/lib/metadata/facebookPixels';
 import ContactUs from '../layouts/ContactUs';
+import AddToCartButtonWithOrder from '../utils/AddToCartButtonWithOrder';
 
 export default function ProductIdPage({ product, variant, category, description }) {
   const [viewFullDescription, setViewFullDescription] = useState(false);
@@ -59,7 +60,7 @@ export default function ProductIdPage({ product, variant, category, description 
       )}
       {!isZoomed && (
         <div className={styles.buttonDiv}>
-          <AddToCartButton
+          <AddToCartButtonWithOrder
             product={{ ...product, variantDetails: variant, category: category }}
             isLarge={true}
           />

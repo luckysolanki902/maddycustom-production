@@ -12,7 +12,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setHasSeenVariantPopup, setPageSlug } from '@/store/slices/variantPreferenceSlice'; // Import actions
 
 export default function ChangeVariantButton({ category }) {
-    console.log(category);
     const [showPopup, setShowPopup] = useState(false);
     const [variants, setVariants] = useState([]);
     const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -60,6 +59,7 @@ export default function ChangeVariantButton({ category }) {
         router.push(`/shop${slug}`);
     };
 
+
     return (
         <>
             <div
@@ -77,7 +77,7 @@ export default function ChangeVariantButton({ category }) {
                     style: {
                         borderRadius: '20px',
                         padding: '0rem',
-                        maxWidth: '800px',
+                        maxWidth: '600px',
                     },
                 }}
             >
@@ -88,7 +88,6 @@ export default function ChangeVariantButton({ category }) {
                     <div className={styles.categoryName}>
                         {category.name}
                     </div>
-                    <Divider className={styles.divider} />
                     <Box display="flex" flexDirection="column" gap="1rem">
                         {variants.map((variant) => (
                             <Box
@@ -101,18 +100,20 @@ export default function ChangeVariantButton({ category }) {
                                         src={`${baseImageUrl}${variant.image}`}
                                         className={styles.customImg}
                                         alt={variant.name}
-                                        width={120}
-                                        height={50}
+                                        width={360*1.5}
+                                        height={150*1.5}
                                     />
                                 )}
-                                <Box display="flex" flexDirection="column" gap="1rem">
+                                <Box  
+                                className={styles.variantInfoParentBox}>
                                     <button
                                         variant="contained"
                                         className={styles.variantButton}
                                     >
-                                        {variant.name.length > 12 && isSmallDevice
-                                            ? `${variant.name.substring(0, 12)}...`
-                                            : variant.name}
+                                        {variant?.name?.toLowerCase().includes('tank')
+                                            ? variant.name.split(' ')[0]
+                                            : variant.name
+                                            }
                                     </button>
                                     <div className={styles.variantDescription}>
                                         {variant.variantInfo}
