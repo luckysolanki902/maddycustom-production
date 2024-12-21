@@ -31,17 +31,6 @@ export async function POST(request) {
       return NextResponse.json({ valid: false, message: 'Coupon is expired or not yet valid.' }, { status: 400 });
     }
 
-    if (coupon.usageCount >= coupon.usagePerUser) {
-      console.warn(`Coupon usage limit reached for code: ${code}`);
-      return NextResponse.json({ valid: false, message: 'Coupon usage limit reached.' }, { status: 400 });
-    }
-
-    if (totalCost < coupon.minimumPurchasePrice) {
-      console.warn(`Coupon code ${code} not applicable for total cost: ${totalCost}`);
-      return NextResponse.json({ valid: false, message: `Minimum purchase of ₹${coupon.minimumPurchasePrice} required to apply this coupon.` }, { status: 400 });
-    }
-
-    coupon.usageCount += 1;
     await coupon.save();
 
     return NextResponse.json({
