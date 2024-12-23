@@ -308,22 +308,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
           });
 
           if (paymentResult) {
-            // Track Purchase Event with orderId as eventID for idempotency
-            // Uncomment if you decide to use any info logs for tracking
-            await purchase({
-              orderId: orderId,
-              totalAmount:
-                paymentDetails.amountPaidOnline + paymentDetails.amountPaidCod,
-              items: cartItems.map((item) => ({
-                product: item.productId,
-                name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-                  ? item.productDetails.category?.name.slice(0, -1)
-                  : item.productDetails.category?.name
-                  }`,
-                quantity: item.quantity,
-                priceAtPurchase: item.priceAtPurchase, // Corrected from item.productDetails.price
-              })),
-            });
             showSnackbar('Payment Successful!', 'success');
           } else {
             showSnackbar('Payment failed. Please try again.', 'error');
@@ -331,23 +315,20 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
         } else {
           showSnackbar('Failed to initiate payment.', 'error');
         }
-      } else {
-        
-        // Track Purchase Event for COD orders
-        await purchase({
-          orderId: orderId,
-          totalAmount: paymentDetails.amountPaidCod,
-          items: cartItems.map((item) => ({
-            product: item.productId,
-            name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-              ? item.productDetails.category?.name.slice(0, -1)
-              : item.productDetails.category?.name
-              }`,
-            quantity: item.quantity,
-            priceAtPurchase: item.priceAtPurchase,
-          })),
-        });
       }
+      await purchase({
+        orderId: orderId,
+        totalAmount: totalCost,
+        items: cartItems.map((item) => ({
+          product: item.productId,
+          name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+            ? item.productDetails.category?.name.slice(0, -1)
+            : item.productDetails.category?.name
+            }`,
+          quantity: item.quantity,
+          priceAtPurchase: item.priceAtPurchase,
+        })),
+      });
 
       dispatch(clearUTMDetails());
       dispatch(clearCart());

@@ -35,7 +35,7 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
     const client_ip_address = await getClientIp();
     const client_user_agent = navigator.userAgent;
     const eventParams = {
-      eventID: eventId, // Use the provided eventID or generate a new one
+      eventID: eventId, 
       event_time: eventTime,
       event_name: name,
       action_source: 'website',
@@ -60,7 +60,7 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
     }
 
     await sendToServer(name, eventParams);
-    console.log('Event tracked successfully.');
+    console.info('Event tracked successfully.', {eventParams});
   } catch (error) {
     console.error('Error tracking event:', error);
   }
@@ -80,7 +80,7 @@ export const addToCart = async (product) => {
       content_category: product.category,
       content_type: 'product',
     });
-    console.log('AddToCart event sent successfully.');
+    console.info('AddToCart event sent successfully.');
   } catch (error) {
     console.error('Error in addToCart function:', error);
   }
@@ -99,6 +99,7 @@ export const purchase = async (order, userData = {}) => {
         item_price: item.priceAtPurchase,
       })),
     });
+    console.info('Purchase event sent successfully.');
   } catch (error) {
     console.error('Error in purchase function:', error);
   }
