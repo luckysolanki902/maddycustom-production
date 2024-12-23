@@ -46,10 +46,8 @@ const useCaptureUTM = () => {
                     const cleanUrl = window.location.pathname + window.location.hash;
                     window.history.replaceState({}, document.title, cleanUrl);
                 } else {
-                    console.log('Captured UTM details are identical to existing state. No dispatch needed.');
                 }
             } else {
-                console.log('No UTM parameters found in the URL.');
             }
         } catch (error) {
             console.error('Error capturing UTM parameters:', error);
