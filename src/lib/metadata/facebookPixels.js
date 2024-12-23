@@ -60,7 +60,7 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
     }
 
     await sendToServer(name, eventParams);
-    console.info('Event tracked successfully.', {eventParams});
+    console.info(`Event successfully tracked for event: ${name}`, { eventParams });
   } catch (error) {
     console.error('Error tracking event:', error);
   }
@@ -76,8 +76,8 @@ export const addToCart = async (product) => {
         quantity: product.quantity || 1,
         item_price: product.price || 0,
       }],
-      content_name: `${product.name} ${product.category?.name?.endsWith('s') ? product.category?.name.slice(0, -1) : product.category?.name}`,
-      content_category: product.category,
+      content_name: product.name, // Use product name
+      content_category: product.category, // Use product category object
       content_type: 'product',
     });
     console.info('AddToCart event sent successfully.');
@@ -119,5 +119,28 @@ export const viewContent = async (product, userData = {}) => {
     });
   } catch (error) {
     console.error('Error in viewContent function:', error);
+  }
+};
+
+// **New Function: initiateCheckout**
+export const initiateCheckout = async (checkoutData, userData = {}) => {
+  try {
+    await trackEvent('InitiateCheckout', userData, {
+      eventID: checkoutData.eventID || uuidv4(),
+      value: checkoutData.totalValue,
+      currency: 'INR',
+      contents: checkoutData.contents.map(item => ({
+        id: item.productId || item._id,
+        quantity: item.quantity,
+        item_price: item.price || 0,
+      })),
+      content_name: checkoutData.contentName, // Should reflect specific product names
+      content_category: checkoutData.contentCategory, // Should reflect specific product categories
+      content_type: 'product',
+      num_items: checkoutData.numItems,
+    });
+    console.log('InitiateCheckout event sent successfully.');
+  } catch (error) {
+    console.error('Error in initiateCheckout function:', error);
   }
 };
