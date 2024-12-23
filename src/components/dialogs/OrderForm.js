@@ -39,8 +39,8 @@ import { getPaymentButtonText } from '../../lib/utils/orderFormUtils';
 import { styled } from '@mui/material/styles';
 import theme from '@/styles/theme';
 import { ThemeProvider } from '@mui/material';
-import { purchase } from '@/lib/metadata/facebookPixels';
-
+import { initiateCheckout, purchase } from '@/lib/metadata/facebookPixels';
+import { v4 as uuidv4 } from 'uuid'; 
 
 const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) => {
   const dispatch = useDispatch();
@@ -244,6 +244,22 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
         // Update Redux store with the latest address details from API response
         dispatch(setAddressDetails(addAddressResponse.data.latestAddress));
       }
+
+      await initiateCheckout({
+        eventID: uuidv4(), 
+        totalValue: totalCost,
+        contents: cartItems.map((item) => ({
+          productId: item.productId || item._id,
+          quantity: item.quantity,
+          price: item.priceAtPurchase,
+        })),
+        contentName: cartItems.map(item => item.productDetails.name).join(', '), // Concatenated product names
+        contentCategory: cartItems.map(item => item.productDetails.category), // Array of product categories
+        numItems: cartItems.length,
+      }, {
+        email: userDetails.email, // Assuming you have user email
+        phoneNumber: userDetails.phoneNumber,
+      });
 
       // Proceed with order creation only if address was added or already exists
       // Create order via separate API call

@@ -63,7 +63,7 @@ export async function POST(request) {
     const { eventName, options = {} } = await request.json();
 
     const currentTimestamp = Math.floor(Date.now() / 1000);
-    const validEvents = ['Purchase', 'AddToCart', 'ViewContent'];
+    const validEvents = ['Purchase', 'AddToCart', 'ViewContent', 'InitiateCheckout']; // **Added InitiateCheckout**
     if (!validEvents.includes(eventName)) {
       return NextResponse.json(
         { message: 'Invalid event type.' },
