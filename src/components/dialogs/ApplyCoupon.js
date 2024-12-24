@@ -8,7 +8,7 @@ import Button from '@mui/material/Button';
 import Image from 'next/image';
 import styles from './styles/applycoupon.module.css';
 import CouponCard from '../cards/CouponCard';
-import { Typography } from '@mui/material';
+import { Typography, Skeleton } from '@mui/material'; // Import Skeleton
 import CustomSnackbar from '@/components/notifications/CustomSnackbar'; // Updated Import
 
 const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
@@ -19,6 +19,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
         severity: 'success', // 'success' or 'error'
     });
     const [availableCoupons, setAvailableCoupons] = useState([]);
+    const [isLoading, setIsLoading] = useState(false); // Loading state
 
     useEffect(() => {
         if (open) {
@@ -28,6 +29,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
     }, [open]);
 
     const fetchAvailableCoupons = async () => {
+        setIsLoading(true); // Start loading
         try {
             const res = await fetch('/api/checkout/coupons');
             const data = await res.json();
@@ -48,6 +50,8 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
                 message: 'An error occurred. Please try again.',
                 severity: 'error',
             });
+        } finally {
+            setIsLoading(false); // End loading
         }
     };
 
@@ -91,6 +95,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
     };
 
     const handleApplyCouponFromCard = async (name, discount, discountType) => {
+        setIsLoading(true); // Start loading
         try {
             const res = await fetch('/api/checkout/coupons/apply', {
                 method: 'POST',
@@ -122,6 +127,8 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
                 message: 'An error occurred. Please try again.',
                 severity: 'error',
             });
+        } finally {
+            setIsLoading(false); // End loading
         }
     };
 
@@ -137,15 +144,15 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
                 <div style={{ display: 'flex', alignItems: 'center', marginTop: '1rem', marginRight: '1rem' }}>
 
                     {/* Close Button */}
-                        <Button color="inherit" onClick={onClose} sx={{ display: 'flex', alignItems: 'center', justifyContent:'center', padding:'1rem',  margin:'0 1rem' }}>
-                            <Image
-                                src={`${baseImageUrl}/assets/icons/lessthan1.png`}
-                                width={46}
-                                height={50}
-                                alt="Back"
-                                style={{ width: '1rem', height: 'auto' }}
-                            />
-                        </Button>
+                    <Button color="inherit" onClick={onClose} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', margin: '0 0rem' }}>
+                        <Image
+                            src={`${baseImageUrl}/assets/icons/lessthan1.png`}
+                            width={46}
+                            height={50}
+                            alt="Back"
+                            style={{ width: '1rem', height: 'auto' }}
+                        />
+                    </Button>
 
                     {/* Coupon Code Input */}
                     <div className={styles.inputMain} style={{ flexGrow: '1', display: 'flex' }}>
@@ -193,8 +200,36 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
                 </div>
 
                 {/* Available Coupons */}
-                <section className={styles.couponCardsSection}>
-                    {availableCoupons.length > 0 ? (
+                <section className={styles.couponCardsSection} style={{ padding: '1rem' }}>
+                    {true ? (
+                        // Display two skeletons while loading
+                        <>
+                            <Skeleton
+                                variant="rectangular"
+                                sx={{
+                                    width: '9rem',
+                                    height: '14rem',
+                                    borderRadius: '1rem',
+                                    '@media (max-width: 600px)': {
+                                        width: '9rem',
+                                        height: '14rem',
+                                    },
+                                }}
+                            />
+                            <Skeleton
+                                variant="rectangular"
+                                sx={{
+                                    width: '9rem',
+                                    height: '14rem',
+                                    borderRadius: '1rem',
+                                    '@media (max-width: 600px)': {
+                                        width: '9rem',
+                                        height: '14rem',
+                                    },
+                                }}
+                            />
+                        </>
+                    ) : availableCoupons.length > 0 ? (
                         availableCoupons.map((coupon) => (
                             <CouponCard
                                 key={coupon._id}
@@ -210,7 +245,6 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
                             No available coupons at the moment.
                         </Typography>
                     )}
-
                 </section>
             </DialogContent>
 

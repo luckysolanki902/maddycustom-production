@@ -32,8 +32,6 @@ export async function generateMetadata() {
 
 const HomePage = async () => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-
-  try {
     // Fetch all necessary data concurrently
     const [
       ourUniqueProductsData,
@@ -116,16 +114,7 @@ const HomePage = async () => {
         </main>
       </>
     );
-  } catch (error) {
-    // Handle errors gracefully, perhaps render an error component or message
-    console.error("Error loading homepage data:", error);
-    return (
-      <div className={styles.errorContainer}>
-        <h1>Something went wrong</h1>
-        <p>Please try refreshing the page or come back later.</p>
-      </div>
-    );
-  }
+
 };
 
 export default HomePage;
