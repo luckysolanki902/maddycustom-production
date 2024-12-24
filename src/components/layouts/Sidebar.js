@@ -115,12 +115,12 @@ const Sidebar = (props) => {
                     }}
                 >
                     <Image
-                        width={500}
-                        height={500}
-                        src={`${baseUrl}/assets/logos/maddycustom-old-full-logo-horizontal.png`}
+                        height={1000}
+                        width={1000}
+                        src={`${baseUrl}/assets/logos/maddylogo_christmas_cap.png`}
                         alt="Maddy Logo"
                         title="Maddy Logo"
-                        style={{ width: '55%', overflow: 'hidden', height: 'auto' }}
+                        style={{ width: '95%', overflow: 'hidden', height: 'auto', transform: 'translateX(-40px)' }}
                     />
                 </Box>
 

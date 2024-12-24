@@ -8,7 +8,7 @@
 }
 
 .logoDiv img {
-    width: 10rem;
+    width: 16rem;
     height: auto;
 }
 
@@ -31,7 +31,7 @@
 
 @media (min-width: 800px) {
     .logoDiv img {
-        width: 12rem;
+        width: 19rem;
     }
 
 }
