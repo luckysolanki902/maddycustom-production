@@ -119,3 +119,13 @@ overflow: hidden;
 }
 
 
+
+@media screen and (max-width: 600px) {
+    .mainDiv {
+        width: 9rem;
+        height: 14rem;
+    }
+
+
+
+}
