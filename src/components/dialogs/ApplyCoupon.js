@@ -201,7 +201,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
 
                 {/* Available Coupons */}
                 <section className={styles.couponCardsSection} style={{ padding: '1rem' }}>
-                    {true ? (
+                    {isLoading ? (
                         // Display two skeletons while loading
                         <>
                             <Skeleton
