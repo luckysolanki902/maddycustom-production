@@ -5,14 +5,14 @@ import styles from './styles/couponcard.module.css';
 import Image from 'next/image';
 import { Button } from '@mui/material';
 
-const CouponCard = ({ discount, discountType, validity, name, onApply }) => {
+const CouponCard = ({ discount, discountType, validity, name, onApply, index }) => {
     const handleApplyClick = () => {
         // Call the function passed from CouponDialog to apply the coupon
         onApply(name, discount, discountType);
     };
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
     return (
-        <div className={styles.mainDiv}>
+        <div className={styles.mainDiv} style={{filter: `hue-rotate(${index * 25}deg)`}}>
             <div className={styles.mdLogo}>
                 <Image src={`${baseImageUrl}/assets/logos/md-logo-light.png`} width={1242 / 7} height={1614 / 7} alt='md' />
             </div>
