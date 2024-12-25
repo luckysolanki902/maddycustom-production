@@ -230,8 +230,9 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
                             />
                         </>
                     ) : availableCoupons.length > 0 ? (
-                        availableCoupons.map((coupon) => (
+                        availableCoupons.map((coupon, index) => (
                             <CouponCard
+                                index={index}
                                 key={coupon._id}
                                 name={coupon.code}
                                 discount={coupon.discountValue}
