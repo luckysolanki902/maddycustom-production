@@ -42,7 +42,7 @@ import { ThemeProvider } from '@mui/material';
 import { initiateCheckout, purchase } from '@/lib/metadata/facebookPixels';
 import { v4 as uuidv4 } from 'uuid'; 
 
-const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) => {
+const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, couponsDetails }) => {
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
@@ -288,7 +288,8 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost }) 
           country: data.country || 'India',
         },
         totalAmount: totalCost,
-        discountAmount: discountAmount,
+        discountAmount: couponsDetails.discountAmount || 0,
+        couponCode: couponsDetails.couponCode || '',
         extraCharges: paymentModeConfig.extraCharge
           ? [
             {

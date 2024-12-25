@@ -139,7 +139,6 @@ export const initiateCheckout = async (checkoutData, userData = {}) => {
       content_type: 'product',
       num_items: checkoutData.numItems,
     });
-    console.log('InitiateCheckout event sent successfully.');
   } catch (error) {
     console.error('Error in initiateCheckout function:', error);
   }

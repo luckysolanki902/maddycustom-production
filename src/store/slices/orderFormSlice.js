@@ -18,7 +18,11 @@ const initialState = {
   },
   userExists: false,
   prefilledAddress: null,
-  lastOrderId: '', 
+  couponsApplied: {
+    couponCode: '',
+    discountAmount: 0
+  },
+  lastOrderId: '',
 };
 
 const orderFormSlice = createSlice({
@@ -37,11 +41,15 @@ const orderFormSlice = createSlice({
     setPrefilledAddress: (state, action) => {
       state.prefilledAddress = action.payload;
     },
+    setCouponsApplied: (state, action) => {
+      state.couponsApplied = { ...state.couponsApplied, ...action.payload };
+    },
     setLastOrderId: (state, action) => {
       state.lastOrderId = action.payload;
     },
     resetOrderForm: () => initialState,
   },
+
 });
 
 export const {
@@ -51,6 +59,7 @@ export const {
   setPrefilledAddress,
   setLastOrderId, // Exported setLastOrderId action
   resetOrderForm,
+  setCouponsApplied
 } = orderFormSlice.actions;
 
 export default orderFormSlice.reducer;
