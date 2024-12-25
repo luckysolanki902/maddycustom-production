@@ -29,11 +29,16 @@ import {
   calculateTotalCostAfterDiscount,
 } from '@/lib/utils/cartCalculations';
 import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
+import { setCouponsApplied } from '@/store/slices/orderFormSlice';
 
 const ViewCart = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
+  const orderForm = useSelector((state) => state.orderForm);
+
+  const {couponsApplied} = orderForm;
+
 
   // Coupon state
   const [isCouponDialogOpen, setIsCouponDialogOpen] = useState(false);
@@ -155,6 +160,7 @@ const ViewCart = () => {
       message: 'Coupon applied successfully!',
       severity: 'error', // Changed severity to 'error' if needed, otherwise keep as 'success'
     });
+    dispatch(setCouponsApplied({ couponCode: couponCode, discountAmount: discount }));
   };
 
   // Handle Snackbar close
@@ -176,6 +182,7 @@ const ViewCart = () => {
       message: 'Coupon removed.',
       severity: 'warn', // Changed severity to 'warn' if needed, otherwise keep as 'info'
     });
+    dispatch(setCouponsApplied({ couponCode: '', discountAmount: 0 }));
   };
 
   // Handle Payment Mode Selection
@@ -213,7 +220,7 @@ const ViewCart = () => {
           />
         </section>
       )}
-      <HappyCustomersClient headingText='Past Orders'/>
+      <HappyCustomersClient headingText='Past Orders' />
 
       {/* Total Cost and Checkout */}
       {totalQuantity > 0 && (
@@ -242,6 +249,7 @@ const ViewCart = () => {
         paymentModeConfig={selectedPaymentMode}
         couponCode={couponState.couponApplied ? couponState.couponName : null}
         totalCost={totalCostWithDelivery}
+        couponsDetails={couponsApplied}
       />
 
 

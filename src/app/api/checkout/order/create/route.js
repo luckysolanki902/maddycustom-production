@@ -136,12 +136,10 @@ export async function POST(request) {
       items: items,
       totalAmount: totalAmount,
       extraCharges: extraCharges || [],
-      couponApplied: coupon
-        ? {
-            couponCode: coupon.code,
-            discountAmount: discountAmount,
-          }
-        : null,
+      couponsApplied: {
+        couponCode: couponCode || '',
+        discountAmount: discountAmount || 0,
+      },
       paymentDetails: {
         mode: paymentModeId,
         amountPaidOnline: amountPaidOnline,
