@@ -13,9 +13,9 @@ export default function FlexibleLargePoster({imageSlugForPc, imageSlugForPhone, 
         <div className={styles.bigPoster}>
             <Link href={link}>
                 {!isSmallScreen ?
-                    <Image src={`${baseImageUrl}/assets/posters/${imageSlugForPc}.jpg`} alt="image1" width={1242} height={547} style={{ width: '100%', height: 'auto' }} />
+                    <Image src={`${baseImageUrl}/assets/posters/${imageSlugForPc}`} alt="image1" width={1242} height={547} style={{ width: '100%', height: 'auto' }} />
                     :
-                    <Image src={`${baseImageUrl}/assets/posters/${imageSlugForPhone}.jpg`} alt="image1" width={1242} height={547} style={{ width: '100%', height: 'auto' }} />
+                    <Image src={`${baseImageUrl}/assets/posters/${imageSlugForPhone}`} alt="image1" width={1242} height={547} style={{ width: '100%', height: 'auto' }} />
 
                 }
             </Link>
