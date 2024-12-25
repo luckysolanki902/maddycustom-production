@@ -72,9 +72,16 @@ const HomePage = async () => {
           <OurUniqueProductCarousel products={ourUniqueProductsData} />
 
           {/* Helmet Poster */}
+
+          {/* <FlexibleLargePoster 
+            imageSlugForPc='helmetposterpc.jpg' 
+            imageSlugForPhone='helmetposterphone.jpg' 
+            link='/shop/accessories/safety/graphic-helmets/helmet-store' 
+          /> */}
+          {/* Christmas */}
           <FlexibleLargePoster 
-            imageSlugForPc='helmetposterpc' 
-            imageSlugForPhone='helmetposterphone' 
+            imageSlugForPc='christmas-pc.png' 
+            imageSlugForPhone='christmas-phone.png' 
             link='/shop/accessories/safety/graphic-helmets/helmet-store' 
           />
 
