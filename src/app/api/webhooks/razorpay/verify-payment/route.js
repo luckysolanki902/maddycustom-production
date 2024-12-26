@@ -1,16 +1,16 @@
-// src/app/api/webhooks/razorpay/verify-payment/route.js
+// app/api/webhooks/razorpay/verify-payment/route.js
 
 // Import necessary modules
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
+import Coupon from '@/models/Coupon'; // Import Coupon model
 import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shiprocket';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Product from '@/models/Product';
 import ModeOfPayment from '@/models/ModeOfPayment';
-
 
 // Configuration to disable body parsing for raw body access.
 export const config = {
@@ -188,6 +188,30 @@ export async function POST(request) {
           ) {
             updatedOrder.paymentStatus = 'paidPartially';
             console.info(`Order ID: ${internalOrderId} marked as 'paidPartially'.`);
+          }
+
+          // Increment usageCount for the applied coupon if not already done
+          if (updatedOrder.couponApplied && updatedOrder.couponApplied.length > 0) {
+            const appliedCoupon = updatedOrder.couponApplied[0]; // Assuming only one coupon is applied
+            if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
+              const coupon = await Coupon.findOne({ code: appliedCoupon.couponCode }).session(session).exec();
+              if (coupon) {
+                coupon.usageCount += 1;
+                await coupon.save({ session });
+
+                // Update the order's couponApplied to mark usage as incremented
+                appliedCoupon.incrementedCouponUsage = true;
+                updatedOrder.couponApplied = updatedOrder.couponApplied.map(couponEntry =>
+                  couponEntry.couponCode === appliedCoupon.couponCode
+                    ? { ...couponEntry.toObject(), incrementedCouponUsage: true }
+                    : couponEntry
+                );
+                await updatedOrder.save({ session });
+                console.info(`Coupon usage count incremented for code: ${appliedCoupon.couponCode}`);
+              } else {
+                console.warn(`Coupon not found for code: ${appliedCoupon.couponCode}`);
+              }
+            }
           }
 
           await updatedOrder.save({ session });

@@ -89,11 +89,11 @@ const HomePage = async () => {
           <HelmetSlider slides={helmetSlidesData} />
 
           {/* Bonnet Strip Wrap Poster */}
-          <FlexibleLargePoster 
-            imageSlugForPc='bonnetstrippc' 
-            imageSlugForPhone='bonnetstripphone' 
+          {/* <FlexibleLargePoster 
+            imageSlugForPc='bonnetstrippc.jpg' 
+            imageSlugForPhone='bonnetstripphone.jpg' 
             link='/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps' 
-          />
+          /> */}
 
           {/* Featured Full Bike Wraps */}
           <FeaturedFullBikeWraps data={featuredBikeWrapsData} />

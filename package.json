@@ -20,6 +20,7 @@
     "facebook-nodejs-business-sdk": "^21.0.3",
     "firebase": "^11.0.1",
     "micro": "^10.0.1",
+    "moment-timezone": "^0.5.46",
     "mongodb": "^6.10.0",
     "mongoose": "^8.8.2",
     "next": "15.0.0",

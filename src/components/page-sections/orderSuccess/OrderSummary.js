@@ -1,3 +1,5 @@
+// components/page-sections/orderSuccess/OrderSummary.js
+
 import React from 'react';
 import { Card, Typography, Divider } from '@mui/material';
 
@@ -19,6 +21,27 @@ const OrderSummary = ({ order }) => (
     </Typography>
     <table style={{ width: '100%' }}>
       <tbody>
+        <tr>
+          <td>Price:</td>
+          <td style={{ textAlign: 'right' }}>₹{order.items.reduce((acc, item) => acc + item.quantity * item.priceAtPurchase, 0)}</td>
+        </tr>
+
+        {order.extraCharges
+          ?.filter(charge => charge.chargesAmount > 0)
+          .map((charge, index) => (
+            <tr key={index}>
+              <td>{charge.chargesName}:</td>
+              <td style={{ textAlign: 'right' }}>₹{charge.chargesAmount}</td>
+            </tr>
+          ))}
+
+        {order.totalDiscount > 0 && (
+          <tr>
+            <td>Total Discount:</td>
+            <td style={{ textAlign: 'right' }}>- ₹{order.totalDiscount}</td>
+          </tr>
+        )}
+
         {order.paymentDetails.amountDueCod > 0 && (
           <tr>
             <td>Amount Due COD:</td>
@@ -31,12 +54,7 @@ const OrderSummary = ({ order }) => (
             <td style={{ textAlign: 'right', color: 'green' }}>₹{order.paymentDetails.amountPaidOnline}</td>
           </tr>
         )}
-        {order.couponApplied?.discountAmount > 0 && (
-          <tr>
-            <td>Coupon Discount:</td>
-            <td style={{ textAlign: 'right' }}>- ₹{order.couponsApplied.discountAmount}</td>
-          </tr>
-        )}
+
         <tr>
           <td colSpan={2}>
             <Divider sx={{ my: 2 }} />

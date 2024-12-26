@@ -1,8 +1,8 @@
-// @/components/full-page-comps/ViewCart.js
+// components/full-page-comps/ViewCart.js
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
@@ -29,7 +29,7 @@ import {
   calculateTotalCostAfterDiscount,
 } from '@/lib/utils/cartCalculations';
 import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
-import { setCouponsApplied } from '@/store/slices/orderFormSlice';
+import { setCouponApplied } from '@/store/slices/orderFormSlice';
 
 const ViewCart = () => {
   const dispatch = useDispatch();
@@ -37,8 +37,7 @@ const ViewCart = () => {
   const cartItems = useSelector((state) => state.cart.items);
   const orderForm = useSelector((state) => state.orderForm);
 
-  const {couponsApplied} = orderForm;
-
+  const { couponApplied } = orderForm;
 
   // Coupon state
   const [isCouponDialogOpen, setIsCouponDialogOpen] = useState(false);
@@ -158,10 +157,13 @@ const ViewCart = () => {
     setSnackbar({
       open: true,
       message: 'Coupon applied successfully!',
-      severity: 'error', // Changed severity to 'error' if needed, otherwise keep as 'success'
+      severity: 'success', // Changed severity to 'success'
     });
-    dispatch(setCouponsApplied({ couponCode: couponCode, discountAmount: discount }));
+    dispatch(setCouponApplied({ couponCode: couponCode, discountAmount: discountAmount }));
   };
+
+  useEffect(() => {
+  }, [totalCostBeforeDiscount, discountAmount, totalCostAfterDiscount]);
 
   // Handle Snackbar close
   const handleSnackbarClose = () => {
@@ -169,7 +171,7 @@ const ViewCart = () => {
   };
 
   // Handle removing a coupon
-  const removeCoupon = () => {
+  const handleRemoveCoupon = () => {
     setCouponState({
       couponApplied: false,
       couponName: '',
@@ -180,9 +182,9 @@ const ViewCart = () => {
     setSnackbar({
       open: true,
       message: 'Coupon removed.',
-      severity: 'warn', // Changed severity to 'warn' if needed, otherwise keep as 'info'
+      severity: 'warning', // Changed severity to 'warning'
     });
-    dispatch(setCouponsApplied({ couponCode: '', discountAmount: 0 }));
+    dispatch(setCouponApplied({ couponCode: '', discountAmount: 0 }));
   };
 
   // Handle Payment Mode Selection
@@ -209,7 +211,7 @@ const ViewCart = () => {
             discountAmount={discountAmount}
             totalCostWithDelivery={totalCostWithDelivery}
             onOpenCoupon={() => setIsCouponDialogOpen(true)}
-            onRemoveCoupon={removeCoupon}
+            onRemoveCoupon={handleRemoveCoupon}
           />
 
           <PaymentModes
@@ -226,7 +228,7 @@ const ViewCart = () => {
       {totalQuantity > 0 && (
         <Footer
           totalCost={totalCostWithDelivery}
-          originalTotal={couponState.couponApplied ? originalTotal : null}
+          originalTotal={couponState.couponApplied ? originalTotal + 100 : originalTotal + 100}
           onCheckout={handleCheckout}
           onlineAmount={onlineAmount}
           codAmount={codAmount}
@@ -239,7 +241,7 @@ const ViewCart = () => {
         onClose={() => setIsCouponDialogOpen(false)}
         onApplyCoupon={handleApplyCoupon}
         totalCost={totalCostBeforeDiscount}
-        removeCoupon={removeCoupon}
+        removeCoupon={handleRemoveCoupon}
       />
 
       {/* Order Form Dialog */}
@@ -249,9 +251,10 @@ const ViewCart = () => {
         paymentModeConfig={selectedPaymentMode}
         couponCode={couponState.couponApplied ? couponState.couponName : null}
         totalCost={totalCostWithDelivery}
-        couponsDetails={couponsApplied}
+        couponsDetails={couponApplied}
+        deliveryCost={deliveryCost}
+        discountAmountFinal={discountAmount}
       />
-
 
       {/* Custom Snackbar for Feedback */}
       <CustomSnackbar

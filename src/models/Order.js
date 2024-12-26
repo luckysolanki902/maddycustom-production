@@ -1,8 +1,6 @@
 // models/Order.js
 
-const { default: index } = require('@/app/termsandconditions/page');
 const mongoose = require('mongoose');
-
 
 const OrderSchema = new mongoose.Schema(
   {
@@ -66,17 +64,30 @@ const OrderSchema = new mongoose.Schema(
       },
     ],
     // Coupon applied to this order
-    couponsApplied: {
-      couponCode: {
-        type: String,
-        uppercase: true,
-        maxlength: 20,
-      },
-      discountAmount: {
-        type: Number,
-        min: 0,
-        default: 0,
-      },
+    couponApplied: [
+      {
+        couponCode: {
+          type: String,
+          uppercase: true,
+          maxlength: 20,
+        },
+        discountAmount: {
+          type: Number,
+          min: 0,
+          default: 0,
+        },
+        incrementedCouponUsage: {
+          type: Boolean,
+          default: false,
+        }
+      }
+    ],
+    // Total discount applied to the order
+    totalDiscount: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
     },
     // Payment details
     paymentDetails: {
@@ -180,35 +191,33 @@ const OrderSchema = new mongoose.Schema(
     },
 
     // Utm details
-      utmDetails: {
-        source: {
-          type: String,
-          default: 'direct',
-          maxlength: 100,
-          index: true,
-        },
-        medium: {
-          type: String,
-          maxlength: 100,
-        },
-        campaign: {
-          type: String,
-          maxlength: 100,
-        },
-        term: {
-          type: String,
-          maxlength: 100,
-        },
-        content: {
-          type: String,
-          maxlength: 100,
-        },
+    utmDetails: {
+      source: {
+        type: String,
+        default: 'direct',
+        maxlength: 100,
+        index: true,
       },
+      medium: {
+        type: String,
+        maxlength: 100,
+      },
+      campaign: {
+        type: String,
+        maxlength: 100,
+      },
+      term: {
+        type: String,
+        maxlength: 100,
+      },
+      content: {
+        type: String,
+        maxlength: 100,
+      },
+    },
   },
 
   { timestamps: true }
 );
-
-
 
 module.exports = mongoose.models.Order || mongoose.model('Order', OrderSchema);

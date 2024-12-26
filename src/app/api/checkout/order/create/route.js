@@ -7,6 +7,7 @@ import User from '@/models/User';
 import Coupon from '@/models/Coupon';
 import ModeOfPayment from '@/models/ModeOfPayment';
 import mongoose from 'mongoose';
+import moment from 'moment-timezone';
 
 export async function POST(request) {
   try {
@@ -68,7 +69,7 @@ export async function POST(request) {
     // Handle coupon
     let coupon = null;
     if (couponCode) {
-      coupon = await Coupon.findOne({ code: couponCode, isActive: true });
+      coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
       if (!coupon) {
         console.warn(`Invalid or inactive coupon code attempted: ${couponCode}`);
         return NextResponse.json(
@@ -77,17 +78,21 @@ export async function POST(request) {
         );
       }
 
+      // Get current time in IST
+      const currentDateIST = moment().tz('Asia/Kolkata').toDate();
+
       // Ensure coupon is applicable based on usage, validity, etc.
-      const now = new Date();
-      if (now < coupon.validFrom || now > coupon.validUntil) {
-        console.warn(`Coupon code not valid at this time: ${couponCode}`);
+      if (currentDateIST < coupon.validFrom || currentDateIST > coupon.validUntil) {
+        console.warn(`Coupon code expired or not yet valid: ${couponCode}`);
         return NextResponse.json(
-          { message: 'Coupon is not valid at this time' },
+          { message: 'Coupon is expired or not yet valid.' },
           { status: 400 }
         );
       }
 
-      // Will check for usage limit in future
+      // Check if usage limit per user is reached (if applicable)
+      // TODO Later: Implement per-user usage tracking if required
+
     }
 
     // Calculate payment splits based on payment mode configuration
@@ -115,7 +120,7 @@ export async function POST(request) {
       amountDueCod = Math.ceil((totalAmount * codPercentage) / 100);
       amountPaidCod = 0;
 
-      if (paymentMode.name === 'cod') {
+      if (paymentMode.name.toLowerCase() === 'cod') {
         // For COD only, all amount is due via COD
         amountDueCod = totalAmount;
         amountDueOnline = 0;
@@ -135,11 +140,15 @@ export async function POST(request) {
       user: userId,
       items: items,
       totalAmount: totalAmount,
+      totalDiscount: discountAmount || 0, // Set totalDiscount
       extraCharges: extraCharges || [],
-      couponsApplied: {
-        couponCode: couponCode || '',
-        discountAmount: discountAmount || 0,
-      },
+      couponApplied: couponCode
+        ? [{
+          couponCode: couponCode.toUpperCase(),
+          discountAmount: discountAmount || 0,
+          incrementedCouponUsage: false, // Initialize as false
+        }]
+        : [],
       paymentDetails: {
         mode: paymentModeId,
         amountPaidOnline: amountPaidOnline,
@@ -164,12 +173,6 @@ export async function POST(request) {
     });
 
     await newOrder.save();
-
-    if (coupon) {
-      // Increment coupon usage count
-      coupon.usageCount += 1;
-      await coupon.save();
-    }
 
     return NextResponse.json(
       { message: 'Order created successfully', orderId: newOrder._id, paymentDetails: newOrder.paymentDetails },
