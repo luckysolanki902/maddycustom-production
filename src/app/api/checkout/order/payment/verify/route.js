@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
+import Coupon from '@/models/Coupon'; // Import Coupon model
 import crypto from 'crypto';
 
 /**
@@ -63,13 +64,36 @@ export async function POST(request) {
       signature: razorpay_signature,
     };
 
+    // Calculate the amount paid online based on the payment mode
+    // Assuming the entire amountDueOnline is being paid
     order.paymentDetails.amountPaidOnline += order.paymentDetails.amountDueOnline;
     order.paymentDetails.amountDueOnline = 0;
 
+    // Update paymentStatus based on remaining dues
     if (order.paymentDetails.amountDueCod <= 0) {
       order.paymentStatus = 'allPaid';
     } else {
       order.paymentStatus = 'paidPartially';
+    }
+
+    // Increment usageCount for the applied coupon if not already done
+    if (order.couponApplied && order.couponApplied.length > 0) {
+      const appliedCoupon = order.couponApplied[0]; // Assuming only one coupon is applied
+      if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
+        const coupon = await Coupon.findOne({ code: appliedCoupon.couponCode }).exec();
+        if (coupon) {
+          coupon.usageCount += 1;
+          await coupon.save();
+          appliedCoupon.incrementedCouponUsage = true;
+          order.couponApplied = order.couponApplied.map(couponEntry =>
+            couponEntry.couponCode === appliedCoupon.couponCode
+              ? { ...couponEntry.toObject(), incrementedCouponUsage: true }
+              : couponEntry
+          );
+        } else {
+          console.warn(`Coupon not found for code: ${appliedCoupon.couponCode}`);
+        }
+      }
     }
 
     await order.save();

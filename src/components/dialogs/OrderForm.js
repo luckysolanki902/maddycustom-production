@@ -40,9 +40,9 @@ import { styled } from '@mui/material/styles';
 import theme from '@/styles/theme';
 import { ThemeProvider } from '@mui/material';
 import { initiateCheckout, purchase } from '@/lib/metadata/facebookPixels';
-import { v4 as uuidv4 } from 'uuid'; 
+import { v4 as uuidv4 } from 'uuid';
 
-const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, couponsDetails }) => {
+const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, couponsDetails, deliveryCost, discountAmountFinal }) => {
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
@@ -246,7 +246,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
       }
 
       await initiateCheckout({
-        eventID: uuidv4(), 
+        eventID: uuidv4(),
         totalValue: totalCost,
         contents: cartItems.map((item) => ({
           productId: item.productId || item._id,
@@ -288,16 +288,19 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
           country: data.country || 'India',
         },
         totalAmount: totalCost,
-        discountAmount: couponsDetails.discountAmount || 0,
+        discountAmount: discountAmountFinal || 0,
         couponCode: couponsDetails.couponCode || '',
-        extraCharges: paymentModeConfig.extraCharge
-          ? [
-            {
-              chargesName: 'Extra Charge',
-              chargesAmount: paymentModeConfig.extraCharge,
-            },
-          ]
-          : [],
+        extraCharges: [
+          {
+            chargesName: 'MOP Charges',
+            chargesAmount: paymentModeConfig.extraCharge || 0,
+          },
+          {
+            chargesName: 'Delivery Charges',
+            chargesAmount: deliveryCost || 0,
+          }
+        ]
+        ,
         couponCode: couponCode || null,
         utmDetails: utmDetails.utmDetails || null,
       });

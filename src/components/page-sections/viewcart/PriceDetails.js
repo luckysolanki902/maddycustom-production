@@ -22,27 +22,27 @@ const PriceDetails = ({
         <span className={`${styles.rupee}`} >₹</span>
         {/* {deliveryCost} */}
         <span style={{textDecoration:'line-through'}}>
-        100
+          100
         </span>
       </div>
       <span
-                      style={{
-                        padding: '0rem 0.6rem',
-                        marginLeft: '0.5rem',
-                        borderRadius: '0.5rem',
-                        fontWeight: '400',
-                        fontFamily: 'Roboto',
-                        display: 'flex',
-                        fontSize: '0.8rem',
-                        backgroundColor: 'white',
-                        alignItems:'center',
-                        color:'#34C759',
-                        boxShadow: 'rgba(0, 0, 0, 0.12) 0px 1px 2px 1px',
-                      }}
-                      className={styles.patch}
-                    >
-                       <span>Free</span>
-                    </span>
+        style={{
+          padding: '0rem 0.6rem',
+          marginLeft: '0.5rem',
+          borderRadius: '0.5rem',
+          fontWeight: '400',
+          fontFamily: 'Roboto',
+          display: 'flex',
+          fontSize: '0.8rem',
+          backgroundColor: 'white',
+          alignItems:'center',
+          color:'#34C759',
+          boxShadow: 'rgba(0, 0, 0, 0.12) 0px 1px 2px 1px',
+        }}
+        className={styles.patch}
+      >
+        <span>Free</span>
+      </span>
     </div>
 
     {/* Discount */}

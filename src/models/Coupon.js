@@ -1,4 +1,4 @@
-// /models/Coupon.js
+// models/Coupon.js
 
 const mongoose = require('mongoose');
 

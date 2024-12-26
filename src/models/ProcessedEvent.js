@@ -9,7 +9,7 @@ import mongoose from 'mongoose';
 const ProcessedEventSchema = new mongoose.Schema(
   {
     /**
-     * The name of the webhook provider (e.g., 'razorpay', 'stripe', 'paypal').
+     * The name of the webhook provider (e.g., 'razorpay', 'shiprocket').
      */
     provider: {
       type: String,

@@ -15,12 +15,13 @@ export const calculateTotalCostBeforeDiscount = (cartItems) =>
   }, 0);
 
 export const calculateDiscountAmount = (totalCost, couponState) => {
-if (!couponState.couponApplied) return 0;
-const { discountType, couponDiscount } = couponState;
-return discountType === 'percentage'
-  ? Math.floor((totalCost * couponDiscount) / 100)
-  : couponDiscount;
+  if (!couponState.couponApplied) return 0;
+  const { discountType, couponDiscount } = couponState;
+  return discountType === 'percentage'
+    ? Math.floor((totalCost * couponDiscount) / 100)
+    : couponDiscount;
 };
 
-export const calculateTotalCostAfterDiscount = (totalCost, discountAmount) =>
-  totalCost - discountAmount;
+export const calculateTotalCostAfterDiscount = (totalCost, discountAmount) => {
+  return totalCost - discountAmount;
+}

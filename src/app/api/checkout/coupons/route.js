@@ -3,21 +3,28 @@
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Coupon from '@/models/Coupon';
 import { NextResponse } from 'next/server';
+import moment from 'moment-timezone';
 
 export async function GET() {
   await connectToDatabase();
 
   try {
-    const currentDate = new Date();
+    // Get current time in IST
+    const currentDateIST = moment().tz('Asia/Kolkata').toDate();
+
     const coupons = await Coupon.find({
       isActive: true,
-      validFrom: { $lte: currentDate },
-      validUntil: { $gte: currentDate },
-    }).select('-__v -createdAt -updatedAt');
+      validFrom: { $lte: currentDateIST },
+      validUntil: { $gte: currentDateIST },
+    })
+      .select('-__v -createdAt -updatedAt');
 
     return NextResponse.json({ coupons }, { status: 200 });
   } catch (error) {
     console.error('Error fetching active coupons:', error.message);
-    return NextResponse.json({ message: 'Server error. Please try again.' }, { status: 500 });
+    return NextResponse.json(
+      { message: 'Server error. Please try again.' },
+      { status: 500 }
+    );
   }
 }
