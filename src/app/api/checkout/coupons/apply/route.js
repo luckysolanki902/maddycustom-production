@@ -38,6 +38,14 @@ export async function POST(request) {
       );
     }
 
+    if(coupon.minimumPurchasePrice>totalCost){
+      console.warn(`Required Minimum order price not achieved: ${code}`);
+      return NextResponse.json(
+        { valid: false, message: `Minimum order price should be ${coupon.minimumPurchasePrice}.` },
+        { status: 400 }
+      );
+    }
+
     // Get current time in IST
     const currentDateIST = moment().tz('Asia/Kolkata').toDate();
 
