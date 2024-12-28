@@ -18,7 +18,7 @@ import ContactUs from '../layouts/ContactUs';
 
 export default function ProductsPage({ slug, variant, products, category, initialPage, totalPages }) {
   // Constants
-  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+  // const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL; // Not needed for YouTube iframe
 
   // State for tag filter and sort filter
   const [tagFilter, setTagFilter] = useState(null);
@@ -127,28 +127,40 @@ export default function ProductsPage({ slug, variant, products, category, initia
               variant.variantCode === 'hel' ?
                 <>
                   <h2 className={styles.helmetTagline}>&quot;Best designed helmets of India <br /> with safety of&quot;</h2>
-                  <Image className={styles.studds} src={`${baseImageUrl}${variant?.availableBrands[0]?.brandLogo}`} width={1103 / 5} height={394 / 5} alt={'studds'}></Image></>
+                  <Image
+                    className={styles.studds}
+                    
+                    src={`${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${variant?.availableBrands[0]?.brandLogo}`}
+                    width={1103 / 5}
+                    height={394 / 5}
+                    alt={'studds'}
+                  />
+                </>
                 :
-                <h2 className={styles.belowMainHeading} >{variant?.subtitles[0]}</h2>
+                <h2 className={styles.belowMainHeading}>{variant?.subtitles[0]}</h2>
             )}
           </div>
         </div>
       </header>
-      <div className={style.productsGrid}>
-        {variant.showCase?.[0]?.available && isSmallDevice && (
-          <div
-            className={style.videoCard}
-            aria-description="product video"
-            aria-describedby="product video"
-          >
-            <video autoPlay muted playsInline loop controls={false}>
-              <source src={`${baseImageUrl}${variant.showCase[0].url}`} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-            <h1>Maddy Custom</h1>
-          </div>
-        )}
-      </div>
+      
+      {/* Video Embed for Small Devices */}
+      {variant.showCase?.[0]?.available && isSmallDevice && (
+        <div
+          className={style.videoCard}
+          aria-label="Product Video"
+        >
+          <iframe
+            width="100%"
+            height="100%"
+            src="https://www.youtube.com/embed/MOX9WDmSkCA?autoplay=1&mute=1&loop=1&playlist=MOX9WDmSkCA&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&disablekb=1"
+            title="Product Video"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            style={{pointerEvents:'none'}}
+          ></iframe>
+          <h1>Maddy Custom</h1>
+        </div>
+      )}
 
       <Tags setTagFilter={setTagFilter} tags={allTags} />
 
@@ -180,8 +192,8 @@ export default function ProductsPage({ slug, variant, products, category, initia
         sortBy={sortBy}
         loading={loading}
       />
+      
       <PaginationStyles>
-
         <Pagination
           count={totalPageCount}
           page={currentPage}
@@ -189,8 +201,8 @@ export default function ProductsPage({ slug, variant, products, category, initia
           color="primary"
           disabled={loading}
         />
-
       </PaginationStyles>
+      
       <ScrollToTop />
       <ContactUs />
     </div>

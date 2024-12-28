@@ -6,25 +6,27 @@ import styles from './styles/productswrapper.module.css';
 import { useMediaQuery } from '@mui/material';
 
 const ProductsWrapper = ({ variant, products, category, sortBy = 'default', loading }) => {
-  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
 
   return (
     <div className={styles.productsGrid}>
-      {variant.showCase?.[0]?.available && (
-        !isSmallDevice && (
-          <div
-            className={styles.videoCard}
-            aria-description="product video"
-            aria-describedby="product video"
-          >
-            <video autoPlay muted playsInline loop controls={false}>
-              <source src={`${baseImageUrl}${variant.showCase[0].url}`} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-            <h1>Maddy Custom</h1>
-          </div>
-        )
+      {variant.showCase?.[0]?.available && !isSmallDevice && (
+        <div
+          aria-label="Product Video"
+        >
+          <iframe
+            width="100%"
+            height="100%"
+            src="https://www.youtube.com/embed/MOX9WDmSkCA?autoplay=1&mute=1&loop=1&playlist=MOX9WDmSkCA&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&disablekb=1"
+            title="Product Video"
+            frameBorder="0"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            style={{ pointerEvents: 'none' }}
+
+          ></iframe>
+          <h1>Maddy Custom</h1>
+        </div>
       )}
 
       {products?.map((product) => (

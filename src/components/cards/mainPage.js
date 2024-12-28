@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import CategorySection from './ProductWrapper';
+import CategorySection from './CategorySection';
 // import productsData from '/public/json/products.json';
 // import categoriesData from '/public/json/specific_categories.json';
 // import variantsData from '/public/json/specific_category_variants.json';

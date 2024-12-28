@@ -34,6 +34,22 @@
   height: auto;
   max-height: 440px;
   object-fit: cover;
+  pointer-events: none;
+
+}
+
+.videoCard iframe{
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  pointer-events: none;
+  aspect-ratio: 16 / 9;
+  max-height: none;
+  border-radius: 1rem;
+  pointer-events: none;
+  object-fit: fill;
+  border: none;
+  outline: none;
 }
 
 /* "Maddy Customs" text styling */
@@ -101,6 +117,10 @@
     border-radius: 1rem;
   }
   .videoCard video{
+    border-radius: 1rem;
+  }
+  
+  .videoCard iframe{
     border-radius: 1rem;
   }
   
