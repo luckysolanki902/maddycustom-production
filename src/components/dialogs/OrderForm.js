@@ -221,149 +221,208 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
     setPurchaseInitiated(true);
     setIsLoading(true);
     setIsPaymentProcessing(true);
+  
+    // Initialize variables to track steps
+    let addressAdded = false;
+    let checkoutInitiated = false;
+    let orderCreated = false;
+    let paymentProcessed = false;
+  
     try {
-      // Add/update the address using the provided API
-      const addAddressResponse = await axios.post('/api/user/add-address', {
-        phoneNumber: orderForm.userDetails.phoneNumber,
-        address: {
-          receiverName: orderForm.userDetails.name || '',
-          receiverPhoneNumber: orderForm.userDetails.phoneNumber,
-          addressLine1: data.addressLine1,
-          addressLine2: data.addressLine2,
-          city: data.city,
-          state: data.state,
-          pincode: data.pincode,
-          country: data.country || 'India',
-        },
-      });
-
-      // Handle API response
-      if (addAddressResponse.data.message === 'Address already exists.') {
-        // Address already exists, proceed
-      } else if (addAddressResponse.data.message === 'Address added successfully.') {
-        // Update Redux store with the latest address details from API response
-        dispatch(setAddressDetails(addAddressResponse.data.latestAddress));
+      // Step 1: Add/Update Address
+      try {
+        const addAddressResponse = await axios.post('/api/user/add-address', {
+          phoneNumber: orderForm.userDetails.phoneNumber,
+          address: {
+            receiverName: orderForm.userDetails.name || '',
+            receiverPhoneNumber: orderForm.userDetails.phoneNumber,
+            addressLine1: data.addressLine1,
+            addressLine2: data.addressLine2,
+            city: data.city,
+            state: data.state,
+            pincode: data.pincode,
+            country: data.country || 'India',
+          },
+        });
+  
+        if (addAddressResponse.data.message === 'Address already exists.') {
+          // Address already exists, proceed
+          console.log('Address already exists.');
+        } else if (addAddressResponse.data.message === 'Address added successfully.') {
+          // Update Redux store with the latest address details from API response
+          dispatch(setAddressDetails(addAddressResponse.data.latestAddress));
+          console.log('Address added successfully.');
+        }
+        addressAdded = true;
+      } catch (error) {
+        console.error('Error adding/updating address:', error.message);
+        showSnackbar('Failed to add/update address. Please try again.', 'error');
+        throw error; // Exit the main try-catch
       }
-
-      await initiateCheckout({
-        eventID: uuidv4(),
-        totalValue: totalCost,
-        contents: cartItems.map((item) => ({
-          productId: item.productId || item._id,
-          quantity: item.quantity,
-          price: item.priceAtPurchase,
-        })),
-        contentName: cartItems.map(item => item.productDetails.name).join(', '), // Concatenated product names
-        contentCategory: cartItems.map(item => item.productDetails.category), // Array of product categories
-        numItems: cartItems.length,
-      }, {
-        email: userDetails.email, // Assuming you have user email
-        phoneNumber: userDetails.phoneNumber,
-      });
-
-      // Proceed with order creation only if address was added or already exists
-      // Create order via separate API call
-      const orderResponse = await axios.post('/api/checkout/order/create', {
-        userId: orderForm.userDetails.userId,
-        phoneNumber: orderForm.userDetails.phoneNumber,
-        items: cartItems.map((item) => ({
-          product: item.productId,
-          name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-            ? item.productDetails.category?.name.slice(0, -1)
-            : item.productDetails.category?.name
-            }`,
-          quantity: item.quantity,
-          priceAtPurchase: item.productDetails.price,
-          sku: item.productDetails.sku,
-        })),
-        paymentModeId: paymentModeConfig._id,
-        address: {
-          receiverName: orderForm.userDetails.name || '',
-          receiverPhoneNumber: orderForm.userDetails.phoneNumber,
-          addressLine1: data.addressLine1,
-          addressLine2: data.addressLine2,
-          city: data.city,
-          state: data.state,
-          pincode: data.pincode,
-          country: data.country || 'India',
-        },
-        totalAmount: totalCost,
-        discountAmount: discountAmountFinal || 0,
-        couponCode: couponsDetails.couponCode || '',
-        extraCharges: [
+  
+      // Step 2: Initiate Checkout
+      try {
+        await initiateCheckout(
           {
-            chargesName: 'MOP Charges',
-            chargesAmount: paymentModeConfig.extraCharge || 0,
+            eventID: uuidv4(),
+            totalValue: totalCost,
+            contents: cartItems.map((item) => ({
+              productId: item.productId || item._id,
+              quantity: item.quantity,
+              price: item.priceAtPurchase,
+            })),
+            contentName: cartItems.map((item) => item.productDetails.name).join(', '),
+            contentCategory: cartItems.map((item) => item.productDetails.category),
+            numItems: cartItems.length,
           },
           {
-            chargesName: 'Delivery Charges',
-            chargesAmount: deliveryCost || 0,
-          }
-        ]
-        ,
-        couponCode: couponCode || null,
-        utmDetails: utmDetails.utmDetails || null,
-      });
-
-      const { orderId, message, paymentDetails } = orderResponse.data;
-
-      dispatch(setLastOrderId(orderId));
-
-      if (paymentDetails.amountDueOnline > 0) {
-        const paymentInitResponse = await axios.post(
-          '/api/checkout/order/payment/create-razorpay-order',
-          {
-            orderId: orderId, // Internal orderId
+            email: userDetails.email, // Assuming you have user email
+            phoneNumber: userDetails.phoneNumber,
           }
         );
-
-        const { order: razorpayOrder, msg } = paymentInitResponse.data;
-
-        if (msg === 'success') {
-          const paymentResult = await makePayment({
-            customerName: orderForm.userDetails.name || '',
-            customerMobile: orderForm.userDetails.phoneNumber,
-            orderId, // Internal orderId
-            razorpayOrder, // Pass the entire razorpayOrder object
+        checkoutInitiated = true;
+      } catch (error) {
+        console.error('Error initiating checkout:', error.message);
+        showSnackbar('Failed to initiate checkout. Please try again.', 'error');
+        throw error;
+      }
+  
+      // Step 3: Create Order
+      let orderId = null;
+      let paymentDetails = null;
+      try {
+        const orderResponse = await axios.post('/api/checkout/order/create', {
+          userId: orderForm.userDetails.userId,
+          phoneNumber: orderForm.userDetails.phoneNumber,
+          items: cartItems.map((item) => ({
+            product: item.productId,
+            name: `${item.productDetails.name} ${
+              item.productDetails.category?.name?.endsWith('s')
+                ? item.productDetails.category?.name.slice(0, -1)
+                : item.productDetails.category?.name
+            }`,
+            quantity: item.quantity,
+            priceAtPurchase: item.productDetails.price,
+            sku: item.productDetails.sku,
+          })),
+          paymentModeId: paymentModeConfig._id,
+          address: {
+            receiverName: orderForm.userDetails.name || '',
+            receiverPhoneNumber: orderForm.userDetails.phoneNumber,
+            addressLine1: data.addressLine1,
+            addressLine2: data.addressLine2,
+            city: data.city,
+            state: data.state,
+            pincode: data.pincode,
+            country: data.country || 'India',
+          },
+          totalAmount: totalCost,
+          discountAmount: discountAmountFinal || 0,
+          couponCode: couponsDetails?.couponCode || '',
+          extraCharges: [
+            {
+              chargesName: 'MOP Charges',
+              chargesAmount: paymentModeConfig.extraCharge || 0,
+            },
+            {
+              chargesName: 'Delivery Charges',
+              chargesAmount: deliveryCost || 0,
+            },
+          ],
+          utmDetails: utmDetails.utmDetails || null,
+        });
+  
+        const { orderId: createdOrderId, message, paymentDetails: createdPaymentDetails } = orderResponse.data;
+  
+        dispatch(setLastOrderId(createdOrderId));
+        orderId = createdOrderId;
+        paymentDetails = createdPaymentDetails;
+  
+        console.log('Order created successfully with ID:', orderId);
+        orderCreated = true;
+      } catch (error) {
+        console.error('Error creating order:', error.message);
+        showSnackbar('Failed to create order. Please try again.', 'error');
+        throw error;
+      }
+  
+      // Step 4: Process Payment (if applicable)
+      if (paymentDetails.amountDueOnline > 0) {
+        try {
+          const paymentInitResponse = await axios.post('/api/checkout/order/payment/create-razorpay-order', {
+            orderId: orderId, // Internal orderId
           });
-
-          if (paymentResult) {
-            showSnackbar('Payment Successful!', 'success');
+  
+          const { order: razorpayOrder, msg } = paymentInitResponse.data;
+  
+          if (msg === 'success') {
+            const paymentResult = await makePayment({
+              customerName: orderForm.userDetails.name || '',
+              customerMobile: orderForm.userDetails.phoneNumber,
+              orderId, // Internal orderId
+              razorpayOrder, // Pass the entire razorpayOrder object
+            });
+  
+            if (paymentResult) {
+              showSnackbar('Payment Successful!', 'success');
+              paymentProcessed = true;
+            } else {
+              showSnackbar('Payment failed. Please try again.', 'error');
+              throw new Error('Payment processing failed.');
+            }
           } else {
-            showSnackbar('Payment failed. Please try again.', 'error');
+            console.error('Failed to initiate payment:', msg);
+            showSnackbar('Failed to initiate payment.', 'error');
+            throw new Error('Payment initiation failed.');
           }
-        } else {
-          showSnackbar('Failed to initiate payment.', 'error');
+        } catch (error) {
+          console.error('Error processing payment:', error.message);
+          // Depending on requirements, you might want to proceed or halt here
+          throw error;
         }
       }
-      await purchase({
-        orderId: orderId,
-        totalAmount: totalCost,
-        items: cartItems.map((item) => ({
-          product: item.productId,
-          name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-            ? item.productDetails.category?.name.slice(0, -1)
-            : item.productDetails.category?.name
+  
+      // Step 5: Send Purchase Event to FB Pixel
+      try {
+        await purchase({
+          orderId: orderId,
+          totalAmount: totalCost,
+          items: cartItems.map((item) => ({
+            product: item.productId,
+            name: `${item.productDetails.name} ${
+              item.productDetails.category?.name?.endsWith('s')
+                ? item.productDetails.category?.name.slice(0, -1)
+                : item.productDetails.category?.name
             }`,
-          quantity: item.quantity,
-          priceAtPurchase: item.priceAtPurchase,
-        })),
-      });
-
+            quantity: item.quantity,
+            priceAtPurchase: item.priceAtPurchase,
+          })),
+        });
+        console.log('Purchase event sent to FB Pixel.');
+      } catch (error) {
+        console.error('Error sending purchase event to FB Pixel:', error.message);
+        // Decide whether to continue or not. Typically, non-critical.
+      }
+  
+      // Step 6: Cleanup and Navigation
       dispatch(clearUTMDetails());
       dispatch(clearCart());
       dispatch(resetOrderForm());
       reset();
       handleClose();
       router.push(`/orders/myorder/${orderId}`);
+      showSnackbar('Order placed successfully!', 'success');
     } catch (error) {
-      console.error('Error creating order or processing payment:', error.message);
-      setPurchaseInitiated(false); // Reset purchase initiation flag on error
+      // General error handling if not already handled in specific steps
+      console.error('Error during purchase process:', error.message);
+      showSnackbar('An error occurred during the purchase process. Please try again.', 'error');
     } finally {
       setIsLoading(false);
       setIsPaymentProcessing(false);
+      setPurchaseInitiated(false); // Reset the purchase initiation flag
     }
   };
+  
 
   // Handle dialog close with conditions
   const handleClose = useCallback(() => {
