@@ -15,10 +15,10 @@ import HalfBikes from '@/components/page-sections/homepage/halfBikes';
 import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
 import Image from 'next/image';
 import { createMetadata } from '@/lib/metadata/create-metadata';
-import { 
-  fetchOurUniqueProducts, 
-  fetchHelmetSlides, 
-  fetchFeaturedFullBikeWraps, 
+import {
+  fetchOurUniqueProducts,
+  fetchHelmetSlides,
+  fetchFeaturedFullBikeWraps,
   fetchHappyCustomers,
   fetchSearchCategories
 } from '@/lib/utils/fetchutils';
@@ -32,95 +32,95 @@ export async function generateMetadata() {
 
 const HomePage = async () => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-    // Fetch all necessary data concurrently
-    const [
-      ourUniqueProductsData,
-      helmetSlidesData,
-      featuredBikeWrapsData,
-      happyCustomersData,
-      searchCategoriesData
-    ] = await Promise.all([
-      fetchOurUniqueProducts(),
-      fetchHelmetSlides(),
-      fetchFeaturedFullBikeWraps(),
-      fetchHappyCustomers(null), // Pass parameters if needed
-      fetchSearchCategories()
-    ]);
+  // Fetch all necessary data concurrently
+  const [
+    ourUniqueProductsData,
+    helmetSlidesData,
+    featuredBikeWrapsData,
+    happyCustomersData,
+    searchCategoriesData
+  ] = await Promise.all([
+    fetchOurUniqueProducts(),
+    fetchHelmetSlides(),
+    fetchFeaturedFullBikeWraps(),
+    fetchHappyCustomers(null), // Pass parameters if needed
+    fetchSearchCategories()
+  ]);
 
-    // Destructure categories and variants from searchCategoriesData
-    const { categories, variants } = searchCategoriesData;
+  // Destructure categories and variants from searchCategoriesData
+  const { categories, variants } = searchCategoriesData;
 
-    return (
-      <>
-        <Sidebar />
+  return (
+    <>
+      <Sidebar />
 
-        <main>
-          {/* Logo and Main Carousel */}
-          <HeroSection />
+      <main>
+        {/* Logo and Main Carousel */}
+        <HeroSection />
 
-          {/* SearchBox */}
-          <div className={styles.chooseDiv}>CHOOSE</div>
-          <CategorySearchBox 
-            categories={categories} 
-            variants={variants} 
-          />
+        {/* SearchBox */}
+        <div className={styles.chooseDiv}>CHOOSE</div>
+        <CategorySearchBox
+          categories={categories}
+          variants={variants}
+        />
 
-          {/* Category cards like Helmet, Tank, Bonnet to choose from */}
-          <ChooseCategory />
+        {/* Category cards like Helmet, Tank, Bonnet to choose from */}
+        <ChooseCategory />
 
-          {/* Our Unique Products */}
-          <OurUniqueProductCarousel products={ourUniqueProductsData} />
+        {/* Our Unique Products */}
+        <OurUniqueProductCarousel products={ourUniqueProductsData} />
 
-          {/* Helmet Poster */}
+        {/* Helmet Poster */}
 
-          {/* <FlexibleLargePoster 
+        {/* <FlexibleLargePoster 
             imageSlugForPc='helmetposterpc.jpg' 
             imageSlugForPhone='helmetposterphone.jpg' 
             link='/shop/accessories/safety/graphic-helmets/helmet-store' 
           /> */}
-          {/* Christmas */}
-          <FlexibleLargePoster 
-            imageSlugForPc='christmas-pc.png' 
-            imageSlugForPhone='christmas-phone.png' 
-            link='/shop/accessories/safety/graphic-helmets/helmet-store' 
-          />
+        {/* Christmas */}
+        <FlexibleLargePoster
+          imageSlugForPc='new_year_24_banner_pc.png'
+          imageSlugForPhone='new_year_24_banner_phone.png'
+          link='/shop/accessories/safety/graphic-helmets/helmet-store'
+        />
 
-          {/* Helmet Slider */}
-          <HelmetSlider slides={helmetSlidesData} />
+        {/* Helmet Slider */}
+        <HelmetSlider slides={helmetSlidesData} />
 
-          {/* Bonnet Strip Wrap Poster */}
-          {/* <FlexibleLargePoster 
+        {/* Bonnet Strip Wrap Poster */}
+        {/* <FlexibleLargePoster 
             imageSlugForPc='bonnetstrippc.jpg' 
             imageSlugForPhone='bonnetstripphone.jpg' 
             link='/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps' 
           /> */}
 
-          {/* Featured Full Bike Wraps */}
-          <FeaturedFullBikeWraps data={featuredBikeWrapsData} />
+        {/* Featured Full Bike Wraps */}
+        <FeaturedFullBikeWraps data={featuredBikeWrapsData} />
 
-          {/* Happy Customers */}
-          <div className={styles.featuredHead}>
-            <Image 
-              width={940} 
-              height={256} 
-              alt='heading - featured products' 
-              src={`${baseImageUrl}/assets/icons/happycustomers.png`} 
-            />
-          </div>
-          <HappyCustomers 
-            data={happyCustomersData} 
-            noHeading={true} 
-            noShadow={true} 
+        {/* Happy Customers */}
+        <div className={styles.featuredHead}>
+          <Image
+            width={940}
+            height={256}
+            alt='heading - featured products'
+            src={`${baseImageUrl}/assets/icons/happycustomers.png`}
           />
+        </div>
+        <HappyCustomers
+          data={happyCustomersData}
+          noHeading={true}
+          noShadow={true}
+        />
 
-          {/* Animated Half Bikes */}
-          <HalfBikes />
+        {/* Animated Half Bikes */}
+        <HalfBikes />
 
-          {/* Footer */}
-          <ContactUs />
-        </main>
-      </>
-    );
+        {/* Footer */}
+        <ContactUs />
+      </main>
+    </>
+  );
 
 };
 
