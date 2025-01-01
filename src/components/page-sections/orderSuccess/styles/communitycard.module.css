@@ -1,21 +1,28 @@
+.main{
+  display: flex;
+  justify-content: flex-start;
+  width: fit-content;
+  padding: 1rem;
+}
+
 .card {
   display: flex;
-  flex-wrap: wrap;
-  flex-direction: row-reverse;
-  max-width: 500px;
-  border-radius: 8px;
+  border-radius: 4px;
   background-color: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   overflow: hidden;
+  width: fit-content;
+
 }
 
 
-.cardImage {
-  flex: 1 1 350px;
-  background-color: #e5e5e5;
-  padding: 0.1rem;
-  height: 500px;
+
+.cardImage{
+  width: 40%;
+  height: auto;
+  margin: 0;
 }
+
 
 .imageSlider {
   width: 100%;
@@ -36,28 +43,29 @@
 }
 
 .cardContent {
-  flex: 1 1 500px;
-  padding: 2rem;
-  background-color: #f7f7f7;
+  padding:0 0rem 2rem 1rem;
+  background-color: #fff;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 0;
 }
 
 .cardTitle {
-  font-size: 1.6rem;
+  font-size: 1.2rem;
   font-weight: bold;
   color: #333;
   margin-bottom: 1rem;
-  text-align: center;
+  text-align: left;
   display: flex;
   align-items: center;
   justify-content: center;
+  word-wrap: normal;
+  white-space: normal;
+  word-break: keep-all;
 }
 
-.cardTitle img {
-  margin-right: 0.5rem;
-}
+
 
 .cardBenefits {
   list-style: none;
@@ -67,9 +75,9 @@
 }
 
 .cardBenefits li {
-  margin: 0.5rem 0;
+  margin: 0rem 0;
   position: relative;
-  padding-left: 1.5rem;
+  padding-left: 0.5rem;
 }
 
 .joinButton {
@@ -87,12 +95,43 @@
 }
 
 .joinButton:hover {
-  background-color: darkblue;
+  background-color: #18688d;
 }
 
 .waIcon {
   width: 40px;
   height: 40px;
   margin-right: 0.5rem;
-   padding-left:1px;
+}
+
+
+
+
+@media (width < 600px){
+  .cardTitle{
+    font-size: 1rem;
+  }
+}
+
+
+@media (width < 400px){
+  .cardTitle{
+    font-size: 0.8rem;
+  }
+  .waIcon {
+    width: 30px;
+    height: auto;
+    margin-right: 0.5rem;
+  }
+  .cardImage{
+    width: 30%;
+  }
+  
+  
+}
+
+@media (width > 1000px){
+  .waIcon{
+    margin-right: 1rem;
+  }
 }

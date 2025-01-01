@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import { Box, Card, Typography } from '@mui/material';
 import PurchasedProductSlider from '@/components/page-sections/orderSuccess/PurchasedProductSlider';
 import OrderDetails from '@/components/page-sections/orderSuccess/OrderDetails';
+import CommunityCard from '@/components/page-sections/orderSuccess/CommunityCard';
 
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
@@ -90,7 +91,8 @@ export default async function OrderPage({ params }) {
 
       {/* Products Section */}
       <PurchasedProductSlider items={order.items} baseImageUrl={baseImageUrl} />
-
+      {/* Community */}
+      <CommunityCard />
       {/* Order Details Section */}
       <OrderDetails order={order} formatDate={formatDate} />
 
