@@ -2,17 +2,27 @@
 "use client";
 import React from 'react';
 import ProductCard from './ProductCard';
+import HeaderCarousel from '../showcase/carousels/HeaderCarousel'; // Verify this path
 import styles from './styles/productswrapper.module.css';
 import { useMediaQuery } from '@mui/material';
 
 const ProductsWrapper = ({ variant, products, category, sortBy = 'default', loading }) => {
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
-
+   
+  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+  // Dummy images for the carousel
+  
+  const carouselImages = [
+      "tank_carousel1.jpg",
+      "tank_carousel2.jpg",
+      "tank_carousel3.jpg",
+  ];
   return (
     <div className={styles.productsGrid}>
       {variant.showCase?.[0]?.available && !isSmallDevice && (
         <div
           aria-label="Product Video"
+          className={styles.videoCard}
         >
           <iframe
             width="100%"
@@ -23,19 +33,27 @@ const ProductsWrapper = ({ variant, products, category, sortBy = 'default', load
             allow="autoplay; encrypted-media"
             allowFullScreen
             style={{ pointerEvents: 'none' }}
-
           ></iframe>
           <h1>Maddy Custom</h1>
         </div>
       )}
 
-      {products?.map((product) => (
-        <ProductCard
-          key={product._id}
-          product={{ ...product, variantDetails: variant, category }}
-          loading={loading}
-        />
-      ))}
+      {category.specificCategoryCode === 'tw' && !isSmallDevice && (
+          <div className={styles.HeaderCarouselMain}>
+
+          <HeaderCarousel />
+        </div>
+      )}
+
+      {products.map((product, index) => {
+        return (
+          <ProductCard
+            key={product._id}
+            product={{ ...product, variantDetails: variant, category }}
+            loading={loading}
+          />
+        );
+      })}
     </div>
   );
 };

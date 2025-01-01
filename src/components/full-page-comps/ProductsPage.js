@@ -15,10 +15,13 @@ import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
 import debounce from 'lodash.debounce';
 import { PaginationStyles } from '@/styles/PaginationStyles';
 import ContactUs from '../layouts/ContactUs';
+import FullWidthRoundCornerLandscapeCarousel from '../showcase/carousels/FullWidthRoundCornerLandscapeCarousel';
+import herosectionStyles from '@/components/page-sections/homepage/styles/herosection.module.css';
 
 export default function ProductsPage({ slug, variant, products, category, initialPage, totalPages }) {
   // Constants
   // const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL; // Not needed for YouTube iframe
+  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL
 
   // State for tag filter and sort filter
   const [tagFilter, setTagFilter] = useState(null);
@@ -129,7 +132,7 @@ export default function ProductsPage({ slug, variant, products, category, initia
                   <h2 className={styles.helmetTagline}>&quot;Best designed helmets of India <br /> with safety of&quot;</h2>
                   <Image
                     className={styles.studds}
-                    
+
                     src={`${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${variant?.availableBrands[0]?.brandLogo}`}
                     width={1103 / 5}
                     height={394 / 5}
@@ -142,7 +145,9 @@ export default function ProductsPage({ slug, variant, products, category, initia
           </div>
         </div>
       </header>
-      
+
+
+
       {/* Video Embed for Small Devices */}
       {variant.showCase?.[0]?.available && isSmallDevice && (
         <div
@@ -156,11 +161,22 @@ export default function ProductsPage({ slug, variant, products, category, initia
             title="Product Video"
             allow="autoplay; encrypted-media"
             allowFullScreen
-            style={{pointerEvents:'none'}}
+            style={{ pointerEvents: 'none' }}
           ></iframe>
           <h1>Maddy Custom</h1>
         </div>
       )}
+
+      {/* Video Embed for Small Devices */}
+      {category.specificCategoryCode === 'tw' && isSmallDevice &&
+        <div className={herosectionStyles.carouseldiv}>
+          <FullWidthRoundCornerLandscapeCarousel images={[
+            `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel1.jpg`,
+            `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel2.jpg`,
+            `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel3.jpg`,
+          ]} />
+        </div>
+      }
 
       <Tags setTagFilter={setTagFilter} tags={allTags} />
 
@@ -192,7 +208,7 @@ export default function ProductsPage({ slug, variant, products, category, initia
         sortBy={sortBy}
         loading={loading}
       />
-      
+
       <PaginationStyles>
         <Pagination
           count={totalPageCount}
@@ -202,7 +218,7 @@ export default function ProductsPage({ slug, variant, products, category, initia
           disabled={loading}
         />
       </PaginationStyles>
-      
+
       <ScrollToTop />
       <ContactUs />
     </div>

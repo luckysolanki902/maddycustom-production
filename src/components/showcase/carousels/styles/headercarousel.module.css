@@ -1,0 +1,30 @@
+/* components/cards/styles/headercarousel.module.css */
+
+.carouselContainer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9; /* Maintains a 16:9 ratio */
+  padding: 0.2rem 0.5rem 1rem 0.5rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background-color: #fff; /* Optional: Set a background color */
+}
+
+.carouselImage {
+  border-radius: 0.5rem;
+  object-fit: cover;
+}
+
+.headingDiv {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+}
+
+.headingDiv h1 {
+  font-size: 2rem;
+  font-family: 'Jost', sans-serif;
+  text-transform: uppercase;
+  color: gray;
+}

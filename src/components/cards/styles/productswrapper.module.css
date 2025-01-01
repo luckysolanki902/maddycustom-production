@@ -1,4 +1,4 @@
-/* Apply box-sizing globally for consistency */
+/* src/components/cards/styles/productswrapper.module.css */
 
 /* Container for the grid of products */
 .productsGrid {
@@ -38,7 +38,7 @@
 
 }
 
-.videoCard iframe{
+.videoCard iframe {
   width: 100%;
   height: auto;
   object-fit: cover;
@@ -50,6 +50,22 @@
   object-fit: fill;
   border: none;
   outline: none;
+}
+
+.HeaderCarouselMain {
+  width: 100%;
+  height: auto;
+  max-width: 800px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(145, 145, 145, 0.08);
+  padding: 0.2rem 0.5rem 1rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden; /* Prevent child overflow */
+  box-sizing: border-box; /* Ensure padding is included in width */
+
 }
 
 /* "Maddy Customs" text styling */
@@ -116,12 +132,13 @@
     box-shadow: none;
     border-radius: 1rem;
   }
-  .videoCard video{
+
+  .videoCard video {
     border-radius: 1rem;
   }
-  
-  .videoCard iframe{
+
+  .videoCard iframe {
     border-radius: 1rem;
   }
-  
+
 }
