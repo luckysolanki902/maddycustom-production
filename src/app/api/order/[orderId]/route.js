@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
+import Product from '@/models/Product';
 
 export async function GET(request, { params }) {
   const { orderId } = await params; // Retrieve orderId from params
@@ -23,7 +24,6 @@ export async function GET(request, { params }) {
     if (!order) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
     }
-
     return NextResponse.json({ order }, { status: 200 });
   } catch (error) {
     console.error('Error fetching order:', error);
