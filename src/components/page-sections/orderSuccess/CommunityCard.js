@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 
 function CommunityCard() {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-  console.log(baseImageUrl)
   const router = useRouter();
   const handleJoinClick = () => {
     router.push('https://chat.whatsapp.com/JWNobG6xRj12apxysk0P7g')
