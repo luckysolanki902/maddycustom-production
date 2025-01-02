@@ -4,9 +4,8 @@
 import React from 'react';
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css"; // Import Swiper styles
-import "swiper/css/pagination"; // Import Pagination styles
 import 'swiper/css/navigation';
-import { Pagination, Autoplay } from 'swiper/modules'; // Corrected import
+import { Pagination, Autoplay } from 'swiper/modules';
 import { register } from 'swiper/element/bundle';
 import Image from 'next/image';
 import styles from './styles/headercarousel.module.css';
@@ -26,7 +25,7 @@ const HeaderCarousel = () => {
   return (
     <>
       <Swiper
-        modules={[Pagination, Autoplay]}
+        modules={[ Autoplay]}
         spaceBetween={30}
         slidesPerView={1}
         autoplay={{ delay: 3000, disableOnInteraction: false }} // Auto-slide every 3 seconds

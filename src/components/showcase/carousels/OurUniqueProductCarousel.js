@@ -51,9 +51,9 @@ const OurUniqueProductCarousel = ({ products }) => { // Accept products as props
                     alt="Background Image"
                     width={1242 * 2}
                     height={547 * 2}
-                    style={{ width: '100%', height: 'auto', cursor: 'pointer', position:'relative' }}
+                    style={{ width: '100%', height: 'auto', cursor: 'pointer', position: 'relative' }}
                     onLoad={() => setIsImageLoaded(true)}
-                    
+
                 />
             ) : (
                 <Image
@@ -61,12 +61,13 @@ const OurUniqueProductCarousel = ({ products }) => { // Accept products as props
                     alt="Background Image"
                     width={1242 * 2}
                     height={547 * 2}
-                    style={{ width: '100%', height: 'auto', cursor: 'pointer', position:'relative' }}
+                    style={{ width: '100%', height: 'auto', cursor: 'pointer', position: 'relative' }}
                     onLoad={() => setIsImageLoaded(true)}
                 />
             )}
             {isImageLoaded && (
                 <Swiper
+                    style={{ position: 'relative' }}
                     className={styles.swipercustom}
                     loop={true}
                     speed={500}
