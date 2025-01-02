@@ -247,11 +247,9 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
   
         if (addAddressResponse.data.message === 'Address already exists.') {
           // Address already exists, proceed
-          console.log('Address already exists.');
         } else if (addAddressResponse.data.message === 'Address added successfully.') {
           // Update Redux store with the latest address details from API response
           dispatch(setAddressDetails(addAddressResponse.data.latestAddress));
-          console.log('Address added successfully.');
         }
         addressAdded = true;
       } catch (error) {
@@ -338,7 +336,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
         orderId = createdOrderId;
         paymentDetails = createdPaymentDetails;
   
-        console.log('Order created successfully with ID:', orderId);
         orderCreated = true;
       } catch (error) {
         console.error('Error creating order:', error.message);
@@ -398,7 +395,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
             priceAtPurchase: item.priceAtPurchase,
           })),
         });
-        console.log('Purchase event sent to FB Pixel.');
       } catch (error) {
         console.error('Error sending purchase event to FB Pixel:', error.message);
         // Decide whether to continue or not. Typically, non-critical.

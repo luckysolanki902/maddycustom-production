@@ -4,7 +4,9 @@
 
 import useCaptureUTM from '@/hooks/useCaptureUTM';
 
+
 const UTMCapture = () => {
+  
   useCaptureUTM();
   return null; // This component does not render anything
 };
