@@ -45,14 +45,14 @@
   margin-left: 2rem;
 }
 
-@media (width > 768px) {
-  .mainCarDiv {
+@media (min-width: 769px) {
+    .mainCarDiv {
     padding: 0 3rem;
   }
 }
 
-@media(width>768px) and (width < 1660px) {
-.swipercustom{
+@media (min-width: 769px) and (max-width: 1659px) {
+  .swipercustom{
   bottom: 4%;
 }
 .cardStyles{
@@ -70,8 +70,8 @@
    
 }
 
-@media(width>768px) and (width < 900px) {
-.swipercustom{
+@media (min-width: 769px) and (max-width: 899px) {
+  .swipercustom{
   bottom: 4%;
 }
 .cardStyles{
