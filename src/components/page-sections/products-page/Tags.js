@@ -9,10 +9,8 @@ const Tags = ({ setTagFilter, tags }) => {
   const [uniqueTags, setUniqueTags] = useState([]);
 
   useEffect(() => {
-    // Convert all tags to lowercase and remove duplicates
-    const lowerCaseTags = tags.map(tag => tag.toLowerCase());
-    const unique = Array.from(new Set(lowerCaseTags));
-    setUniqueTags(unique);
+    // Assuming tags are already unique and lowercase from the API
+    setUniqueTags(tags);
   }, [tags]);
 
   const handleSelectTag = (tag) => {

@@ -11,7 +11,7 @@ import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
 import ContactUs from '@/components/layouts/ContactUs';
 
 export async function generateMetadata({ params }) {
-  const { slug } = await params;
+  const { slug } = await params; 
   const canonicalUrl = `https://www.maddycustom.com/shop/${slug.join('/')}`;
 
   // Fetch product data for SEO fields
@@ -32,8 +32,6 @@ export async function generateMetadata({ params }) {
   });
 }
 
-
-
 export default async function ShopPage({ params }) {
   const { slug } = await params;
   const initialPage = 1;
@@ -51,6 +49,7 @@ export default async function ShopPage({ params }) {
           category={data.specificCategory}
           initialPage={data.currentPage}
           totalPages={data.totalPages}
+          uniqueTags={data.uniqueTags} // Pass uniqueTags to ProductsPage
         />
       </>
     );
