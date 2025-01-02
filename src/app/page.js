@@ -69,7 +69,7 @@ const HomePage = async () => {
         <ChooseCategory />
 
         {/* Our Unique Products */}
-        {/* <OurUniqueProductCarousel products={ourUniqueProductsData} /> */}
+        <OurUniqueProductCarousel products={ourUniqueProductsData} />
 
         {/* Helmet Poster */}
 
