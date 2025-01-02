@@ -5,13 +5,11 @@
   width: 100%;
   aspect-ratio: 16 / 9; /* Maintains a 16:9 ratio */
   padding: 0.2rem 0.5rem 1rem 0.5rem;
-  border-radius: 0.5rem;
   overflow: hidden;
   background-color: #fff; /* Optional: Set a background color */
 }
 
 .carouselImage {
-  border-radius: 0.5rem;
   object-fit: cover;
 }
 
