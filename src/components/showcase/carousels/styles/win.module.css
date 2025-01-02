@@ -16,6 +16,7 @@
 }
 
 .swipercustom{
+  box-sizing: border-box;
   position: absolute;
   bottom: 13%;
   left: 50%;

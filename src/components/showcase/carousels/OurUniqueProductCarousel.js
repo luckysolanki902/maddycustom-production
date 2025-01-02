@@ -51,8 +51,9 @@ const OurUniqueProductCarousel = ({ products }) => { // Accept products as props
                     alt="Background Image"
                     width={1242 * 2}
                     height={547 * 2}
-                    style={{ width: '100%', height: 'auto', cursor: 'pointer' }}
+                    style={{ width: '100%', height: 'auto', cursor: 'pointer', position:'relative' }}
                     onLoad={() => setIsImageLoaded(true)}
+                    
                 />
             ) : (
                 <Image
@@ -60,7 +61,7 @@ const OurUniqueProductCarousel = ({ products }) => { // Accept products as props
                     alt="Background Image"
                     width={1242 * 2}
                     height={547 * 2}
-                    style={{ width: '100%', height: 'auto', cursor: 'pointer' }}
+                    style={{ width: '100%', height: 'auto', cursor: 'pointer', position:'relative' }}
                     onLoad={() => setIsImageLoaded(true)}
                 />
             )}
