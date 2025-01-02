@@ -20,6 +20,8 @@ import herosectionStyles from '@/components/page-sections/homepage/styles/herose
 
 export default function ProductsPage({ slug, variant, products, category, initialPage, totalPages }) {
   // Constants
+
+  console.log('products', {products})
   // const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL; // Not needed for YouTube iframe
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL
 

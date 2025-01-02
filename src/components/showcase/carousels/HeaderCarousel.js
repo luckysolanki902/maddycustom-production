@@ -29,10 +29,9 @@ const HeaderCarousel = () => {
         modules={[Pagination, Autoplay]}
         spaceBetween={30}
         slidesPerView={1}
-        pagination={{ clickable: true }} // Enable pagination dots
         autoplay={{ delay: 3000, disableOnInteraction: false }} // Auto-slide every 3 seconds
         loop={true}
-        style={{ borderRadius: '2rem', width: '100%' }}
+        style={{ width: '100%' }}
       >
         {carouselImages.map((imgSrc, index) => (
           <SwiperSlide key={index}>
@@ -41,7 +40,7 @@ const HeaderCarousel = () => {
               alt={`Carousel Image ${index + 1}`}
               width={1242 * 2}
               height={547 * 2}
-              style={{ width: '100%', height: 'auto', cursor: 'pointer', borderRadius: '1rem' }}
+              style={{ width: '100%', height: 'auto', cursor: 'pointer' }}
               className={styles.carouselImage}
               priority={index === 0} // Preload the first image
             />
