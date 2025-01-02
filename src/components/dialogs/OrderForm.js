@@ -276,7 +276,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
             numItems: cartItems.length,
           },
           {
-            email: userDetails.email, // Assuming you have user email
+            // email: userDetails.email, 
             phoneNumber: userDetails.phoneNumber,
           }
         );

@@ -1,5 +1,3 @@
-// app/api/meta/conversion-api/route.js
-
 import { v4 as uuidv4 } from 'uuid';
 import {
   FacebookAdsApi,
@@ -86,7 +84,9 @@ export async function POST(request) {
       .setEmails(hashedEmails) // Hashed emails
       .setPhones(hashedPhones) // Hashed phone numbers
       .setClientIpAddress(options.client_ip_address || '')
-      .setClientUserAgent(options.client_user_agent || '');
+      .setClientUserAgent(options.client_user_agent || '')
+      .setFbp(options.fbp || '') // Set fbp
+      .setFbc(options.fbc || ''); // Set fbc
 
     // Prepare Contents
     const contents = options.contents

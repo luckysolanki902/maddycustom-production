@@ -1,8 +1,11 @@
-// @/lib/metadata/facebookPixels.js
-
 'use client';
 import { v4 as uuidv4 } from 'uuid';
+import { getFbp, getFbc } from '@/lib/utils/cookies'; // Import utility functions to get cookies
 
+/**
+ * Fetches the client's IP address using the ipify API.
+ * @returns {Promise<string>} - The client's IP address or an empty string if an error occurs.
+ */
 const getClientIp = async () => {
   try {
     const response = await fetch('https://api.ipify.org?format=json');
@@ -14,6 +17,11 @@ const getClientIp = async () => {
   }
 };
 
+/**
+ * Sends event data to the server-side Conversion API endpoint.
+ * @param {string} eventName - The name of the event (e.g., 'Purchase', 'AddToCart').
+ * @param {object} options - Additional event parameters.
+ */
 const sendToServer = async (eventName, options) => {
   try {
     const res = await fetch('/api/meta/conversion-api', {
@@ -28,23 +36,37 @@ const sendToServer = async (eventName, options) => {
   }
 };
 
+/**
+ * Tracks a specific event by sending data to Facebook Pixel and the server-side Conversion API.
+ * @param {string} name - The name of the event to track.
+ * @param {object} formData - Optional form data (e.g., email, phoneNumber).
+ * @param {object} otherOptions - Additional options and parameters for the event.
+ */
 const trackEvent = async (name, formData = {}, otherOptions = {}) => {
   try {
     const eventId = otherOptions.eventID || uuidv4(); // Allow passing eventID
     const eventTime = Math.floor(Date.now() / 1000);
     const client_ip_address = await getClientIp();
     const client_user_agent = navigator.userAgent;
+
+    // Retrieve fbp and fbc from cookies
+    const fbp = getFbp();
+    const fbc = getFbc();
+
     const eventParams = {
-      eventID: eventId, 
+      eventID: eventId,
       event_time: eventTime,
       event_name: name,
       action_source: 'website',
       event_source_url: window.location.href,
       client_ip_address,
       client_user_agent,
+      fbp, // Include fbp
+      fbc, // Include fbc
       ...otherOptions,
     };
 
+    // Include user identifiers if provided
     if (formData.email) {
       eventParams.emails = [formData.email];
     }
@@ -53,12 +75,14 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       eventParams.phones = [formData.phoneNumber];
     }
 
+    // Send event to Facebook Pixel
     if (window.fbq) {
       window.fbq('track', name, eventParams);
     } else {
       console.warn('Facebook Pixel is not initialized.');
     }
 
+    // Send event to server-side Conversion API
     await sendToServer(name, eventParams);
     console.info(`Event successfully tracked for event: ${name}`, { eventParams });
   } catch (error) {
@@ -66,6 +90,10 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
   }
 };
 
+/**
+ * Tracks the "AddToCart" event.
+ * @param {object} product - The product details.
+ */
 export const addToCart = async (product) => {
   try {
     await trackEvent('AddToCart', {}, {
@@ -86,6 +114,11 @@ export const addToCart = async (product) => {
   }
 };
 
+/**
+ * Tracks the "Purchase" event.
+ * @param {object} order - The order details.
+ * @param {object} userData - Optional user data (e.g., email, phoneNumber).
+ */
 export const purchase = async (order, userData = {}) => {
   try {
     await trackEvent('Purchase', userData, {
@@ -105,6 +138,11 @@ export const purchase = async (order, userData = {}) => {
   }
 };
 
+/**
+ * Tracks the "ViewContent" event.
+ * @param {object} product - The product details.
+ * @param {object} userData - Optional user data (e.g., email, phoneNumber).
+ */
 export const viewContent = async (product, userData = {}) => {
   try {
     await trackEvent('ViewContent', userData, {
@@ -122,7 +160,11 @@ export const viewContent = async (product, userData = {}) => {
   }
 };
 
-// **New Function: initiateCheckout**
+/**
+ * Tracks the "InitiateCheckout" event.
+ * @param {object} checkoutData - The checkout details.
+ * @param {object} userData - Optional user data (e.g., email, phoneNumber).
+ */
 export const initiateCheckout = async (checkoutData, userData = {}) => {
   try {
     await trackEvent('InitiateCheckout', userData, {

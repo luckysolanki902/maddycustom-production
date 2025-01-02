@@ -9,6 +9,8 @@ const initialState = {
     campaign: null,
     term: null,
     content: null,
+    // fbc (Facebook Click ID): This parameter captures the specific click from a Facebook ad that led the user to your site. It's crucial for attributing conversions to the correct ad campaigns.
+    fbc: null,   
   },
 };
 
@@ -26,6 +28,7 @@ const utmSlice = createSlice({
         campaign: null,
         term: null,
         content: null,
+        fbc: null,
       };
     },
   },
