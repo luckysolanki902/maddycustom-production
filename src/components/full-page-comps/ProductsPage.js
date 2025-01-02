@@ -1,4 +1,5 @@
 // components/full-page-comps/ProductsPage.js
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -18,11 +19,8 @@ import ContactUs from '../layouts/ContactUs';
 import FullWidthRoundCornerLandscapeCarousel from '../showcase/carousels/FullWidthRoundCornerLandscapeCarousel';
 import herosectionStyles from '@/components/page-sections/homepage/styles/herosection.module.css';
 
-export default function ProductsPage({ slug, variant, products, category, initialPage, totalPages }) {
+export default function ProductsPage({ slug, variant, products, category, initialPage, totalPages, uniqueTags }) {
   // Constants
-
-  console.log('products', {products})
-  // const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL; // Not needed for YouTube iframe
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL
 
   // State for tag filter and sort filter
@@ -36,14 +34,8 @@ export default function ProductsPage({ slug, variant, products, category, initia
   const [scrollToTopOnPageChange, setScrollToTopOnPageChange] = useState(true);
   const [sortSelectInTheUi, setSortSelectInTheUi] = useState(false); // Controlled by a constant
 
-  // Get the unique tags from the products
-  const allTags = [
-    ...new Set(
-      products.flatMap((product) =>
-        product.mainTags.map((tag) => tag.trim())
-      )
-    ),
-  ];
+  // Use uniqueTags passed from props
+  const allTags = uniqueTags;
 
   const fetchPageData = useCallback(async (page, tag, sort) => {
     setLoading(true);
@@ -134,7 +126,6 @@ export default function ProductsPage({ slug, variant, products, category, initia
                   <h2 className={styles.helmetTagline}>&quot;Best designed helmets of India <br /> with safety of&quot;</h2>
                   <Image
                     className={styles.studds}
-
                     src={`${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${variant?.availableBrands[0]?.brandLogo}`}
                     width={1103 / 5}
                     height={394 / 5}
@@ -147,8 +138,6 @@ export default function ProductsPage({ slug, variant, products, category, initia
           </div>
         </div>
       </header>
-
-
 
       {/* Video Embed for Small Devices */}
       {variant.showCase?.[0]?.available && isSmallDevice && (
@@ -180,6 +169,7 @@ export default function ProductsPage({ slug, variant, products, category, initia
         </div>
       }
 
+      {/* Pass uniqueTags to Tags component */}
       <Tags setTagFilter={setTagFilter} tags={allTags} />
 
       {sortSelectInTheUi && (

@@ -64,7 +64,7 @@ export async function POST(request) {
       if (tagFilter) {
         pipeline.push({
           $addFields: {
-            isTagMatched: { $in: [tagFilter.toLowerCase(), "$mainTags"] },
+            isTagMatched: { $in: [tagFilter.toLowerCase(), { $map: { input: "$mainTags", as: "tag", in: { $toLower: "$$tag" } } }] },
           }
         });
       } else {
@@ -120,8 +120,28 @@ export async function POST(request) {
 
       const products = await Product.aggregate(pipeline).exec();
 
+      // Aggregation pipeline to get unique tags across all products in the variant
+      const uniqueTagsPipeline = [
+        { $match: { specificCategoryVariant: variant._id } },
+        { $unwind: "$mainTags" },
+        { $group: { _id: null, uniqueTags: { $addToSet: { $toLower: "$mainTags" } } } },
+        { $project: { _id: 0, uniqueTags: 1 } }
+      ];
+
+      const uniqueTagsResult = await Product.aggregate(uniqueTagsPipeline).exec();
+      const uniqueTags = uniqueTagsResult.length > 0 ? uniqueTagsResult[0].uniqueTags : [];
+
       return NextResponse.json(
-        { type: 'variant', variant, products, specificCategory, totalItems, totalPages, currentPage },
+        { 
+          type: 'variant', 
+          variant, 
+          products, 
+          specificCategory, 
+          totalItems, 
+          totalPages, 
+          currentPage,
+          uniqueTags, // Added uniqueTags
+        },
         { status: 200 }
       );
     }
