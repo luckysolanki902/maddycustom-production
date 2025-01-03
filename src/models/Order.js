@@ -189,6 +189,12 @@ const OrderSchema = new mongoose.Schema(
       default: 'pending',
       index: true, // Index for efficient querying
     },
+    customFields:{
+      croppedImage: {
+        type: String
+      }
+
+    },
 
     // Utm details
     utmDetails: {
