@@ -11,14 +11,17 @@ const customTemplateSchema = new mongoose.Schema({
     // Template dimensions
     dimensions: {
         length: {
+            // e.g. 4000cm
             type: Number,
             required: true,
         },
         width: {
+            // e.g. 1500cm
             type: Number,
             required: true,
         },
         padding: {
+            // left, right: 50cm, bottom, top: 100cm
             left: {
                 type: Number,
                 required: true,
