@@ -148,6 +148,10 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       type: String,
       maxlength: 500,
     },
+    customTemplate: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CustomTemplate',
+    },
     packagingDetails: {
       boxId: {
         type: mongoose.Schema.Types.ObjectId,
