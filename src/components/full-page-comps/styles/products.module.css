@@ -29,6 +29,23 @@
 
 }
 
+.sizebutton{
+    background-color: #CFFFB7;
+    color: black;
+    font-weight: 400;
+    text-transform: none;
+    border-radius: 4px;
+    border: none;
+    height: 22px;
+    width: fit-content;
+    padding: 1px 10px;
+    font-size: 0.6rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
 
 .showcaseVideo {
     width: 30%;
@@ -227,6 +244,10 @@
     color: #2e2e2e;
     margin: 1.9rem;
     text-align: center;
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: end;
+    align-items: end;
 }
 
 

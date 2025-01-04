@@ -25,7 +25,8 @@ export async function GET(req) {
   const variantData = await Promise.all(
     variants.map(async (variant) => {
       const firstProduct = await Product.findOne({ specificCategoryVariant: variant._id });
-      const firstImage = firstProduct?.images?.[0] || null;
+      const thumbnailUrl = variant.thumbnail?variant.thumbnail.startsWith('/')? variant.thumbnail : `/${variant.thumbnail}`:null;
+      const firstImage = thumbnailUrl || firstProduct?.images?.[0] || null;
       return {
         id: variant._id,
         name: variant.name,

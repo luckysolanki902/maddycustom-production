@@ -26,6 +26,7 @@
   .tags {
     display: flex;
     padding: 4px 10px;
+    background-color:rgba(24, 23, 37, 0.14);
     margin-right: 10px;
     justify-content: center;
     align-items: center;
