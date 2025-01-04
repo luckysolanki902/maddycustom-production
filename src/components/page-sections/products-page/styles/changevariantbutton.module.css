@@ -1,6 +1,5 @@
 /* @/components/page-sections/products-page/styles/changevariantbutton.module.css */
 
-
 /* Styling for the "Change Variant" button */
 .bikeStyle {
     background-color: rgba(156, 248, 255, 0.31);
@@ -64,7 +63,7 @@
     display: flex;
     align-items: center;
     background-color: #D9D9D9;
-    gap: 1.5rem;
+    gap: 1rem;
     transition: background-color 0.3s ease;
 }
 
@@ -94,9 +93,9 @@
     color: white;
     font-weight: 400;
     text-transform: none;
-    border-radius: 10px;
-    padding: 5px 15px;
-    font-size: 1.2rem;
+    border-radius: 6px;
+    padding: 1px 10px;
+    font-size: 1rem;
     box-shadow: none;
     transition: background-color 0.3s ease;
     display: flex;
@@ -110,17 +109,39 @@
 
 /* Styling for the variant description text */
 .variantDescription {
-    color: #555;
-    font-size: 11px;
+    font-size: 13px;
+    font-weight: 300;
     font-family: 'Jost', sans-serif;
     line-height: 1.5;
+}
+.sizebutton{
+    background-color: #CFFFB7;
+    color: black;
+    font-weight: 400;
+    text-transform: none;
+    border-radius: 4px;
+    border: none;
+    height: 20px;
+    padding: 1px 10px;
+    font-size: 0.6rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1.3rem;
 }
 
 /* Responsive styles for screens with max-width 600px */
 @media (max-width: 600px) {
     .variantButton {
         font-size: 0.8rem;
-        padding: 5px 10px;
+        padding: 2px 15px;
+    }
+    .sizebutton{
+        font-size: 0.4rem;
+        padding: 0px 5px;
+        margin-top: 0.7rem;
+        height: 12px;
+        border-radius: 2px;
     }
 
     .variantDescription {
@@ -164,3 +185,10 @@
 .mb-20 {
     margin-bottom: 20px;
 }
+
+.buttongroup{
+    display: flex;
+    gap: 8px;
+}
+
+

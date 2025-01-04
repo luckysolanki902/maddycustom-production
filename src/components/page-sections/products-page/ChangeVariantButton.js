@@ -67,7 +67,7 @@ export default function ChangeVariantButton({ category }) {
                 className={styles.bikeStyle}
                 onClick={() => setShowPopup(true)}
             >
-                Change Variant
+                {category.name==="Tank Wraps"?"Change Tank Size":"Change Variant"}
             </div>
 
             <Dialog
@@ -108,6 +108,7 @@ export default function ChangeVariantButton({ category }) {
                                 )}
                                 <Box
                                     className={styles.variantInfoParentBox}>
+                                    <div className={styles.buttongroup}>
                                     <button
                                         variant="contained"
                                         className={styles.variantButton}
@@ -117,8 +118,26 @@ export default function ChangeVariantButton({ category }) {
                                             : variant.name
                                         }
                                     </button>
+                                    {variant?.name?.toLowerCase().includes('tank') && (
+            <button
+                variant="contained"
+                className={styles.sizebutton}
+            >
+                {variant?.name === "Slim Tank Wraps"
+                    ? "6.8 cm wide"
+                    : variant?.name === "Medium Tank Wraps"
+                    ? "7 cm wide"
+                    : variant?.name === "Wide Tank Wraps"
+                    ? "19.05 cm wide"
+                    : null}
+            </button>
+        )}
+                                    </div>
                                     <div className={styles.variantDescription}>
-                                        {variant.variantInfo}
+                                    {variant.variantInfo.split(':')[0]}:
+                                    <strong style={{ fontWeight: 'bold', marginLeft: '0.3rem' }}>
+                                        {variant.variantInfo.split(':')[1]}
+                                    </strong>
                                     </div>
                                 </Box>
                             </Box>
