@@ -254,6 +254,7 @@ const ViewCart = () => {
         couponsDetails={couponApplied}
         deliveryCost={deliveryCost}
         discountAmountFinal={discountAmount}
+        items={cartItems}
       />
 
       {/* Custom Snackbar for Feedback */}
