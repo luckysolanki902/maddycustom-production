@@ -120,20 +120,20 @@ export default function ProductsPage({ slug, variant, products, category, initia
         <div className={styles.headContainer}>
           <div className={styles.headingFlex}>
             <h1 className={styles.bikeHeading}>{variant.name}
-            {variant?.name?.toLowerCase().includes('tank') && (
-            <button
-                variant="contained"
-                className={styles.sizebutton}
-            >
-                {variant?.name === "Slim Tank Wraps"
+              {variant?.name?.toLowerCase().includes('tank') && (
+                <button
+                  className={styles.sizebutton}
+                  style={{ backgroundColor: "#d6fcff" }}
+                >
+                  {variant?.name === "Slim Tank Wraps"
                     ? "6.8 cm wide"
                     : variant?.name === "Medium Tank Wraps"
-                    ? "7 cm wide"
-                    : variant?.name === "Wide Tank Wraps"
-                    ? "19.05 cm wide"
-                    : null}
-            </button>
-        )}</h1>
+                      ? "7 cm wide"
+                      : variant?.name === "Wide Tank Wraps"
+                        ? "19.05 cm wide"
+                        : null}
+                </button>
+              )}</h1>
             {variant?.subtitles.length > 0 && variant?.subtitles[0] && (
               variant.variantCode === 'hel' ?
                 <>
