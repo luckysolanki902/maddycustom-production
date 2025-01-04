@@ -22,6 +22,7 @@ export async function POST(request) {
       discountAmount,
       extraCharges,
       utmDetails,
+      extraFields,
     } = await request.json();
     // Validate input
     if ((!userId && !phoneNumber) || !items || !paymentModeId || !address || totalAmount == null) {
@@ -170,6 +171,7 @@ export async function POST(request) {
       paymentStatus: paymentStatus,
       deliveryStatus: 'pending',
       utmDetails: utmDetails,
+      extraFields: extraFields,
     });
 
     await newOrder.save();

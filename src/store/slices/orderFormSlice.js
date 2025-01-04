@@ -23,6 +23,7 @@ const initialState = {
     discountAmount: 0
   },
   lastOrderId: '',
+  extraFields: {}, 
 };
 
 const orderFormSlice = createSlice({
@@ -47,6 +48,9 @@ const orderFormSlice = createSlice({
     setLastOrderId: (state, action) => {
       state.lastOrderId = action.payload;
     },
+    setExtraFields: (state, action) => {
+      state.extraFields = { ...state.extraFields, ...action.payload };
+    },
     resetOrderForm: () => initialState,
   },
 
@@ -59,7 +63,8 @@ export const {
   setPrefilledAddress,
   setLastOrderId, // Exported setLastOrderId action
   resetOrderForm,
-  setCouponApplied
+  setCouponApplied,
+  setExtraFields,
 } = orderFormSlice.actions;
 
 export default orderFormSlice.reducer;

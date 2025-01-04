@@ -3,8 +3,8 @@
 import React from 'react';
 import { useTransition, animated } from '@react-spring/web';
 import { Typography, Divider } from '@mui/material';
-import BlackButton from '@/components/utils/BlackButton';
 import styles from './styles/viewcart.module.css';
+import BlackButtonWithOnClick from '@/components/utils/BlackButtonWithOnClick';
 const Footer = ({ totalCost, originalTotal, onCheckout, onlineAmount, codAmount }) => {
   const showSplit = codAmount > 0 && onlineAmount > 0;
 
@@ -60,7 +60,7 @@ const Footer = ({ totalCost, originalTotal, onCheckout, onlineAmount, codAmount 
 
       {/* Right Section: Total Cost and Checkout Button */}
       <div className={styles.rightSection}>
-        <BlackButton isLoading={false} buttonText="ORDER" onClick={onCheckout} />
+        <BlackButtonWithOnClick isLoading={false} buttonText="ORDER" onClick={onCheckout} />
       </div>
     </footer>
   );

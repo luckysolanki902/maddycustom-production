@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -13,6 +13,7 @@ import {
   TextField,
   Autocomplete,
   IconButton,
+  Typography,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import BlackButton from '../utils/BlackButton';
@@ -31,6 +32,7 @@ import {
   setLastOrderId,
   setCoupon,
   removeCoupon,
+  setExtraFields
 } from '../../store/slices/orderFormSlice';
 import { makePayment } from '../../lib/payments/makePayment';
 import { useRouter } from 'next/navigation';
@@ -42,7 +44,7 @@ import { ThemeProvider } from '@mui/material';
 import { initiateCheckout, purchase } from '@/lib/metadata/facebookPixels';
 import { v4 as uuidv4 } from 'uuid';
 
-const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, couponsDetails, deliveryCost, discountAmountFinal }) => {
+const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, couponsDetails, deliveryCost, discountAmountFinal, items }) => {
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
@@ -60,6 +62,37 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
 
   const [isLoading, setIsLoading] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+
+  // Extract and aggregate unique extraFields from cart items
+  const aggregatedExtraFields = useMemo(() => {
+    const fieldsMap = new Map();
+
+    items.forEach((item) => {
+      const category = item.productDetails.category;
+      if (category && category.extraFields && category.extraFields.length > 0) {
+        category.extraFields.forEach((field) => {
+          if (!fieldsMap.has(field.fieldName)) {
+            fieldsMap.set(field.fieldName, field);
+          }
+        });
+      }
+    });
+
+    return Array.from(fieldsMap.values());
+  }, [items]);
+
+  // Initialize extraFields in Redux store when dialog opens
+  useEffect(() => {
+    if (open && aggregatedExtraFields.length > 0) {
+      const initialExtraFieldValues = {};
+      aggregatedExtraFields.forEach((field) => {
+        initialExtraFieldValues[field.fieldName] = ''; // Initialize with empty string for both types
+      });
+      dispatch(setExtraFields(initialExtraFieldValues));
+    }
+  }, [open, aggregatedExtraFields, dispatch]);
+
+  // Initialize useForm after aggregatedExtraFields is defined
   const {
     control,
     handleSubmit,
@@ -68,14 +101,18 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
     formState: { errors },
   } = useForm({
     defaultValues: {
-      name: userDetails.name,
-      phoneNumber: userDetails.phoneNumber,
-      addressLine1: addressDetails.addressLine1,
-      addressLine2: addressDetails.addressLine2,
-      city: addressDetails.city,
-      state: addressDetails.state,
-      pincode: addressDetails.pincode,
+      name: userDetails.name || '',
+      phoneNumber: userDetails.phoneNumber || '',
+      addressLine1: addressDetails.addressLine1 || '',
+      addressLine2: addressDetails.addressLine2 || '',
+      city: addressDetails.city || '',
+      state: addressDetails.state || '',
+      pincode: addressDetails.pincode || '',
       country: addressDetails.country || 'India',
+      ...aggregatedExtraFields.reduce((acc, field) => {
+        acc[field.fieldName] = ''; // Initialize all extraFields with empty string
+        return acc;
+      }, {}),
     },
   });
 
@@ -93,13 +130,13 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
   // Sync form values with Redux store when dialog is opened
   useEffect(() => {
     if (open) {
-      setValue('name', userDetails.name);
-      setValue('phoneNumber', userDetails.phoneNumber);
-      setValue('addressLine1', addressDetails.addressLine1);
-      setValue('addressLine2', addressDetails.addressLine2);
-      setValue('city', addressDetails.city);
-      setValue('state', addressDetails.state);
-      setValue('pincode', addressDetails.pincode);
+      setValue('name', userDetails.name || '');
+      setValue('phoneNumber', userDetails.phoneNumber || '');
+      setValue('addressLine1', addressDetails.addressLine1 || '');
+      setValue('addressLine2', addressDetails.addressLine2 || '');
+      setValue('city', addressDetails.city || '');
+      setValue('state', addressDetails.state || '');
+      setValue('pincode', addressDetails.pincode || '');
       setValue('country', addressDetails.country || 'India');
     }
   }, [userDetails, addressDetails, setValue, open]);
@@ -134,11 +171,11 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
   // Synchronize form fields with addressDetails from Redux store
   useEffect(() => {
     if (open) {
-      setValue('addressLine1', addressDetails.addressLine1);
-      setValue('addressLine2', addressDetails.addressLine2);
-      setValue('city', addressDetails.city);
-      setValue('state', addressDetails.state);
-      setValue('pincode', addressDetails.pincode);
+      setValue('addressLine1', addressDetails.addressLine1 || '');
+      setValue('addressLine2', addressDetails.addressLine2 || '');
+      setValue('city', addressDetails.city || '');
+      setValue('state', addressDetails.state || '');
+      setValue('pincode', addressDetails.pincode || '');
       setValue('country', addressDetails.country || 'India');
     }
   }, [addressDetails, setValue, open]);
@@ -221,13 +258,13 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
     setPurchaseInitiated(true);
     setIsLoading(true);
     setIsPaymentProcessing(true);
-  
+
     // Initialize variables to track steps
     let addressAdded = false;
     let checkoutInitiated = false;
     let orderCreated = false;
     let paymentProcessed = false;
-  
+
     try {
       // Step 1: Add/Update Address
       try {
@@ -242,9 +279,10 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
             state: data.state,
             pincode: data.pincode,
             country: data.country || 'India',
+            ...orderForm.extraFields, // Include extraFields
           },
         });
-  
+
         if (addAddressResponse.data.message === 'Address already exists.') {
           // Address already exists, proceed
         } else if (addAddressResponse.data.message === 'Address added successfully.') {
@@ -257,7 +295,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
         showSnackbar('Failed to add/update address. Please try again.', 'error');
         throw error; // Exit the main try-catch
       }
-  
+
       // Step 2: Initiate Checkout
       try {
         await initiateCheckout(
@@ -284,7 +322,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
         showSnackbar('Failed to initiate checkout. Please try again.', 'error');
         throw error;
       }
-  
+
       // Step 3: Create Order
       let orderId = null;
       let paymentDetails = null;
@@ -294,11 +332,10 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
           phoneNumber: orderForm.userDetails.phoneNumber,
           items: cartItems.map((item) => ({
             product: item.productId,
-            name: `${item.productDetails.name} ${
-              item.productDetails.category?.name?.endsWith('s')
-                ? item.productDetails.category?.name.slice(0, -1)
-                : item.productDetails.category?.name
-            }`,
+            name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+              ? item.productDetails.category?.name.slice(0, -1)
+              : item.productDetails.category?.name
+              }`,
             quantity: item.quantity,
             priceAtPurchase: item.productDetails.price,
             sku: item.productDetails.sku,
@@ -328,30 +365,31 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
             },
           ],
           utmDetails: utmDetails.utmDetails || null,
+          extraFields: orderForm.extraFields, // Include extraFields
         });
-  
+
         const { orderId: createdOrderId, message, paymentDetails: createdPaymentDetails } = orderResponse.data;
-  
+
         dispatch(setLastOrderId(createdOrderId));
         orderId = createdOrderId;
         paymentDetails = createdPaymentDetails;
-  
+
         orderCreated = true;
       } catch (error) {
         console.error('Error creating order:', error.message);
         showSnackbar('Failed to create order. Please try again.', 'error');
         throw error;
       }
-  
+
       // Step 4: Process Payment (if applicable)
       if (paymentDetails.amountDueOnline > 0) {
         try {
           const paymentInitResponse = await axios.post('/api/checkout/order/payment/create-razorpay-order', {
             orderId: orderId, // Internal orderId
           });
-  
+
           const { order: razorpayOrder, msg } = paymentInitResponse.data;
-  
+
           if (msg === 'success') {
             const paymentResult = await makePayment({
               customerName: orderForm.userDetails.name || '',
@@ -359,7 +397,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
               orderId, // Internal orderId
               razorpayOrder, // Pass the entire razorpayOrder object
             });
-  
+
             if (paymentResult) {
               showSnackbar('Payment Successful!', 'success');
               paymentProcessed = true;
@@ -378,7 +416,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
           throw error;
         }
       }
-  
+
       // Step 5: Send Purchase Event to FB Pixel
       try {
         await purchase({
@@ -386,11 +424,10 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
           totalAmount: totalCost,
           items: cartItems.map((item) => ({
             product: item.productId,
-            name: `${item.productDetails.name} ${
-              item.productDetails.category?.name?.endsWith('s')
-                ? item.productDetails.category?.name.slice(0, -1)
-                : item.productDetails.category?.name
-            }`,
+            name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+              ? item.productDetails.category?.name.slice(0, -1)
+              : item.productDetails.category?.name
+              }`,
             quantity: item.quantity,
             priceAtPurchase: item.priceAtPurchase,
           })),
@@ -399,7 +436,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
         console.error('Error sending purchase event to FB Pixel:', error.message);
         // Decide whether to continue or not. Typically, non-critical.
       }
-  
+
       // Step 6: Cleanup and Navigation
       dispatch(clearUTMDetails());
       dispatch(clearCart());
@@ -418,7 +455,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
       setPurchaseInitiated(false); // Reset the purchase initiation flag
     }
   };
-  
 
   // Handle dialog close with conditions
   const handleClose = useCallback(() => {
@@ -829,6 +865,68 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                     />
                   )}
                 />
+
+                {/* Render Extra Fields */}
+                {aggregatedExtraFields.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="h6">Additional Information</Typography>
+
+                    
+                    {aggregatedExtraFields.map((field) => (
+                      <Controller
+                        key={field.fieldName}
+                        name={field.fieldName}
+                        control={control}
+                        rules={{
+                          required: field.required ? `${field.question || field.fieldName} is required` : false,
+                          ...(field.fieldType === 'Number' && {
+                            validate: (value) => value !== '' || `${field.question || field.fieldName} is required`,
+                          }),
+                        }}
+                        render={({ field: controllerField }) => (
+                          <TextField
+                            {...controllerField}
+                            variant="standard"
+                            label={field.question || field.fieldName}
+                            type={field.fieldType === 'Number' ? 'number' : 'text'}
+                            fullWidth
+                            margin="normal"
+                            value={controllerField.value || ''} // Ensure controlled input
+                            error={!!errors[field.fieldName]}
+                            helperText={errors[field.fieldName]?.message || ''}
+                            onChange={(e) => {
+                              controllerField.onChange(e);
+                              dispatch(setExtraFields({ [field.fieldName]: e.target.value }));
+                            }}
+                            InputLabelProps={{
+                              style: {
+                                fontSize: '0.75rem',
+                                color: '#9e9e9e',
+                              },
+                            }}
+                            sx={{
+                              '& .MuiInputBase-root': {
+                                fontSize: '1rem',
+                                fontWeight: '400',
+                                color: '#575252',
+                              },
+                              margin: {
+                                xs: '0px 0',
+                                sm: 'normal',
+                              },
+                              '& .MuiInputLabel-root': {
+                                lineHeight: '2',
+                              },
+                            }}
+                          />
+                        )}
+                      />
+                    ))}
+
+
+                  </Box>
+                )}
+
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
                   <BlackButton
                     isLoading={isLoading}
