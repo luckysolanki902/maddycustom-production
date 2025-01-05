@@ -62,77 +62,195 @@ export async function trackShiprocketOrder(orderId) {
 }
 
 /**
- * Calculates the total dimensions and weight for the order based on its items' variants.
- * Groups items by the same box ID and calculates the total dimensions and weight.
+ * Calculates total dimensions and weight based on optimized box assignments.
+ * Also returns a breakdown of which items were packed into which boxes with variant names.
  *
- * @param {Array} items - Array of order items.
- * @returns {Object} - Total length, breadth, height, and weight.
+ * @param {Array} items - The list of items to be packed.
+ * @returns {Object} - Total dimensions, weight, and box usage details.
  */
 export const getDimensionsAndWeight = async (items) => {
-  const variantIds = items.map(item => {
-    if (item.product && item.product.specificCategoryVariant) {
-      return item.product.specificCategoryVariant._id;
-    }
-    console.warn(`Skipping item due to missing Product or SpecificCategoryVariant: ${item._id}`);
-    return null;
-  }).filter(id => id !== null);
+  // 1) Collect variant IDs
+  const variantIds = items
+    .map((item) => {
+      if (item?.product?.specificCategoryVariant) {
+        return item.product.specificCategoryVariant._id;
+      }
+      console.warn(
+        `Skipping item due to missing Product or SpecificCategoryVariant: ${item?._id}`
+      );
+      return null;
+    })
+    .filter(Boolean);
 
   try {
-    // Fetch all variants with their packaging and freebie details using nested populate
-    const variants = await SpecificCategoryVariant.find({ _id: { $in: variantIds } })
-      .populate({
-        path: 'packagingDetails.boxId',
-        model: 'PackagingBox',
-      });
+    // 2) Fetch variants with packaging + freebies info
+    const variants = await SpecificCategoryVariant.find({
+      _id: { $in: variantIds },
+    }).populate({
+      path: 'packagingDetails.boxId',
+      model: 'PackagingBox',
+    });
 
+    // 3) Build a map variantId -> { box, productWeight, freebies, name }
+    //    Also gather all distinct boxes encountered.
     const variantMap = {};
-    variants.forEach(variant => {
+    const allBoxesMap = new Map();
+
+    for (const variant of variants) {
       const { boxId, productWeight } = variant.packagingDetails || {};
       const hasFreebie = variant.freebies && variant.freebies.available;
       const freebieWeight = hasFreebie ? variant.freebies.weight || 0 : 0;
-      
+      const variantName = variant.name || `Variant_${variant._id}`; // Adjust based on your schema
+
+      if (boxId) {
+        allBoxesMap.set(boxId._id.toString(), boxId);
+      }
+
       variantMap[variant._id.toString()] = {
         box: boxId,
         productWeight: productWeight || 0,
         hasFreebie,
         freebieWeight,
+        variantName, // Include the variant name
       };
+    }
+
+    // 4) Convert the boxes to an array and sort by (volume) descending
+    const allBoxes = Array.from(allBoxesMap.values());
+
+    const getVolume = (box) => {
+      const { length, breadth, height } = box.dimensions;
+      return length * breadth * height;
+    };
+
+    allBoxes.sort((a, b) => getVolume(b) - getVolume(a));
+    // Now index=0 => largest box, index=1 => next largest, etc.
+
+    // 5) Build a lookup from box._id -> index
+    const boxIdToIndex = {};
+    allBoxes.forEach((box, idx) => {
+      boxIdToIndex[box._id.toString()] = idx;
     });
 
-    const boxGroupMap = {};
-
+    // 6) Convert `items` into "item entries" => { minBoxIdx, quantity, weights, etc. }
+    const itemEntries = [];
     for (const item of items) {
-      const variantId = item.product.specificCategoryVariant._id.toString();
-      const variantData = variantMap[variantId];
-
-      if (!variantData) {
-        throw new Error(`Variant with ID ${variantId} not found.`);
+      const variantId = item?.product?.specificCategoryVariant?._id?.toString();
+      if (!variantId || !variantMap[variantId]) {
+        throw new Error(
+          `Variant missing or not found for item _id=${item?._id}`
+        );
       }
 
-      const { box, productWeight, hasFreebie, freebieWeight } = variantData;
-
+      const variantData = variantMap[variantId];
+      const { box, productWeight, hasFreebie, freebieWeight, variantName } = variantData;
       if (!box) {
         throw new Error(`Box details missing for variant ID ${variantId}.`);
       }
 
-      // Initialize box group if it doesn't exist
-      if (!boxGroupMap[box._id]) {
-        boxGroupMap[box._id] = {
-          box,
-          totalQuantity: 0,
-          totalWeight: 0,
-          freebieWeights: [], // To track freebie weights for the group
-        };
-      }
+      const minBoxIdx = boxIdToIndex[box._id.toString()]; // e.g. 0=largest, etc.
 
-      // Accumulate quantities and weights for this box group
-      boxGroupMap[box._id].totalQuantity += item.quantity;
-      boxGroupMap[box._id].totalWeight += productWeight * item.quantity;
+      itemEntries.push({
+        variantId,
+        variantName, // Include the variant name
+        quantity: item.quantity,
+        productWeight,
+        hasFreebie,
+        freebieWeight,
+        minBoxIdx,
+      });
+    }
 
-      // If the variant has a freebie, add its weight to the freebieWeights array
-      if (hasFreebie) {
-        boxGroupMap[box._id].freebieWeights.push(freebieWeight);
+    // 7) Group item entries by minBoxIdx so we handle from largest dimension to smallest
+    const groupedByMinBoxIdx = {};
+    for (const entry of itemEntries) {
+      if (!groupedByMinBoxIdx[entry.minBoxIdx]) {
+        groupedByMinBoxIdx[entry.minBoxIdx] = [];
       }
+      groupedByMinBoxIdx[entry.minBoxIdx].push(entry);
+    }
+
+    // Sort the group keys so we handle the largest dimension first
+    const sortedKeys = Object.keys(groupedByMinBoxIdx)
+      .map((n) => parseInt(n, 10))
+      .sort((a, b) => a - b);
+
+    // 8) We'll maintain an array of "open boxes"
+    //    Each "open box" = {
+    //       boxIdx,
+    //       leftoverCapacity,
+    //       totalProductWeight,
+    //       freebieWeights: [],
+    //       packedItems: []    <-- detail of which items/variants got placed
+    //    }
+    const openBoxes = [];
+
+    // Helper to create a new box
+    const createNewBox = (boxIdx) => {
+      const boxRef = allBoxes[boxIdx];
+      return {
+        boxIdx,
+        leftoverCapacity: boxRef.capacity, // e.g. "4" items
+        totalProductWeight: 0,
+        freebieWeights: [],
+        packedItems: [],
+      };
+    };
+
+    // 9) Allocation logic: largest minBoxIdx first => smaller minBoxIdx last
+    let freebieAssigned = false; // Flag to ensure only one freebie per order
+
+    for (const minBoxIdx of sortedKeys) {
+      const currentGroup = groupedByMinBoxIdx[minBoxIdx];
+
+      for (const entry of currentGroup) {
+        let remainingQty = entry.quantity;
+
+        while (remainingQty > 0) {
+          // Look for an open box that is "big enough" => boxIdx <= minBoxIdx
+          // AND has leftover capacity.
+          let suitableBox = openBoxes.find(
+            (ob) => ob.boxIdx <= minBoxIdx && ob.leftoverCapacity > 0
+          );
+
+          // If none found, open a new box of exactly `minBoxIdx` dimension
+          if (!suitableBox) {
+            suitableBox = createNewBox(minBoxIdx);
+            openBoxes.push(suitableBox);
+          }
+
+          // Place as many items as possible
+          const canFit = Math.min(suitableBox.leftoverCapacity, remainingQty);
+          suitableBox.leftoverCapacity -= canFit;
+          suitableBox.totalProductWeight += entry.productWeight * canFit;
+
+          // Assign a freebie if applicable and not yet assigned
+          if (entry.hasFreebie && !freebieAssigned) {
+            if (entry.freebieWeight > 0) { // Ensure freebie has a positive weight
+              suitableBox.freebieWeights.push(entry.freebieWeight);
+              freebieAssigned = true;
+            }
+          }
+
+          // Log which variant (or item) we placed, including the variant name and box name
+          suitableBox.packedItems.push({
+            variantName: entry.variantName,
+            variantBoxName: allBoxes[minBoxIdx].name, // Include the variant's box name
+            quantity: canFit,
+          });
+
+          remainingQty -= canFit;
+        }
+      }
+    }
+
+    // 10) Calculate total dimensions and weights
+    const boxUsageMap = {};
+    for (let i = 0; i < allBoxes.length; i++) {
+      boxUsageMap[i] = []; // an array of openBoxes with that boxIdx
+    }
+    for (const ob of openBoxes) {
+      boxUsageMap[ob.boxIdx].push(ob);
     }
 
     let totalWrapWeight = 0;
@@ -142,37 +260,80 @@ export const getDimensionsAndWeight = async (items) => {
     let totalBreadth = 0;
     let totalHeight = 0;
 
-    Object.values(boxGroupMap).forEach(({ box, totalQuantity, totalWeight, freebieWeights }) => {
-      const numberOfBoxes = Math.ceil(totalQuantity / box.capacity);
+    // Prepare box details
+    const boxDetails = []; // each entry => { boxName, items: [...], leftoverCapacity, ... }
 
-      // Calculate total box weight
-      totalBoxWeight += box.weight * numberOfBoxes;
+    Object.keys(boxUsageMap).forEach((idxStr) => {
+      const idx = parseInt(idxStr, 10);
+      const usedBoxes = boxUsageMap[idx];
+      if (!usedBoxes.length) return;
 
-      // Accumulate dimensions (multiplied by the number of boxes)
-      totalLength += box.dimensions.length * numberOfBoxes;
-      totalBreadth += box.dimensions.breadth * numberOfBoxes;
-      totalHeight += box.dimensions.height * numberOfBoxes;
+      const boxInfo = allBoxes[idx];
+      const boxCount = usedBoxes.length;
 
-      // Accumulate wrap weight (product weight)
-      totalWrapWeight += totalWeight;
+      // Dimensional sums
+      totalLength += boxInfo.dimensions.length * boxCount;
+      totalBreadth += boxInfo.dimensions.breadth * boxCount;
+      totalHeight += boxInfo.dimensions.height * boxCount;
 
-      // Calculate freebie weight: max one freebie per box
-      if (freebieWeights.length > 0) {
-        // Determine the freebie weight to add per box (e.g., the maximum freebie weight)
-        const maxFreebieWeight = Math.max(...freebieWeights);
-        totalFreebieWeight += maxFreebieWeight * numberOfBoxes;
+      // Box weight sum
+      totalBoxWeight += boxInfo.weight * boxCount;
+
+      // For each open box of this type
+      usedBoxes.forEach((ub) => {
+        // Sum product weight
+        totalWrapWeight += ub.totalProductWeight;
+
+        // Sum freebie weight (only one freebie is assigned)
+        if (ub.freebieWeights.length > 0) {
+          // Assuming only one freebie is assigned across all boxes
+          totalFreebieWeight += ub.freebieWeights[0];
+        }
+
+        // Detail the packed items in this box
+        boxDetails.push({
+          boxName: boxInfo.name,
+          leftoverCapacity: ub.leftoverCapacity,
+          productWeightInBox: ub.totalProductWeight,
+          freebiesInBox: ub.freebieWeights,
+          packedItems: ub.packedItems.map((pi) => ({
+            variantName: pi.variantName,
+            variantBoxName: pi.variantBoxName,
+            quantity: pi.quantity,
+          })),
+        });
+      });
+    });
+
+    const finalWeight = totalWrapWeight + totalBoxWeight + totalFreebieWeight;
+
+    // 11) Summarize which box types were used
+    const usedBoxNames = [];
+    Object.keys(boxUsageMap).forEach((idxStr) => {
+      const idx = parseInt(idxStr, 10);
+      if (boxUsageMap[idx].length) {
+        usedBoxNames.push(allBoxes[idx].name);
       }
     });
 
-    // Total weight is the sum of wrap weight, box weight, and freebie weight
-    const totalWeight = totalWrapWeight + totalBoxWeight + totalFreebieWeight;
+    const totalBoxCount = openBoxes.length;
 
+    // Log a line about the box usage
+    
+    // console.log(
+    //   `${totalBoxCount} boxes: ${usedBoxNames.join(', ')} are required.`
+    // );
+
+    // 12) Return the final data
     return {
       length: totalLength,
       breadth: totalBreadth,
       height: totalHeight,
-      weight: totalWeight.toFixed(3),
-      freebieWeight: totalFreebieWeight, // Optional: to provide visibility on freebie weights
+      weight: finalWeight.toFixed(3),
+      freebieWeight: totalFreebieWeight,
+      boxesUsed: totalBoxCount,
+      boxesUsedNames: usedBoxNames,
+      boxDetails,
     };
   } catch (error) {
     console.error('Error calculating dimensions and weight:', error.message);

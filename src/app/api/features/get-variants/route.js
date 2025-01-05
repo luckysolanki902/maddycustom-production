@@ -27,7 +27,6 @@ export async function GET(req) {
       const firstProduct = await Product.findOne({ specificCategoryVariant: variant._id });
       const thumbnailUrl = variant.thumbnail?variant.thumbnail.startsWith('/')? variant.thumbnail : `/${variant.thumbnail}`:null;
       const firstImage = thumbnailUrl || firstProduct?.images?.[0] || null;
-      console.log('thumbnailUrl: ',thumbnailUrl);
       return {
         id: variant._id,
         name: variant.name,
