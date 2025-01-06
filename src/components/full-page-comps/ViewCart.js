@@ -127,8 +127,6 @@ const ViewCart = () => {
   const onlinePercentage = selectedPaymentMode?.configuration?.onlinePercentage;
   const codPercentage = selectedPaymentMode?.configuration?.codPercentage;
 
-  const onlineAmount = Math.floor((totalCostAfterDiscount * onlinePercentage) / 100);
-  const codAmount = Math.ceil((totalCostAfterDiscount * codPercentage) / 100);
 
   // Handle removing a cart item
   const handleRemoveItem = (productId) => {
@@ -230,8 +228,8 @@ const ViewCart = () => {
           totalCost={totalCostWithDelivery}
           originalTotal={couponState.couponApplied ? originalTotal + 100 : originalTotal + 100}
           onCheckout={handleCheckout}
-          onlineAmount={onlineAmount}
-          codAmount={codAmount}
+          onlinePercentage={onlinePercentage}
+          codPercentage={codPercentage}
         />
       )}
 
