@@ -5,7 +5,11 @@ import { useTransition, animated } from '@react-spring/web';
 import { Typography, Divider } from '@mui/material';
 import styles from './styles/viewcart.module.css';
 import BlackButtonWithOnClick from '@/components/utils/BlackButtonWithOnClick';
-const Footer = ({ totalCost, originalTotal, onCheckout, onlineAmount, codAmount }) => {
+const Footer = ({ totalCost, originalTotal, onCheckout,  onlinePercentage, codPercentage }) => {
+
+  const onlineAmount = Math.floor((totalCost * onlinePercentage) / 100);
+  const codAmount = Math.ceil((totalCost * codPercentage) / 100);
+
   const showSplit = codAmount > 0 && onlineAmount > 0;
 
   // Define transitions for the split payment section
