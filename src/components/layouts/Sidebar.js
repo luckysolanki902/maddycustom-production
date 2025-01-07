@@ -117,11 +117,10 @@ const Sidebar = (props) => {
                     <Image
                         height={1000}
                         width={1000}
-                        src={`${baseUrl}/assets/logos/maddylogo_christmas_cap.png`}
+                        src={`${baseUrl}/assets/logos/maddycustom-old-full-logo-horizontal.png`}
                         alt="Maddy Logo"
                         title="Maddy Logo"
-                        style={{ width: '95%', overflow: 'hidden', height: 'auto', transform: 'translateX(-40px)' }}
-                    />
+                        style={{ width: '55%', overflow: 'hidden', height: 'auto' }}                    />
                 </Box>
 
                 {/* Navigation Links */}

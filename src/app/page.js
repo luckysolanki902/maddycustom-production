@@ -73,17 +73,12 @@ const HomePage = async () => {
 
         {/* Helmet Poster */}
 
-        {/* <FlexibleLargePoster 
+        <FlexibleLargePoster 
             imageSlugForPc='helmetposterpc.jpg' 
             imageSlugForPhone='helmetposterphone.jpg' 
             link='/shop/accessories/safety/graphic-helmets/helmet-store' 
-          /> */}
-        {/* Christmas */}
-        <FlexibleLargePoster
-          imageSlugForPc='new_year_24_banner_pc.png'
-          imageSlugForPhone='new_year_24_banner_phone.png'
-          link='/shop/accessories/safety/graphic-helmets/helmet-store'
-        />
+          />
+
 
         {/* Helmet Slider */}
         <HelmetSlider slides={helmetSlidesData} />

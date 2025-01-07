@@ -44,7 +44,8 @@ const OrderSchema = new mongoose.Schema(
         },
       },
     ],
-    // Total order amount to be paid after discount and before extra charges
+    // Final amount paid by user or to be paid (if he's paying some part)... So it is the exact total of the amount that has to be finally paid for an order
+    // Final bill
     totalAmount: {
       type: Number,
       required: true,

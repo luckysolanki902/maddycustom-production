@@ -8,11 +8,9 @@
 }
 
 .logoDiv img {
-    width: 16rem;
+    width: 10rem;
     height: auto;
 }
-
-
 
 .carouseldiv {
     margin: auto 1rem;
@@ -31,7 +29,7 @@
 
 @media (min-width: 800px) {
     .logoDiv img {
-        width: 19rem;
+        width: 12rem;
     }
 
 }
