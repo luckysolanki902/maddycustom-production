@@ -73,22 +73,22 @@ const HomePage = async () => {
 
         {/* Helmet Poster */}
 
-        <FlexibleLargePoster 
+        {/* <FlexibleLargePoster 
             imageSlugForPc='helmetposterpc.jpg' 
             imageSlugForPhone='helmetposterphone.jpg' 
             link='/shop/accessories/safety/graphic-helmets/helmet-store' 
-          />
+          /> */}
 
 
         {/* Helmet Slider */}
         <HelmetSlider slides={helmetSlidesData} />
 
         {/* Bonnet Strip Wrap Poster */}
-        {/* <FlexibleLargePoster 
+        <FlexibleLargePoster 
             imageSlugForPc='bonnetstrippc.jpg' 
             imageSlugForPhone='bonnetstripphone.jpg' 
             link='/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps' 
-          /> */}
+          />
 
         {/* Featured Full Bike Wraps */}
         <FeaturedFullBikeWraps data={featuredBikeWrapsData} />

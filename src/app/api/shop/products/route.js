@@ -58,13 +58,24 @@ export async function POST(request) {
 
       // **For 'variant' type, apply tag prioritization and sorting**
       const pipeline = [
-        { $match: { specificCategoryVariant: variant._id } },
+        { $match: { specificCategoryVariant: variant._id, available: true } }, // Added available: true
       ];
 
       if (tagFilter) {
         pipeline.push({
           $addFields: {
-            isTagMatched: { $in: [tagFilter.toLowerCase(), { $map: { input: "$mainTags", as: "tag", in: { $toLower: "$$tag" } } }] },
+            isTagMatched: { 
+              $in: [
+                tagFilter.toLowerCase(), 
+                { 
+                  $map: { 
+                    input: "$mainTags", 
+                    as: "tag", 
+                    in: { $toLower: "$$tag" } 
+                  } 
+                } 
+              ],
+            },
           }
         });
       } else {
@@ -102,13 +113,15 @@ export async function POST(request) {
       const countResult = await Product.aggregate(countPipeline).exec();
       const totalItems = countResult.length > 0 ? countResult[0].totalItems : 0;
       const totalPages = Math.ceil(totalItems / limit);
-      const currentPage = Math.min(page, totalPages);
+      const currentPage = totalPages > 0 ? Math.min(page, totalPages) : 1;
 
-      // Apply pagination
-      pipeline.push(
-        { $skip: (currentPage - 1) * limit },
-        { $limit: limit }
-      );
+      // Apply pagination only if there are items
+      if (totalItems > 0) {
+        pipeline.push(
+          { $skip: (currentPage - 1) * limit },
+          { $limit: limit }
+        );
+      }
 
       // Exclude temporary fields
       pipeline.push({
@@ -120,9 +133,9 @@ export async function POST(request) {
 
       const products = await Product.aggregate(pipeline).exec();
 
-      // Aggregation pipeline to get unique tags across all products in the variant
+      // Aggregation pipeline to get unique tags across all available products in the variant
       const uniqueTagsPipeline = [
-        { $match: { specificCategoryVariant: variant._id } },
+        { $match: { specificCategoryVariant: variant._id, available: true } }, // Added available: true
         { $unwind: "$mainTags" },
         { $group: { _id: null, uniqueTags: { $addToSet: { $toLower: "$mainTags" } } } },
         { $project: { _id: 0, uniqueTags: 1 } }
