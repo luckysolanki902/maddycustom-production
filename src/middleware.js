@@ -17,6 +17,7 @@ const redirectMap = {
   '/bike/win-wraps': '/shop/wraps/car-wraps/window-pillar-wraps/win-wraps',
   '/bike/tank-wraps-classic': '/shop/wraps/bike-wraps/tank-wraps/medium-tank-wraps',
   '/bike/bonnet-strip-wraps': '/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps',
+  '/r/igb':'/?utm_source=Instagram&utm_medium=Profile&utm_campaign=Bio',
 };
 
 export function middleware(request) {
@@ -50,5 +51,6 @@ export const config = {
     '/bike/win-wraps',
     '/bike/tank-wraps-classic',
     '/bike/bonnet-strip-wraps',
+    '/r/igb',
   ],
 };
