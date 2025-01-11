@@ -7,10 +7,7 @@ export const calculateUniqueItems = (cartItems) => cartItems.length;
 
 export const calculateTotalCostBeforeDiscount = (cartItems) =>
   cartItems.reduce((acc, item) => {
-    const basePrice = item.productDetails.variantDetails?.availableBrands?.length > 0
-      ? item.productDetails.variantDetails.availableBrands[0].brandBasePrice
-      : 0;
-    const price = basePrice + item.productDetails.price;
+    const price = item.productDetails.price;
     return acc + price * item.quantity;
   }, 0);
 

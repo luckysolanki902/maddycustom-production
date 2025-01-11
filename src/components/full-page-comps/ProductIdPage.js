@@ -28,47 +28,54 @@ export default function ProductIdPage({ product, variant, category, description 
 
   return (
     <>
-    <div className={styles.container}>
-      <ZoomableImage
-        src={`${imageBaseUrl}${product?.images[0]}`}
-        alt="product image"
-        isZoomed={isZoomed}
-        setIsZoomed={setIsZoomed}
-      />
-      {!isZoomed && <PriceAndChat price={product.price} />}
-      {!isZoomed && (
-        <div className={styles.details}>
-          <h1 style={{ fontSize: '2rem', margin: '0.5rem 0' }} className={styles.title}>
-            {product.title}
-          </h1>
-          {variant?.cardCaptions?.length > 0 && <p>{variant?.cardCaptions[0]}</p>}
-          <div className={styles.description}>
-            {viewFullDescription ? description : description.slice(0, 100)}
-            <p
-              style={{ display: 'inline', cursor: 'pointer', color: 'black' }}
-              onClick={() => setViewFullDescription(!viewFullDescription)}
+      <div className={styles.container}>
+        <ZoomableImage
+          src={`${imageBaseUrl}${product?.images[0]}`}
+          alt="product image"
+          isZoomed={isZoomed}
+          setIsZoomed={setIsZoomed}
+        />
+        {!isZoomed && <PriceAndChat price={variant?.availableBrands?.length > 0
+                    ? variant.availableBrands[0].brandBasePrice + product.price
+                    : product.price} />}
+        {!isZoomed && (
+          <div className={styles.details}>
+            <h1 style={{ fontSize: '2rem', margin: '0.5rem 0' }} className={styles.title}>
+              {product.title}
+            </h1>
+            {variant?.cardCaptions?.length > 0 && <p>{variant?.cardCaptions[0]}</p>}
+            <div className={styles.description}>
+              {viewFullDescription ? description : description.slice(0, 100)}
+              <p
+                style={{ display: 'inline', cursor: 'pointer', color: 'black' }}
+                onClick={() => setViewFullDescription(!viewFullDescription)}
               >
-              {viewFullDescription ? ' view less' : '...view more'}
-            </p>
+                {viewFullDescription ? ' view less' : '...view more'}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
-      {!isZoomed && (
-        <div className={styles.carDiv}>
-          <OrderSpecifications features={variant.features} />
-        </div>
-      )}
-      {!isZoomed && (
-        <div className={styles.buttonDiv}>
-          <AddToCartButtonWithOrder
-            product={{ ...product, variantDetails: variant, category: category }}
-            isLarge={true}
-          />
-        </div>
-      )}
-    </div>
+        )}
+        {!isZoomed && (
+          <div className={styles.carDiv}>
+            <OrderSpecifications features={variant.features} />
+          </div>
+        )}
+        {!isZoomed && (
+          <div className={styles.buttonDiv}>
+            <AddToCartButtonWithOrder
+              product={{
+                ...product, variantDetails: variant, category: category, price:
+                  variant?.availableBrands?.length > 0
+                    ? variant.availableBrands[0].brandBasePrice + product.price
+                    : product.price,
+              }}
+              isLarge={true}
+            />
+          </div>
+        )}
+      </div>
       {!isZoomed && <HappyCustomersClient parentSpecificCategoryId={category._id} />}
       {!isZoomed && <ContactUs />}
-      </>
+    </>
   );
 }

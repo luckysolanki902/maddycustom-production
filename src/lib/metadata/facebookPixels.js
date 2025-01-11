@@ -84,7 +84,6 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
 
     // Send event to server-side Conversion API
     await sendToServer(name, eventParams);
-    console.info(`Event successfully tracked for event: ${name}`, { eventParams });
   } catch (error) {
     console.error('Error tracking event:', error);
   }
@@ -108,7 +107,6 @@ export const addToCart = async (product) => {
       content_category: product.category, // Use product category object
       content_type: 'product',
     });
-    console.info('AddToCart event sent successfully.');
   } catch (error) {
     console.error('Error in addToCart function:', error);
   }
@@ -132,7 +130,6 @@ export const purchase = async (order, userData = {}) => {
         item_price: item.priceAtPurchase,
       })),
     });
-    console.info('Purchase event sent successfully.');
   } catch (error) {
     console.error('Error in purchase function:', error);
   }
