@@ -36,7 +36,6 @@ const ViewCart = () => {
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
   const orderForm = useSelector((state) => state.orderForm);
-console.log(cartItems)
   const { couponApplied } = orderForm;
 
   // Coupon state
