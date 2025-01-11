@@ -179,7 +179,15 @@ const ProductCard = ({ product, loading }) => {
             <div className={styles.productName}>{product.name}</div>
           </div>
           {product.variantDetails.available && <div className={styles.addToCart} >
-            <AddToCartButton product={product} />
+            <AddToCartButton
+              product={{
+                ...product,
+                price:
+                  product.variantDetails?.availableBrands?.length > 0
+                    ? product.variantDetails.availableBrands[0].brandBasePrice + product.price
+                    : product.price,
+              }}
+            />
           </div>}
         </div>
         <div className={styles.prodDescRow2}>
