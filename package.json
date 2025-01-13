@@ -19,6 +19,7 @@
     "crypto": "^1.0.1",
     "facebook-nodejs-business-sdk": "^21.0.3",
     "firebase": "^11.0.1",
+    "googleapis": "^144.0.0",
     "micro": "^10.0.1",
     "moment-timezone": "^0.5.46",
     "mongodb": "^6.10.0",
