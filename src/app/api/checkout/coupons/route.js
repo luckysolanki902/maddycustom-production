@@ -14,6 +14,7 @@ export async function GET() {
 
     const coupons = await Coupon.find({
       isActive: true,
+      showAsCard: true,
       validFrom: { $lte: currentDateIST },
       validUntil: { $gte: currentDateIST },
     })

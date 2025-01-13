@@ -216,7 +216,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
                                     },
                                 }}
                             />
-                            <Skeleton
+                            {/* <Skeleton
                                 variant="rectangular"
                                 sx={{
                                     width: '9rem',
@@ -227,7 +227,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost }) => {
                                         height: '14rem',
                                     },
                                 }}
-                            />
+                            /> */}
                         </>
                     ) : availableCoupons.length > 0 ? (
                         availableCoupons.map((coupon, index) => (

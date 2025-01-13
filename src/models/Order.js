@@ -280,4 +280,9 @@ OrderSchema.pre('findOneAndUpdate', function(next) {
   next();
 });
 
+
+// Indexes for better performance
+OrderSchema.index({ 'address.receiverName': 'text', 'address.receiverPhoneNumber': 'text' });
+OrderSchema.index({ 'items.product': 1 });
+
 module.exports = mongoose.models.Order || mongoose.model('Order', OrderSchema);
