@@ -11,14 +11,14 @@ export async function POST(request) {
   const { code, totalCost } = await request.json();
 
   if (!code) {
-    console.warn('Coupon application failed: Coupon code is missing.');
+    // console.warn('Coupon application failed: Coupon code is missing.');
     return NextResponse.json(
       { valid: false, message: 'Coupon code is required.' },
       { status: 400 }
     );
   }
   if (typeof totalCost !== 'number') {
-    console.warn('Coupon application failed: Total cost is not a number.');
+    // console.warn('Coupon application failed: Total cost is not a number.');
     return NextResponse.json(
       { valid: false, message: 'Total cost must be a number.' },
       { status: 400 }
@@ -31,7 +31,7 @@ export async function POST(request) {
       isActive: true,
     });
     if (!coupon) {
-      console.warn(`Invalid coupon code attempted: ${code}`);
+      // console.warn(`Invalid coupon code attempted: ${code}`);
       return NextResponse.json(
         { valid: false, message: 'Invalid coupon code.' },
         { status: 400 }
@@ -39,7 +39,7 @@ export async function POST(request) {
     }
 
     if(coupon.minimumPurchasePrice>totalCost){
-      console.warn(`Required Minimum order price not achieved: ${code}`);
+      // console.warn(`Required Minimum order price not achieved: ${code}`);
       return NextResponse.json(
         { valid: false, message: `Minimum order price should be ${coupon.minimumPurchasePrice}.` },
         { status: 400 }
@@ -50,7 +50,7 @@ export async function POST(request) {
     const currentDateIST = moment().tz('Asia/Kolkata').toDate();
 
     if (currentDateIST < coupon.validFrom || currentDateIST > coupon.validUntil) {
-      console.warn(`Coupon code expired or not yet valid: ${code}`);
+      // console.warn(`Coupon code expired or not yet valid: ${code}`);
       return NextResponse.json(
         { valid: false, message: 'Coupon is expired or not yet valid.' },
         { status: 400 }

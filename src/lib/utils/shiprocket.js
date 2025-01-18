@@ -75,9 +75,9 @@ export const getDimensionsAndWeight = async (items) => {
       if (item?.product?.specificCategoryVariant) {
         return item.product.specificCategoryVariant._id;
       }
-      console.warn(
-        `Skipping item due to missing Product or SpecificCategoryVariant: ${item?._id}`
-      );
+      // console.warn(
+      //   `Skipping item due to missing Product or SpecificCategoryVariant: ${item?._id}`
+      // );
       return null;
     })
     .filter(Boolean);

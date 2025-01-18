@@ -21,7 +21,7 @@ export default function HappyCustomersClient({ parentSpecificCategoryId, noShado
         if (data?.happyCustomers) {
           setHappyCustomers(data.happyCustomers);
         } else {
-          console.warn('No happy customers found');
+          // console.warn('No happy customers found');
         }
       } catch (error) {
         console.error("Error fetching happy customers:", error);

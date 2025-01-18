@@ -196,10 +196,12 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
       // Update Redux store with user details
       dispatch(setUserDetails({ name: data.name, phoneNumber: data.phoneNumber }));
 
-      // Check if user exists using GET request with query parameter
-      const response = await axios.get('/api/user/check', {
-        params: { phoneNumber: data.phoneNumber },
+      // Update user details using PATCH request
+      const response = await axios.patch('/api/user/check', {
+        phoneNumber: data.phoneNumber,
+        name: data.name,
       });
+
 
       if (response.data.exists) {
         const latestAddress = response.data.latestAddress;
@@ -371,7 +373,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
         const { orderId: createdOrderId, message, paymentDetails: createdPaymentDetails } = orderResponse.data;
 
         dispatch(setLastOrderId(createdOrderId));
-        
+
         orderId = createdOrderId;
         paymentDetails = createdPaymentDetails;
 
@@ -872,7 +874,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="h6">Additional Information</Typography>
 
-                    
+
                     {aggregatedExtraFields.map((field) => (
                       <Controller
                         key={field.fieldName}

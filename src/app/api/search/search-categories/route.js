@@ -14,7 +14,7 @@ export async function GET(request) {
     const categories = await SpecificCategory.find({ available: true }).lean();
 
     if (!categories || categories.length === 0) {
-      console.warn('No specific categories found with available=true.');
+      // console.warn('No specific categories found with available=true.');
     }
 
     // Create a map of category IDs to category names for easy lookup
@@ -27,7 +27,7 @@ export async function GET(request) {
     const variants = await SpecificCategoryVariant.find({ }).lean();
 
     if (!variants || variants.length === 0) {
-      console.warn('No specific category variants found.');
+      // console.warn('No specific category variants found.');
     }
 
     // Structure the response
@@ -48,7 +48,7 @@ export async function GET(request) {
           if (categoryName) {
             variantName = `${variantName} ${categoryName}`;
           } else {
-            console.warn(`No matching category found for variant ID: ${variant._id}`);
+            // console.warn(`No matching category found for variant ID: ${variant._id}`);
           }
         }
 

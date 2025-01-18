@@ -14,10 +14,10 @@ export async function GET() {
     const twsVariants = await SpecificCategoryVariant.find({ variantCode: 'tw-s' }).limit(4);
 
     if (!winVariants || winVariants.length === 0) {
-      console.warn("Our Unique Products: No variants found with variantCode 'win'.");
+      // console.warn("Our Unique Products: No variants found with variantCode 'win'.");
     }
     if (!twsVariants || twsVariants.length === 0) {
-      console.warn("Our Unique Products: No variants found with variantCode 'tw-s'.");
+      // console.warn("Our Unique Products: No variants found with variantCode 'tw-s'.");
     }
 
     // Extract the variant IDs
@@ -36,7 +36,7 @@ export async function GET() {
     ]);
 
     if ((!winProducts || winProducts.length === 0) && (!twsProducts || twsProducts.length === 0)) {
-      console.warn('Our Unique Products: No products found for the selected variants.');
+      // console.warn('Our Unique Products: No products found for the selected variants.');
     }
 
     // Combine in alternating order

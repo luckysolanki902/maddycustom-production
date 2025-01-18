@@ -39,10 +39,8 @@ async function connectToDatabase() {
   }
 
   // Create a new connection if none exist
-  console.info(`MongoDB: Initiating new connection...`);
 
   cached.promise = mongoose.connect(MONGODB_URI, options).then((mongooseInstance) => {
-    console.info('MongoDB: Successfully connected.');
     return mongooseInstance;
   }).catch(err => {
     console.error(`MongoDB: Connection error - ${err.message}`);

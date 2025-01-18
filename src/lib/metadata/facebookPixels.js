@@ -79,7 +79,7 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
     if (window.fbq) {
       window.fbq('track', name, eventParams);
     } else {
-      console.warn('Facebook Pixel is not initialized.');
+      // console.warn('Facebook Pixel is not initialized.');
     }
 
     // Send event to server-side Conversion API

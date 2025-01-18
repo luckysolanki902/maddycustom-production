@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogTitle, DialogContent, TextField, Box, IconButton } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, TextField, Box, IconButton, Button } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import BlackButton from '../utils/BlackButton';
 import axios from 'axios';
@@ -13,17 +13,17 @@ import CustomSnackbar from '../notifications/CustomSnackbar';
 import { usePathname } from 'next/navigation';
 import CloseIcon from '@mui/icons-material/Close';
 import debounce from 'lodash.debounce';
+import Image from 'next/image';
 
 const LoginDialog = () => {
   const dispatch = useDispatch();
   const pathname = usePathname();
-  
+
   // Access Redux state
   const userExists = useSelector((state) => state.orderForm.userExists);
   const loginDialogShown = useSelector((state) => state.orderForm.loginDialogShown);
   const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector((state) => state.userBehavior);
-  console.log({ userExists, loginDialogShown, timeSpentOnWebsite, scrolledMoreThan60Percent });
-  
+  const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const { control, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
       phoneNumber: '',
@@ -49,21 +49,21 @@ const LoginDialog = () => {
       const response = await axios.post('/api/user/create', {
         phoneNumber: data.phoneNumber,
       });
-      
+
       if (response.data.message === 'User already exists' || response.data.message === 'User exists and name updated') {
         dispatch(setUserExists(true));
         dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.userId }));
-        showSnackbar('Mobile number already registered.', 'info');
+        showSnackbar('Welcome to MaddyCustom!.', 'success');
       } else if (response.data.message === 'User created successfully') {
         dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.user.userId }));
-        showSnackbar('Mobile number registered successfully.', 'success');
+        showSnackbar('Welcome to MaddyCustom!.', 'success');
       }
       reset();
       handleClose(); // Use handleClose to ensure consistent behavior
     } catch (error) {
       console.error('Error in LoginDialog:', error.message);
       const errorMessage = error.response?.data?.message || 'An error occurred.';
-      showSnackbar(errorMessage, 'error');
+      showSnackbar('Could not login!', 'error');
     }
   };
 
@@ -77,9 +77,9 @@ const LoginDialog = () => {
   useEffect(() => {
     if (
       timeSpentOnWebsite >= 30 && // Total time spent on website is at least 30 seconds
-      scrolledMoreThan60Percent && 
-      !loginDialogShown && 
-      !userExists && 
+      scrolledMoreThan60Percent &&
+      !loginDialogShown &&
+      !userExists &&
       pathname !== '/viewcart'
     ) {
       setOpen(true);
@@ -103,23 +103,63 @@ const LoginDialog = () => {
           handleClose();
         }}
         disableEscapeKeyDown
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            overflow: 'unset',
+            borderRadius: '1rem',
+            //gray little shadow
+            boxShadow: '0 0 4px 8px rgba(0, 0, 0, 0.11)',
+          },
+        }}
       >
-        <DialogTitle sx={{ m: 0, p: 2 }}>
-          Subscribe to our Newsletter
-          <IconButton
-            aria-label="close"
-            onClick={handleClose}
+        <DialogContent dividers>
+          <Box
+            sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
+            <IconButton
+              aria-label="close"
+              onClick={handleClose}
+              sx={{
+                color: (theme) => theme.palette.grey[500],
+                padding: "0.5rem",
+                boxShadow: "0 0 4px 2px #4de1ff24, 0 0 4px 2px #40bcff33",
+                borderRadius: '0.5rem',
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+
+          </Box>
+
+          <Box
             sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: (theme) => theme.palette.grey[500],
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              boxShadow: '0 0 8px 8px rgba(77, 225, 255, 0.11)',
+              borderRadius: '50%',
+              padding: '1rem',
+              width: { xs: '100px', sm: '120px' }, // Set a fixed width for consistent aspect ratio
+              height: { xs: '100px', sm: '120px' }, // Match height to width
+              overflow: 'hidden', // Ensures content inside remains circular
+              margin: 'auto',
+              marginBottom: { xs: '1rem', sm: '2rem' }
             }}
           >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
+            <Image
+              src={`${imageBaseUrl}/assets/logos/just-helmet.png`}
+              alt="MaddyCustom"
+              width={150} // Use same value as the parent container for consistency
+              height={150}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+              }}
+            />
+          </Box>
+
           <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: 'flex', flexDirection: 'column', gap: '1rem', mt: 1 }}>
             <Controller
               name="phoneNumber"
@@ -132,18 +172,32 @@ const LoginDialog = () => {
                 },
               }}
               render={({ field }) => (
-                <TextField
+                <input
+                  style={{
+                    borderRadius: '1.2rem',
+                    boxShadow: 'inset 0 0 4px 3px rgba(56, 167, 186, 0.14)',
+                    outline: "none",
+                    border: 'none',
+                    padding: '0.8rem 1rem',
+                    color:"rgb(85, 85, 85)",
+                  }}
+                  placeholder='Mobile Number'
                   {...field}
                   label="Mobile Number"
-                  variant="standard"
-                  fullWidth
                   error={!!errors.phoneNumber}
                   helperText={errors.phoneNumber ? errors.phoneNumber.message : ''}
                 />
               )}
             />
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <BlackButton buttonText="Submit" type="submit" />
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                style={{ borderRadius: '1rem', boxShadow: '0 2px 3px 2px rgba(56, 167, 186, 0.14)', border:'none', outline:'none', padding:'0.4rem 1.5rem', backgroundColor:'white',fontSize:'1rem', margin:'auto', color:'#77c6cb', cursor:'pointer'  }}
+              >
+                Login
+              </Button>
             </Box>
           </Box>
         </DialogContent>

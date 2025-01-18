@@ -24,7 +24,6 @@ export const config = {
  * Ensures idempotency by checking paymentStatus and deliveryStatus.
  */
 export async function POST(request) {
-  console.info('Razorpay webhook request received');
 
   const session = await mongoose.startSession(); // Start a MongoDB session
   session.startTransaction(); // Start a transaction
@@ -51,7 +50,7 @@ export async function POST(request) {
     }
 
     if (!eventId) {
-      console.warn('Missing event ID header.');
+      // console.warn('Missing event ID header.');
       return NextResponse.json({ error: 'Missing event ID header.' }, { status: 400 });
     }
 
@@ -67,7 +66,7 @@ export async function POST(request) {
 
     // Validate signature length to prevent timing attacks
     if (receivedSignatureBuffer.length !== expectedSignatureBuffer.length) {
-      console.warn('Invalid signature length.');
+      // console.warn('Invalid signature length.');
       return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 });
     }
 
@@ -75,7 +74,7 @@ export async function POST(request) {
     const isValidSignature = crypto.timingSafeEqual(receivedSignatureBuffer, expectedSignatureBuffer);
 
     if (!isValidSignature) {
-      console.warn('Invalid signature.');
+      // console.warn('Invalid signature.');
       return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 });
     }
 
@@ -93,7 +92,6 @@ export async function POST(request) {
 
     // Handle only relevant events
     if (!['payment.captured', 'payment.failed'].includes(event.event)) {
-      console.info(`Event type '${event.event}' is not handled.`);
       return NextResponse.json({ message: 'Event type not handled.' }, { status: 200 });
     }
 
@@ -106,7 +104,7 @@ export async function POST(request) {
     const internalOrderId = payment.notes.orderId;
 
     if (!internalOrderId) {
-      console.warn('Missing internal order ID in payment notes.');
+      // console.warn('Missing internal order ID in payment notes.');
       return NextResponse.json({ error: 'Missing internal order ID in payment notes.' }, { status: 400 });
     }
 
@@ -123,19 +121,17 @@ export async function POST(request) {
       .session(session); // Associate with session
 
     if (!order) {
-      console.warn(`Order not found for ID: ${internalOrderId}`);
+      // console.warn(`Order not found for ID: ${internalOrderId}`);
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
     // Prevent double processing if the payment ID is already recorded
     if (order.paymentDetails.razorpayDetails.paymentId === paymentId) {
-      console.info('Payment already captured. Ignoring webhook.');
 
       // Optionally, log if Shiprocket order is already created or needs to be created
       if (order.shiprocketOrderId) {
-        console.info(`Shiprocket order already exists for Order ID: ${internalOrderId}`);
       } else {
-        console.warn(`Shiprocket order missing for Order ID: ${internalOrderId}`);
+        // console.warn(`Shiprocket order missing for Order ID: ${internalOrderId}`);
       }
 
       // Proceed to Shiprocket order creation logic if needed
@@ -143,7 +139,6 @@ export async function POST(request) {
       // Handle payment events only if payment ID is new
       // If the order is already fully or partially paid, skip updates
       if (['allPaid', 'paidPartially'].includes(order.paymentStatus)) {
-        console.info(`Order already in status '${order.paymentStatus}'. Skipping payment updates.`);
       } else {
         // Update payment details based on the event type
         if (event.event === 'payment.captured') {
@@ -169,7 +164,7 @@ export async function POST(request) {
           ).exec();
 
           if (!updatedOrder) {
-            console.warn('Order update failed. It might have been updated concurrently.');
+            // console.warn('Order update failed. It might have been updated concurrently.');
             await session.abortTransaction(); // Abort transaction
             session.endSession();
             return NextResponse.json({ message: 'Order already updated.' }, { status: 200 });
@@ -181,13 +176,11 @@ export async function POST(request) {
             updatedOrder.paymentDetails.amountDueCod <= 0
           ) {
             updatedOrder.paymentStatus = 'allPaid';
-            console.info(`Order ID: ${internalOrderId} marked as 'allPaid'.`);
           } else if (
             updatedOrder.paymentDetails.amountPaidOnline > 0 &&
             updatedOrder.paymentDetails.amountDueCod > 0
           ) {
             updatedOrder.paymentStatus = 'paidPartially';
-            console.info(`Order ID: ${internalOrderId} marked as 'paidPartially'.`);
           }
 
           // Increment usageCount for the applied coupon if not already done
@@ -207,9 +200,8 @@ export async function POST(request) {
                     : couponEntry
                 );
                 await updatedOrder.save({ session });
-                console.info(`Coupon usage count incremented for code: ${appliedCoupon.couponCode}`);
               } else {
-                console.warn(`Coupon not found for code: ${appliedCoupon.couponCode}`);
+                // console.warn(`Coupon not found for code: ${appliedCoupon.couponCode}`);
               }
             }
           }
@@ -225,12 +217,10 @@ export async function POST(request) {
             { session }
           ).exec();
 
-          console.info(`Order ID: ${internalOrderId} marked as 'failed'.`);
           await session.commitTransaction(); // Commit transaction
           session.endSession();
           return NextResponse.json({ message: 'Payment failed.' }, { status: 200 });
         } else {
-          console.info(`Unsupported event type: ${event.event}`);
           return NextResponse.json({ message: 'Unsupported event type.' }, { status: 400 });
         }
       }
@@ -245,7 +235,7 @@ export async function POST(request) {
     const latestOrder = await Order.findById(internalOrderId).session(session);
 
     if (!latestOrder) {
-      console.warn(`Order not found on re-fetch for ID: ${internalOrderId}`);
+      // console.warn(`Order not found on re-fetch for ID: ${internalOrderId}`);
       await session.abortTransaction();
       session.endSession();
       return NextResponse.json({ error: 'Order not found after update.' }, { status: 404 });
@@ -257,7 +247,6 @@ export async function POST(request) {
       latestOrder.deliveryStatus === 'pending' &&
       !latestOrder.shiprocketOrderId
     ) {
-      console.info(`Initiating Shiprocket order creation for Order ID: ${internalOrderId}`);
 
       // Populate the order with product and variant details
       await latestOrder.populate({
@@ -326,7 +315,6 @@ export async function POST(request) {
             { session }
           ).exec();
 
-          console.info(`Shiprocket order created successfully for Order ID: ${internalOrderId}, Shiprocket Order ID: ${response.order_id}`);
         } else {
           console.error(
             `Failed to create Shiprocket order for Order ID ${internalOrderId}: ${JSON.stringify(response)}`
@@ -347,15 +335,12 @@ export async function POST(request) {
       }
     } else {
       if (['allPaid', 'paidPartially'].includes(latestOrder.paymentStatus)) {
-        console.info(`No Shiprocket order creation needed for Order ID: ${internalOrderId}. Current delivery status: '${latestOrder.deliveryStatus}', Shiprocket Order ID: '${latestOrder.shiprocketOrderId || 'Not Created'}'.`);
       } else {
-        console.info(`Order ID: ${internalOrderId} payment status '${latestOrder.paymentStatus}' does not qualify for Shiprocket order creation.`);
       }
     }
 
     await session.commitTransaction(); // Commit transaction
     session.endSession();
-    console.info(`Webhook processed successfully for Order ID: ${internalOrderId}`);
     return NextResponse.json({ message: 'Webhook processed successfully.' }, { status: 200 });
   } catch (error) {
     await session.abortTransaction(); // Abort transaction in case of error

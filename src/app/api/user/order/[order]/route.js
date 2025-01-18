@@ -12,7 +12,7 @@ export async function GET(request, { params }) {
   const { orderId } = params;
   try {
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
-      console.warn(`Fetch Order failed: Invalid orderId format=${orderId}.`);
+      // console.warn(`Fetch Order failed: Invalid orderId format=${orderId}.`);
       return NextResponse.json({ message: 'Invalid order ID' }, { status: 400 });
     }
 
@@ -24,7 +24,7 @@ export async function GET(request, { params }) {
       .populate('paymentDetails.mode', 'name');
 
     if (!order) {
-      console.warn(`Fetch Order failed: Order not found for orderId=${orderId}.`);
+      // console.warn(`Fetch Order failed: Order not found for orderId=${orderId}.`);
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
     }
 

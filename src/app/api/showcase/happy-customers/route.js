@@ -10,7 +10,7 @@ export async function GET(req) {
   const homepage = searchParams.get('homepage');
 
   try {
-    console.info('Attempting to connect to the database...');
+    // console.info('Attempting to connect to the database...');
     await connectToDatabase();
     let filter = { isActive: true }; // Base filter for active happy customers
 
@@ -25,7 +25,7 @@ export async function GET(req) {
         ],
       };
     } else {
-      console.warn('Invalid request parameters provided.');
+      // console.warn('Invalid request parameters provided.');
       return NextResponse.json(
         { error: 'Invalid request parameters' },
         { status: 400 }
