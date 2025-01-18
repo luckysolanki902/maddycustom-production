@@ -6,6 +6,7 @@ import cartReducer from './slices/cartSlice';
 import orderFormReducer from './slices/orderFormSlice';
 import utmReducer from './slices/utmSlice';
 import variantPreferenceReducer from './slices/variantPreferenceSlice';
+import userBehaviorSlice from './slices/userBehaviorSlice';
 import {
   persistStore,
   persistReducer,
@@ -23,12 +24,13 @@ const rootReducer = combineReducers({
   orderForm: orderFormReducer,
   utm: utmReducer,
   variantPreference: variantPreferenceReducer, 
+  userBehavior: userBehaviorSlice,
 });
 
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['cart', 'orderForm', 'utm', 'variantPreference'], // Persist the new slice
+  whitelist: ['cart', 'orderForm', 'utm', 'variantPreference', 'userBehavior'], // Persist the new slice
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

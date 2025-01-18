@@ -1,5 +1,4 @@
 // src/app/layout.js
-// Note: can't use 'use client' like use router directly in layout.js
 
 import '@/styles/globals.css';
 import { createMetadata } from '@/lib/metadata/create-metadata';
@@ -12,6 +11,11 @@ import UTMCapture from '@/components/analytics/UTMCapture';
 
 // Google Fonts
 import { Krona_One, Jost, Montserrat } from 'next/font/google';
+import dynamic from 'next/dynamic';
+import LoginDialog from '@/components/dialogs/LoginDialog';
+import TimeTracker from '@/components/utils/userBehavior/TimeTracker';
+import PathnameTracker from '@/components/utils/userBehavior/PathnameTracker';
+import ScrollChecker from '@/components/utils/userBehavior/ScrollChecker';
 
 // Configure Krona One with its only available weight
 const kronaOne = Krona_One({
@@ -35,6 +39,7 @@ const montserrat = Montserrat({
   style: ['normal', 'italic'],
   display: 'swap',
 });
+
 
 // Generate metadata
 export async function generateMetadata() {
@@ -66,6 +71,10 @@ export default function RootLayout({ children }) {
           <UTMCapture />
           {children}
           <FloatingActionBar />
+          <TimeTracker />
+          <LoginDialog />
+          <PathnameTracker />
+          <ScrollChecker />
         </ReduxProvider>
       </body>
     </html>

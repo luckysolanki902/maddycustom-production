@@ -10,10 +10,10 @@ export async function POST(request) {
     const { name, phoneNumber } = await request.json();
 
     // Validate input
-    if (!name || !phoneNumber) {
-      console.warn('Create User failed: Missing name or phoneNumber.');
+    if (!phoneNumber) {
+      console.warn('Create User failed: Missing phoneNumber.');
       return NextResponse.json(
-        { message: 'Name and phone number are required' },
+        { message: 'Phone number is required' },
         { status: 400 }
       );
     }
@@ -25,20 +25,34 @@ export async function POST(request) {
     const existingUser = await User.findOne({ phoneNumber });
 
     if (existingUser) {
-      console.warn(`Create User skipped: User already exists with phoneNumber=${phoneNumber}.`);
-      return NextResponse.json(
-        {
-          message: 'User already exists',
-          userId: existingUser._id, // Return existing user ID
-        },
-        { status: 200 }
-      );
+      if (name && (!existingUser.name || existingUser.name !== '') ) {
+        // Update the user's name if it only contains the phone number but not the name
+        existingUser.name = name;
+        await existingUser.save();
+        console.info(`User name updated for phoneNumber=${phoneNumber}.`);
+        return NextResponse.json(
+          {
+            message: 'User exists and name updated',
+            userId: existingUser._id,
+          },
+          { status: 200 }
+        );
+      } else {
+        console.info(`Create User skipped: User already exists with phoneNumber=${phoneNumber}.`);
+        return NextResponse.json(
+          {
+            message: 'User already exists',
+            userId: existingUser._id, // Return existing user ID
+          },
+          { status: 200 }
+        );
+      }
     }
 
     // Create a new user
     const newUser = new User({
-      name,
       phoneNumber,
+      name: name || '', // Name is optional
       addresses: [],
       isVerified: false,
     });
