@@ -10,7 +10,7 @@ const ScrollToTop = () => {
   // Listen for scroll changes to control button visibility
   useEffect(() => {
     const handleScroll = () => {
-      if (window.pageYOffset > 500) {
+      if (window.scrollY > 500) {
         setIsVisible(true);
       } else {
         setIsVisible(false);

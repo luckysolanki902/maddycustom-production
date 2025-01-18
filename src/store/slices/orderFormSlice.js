@@ -23,7 +23,9 @@ const initialState = {
     discountAmount: 0
   },
   lastOrderId: '',
+  lastOrderIdSetAt: null,
   extraFields: {}, 
+  loginDialogShown: false, // Added field to track if dialog was shown
 };
 
 const orderFormSlice = createSlice({
@@ -51,9 +53,11 @@ const orderFormSlice = createSlice({
     setExtraFields: (state, action) => {
       state.extraFields = { ...state.extraFields, ...action.payload };
     },
+    setLoginDialogShown: (state, action) => {
+      state.loginDialogShown = action.payload;
+    },
     resetOrderForm: () => initialState,
   },
-
 });
 
 export const {
@@ -61,10 +65,11 @@ export const {
   setAddressDetails,
   setUserExists,
   setPrefilledAddress,
-  setLastOrderId, // Exported setLastOrderId action
-  resetOrderForm,
   setCouponApplied,
+  setLastOrderId, 
   setExtraFields,
+  setLoginDialogShown,
+  resetOrderForm,
 } = orderFormSlice.actions;
 
 export default orderFormSlice.reducer;

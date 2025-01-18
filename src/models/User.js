@@ -13,8 +13,7 @@ const UserSchema = new mongoose.Schema(
     name: {
       type: String,
       maxlength: 100,
-      minLength: 3,
-      required: true,
+      required: false,
     },
     // Array of address objects
     addresses: [
@@ -74,6 +73,10 @@ const UserSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
 
 module.exports =  mongoose.models.User ||mongoose.model('User', UserSchema);
 

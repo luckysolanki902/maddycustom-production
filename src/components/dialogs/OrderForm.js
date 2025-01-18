@@ -371,6 +371,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
         const { orderId: createdOrderId, message, paymentDetails: createdPaymentDetails } = orderResponse.data;
 
         dispatch(setLastOrderId(createdOrderId));
+        
         orderId = createdOrderId;
         paymentDetails = createdPaymentDetails;
 
