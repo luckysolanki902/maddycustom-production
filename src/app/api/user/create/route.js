@@ -8,7 +8,6 @@ export async function POST(request) {
   try {
     // Parse the JSON body
     const { name, phoneNumber } = await request.json();
-    console.log({name, phoneNumber});
 
     // Validate input
     if (!phoneNumber) {

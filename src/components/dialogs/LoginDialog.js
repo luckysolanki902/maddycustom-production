@@ -1,19 +1,15 @@
-// @/components/dialogs/LoginDialog.js
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogTitle, DialogContent, TextField, Box, IconButton, Button } from '@mui/material';
+import { Dialog, DialogContent, Box, IconButton, Button } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
-import BlackButton from '../utils/BlackButton';
-import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUserDetails, setUserExists, setLoginDialogShown } from '../../store/slices/orderFormSlice';
 import CustomSnackbar from '../notifications/CustomSnackbar';
 import { usePathname } from 'next/navigation';
 import CloseIcon from '@mui/icons-material/Close';
-import debounce from 'lodash.debounce';
 import Image from 'next/image';
+import axios from 'axios';
 
 const LoginDialog = () => {
   const dispatch = useDispatch();
@@ -109,14 +105,13 @@ const LoginDialog = () => {
           sx: {
             overflow: 'unset',
             borderRadius: '1rem',
-            //gray little shadow
+            // gray little shadow
             boxShadow: '0 0 4px 8px rgba(0, 0, 0, 0.11)',
           },
         }}
       >
         <DialogContent dividers>
-          <Box
-            sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
+          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
             <IconButton
               aria-label="close"
               onClick={handleClose}
@@ -129,7 +124,6 @@ const LoginDialog = () => {
             >
               <CloseIcon />
             </IconButton>
-
           </Box>
 
           <Box
@@ -140,9 +134,9 @@ const LoginDialog = () => {
               boxShadow: '0 0 8px 8px rgba(77, 225, 255, 0.11)',
               borderRadius: '50%',
               padding: '1rem',
-              width: { xs: '100px', sm: '120px' }, // Set a fixed width for consistent aspect ratio
-              height: { xs: '100px', sm: '120px' }, // Match height to width
-              overflow: 'hidden', // Ensures content inside remains circular
+              width: { xs: '100px', sm: '120px' },
+              height: { xs: '100px', sm: '120px' },
+              overflow: 'hidden',
               margin: 'auto',
               marginBottom: { xs: '1rem', sm: '2rem' }
             }}
@@ -150,7 +144,7 @@ const LoginDialog = () => {
             <Image
               src={`${imageBaseUrl}/assets/logos/just-helmet.png`}
               alt="MaddyCustom"
-              width={150} // Use same value as the parent container for consistency
+              width={150}
               height={150}
               style={{
                 width: '100%',
@@ -171,30 +165,72 @@ const LoginDialog = () => {
                   message: 'Mobile number must be exactly 10 digits',
                 },
               }}
-              render={({ field }) => (
-                <input
-                  style={{
-                    borderRadius: '1.2rem',
-                    boxShadow: 'inset 0 0 4px 3px rgba(56, 167, 186, 0.14)',
-                    outline: "none",
-                    border: 'none',
-                    padding: '0.8rem 1rem',
-                    color:"rgb(85, 85, 85)",
-                  }}
-                  placeholder='Mobile Number'
-                  {...field}
-                  label="Mobile Number"
-                  error={!!errors.phoneNumber}
-                  helperText={errors.phoneNumber ? errors.phoneNumber.message : ''}
-                />
-              )}
+              render={({ field }) => {
+                const handleChange = (e) => {
+                  const value = e.target.value;
+                  // Remove all non-digit characters
+                  const numericValue = value.replace(/\D/g, '');
+                  // Update the form state with the numeric value
+                  field.onChange(numericValue);
+                };
+
+                return (
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      {...field}
+                      onChange={handleChange}
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="\d*"
+                      style={{
+                        borderRadius: '1.2rem',
+                        boxShadow: 'inset 0 0 4px 3px rgba(56, 167, 186, 0.14)',
+                        outline: "none",
+                        border: errors.phoneNumber ? '2px solid red' : 'none',
+                        padding: '0.8rem 1rem',
+                        color: "rgb(85, 85, 85)",
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      }}
+                      placeholder='Mobile Number'
+                      aria-invalid={errors.phoneNumber ? 'true' : 'false'}
+                      aria-describedby="phoneNumber-error"
+                    />
+                    {errors.phoneNumber && (
+                      <span
+                        id="phoneNumber-error"
+                        style={{
+                          color: 'red',
+                          fontSize: '0.8rem',
+                          position: 'absolute',
+                          top: '100%',
+                          left: '0',
+                        }}
+                      >
+                        {errors.phoneNumber.message}
+                      </span>
+                    )}
+                  </div>
+                );
+              }}
             />
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
               <Button
                 type="submit"
                 variant="contained"
                 color="primary"
-                style={{ borderRadius: '1rem', boxShadow: '0 2px 3px 2px rgba(56, 167, 186, 0.14)', border:'none', outline:'none', padding:'0.4rem 1.5rem', backgroundColor:'white',fontSize:'1rem', margin:'auto', color:'#77c6cb', cursor:'pointer'  }}
+                style={{
+                  borderRadius: '1rem',
+                  boxShadow: '0 2px 3px 2px rgba(56, 167, 186, 0.14)',
+                  border: 'none',
+                  outline: 'none',
+                  padding: '0.4rem 1.5rem',
+                  backgroundColor: 'white',
+                  fontSize: '1rem',
+                  margin: 'auto',
+                  color: '#77c6cb',
+                  cursor: 'pointer'
+                }}
               >
                 Login
               </Button>

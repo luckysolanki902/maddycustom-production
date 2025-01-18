@@ -14,7 +14,6 @@ const PathnameTracker = () => {
   useEffect(() => {
     if (pathname) {
       dispatch(addPathnameVisited(pathname));
-      console.log(`Pathname visited: ${pathname}`);
     }
   }, [pathname, dispatch]);
 
