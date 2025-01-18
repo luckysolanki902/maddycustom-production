@@ -75,7 +75,6 @@ export async function GET() {
           requestBody: product,
         });
         insertResponses.push({ offerId: product.offerId, status: 'Inserted', data: res.data });
-        console.log(`Inserted product with offerId: ${product.offerId}`);
       } catch (insertError) {
         if (insertError.code === 409) { // Conflict, possibly the product already exists
           // Update the existing product

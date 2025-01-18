@@ -20,7 +20,6 @@ const ScrollChecker = () => {
 
     if (docHeight <= windowHeight) {
       // Page is not scrollable
-      console.log('Page is not scrollable.');
       dispatch(setScrolledMoreThan60Percent(false));
       return;
     }
@@ -28,19 +27,10 @@ const ScrollChecker = () => {
     const totalScrollable = docHeight - windowHeight;
     const scrollPercentage = (scrollY / totalScrollable) * 100;
 
-    console.log({
-      scrollPercentage: scrollPercentage.toFixed(2),
-      scrollY,
-      windowHeight,
-      docHeight,
-      totalScrollable,
-      totalScrolled: scrollY + windowHeight,
-    });
 
     if (scrollPercentage > 60) {
       if (!scrolledMoreThan60Percent) {
         dispatch(setScrolledMoreThan60Percent(true));
-        console.log('Scrolled more than 60%.');
       }
     }
   };
