@@ -14,7 +14,7 @@ export async function GET() {
     const category = await SpecificCategory.findOne({ specificCategoryCode: 'fbw' });
 
     if (!category) {
-      console.warn("Featured Full Bike Wraps: No category found with specificCategoryCode 'fbw'.");
+      // console.warn("Featured Full Bike Wraps: No category found with specificCategoryCode 'fbw'.");
       return NextResponse.json({ message: "No category found with code 'fbw'" }, { status: 404 });
     }
 
@@ -25,7 +25,7 @@ export async function GET() {
     ]);
 
     if (!variants || variants.length === 0) {
-      console.warn(`Featured Full Bike Wraps: No variants found for categoryId=${category._id}.`);
+      // console.warn(`Featured Full Bike Wraps: No variants found for categoryId=${category._id}.`);
     }
 
     // Fetch products and only pass the variant ID in each product
@@ -33,7 +33,7 @@ export async function GET() {
       variants.map(async (variant) => {
         const product = await Product.findOne({ specificCategoryVariant: variant._id }).limit(1);
         if (!product) {
-          console.warn(`Featured Full Bike Wraps: No product found for variantId=${variant._id}.`);
+          // console.warn(`Featured Full Bike Wraps: No product found for variantId=${variant._id}.`);
           return null;
         }
         return { ...product.toObject(), variantId: variant._id };
@@ -44,7 +44,7 @@ export async function GET() {
     const filteredProducts = products.filter(product => product !== null);
 
     if (filteredProducts.length === 0) {
-      console.warn('Featured Full Bike Wraps: No products found for the selected variants.');
+      // console.warn('Featured Full Bike Wraps: No products found for the selected variants.');
     }
 
     return NextResponse.json({

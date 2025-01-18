@@ -151,7 +151,7 @@ const CategorySearchBox = ({ categories, variants }) => { // Receive categories 
                 if (firstVariant && firstVariant.pageSlug) {
                     router.push(`/shop/${firstVariant.pageSlug}`);
                 } else {
-                    console.warn('No variant found for category:', category.name);
+                    // console.warn('No variant found for category:', category.name);
                 }
             }
         }

@@ -13,7 +13,7 @@ export async function GET() {
     const helmetVariants = await SpecificCategoryVariant.find({ variantCode: 'hel' });
 
     if (!helmetVariants || helmetVariants.length === 0) {
-      console.warn("Helmet Slider: No variants found with variantCode 'hel'.");
+      // console.warn("Helmet Slider: No variants found with variantCode 'hel'.");
       return NextResponse.json({ message: "No helmet variants found." }, { status: 404 });
     }
 
@@ -27,7 +27,7 @@ export async function GET() {
     ]);
 
     if (!helmetProducts || helmetProducts.length === 0) {
-      console.warn('Helmet Slider: No products found for the selected helmet variants.');
+      // console.warn('Helmet Slider: No products found for the selected helmet variants.');
     }
 
     return NextResponse.json(helmetProducts, { status: 200 });

@@ -24,7 +24,7 @@ export async function POST(request) {
 
     // Validate required fields
     if (!phoneNumber || !address) {
-      console.warn('Add Address failed: Missing phoneNumber or address.');
+      // console.warn('Add Address failed: Missing phoneNumber or address.');
       return NextResponse.json(
         { message: 'Phone number and address are required.' },
         { status: 400 }
@@ -35,7 +35,7 @@ export async function POST(request) {
     const requiredAddressFields = ['receiverName', 'receiverPhoneNumber', 'addressLine1', 'city', 'state', 'pincode'];
     for (const field of requiredAddressFields) {
       if (!address[field] || typeof address[field] !== 'string' || address[field].trim() === '') {
-        console.warn(`Add Address failed: Missing or invalid address field '${field}'.`);
+        // console.warn(`Add Address failed: Missing or invalid address field '${field}'.`);
         return NextResponse.json(
           { message: `Address field '${field}' is required and must be a non-empty string.` },
           { status: 400 }
@@ -63,7 +63,7 @@ export async function POST(request) {
     // Find the user by phone number
     const user = await User.findOne({ phoneNumber });
     if (!user) {
-      console.warn(`Add Address failed: User not found with phoneNumber=${phoneNumber}.`);
+      // console.warn(`Add Address failed: User not found with phoneNumber=${phoneNumber}.`);
       return NextResponse.json(
         { message: 'User not found.' },
         { status: 404 }
@@ -74,7 +74,7 @@ export async function POST(request) {
     const addressExists = user.addresses.some(existingAddress => areAddressesEqual(existingAddress, address));
 
     if (addressExists) {
-      console.warn(`Add Address skipped: Address already exists for userId=${user._id}.`);
+      // console.warn(`Add Address skipped: Address already exists for userId=${user._id}.`);
       return NextResponse.json(
         { message: 'Address already exists.', addresses: user.addresses },
         { status: 200 }

@@ -15,7 +15,7 @@ export async function POST(request) {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature, orderId } = await request.json();
 
     if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !orderId) {
-      console.warn('Payment verification failed: Missing required fields in API request.');
+      // console.warn('Payment verification failed: Missing required fields in API request.');
       return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
     }
 
@@ -37,7 +37,7 @@ export async function POST(request) {
       );
 
       if (!isValidSignature) {
-        console.warn('Payment verification failed: Invalid Razorpay signature in API request.');
+        // console.warn('Payment verification failed: Invalid Razorpay signature in API request.');
         return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 });
       }
     } catch (signatureError) {
@@ -49,12 +49,12 @@ export async function POST(request) {
 
     const order = await Order.findById(orderId).exec();
     if (!order) {
-      console.warn(`Payment verification failed: Order not found for ID: ${orderId}`);
+      // console.warn(`Payment verification failed: Order not found for ID: ${orderId}`);
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
     if (['allPaid', 'paidPartially'].includes(order.paymentStatus)) {
-      console.warn(`Payment verification skipped: Order ID: ${orderId} already in status '${order.paymentStatus}'.`);
+      // console.warn(`Payment verification skipped: Order ID: ${orderId} already in status '${order.paymentStatus}'.`);
       return NextResponse.json({ message: 'Order already processed.' }, { status: 200 });
     }
 
@@ -91,7 +91,7 @@ export async function POST(request) {
               : couponEntry
           );
         } else {
-          console.warn(`Coupon not found for code: ${appliedCoupon.couponCode}`);
+          // console.warn(`Coupon not found for code: ${appliedCoupon.couponCode}`);
         }
       }
     }

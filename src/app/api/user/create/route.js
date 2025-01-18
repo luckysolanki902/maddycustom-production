@@ -8,10 +8,11 @@ export async function POST(request) {
   try {
     // Parse the JSON body
     const { name, phoneNumber } = await request.json();
+    console.log({name, phoneNumber});
 
     // Validate input
     if (!phoneNumber) {
-      console.warn('Create User failed: Missing phoneNumber.');
+      // console.warn('Create User failed: Missing phoneNumber.');
       return NextResponse.json(
         { message: 'Phone number is required' },
         { status: 400 }
@@ -25,11 +26,10 @@ export async function POST(request) {
     const existingUser = await User.findOne({ phoneNumber });
 
     if (existingUser) {
-      if (name && (!existingUser.name || existingUser.name !== '') ) {
+      if (name && (!existingUser.name || existingUser.name === '') ) {
         // Update the user's name if it only contains the phone number but not the name
         existingUser.name = name;
         await existingUser.save();
-        console.info(`User name updated for phoneNumber=${phoneNumber}.`);
         return NextResponse.json(
           {
             message: 'User exists and name updated',
@@ -38,7 +38,6 @@ export async function POST(request) {
           { status: 200 }
         );
       } else {
-        console.info(`Create User skipped: User already exists with phoneNumber=${phoneNumber}.`);
         return NextResponse.json(
           {
             message: 'User already exists',

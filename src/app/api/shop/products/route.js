@@ -25,7 +25,7 @@ export async function POST(request) {
       const variant = await SpecificCategoryVariant.findById(product.specificCategoryVariant).lean().exec();
 
       if (!variant) {
-        console.warn(`No SpecificCategoryVariant found for product: ${product.name}`);
+        // console.warn(`No SpecificCategoryVariant found for product: ${product.name}`);
         return NextResponse.json({ message: 'Variant Not Found' }, { status: 404 });
       }
 
@@ -33,7 +33,7 @@ export async function POST(request) {
       const specificCategory = await SpecificCategory.findById(variant.specificCategory).lean().exec();
 
       if (!specificCategory) {
-        console.warn(`No SpecificCategory found for variant: ${variant.name}`);
+        // console.warn(`No SpecificCategory found for variant: ${variant.name}`);
         return NextResponse.json({ message: 'Specific Category Not Found' }, { status: 404 });
       }
 
@@ -52,7 +52,7 @@ export async function POST(request) {
       const specificCategory = await SpecificCategory.findById(variant.specificCategory).lean().exec();
 
       if (!specificCategory) {
-        console.warn(`No SpecificCategory found for variant: ${variant.name}`);
+        // console.warn(`No SpecificCategory found for variant: ${variant.name}`);
         return NextResponse.json({ message: 'Specific Category Not Found' }, { status: 404 });
       }
 
@@ -160,7 +160,7 @@ export async function POST(request) {
     }
 
     // Neither variant nor product found, return 404
-    console.warn(`No SpecificCategoryVariant or Product found for slug: ${fullSlug}`);
+    // console.warn(`No SpecificCategoryVariant or Product found for slug: ${fullSlug}`);
     return NextResponse.json({ message: 'Not Found' }, { status: 404 });
 
   } catch (error) {

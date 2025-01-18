@@ -40,7 +40,7 @@ export const makePayment = async ({ customerName, customerMobile, orderId, razor
             resolve(response); // Payment verified
           } else {
             const verificationResult = await verificationData.json();
-            console.warn('Payment verification failed:', verificationResult.message || 'Unknown error');
+            // console.warn('Payment verification failed:', verificationResult.message || 'Unknown error');
             reject(new Error(`Payment verification failed: ${verificationResult.message || "Unknown error"}`));
           }
         } catch (error) {
@@ -55,7 +55,7 @@ export const makePayment = async ({ customerName, customerMobile, orderId, razor
       },
       modal: {
         ondismiss: function () {
-          console.warn('Payment window was dismissed or closed by the user.');
+          // console.warn('Payment window was dismissed or closed by the user.');
           reject(new Error("Payment window was dismissed or closed"));
         }
       }

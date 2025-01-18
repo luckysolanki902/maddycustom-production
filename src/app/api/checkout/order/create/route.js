@@ -26,7 +26,7 @@ export async function POST(request) {
     } = await request.json();
     // Validate input
     if ((!userId && !phoneNumber) || !items || !paymentModeId || !address || totalAmount == null) {
-      console.warn('Order creation failed: Missing required fields.');
+      // console.warn('Order creation failed: Missing required fields.');
       return NextResponse.json(
         { message: 'Missing required fields' },
         { status: 400 }
@@ -50,17 +50,18 @@ export async function POST(request) {
     }
 
     if (!user) {
-      console.warn(`User not found during order creation: userId=${userId}, phoneNumber=${phoneNumber}`);
+      // console.warn(`User not found during order creation: userId=${userId}, phoneNumber=${phoneNumber}`);
       return NextResponse.json(
         { message: 'User not found' },
         { status: 404 }
       );
     }
 
+
     // Find payment mode
     const paymentMode = await ModeOfPayment.findById(paymentModeId);
     if (!paymentMode || !paymentMode.isActive) {
-      console.warn(`Invalid or inactive payment mode attempted: paymentModeId=${paymentModeId}`);
+      // console.warn(`Invalid or inactive payment mode attempted: paymentModeId=${paymentModeId}`);
       return NextResponse.json(
         { message: 'Invalid or inactive payment mode' },
         { status: 400 }
@@ -72,7 +73,7 @@ export async function POST(request) {
     if (couponCode) {
       coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
       if (!coupon) {
-        console.warn(`Invalid or inactive coupon code attempted: ${couponCode}`);
+        // console.warn(`Invalid or inactive coupon code attempted: ${couponCode}`);
         return NextResponse.json(
           { message: 'Invalid or inactive coupon code' },
           { status: 400 }
@@ -84,7 +85,7 @@ export async function POST(request) {
 
       // Ensure coupon is applicable based on usage, validity, etc.
       if (currentDateIST < coupon.validFrom || currentDateIST > coupon.validUntil) {
-        console.warn(`Coupon code expired or not yet valid: ${couponCode}`);
+        // console.warn(`Coupon code expired or not yet valid: ${couponCode}`);
         return NextResponse.json(
           { message: 'Coupon is expired or not yet valid.' },
           { status: 400 }
@@ -109,7 +110,7 @@ export async function POST(request) {
 
       const totalPercentage = onlinePercentage + codPercentage;
       if (totalPercentage !== 100) {
-        console.warn(`Payment mode percentages do not sum up to 100 for paymentModeId=${paymentModeId}`);
+        // console.warn(`Payment mode percentages do not sum up to 100 for paymentModeId=${paymentModeId}`);
         return NextResponse.json(
           { message: 'Payment mode percentages do not sum up to 100' },
           { status: 400 }
