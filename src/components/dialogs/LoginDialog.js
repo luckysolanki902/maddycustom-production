@@ -191,6 +191,7 @@ const LoginDialog = () => {
                         color: "rgb(85, 85, 85)",
                         width: '100%',
                         boxSizing: 'border-box',
+                        fontFamily:"Jost",
                       }}
                       placeholder='Mobile Number'
                       aria-invalid={errors.phoneNumber ? 'true' : 'false'}
@@ -205,6 +206,8 @@ const LoginDialog = () => {
                           position: 'absolute',
                           top: '100%',
                           left: '0',
+                        fontFamily:"Jost",
+
                         }}
                       >
                         {errors.phoneNumber.message}
@@ -229,7 +232,8 @@ const LoginDialog = () => {
                   fontSize: '1rem',
                   margin: 'auto',
                   color: '#77c6cb',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily:'Jost',
                 }}
               >
                 Login
