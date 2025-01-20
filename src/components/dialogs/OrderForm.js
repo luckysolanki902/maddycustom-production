@@ -521,11 +521,11 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
           {/* small logo in center of a Box */}
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom:"-1rem" }}>
             {tabIndex === 1 && (
-              <Box onClick={()=>{setTabIndex(0)}} sx={{ display: 'flex', alignItems: 'center', position: 'absolute', left: '2rem' }}>
+              <Box onClick={()=>{setTabIndex(0)}} sx={{ display: 'flex', alignItems: 'center', position: 'absolute', left: '2rem', cursor: 'pointer' }}>
                 <ArrowBackIcon sx={{ fontSize: '2rem' }} />
               </Box>
             )}
-            <Image src={`${baseImageUrl}/assets/logos/md_nothing_else.png`} width={200} height={200} alt="Small Logo" style={{ width: '70px', height:'auto' }} />
+            <Image loading='eager' src={`${baseImageUrl}/assets/logos/md_nothing_else.png`} width={200} height={200} alt="Small Logo" style={{ width: '70px', height:'auto' }} />
           </Box>
 
           <Box
@@ -964,27 +964,27 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
           <Box sx={{mt:4}}>
             <Box sx={{display:'flex', justifyContent:'center', alignItems:'center', gap:'0rem', height:'90px'}}>
               <Box sx={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', width:'100px', height:'100%', gap:'0.3rem'}}>
-              <Image style={{opacity:'0.4', width:'35px', height:'auto'}} src={`${baseImageUrl}/assets/icons/happiness.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
+              <Image loading='eager' style={{opacity:'0.4', width:'35px', height:'auto'}} src={`${baseImageUrl}/assets/icons/happiness.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
               <Typography variant='caption'sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.6rem', marginBottom:'0.2rem', fontFamily:'Jost'}} >2000+ Happy <br />Customers</Typography>
               </Box>
 
               <Box sx={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', width:'100px', height:'100%', gap:'0.3rem'}}>
-              <Image style={{opacity:'0.4', width:'35px', height:'auto'}} src={`${baseImageUrl}/assets/icons/shield.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
+              <Image loading='eager' style={{opacity:'0.4', width:'35px', height:'auto'}} src={`${baseImageUrl}/assets/icons/shield.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
               <Typography variant='caption' sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.6rem', marginBottom:'0.2rem', fontFamily:'Jost'}} >Payment <br />secured by</Typography>
-              <Image style={{opacity:'0.6', width:'55px', height:'auto'}} src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`} width={150} height={50} alt={`Secure Payment Icon`} ></Image>
+              <Image loading='eager' style={{opacity:'0.6', width:'55px', height:'auto'}} src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`} width={150} height={50} alt={`Secure Payment Icon`} ></Image>
 
               </Box>
 
               <Box sx={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', width:'100px', height:'100%', gap:'0.3rem'}}>
-              <Image style={{opacity:'0.4', width:'35px', height:'auto', transform:'scale(1.2)'}} src={`${baseImageUrl}/assets/icons/fast-delivery.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
+              <Image loading='eager' style={{opacity:'0.4', width:'35px', height:'auto', transform:'scale(1.2)'}} src={`${baseImageUrl}/assets/icons/fast-delivery.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
               <Typography variant='caption' sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.6rem', marginBottom:'0.2rem', fontFamily:'Jost'}}>On time <br />shipping</Typography>
               </Box>
 
             </Box>
             
             <Box sx={{display:'flex', justifyContent:'center', alignItems:'center', gap:'0.3rem', marginTop:'2rem'}}>
-              <Typography variant='caption' sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.7rem', fontFamily:'Jost'}}>Powered by</Typography>
-              <Image style={{opacity:'0.6', width:'55px', height:'auto'}} src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`} width={150} height={50} alt={`Secure Payment Icon`} ></Image>
+              <Typography variant='caption' sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.7rem', fontFamily:'Jost'}}>Shipping via</Typography>
+              <Image loading='eager' style={{opacity:'0.6', width:'55px', height:'auto'}} src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`} width={150} height={50} alt={`Secure Payment Icon`} ></Image>
             </Box>
           </Box>
         </DialogContent>
