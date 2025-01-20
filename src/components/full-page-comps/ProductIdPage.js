@@ -36,8 +36,8 @@ export default function ProductIdPage({ product, variant, category, description 
           setIsZoomed={setIsZoomed}
         />
         {!isZoomed && <PriceAndChat price={variant?.availableBrands?.length > 0
-                    ? variant.availableBrands[0].brandBasePrice + product.price
-                    : product.price} />}
+          ? variant.availableBrands[0].brandBasePrice + product.price
+          : product.price} />}
         {!isZoomed && (
           <div className={styles.details}>
             <h1 style={{ fontSize: '2rem', margin: '0.5rem 0' }} className={styles.title}>
