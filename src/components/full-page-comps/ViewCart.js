@@ -30,6 +30,7 @@ import {
 } from '@/lib/utils/cartCalculations';
 import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
 import { setCouponApplied } from '@/store/slices/orderFormSlice';
+import Features from '../page-sections/viewcart/Features';
 
 const ViewCart = () => {
   const dispatch = useDispatch();
@@ -199,6 +200,9 @@ const ViewCart = () => {
       {/* Cart Items List */}
       <CartList cartItems={cartItems} onRemove={handleRemoveItem} />
 
+
+
+
       {/* Price Details and Payment Modes */}
       {totalQuantity > 0 && (
         <section className={styles.cartList}>
@@ -217,8 +221,18 @@ const ViewCart = () => {
             selectedPaymentMode={selectedPaymentMode}
             onChange={handlePaymentModeChange}
           />
+
+          {/*Features of the first item in the cart */}
+          {/* <Features
+            features={cartItems[0]?.productDetails.variantDetails.features}
+          /> */}
         </section>
       )}
+
+
+
+
+
       <HappyCustomersClient headingText='Past Orders' />
 
       {/* Total Cost and Checkout */}
