@@ -16,6 +16,7 @@ import {
   Typography,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlackButton from '../utils/BlackButton';
 import { useForm, Controller } from 'react-hook-form';
 import axios from 'axios';
@@ -43,6 +44,7 @@ import theme from '@/styles/theme';
 import { ThemeProvider } from '@mui/material';
 import { initiateCheckout, purchase } from '@/lib/metadata/facebookPixels';
 import { v4 as uuidv4 } from 'uuid';
+import Image from 'next/image';
 
 const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, couponsDetails, deliveryCost, discountAmountFinal, items }) => {
   const dispatch = useDispatch();
@@ -62,6 +64,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
 
   const [isLoading, setIsLoading] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   // Extract and aggregate unique extraFields from cart items
   const aggregatedExtraFields = useMemo(() => {
@@ -437,7 +440,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
         });
       } catch (error) {
         console.error('Error sending purchase event to FB Pixel:', error.message);
-        // Decide whether to continue or not. Typically, non-critical.
       }
 
       // Step 6: Cleanup and Navigation
@@ -499,20 +501,36 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
         // maxWidth="xs"
         sx={{}}
         disableEscapeKeyDown={isPaymentProcessing} // Prevent closing with Escape key
+        PaperProps={{
+          style: {
+            borderRadius: '1rem', // Adjust the border radius as needed
+          },
+        }}
       >
-        <DialogContent>
-          <Tabs
+        <DialogContent sx={{padding:'2rem 2rem'}}>
+          {/* <Tabs
             value={tabIndex}
             onChange={handleTabChange}
             variant="fullWidth"
           >
             <Tab sx={{ fontSize: "1rem", }} label="Part 1" />
             <Tab sx={{ fontSize: "1rem" }} label="Part 2" disabled={tabIndex !== 1} />
-          </Tabs>
+          </Tabs> */}
+
+
+          {/* small logo in center of a Box */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom:"-1rem" }}>
+            {tabIndex === 1 && (
+              <Box onClick={()=>{setTabIndex(0)}} sx={{ display: 'flex', alignItems: 'center', position: 'absolute', left: '2rem' }}>
+                <ArrowBackIcon sx={{ fontSize: '2rem' }} />
+              </Box>
+            )}
+            <Image src={`${baseImageUrl}/assets/logos/md_nothing_else.png`} width={200} height={200} alt="Small Logo" style={{ width: '70px', height:'auto' }} />
+          </Box>
 
           <Box
             component="form"
-            sx={{ mt: 2 }}
+            sx={{  margin:'2rem auto', maxWidth:"400px" }}
             onSubmit={
               tabIndex === 0
                 ? handleSubmit(onSubmitUserDetails)
@@ -613,8 +631,9 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                     />
                   )}
                 />
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                   <BlackButton
+                  extraClass={'lg'}
                     isLoading={isLoading}
                     buttonText="Next"
                     onClick={handleSubmit(onSubmitUserDetails)}
@@ -930,7 +949,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                   </Box>
                 )}
 
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                   <BlackButton
                     isLoading={isLoading}
                     buttonText={getPaymentButtonText(paymentModeConfig)} // Use utility function
@@ -940,6 +959,33 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                 </Box>
               </Box>
             )}
+          </Box>
+
+          <Box sx={{mt:4}}>
+            <Box sx={{display:'flex', justifyContent:'center', alignItems:'center', gap:'0rem', height:'90px'}}>
+              <Box sx={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', width:'100px', height:'100%', gap:'0.3rem'}}>
+              <Image style={{opacity:'0.4', width:'35px', height:'auto'}} src={`${baseImageUrl}/assets/icons/happiness.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
+              <Typography variant='caption'sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.6rem', marginBottom:'0.2rem', fontFamily:'Jost'}} >2000+ Happy <br />Customers</Typography>
+              </Box>
+
+              <Box sx={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', width:'100px', height:'100%', gap:'0.3rem'}}>
+              <Image style={{opacity:'0.4', width:'35px', height:'auto'}} src={`${baseImageUrl}/assets/icons/shield.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
+              <Typography variant='caption' sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.6rem', marginBottom:'0.2rem', fontFamily:'Jost'}} >Payment <br />secured by</Typography>
+              <Image style={{opacity:'0.6', width:'55px', height:'auto'}} src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`} width={150} height={50} alt={`Secure Payment Icon`} ></Image>
+
+              </Box>
+
+              <Box sx={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', width:'100px', height:'100%', gap:'0.3rem'}}>
+              <Image style={{opacity:'0.4', width:'35px', height:'auto', transform:'scale(1.2)'}} src={`${baseImageUrl}/assets/icons/fast-delivery.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
+              <Typography variant='caption' sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.6rem', marginBottom:'0.2rem', fontFamily:'Jost'}}>On time <br />shipping</Typography>
+              </Box>
+
+            </Box>
+            
+            <Box sx={{display:'flex', justifyContent:'center', alignItems:'center', gap:'0.3rem', marginTop:'2rem'}}>
+              <Typography variant='caption' sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.7rem', fontFamily:'Jost'}}>Powered by</Typography>
+              <Image style={{opacity:'0.6', width:'55px', height:'auto'}} src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`} width={150} height={50} alt={`Secure Payment Icon`} ></Image>
+            </Box>
           </Box>
         </DialogContent>
       </Dialog>
