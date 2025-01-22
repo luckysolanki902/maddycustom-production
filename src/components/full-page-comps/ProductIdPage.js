@@ -22,7 +22,6 @@ export default function ProductIdPage({ product, variant, category, description 
   const imagesForProductCarousel = product?.images.map((image) => `${imageBaseUrl}${image}`);
   // Final all images (make sure default Last images are in the last)
   const allImages = [...imagesForProductCarousel, ...defaultLastImagesForCarousel];
-console.log({defaultLastImagesForCarousel, imagesForProductCarousel, allImages})
   useEffect(() => {
     if (!hasTracked.current) {
       viewContent(product, { email, phoneNumber });
@@ -37,6 +36,7 @@ console.log({defaultLastImagesForCarousel, imagesForProductCarousel, allImages})
           src={`${imageBaseUrl}${product?.images[0]}`}
           images={allImages}
           isZoomed={isZoomed}
+          alt={product.title}
           setIsZoomed={setIsZoomed}
         />
         {!isZoomed && <PriceAndChat price={variant?.availableBrands?.length > 0

@@ -19,7 +19,7 @@ export default function ZoomableImage({ images, alt, isZoomed, setIsZoomed }) {
 
   // Define the animation properties using React Spring
   const animationProps = useSpring({
-    transform: isZoomed ? "scale(1) rotate(0deg)" : "scale(1) rotate(0deg)",
+    transform: isZoomed ? (isSmallDevice ? "scale(1.5) rotate(90deg)" : "scale(1) rotate(0deg)") : "scale(1) rotate(0deg)",
     config: { tension: 300, friction: 20 },
   });
 
@@ -87,8 +87,8 @@ export default function ZoomableImage({ images, alt, isZoomed, setIsZoomed }) {
               <Image
                 src={url}
                 alt={`${alt}-${index}`}
-                width={1242 * 2}
-                height={547 * 2}
+                width={1242}
+                height={547}
                 priority={true}
                 className={styles.image}
                 onClick={() => handleImageClick(url)}
@@ -129,7 +129,7 @@ export default function ZoomableImage({ images, alt, isZoomed, setIsZoomed }) {
           >
             <Image
               src={currentZoomedImage}
-              alt={`${alt}-zoomed`}
+              alt={`${alt} - zoomed`}
               width={1242 * 2}
               height={547 * 2}
               priority={true}
