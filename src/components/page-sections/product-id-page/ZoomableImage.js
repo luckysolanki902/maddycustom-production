@@ -5,7 +5,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
-import { Navigation, Pagination } from "swiper/modules";
+import { Navigation, Pagination, Autoplay } from "swiper/modules";
 import Image from "next/image";
 import CloseIcon from "@mui/icons-material/Close";
 import styles from "./styles/zoomableimage.module.css"; // Ensure correct path
@@ -73,12 +73,15 @@ export default function ZoomableImage({ images, alt, isZoomed, setIsZoomed }) {
     <div className={`${styles.imgContainer} ${isZoomed ? styles.zoomed : ""}`}>
       {!isZoomed ? (
         <Swiper
-          modules={[Navigation, Pagination]}
+          modules={[Navigation, Pagination, Autoplay]}
           pagination={{ clickable: true }}
-          loop={false}
+          loop={true}
           speed={500}
           simulateTouch={true}
-          autoplay={false}
+          autoplay={{
+            delay: 6000,
+            disableOnInteraction: true,
+          }}
           style={{ width: "90%", height: "100%" }}
           className={styles.swiperContainer} // Apply the local wrapper class
         >
