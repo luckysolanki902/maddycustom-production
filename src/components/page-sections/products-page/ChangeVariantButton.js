@@ -11,6 +11,7 @@ import { useMediaQuery } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import { setHasSeenVariantPopup, setPageSlug } from '@/store/slices/variantPreferenceSlice'; // Import actions
 
+
 export default function ChangeVariantButton({ category }) {
     const [showPopup, setShowPopup] = useState(false);
     const [variants, setVariants] = useState([]);
@@ -32,7 +33,7 @@ export default function ChangeVariantButton({ category }) {
                 const response = await fetch(`/api/features/get-variants?categoryId=${category._id}`);
                 const data = await response.json();
                 if (data.hasMultiple) {
-                    setVariants(data.variants);
+                    setVariants(data.variants?.reverse());
                 }
             } catch (error) {
                 console.error('Error fetching variants:', error);
@@ -79,18 +80,20 @@ export default function ChangeVariantButton({ category }) {
                         borderRadius: '20px',
                         padding: '0rem',
                         maxWidth: '600px',
+                        backgroundColor:'#e2e2e2'
                     },
                 }}
             >
-                <DialogContent className={styles.dialogContent}>
+                <DialogContent className={styles.dialogContent} sx={{ px:2,py:6 }}>
                     <div className={`${styles.jostFam} ${styles.maindialogHeading}`}>
                         CHOOSE
                     </div>
                     <div className={styles.categoryName}>
-                        {category.name}
+                        {category.name==="Tank Wraps"?"Tank Size":category.name}
                     </div>
                     <Box display="flex" flexDirection="column" gap="1rem">
-                        {variants.map((variant) => (
+                        {variants.map((variant, index) => (
+                            <div>
                             <Box
                                 key={variant.id}
                                 onClick={() => handleVariantClick(variant.pageSlug)}
@@ -118,20 +121,7 @@ export default function ChangeVariantButton({ category }) {
                                                 : variant.name
                                             }
                                         </button>
-                                        {variant?.name?.toLowerCase().includes('tank') && (
-                                            <button
-                                                variant="contained"
-                                                className={styles.sizebutton}
-                                            >
-                                                {variant?.name === "Slim Tank Wraps"
-                                                    ? "6.8 cm wide"
-                                                    : variant?.name === "Medium Tank Wraps"
-                                                        ? "7 cm wide"
-                                                        : variant?.name === "Wide Tank Wraps"
-                                                            ? "19.05 cm wide"
-                                                            : null}
-                                            </button>
-                                        )}
+                                        
                                     </div>
                                     <div className={styles.variantDescription}>
                                         {variant.variantInfo.split(':')[0]}:
@@ -141,6 +131,8 @@ export default function ChangeVariantButton({ category }) {
                                     </div>
                                 </Box>
                             </Box>
+                            {index!=variants.length-1 && <Divider key={index} style={{marginTop:'20px',  borderColor: 'black'}}  />}
+                            </div>
                         ))}
                     </Box>
                 </DialogContent>
