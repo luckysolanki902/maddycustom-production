@@ -8,7 +8,7 @@ import "swiper/css/pagination";
 import { Navigation, Pagination } from "swiper/modules";
 import Image from "next/image";
 import CloseIcon from "@mui/icons-material/Close";
-import styles from "./styles/zoomableimage.module.css";
+import styles from "./styles/zoomableimage.module.css"; // Ensure correct path
 import { useSpring, animated } from "@react-spring/web";
 import { useCallback, useEffect, useState } from "react";
 import { useMediaQuery } from "@mui/material";
@@ -78,8 +78,9 @@ export default function ZoomableImage({ images, alt, isZoomed, setIsZoomed }) {
           loop={false}
           speed={500}
           simulateTouch={true}
-          autoplay={false} 
+          autoplay={false}
           style={{ width: "90%", height: "100%" }}
+          className={styles.swiperContainer} // Apply the local wrapper class
         >
           {images.map((url, index) => (
             <SwiperSlide key={index}>

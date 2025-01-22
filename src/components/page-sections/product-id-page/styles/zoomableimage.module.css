@@ -61,16 +61,15 @@
 
 }
 
-/* zoomableimage.module.css */
 
-/* Override Swiper pagination bullets to be black */
-:global(.swiper-pagination-bullet) {
+  /* Override Swiper pagination bullets to be black */
+  .swiperContainer :global(.swiper-pagination-bullet) {
     background-color: rgb(129, 129, 129) !important;
-    opacity: 0.7 !important; /* Optional: Adjusts the transparency */
+    opacity: 0.8 !important; /* Adjusts the transparency */
   }
   
   /* Override the active Swiper pagination bullet to be fully black */
-  :global(.swiper-pagination-bullet-active) {
+  .swiperContainer :global(.swiper-pagination-bullet-active) {
     background-color: white !important;
     opacity: 1 !important; /* Ensures the active bullet is fully opaque */
   }
