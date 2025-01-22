@@ -18,7 +18,11 @@ export default function ProductIdPage({ product, variant, category, description 
   const userDetails = useSelector((state) => state.orderForm.userDetails);
   const { email, phoneNumber } = userDetails || {};
   const hasTracked = useRef(false);
-
+  const defaultLastImagesForCarousel = variant.defaultCarouselImages?.map((image) => `${imageBaseUrl}${image}`) || [];
+  const imagesForProductCarousel = product?.images.map((image) => `${imageBaseUrl}${image}`);
+  // Final all images (make sure default Last images are in the last)
+  const allImages = [...imagesForProductCarousel, ...defaultLastImagesForCarousel];
+console.log({defaultLastImagesForCarousel, imagesForProductCarousel, allImages})
   useEffect(() => {
     if (!hasTracked.current) {
       viewContent(product, { email, phoneNumber });
@@ -31,7 +35,7 @@ export default function ProductIdPage({ product, variant, category, description 
       <div className={styles.container}>
         <ZoomableImage
           src={`${imageBaseUrl}${product?.images[0]}`}
-          alt="product image"
+          images={allImages}
           isZoomed={isZoomed}
           setIsZoomed={setIsZoomed}
         />
