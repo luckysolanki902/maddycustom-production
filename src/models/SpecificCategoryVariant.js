@@ -144,7 +144,7 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       image: {
         type: String,
       },
-      weight:{
+      weight: {
         type: Number
       }
     },
@@ -156,6 +156,7 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'CustomTemplate',
     },
+    defaultCarouselImages: [String],
     packagingDetails: {
       boxId: {
         type: mongoose.Schema.Types.ObjectId,
