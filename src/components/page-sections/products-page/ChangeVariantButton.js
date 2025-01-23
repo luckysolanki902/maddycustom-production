@@ -78,13 +78,13 @@ export default function ChangeVariantButton({ category }) {
                 PaperProps={{
                     style: {
                         borderRadius: '20px',
-                        padding: '0rem',
+                        padding: '1rem',
                         maxWidth: '600px',
                         backgroundColor:'#e2e2e2'
                     },
                 }}
             >
-                <DialogContent className={styles.dialogContent} sx={{ px:2,py:6 }}>
+                <DialogContent className={styles.dialogContent} >
                     <div className={`${styles.jostFam} ${styles.maindialogHeading}`}>
                         CHOOSE
                     </div>
@@ -93,12 +93,12 @@ export default function ChangeVariantButton({ category }) {
                     </div>
                     <Box display="flex" flexDirection="column" gap="1rem">
                         {variants.map((variant, index) => (
-                            <div>
+                            <Box key={variant.id}>
                             <Box
-                                key={variant.id}
+                              
                                 onClick={() => handleVariantClick(variant.pageSlug)}
                                 className={styles.variantBox}
-                                style={{ cursor: 'pointer' }}
+                                sx={{ cursor: 'pointer', borderRadius: '0.5rem', padding:"1rem 1rem" }}
                             >
                                 {variant.image && (
                                     <Image
@@ -132,7 +132,7 @@ export default function ChangeVariantButton({ category }) {
                                 </Box>
                             </Box>
                             {index!=variants.length-1 && <Divider key={index} style={{marginTop:'20px',  borderColor: 'black'}}  />}
-                            </div>
+                            </Box>
                         ))}
                     </Box>
                 </DialogContent>
