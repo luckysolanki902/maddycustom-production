@@ -64,11 +64,13 @@
     align-items: flex-start;
     /* background-color: #D9D9D9; */
     gap: 1rem;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s cubic-bezier(0.39, 0.575, 0.565, 1);
 }
 
 .variantBox:hover {
-    background-color: #c0c0c0; /* Optional: Slightly darker on hover */
+    box-shadow: 0px 0px 10px rgba(128, 128, 128, 0.3);
+     background-color: rgb(224, 224, 224);
+     scale: 0.99;
 }
 
 /* Styling for the variant image */
