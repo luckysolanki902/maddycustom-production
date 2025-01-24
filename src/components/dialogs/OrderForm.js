@@ -238,6 +238,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
         const createResponse = await axios.post('/api/user/create', {
           name: data.name,
           phoneNumber: data.phoneNumber,
+          source: 'order-form',
         });
         dispatch(setUserExists(false));
         dispatch(setPrefilledAddress(null));
