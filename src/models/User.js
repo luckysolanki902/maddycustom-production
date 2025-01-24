@@ -70,6 +70,11 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // source from where user is created
+    source: {
+      type: String,
+      default: 'unknown',
+    },
   },
   { timestamps: true }
 );

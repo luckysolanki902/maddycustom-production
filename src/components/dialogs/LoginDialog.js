@@ -44,6 +44,7 @@ const LoginDialog = () => {
     try {
       const response = await axios.post('/api/user/create', {
         phoneNumber: data.phoneNumber,
+        source: 'login-popup',
       });
 
       if (response.data.message === 'User already exists' || response.data.message === 'User exists and name updated') {
