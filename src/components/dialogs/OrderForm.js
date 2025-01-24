@@ -901,7 +901,8 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                         name={field.fieldName}
                         control={control}
                         rules={{
-                          required: field.required ? `${field.question || field.fieldName} is required` : false,
+                          required:false,
+                          //  field.required ? `${field.question || field.fieldName} is required` : false,
                           ...(field.fieldType === 'Number' && {
                             validate: (value) => value !== '' || `${field.question || field.fieldName} is required`,
                           }),

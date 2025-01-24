@@ -1,3 +1,5 @@
+// src/hooks/useCaptureUTM.js
+
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
@@ -6,11 +8,11 @@ import { setUTMDetails } from '@/store/slices/utmSlice';
 const useCaptureUTM = () => {
     const searchParams = useSearchParams();
     const dispatch = useDispatch();
-    const utmDetails = useSelector((state) => state.utm.utmDetails);
+    const { utmDetails, isSet } = useSelector((state) => state.utm);
     const hasCaptured = useRef(false); // To ensure capture only once
 
     useEffect(() => {
-        if (hasCaptured.current) {
+        if (hasCaptured.current || isSet) {
             return;
         }
 
@@ -39,7 +41,7 @@ const useCaptureUTM = () => {
 
                     // Store in cookies for later use in server-side events
                     Object.keys(capturedUTM).forEach((key) => {
-                        document.cookie = `${key}=${capturedUTM[key]}; path=/; max-age=31536000`; // 1 year
+                        document.cookie = `${key}=${encodeURIComponent(capturedUTM[key])}; path=/; max-age=31536000`; // 1 year
                     });
 
                     // Remove UTM parameters from URL after capturing to keep URLs clean
@@ -51,7 +53,7 @@ const useCaptureUTM = () => {
             console.error('Error capturing UTM/FBC parameters:', error);
             // Do not overwrite existing UTM details if an error occurs
         }
-    }, [searchParams, dispatch, utmDetails]);
+    }, [searchParams, dispatch, utmDetails, isSet]);
 };
 
 export default useCaptureUTM;

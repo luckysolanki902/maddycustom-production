@@ -9,9 +9,9 @@ const initialState = {
     campaign: null,
     term: null,
     content: null,
-    // fbc (Facebook Click ID): This parameter captures the specific click from a Facebook ad that led the user to your site. It's crucial for attributing conversions to the correct ad campaigns.
     fbc: null,   
   },
+  isSet: false, // Flag to track if UTM details have been set
 };
 
 const utmSlice = createSlice({
@@ -19,7 +19,10 @@ const utmSlice = createSlice({
   initialState,
   reducers: {
     setUTMDetails: (state, action) => {
-      state.utmDetails = { ...state.utmDetails, ...action.payload };
+      if (!state.isSet) { // Only set if not already set
+        state.utmDetails = { ...state.utmDetails, ...action.payload };
+        state.isSet = true; // Mark as set
+      }
     },
     clearUTMDetails: (state) => {
       state.utmDetails = {
@@ -30,6 +33,7 @@ const utmSlice = createSlice({
         content: null,
         fbc: null,
       };
+      state.isSet = false; // Reset the flag
     },
   },
 });
