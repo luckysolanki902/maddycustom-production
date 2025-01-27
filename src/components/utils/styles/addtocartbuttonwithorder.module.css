@@ -2,22 +2,20 @@
 
 .container {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 250px; /* Total fixed width */
+  flex-direction: column;
+  align-items: flex-start;
+
   width: 100%;
   font-family: 'Jost', sans-serif;
-  border: 1px solid black;
+  /* border: 1px solid black; */
   background-color: white;
   border-radius: 0;
   font-size: 1rem;
   position: relative;
-  overflow: hidden;
   transition: all 0.3s ease;
-  border-radius: 0.5rem;
   padding: 0;
-  height: 3.6rem;
-
+  gap: 1rem;
+  max-width: 250px;
 }
 
 .blackButton {
@@ -27,39 +25,32 @@
 }
 
 .largeButton {
-  max-width: 220px; /* Adjusted total width for large */
   width: 100%;
-  height: 100%;
   font-size: 2rem;
   font-weight: 700;
   letter-spacing: 0.1rem;
   padding: 0;
-  height: 3.6rem;
 
 }
 
 .addToCartSection {
   display: flex;
   align-items: center;
-  justify-content: center;
+  flex-direction: column;
   transition: flex 0.3s ease;
-  height: 100%;
-  flex: 1;
-  height: 3.6rem;
-
-}
-
-.halfWidth {
-  flex: 1;
-  max-width: 50%;
-}
-
-.fullWidth {
-  flex: 1;
-  max-width: 100%;
+  width: 100%;
+  border: 1px solid black;
+  border-radius: 0.5rem;
+  height: 2.8rem;
 }
 
 .addToCartButton {
+  height: 100%;
+  display: flex;
+  align-items: center;
+
+  border: 1px solid black;
+
   background-color: white;
   cursor: pointer;
   padding: 0.5rem 1rem;
@@ -72,9 +63,11 @@
   font-size: 0.9rem;
   text-align: center;
   font-weight: 500;
-  height: 3.6rem;
+  border-radius: 0.5rem;
 
 }
+
+
 
 .addToCartButton:hover {
   background-color: #f0f0f0;
@@ -85,31 +78,34 @@
   align-items: center;
   justify-content: center;
   transition: flex 0.3s ease;
-  height: 3.6rem;
+  width: 100%;
+  height: 2.8rem;
 }
 
-.halfWidth {
-  flex: 1;
-  max-width: 50%;
-}
 
 .orderNowButton {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  border-radius: 0.5rem;
   background-color: rgb(29, 29, 29);
   color: white;
   border: none;
   cursor: pointer;
   padding: 0.5rem 1rem;
-  border-radius: 0;
   transition: background-color 0.3s ease;
-  width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   font-size: 0.9rem;
   font-weight: 500;
   text-align: center;
-  height: 3.6rem;
+  width: 100%;
 
+}
+
+.boltIcon, .cartIcon{
+  margin-right: 0.5rem;
 }
 
 .orderNowButton:hover {
@@ -121,6 +117,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
+  height: 100%;
 }
 
 .decrement,
@@ -159,12 +156,30 @@
   color: white;
 }
 
+@media (max-width: 1000px) {
+.container{
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: none;
+  width: 100%;
+  z-index: 9;
+  padding: 1rem 0.5rem;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  box-shadow: 0px -3px 4px rgba(0,0,0,0.1);
+  margin: 0;
+  flex-direction: row;
+}
+
+}
+
 /* Responsive Adjustments */
 @media (max-width: 600px) {
 
   .largeButton {
     font-size: 1rem;
-    height: 3.6rem;
   }
 
   .addToCartButton,

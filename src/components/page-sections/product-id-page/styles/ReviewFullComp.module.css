@@ -1,0 +1,68 @@
+/* @/components/page-sections/productid-page/styles/ReviewFullComp.module.css */
+
+.reviewContainer {
+    margin-top: 2rem;
+    border: 1px solid #eee;
+    padding: 1rem;
+    border-radius: 8px;
+  }
+  
+  .overallRatingSection {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .averageRatingDisplay {
+    font-size: 2rem;
+    font-weight: bold;
+  }
+  
+  .ratingBreakdownContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .writeReviewButton {
+    margin-top: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .customerPhotos {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .customerPhotos img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+  
+  .poweredBy {
+    font-size: 0.9rem;
+    color: #999;
+    margin-bottom: 1rem;
+  }
+  
+  .reviewList {
+    margin-top: 1rem;
+  }
+  
+  .mostRecentHeading {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
+  
+  .paginationContainer {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+  }
+  
