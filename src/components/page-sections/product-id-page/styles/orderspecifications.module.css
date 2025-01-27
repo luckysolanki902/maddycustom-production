@@ -1,10 +1,15 @@
 .main {
     display: flex;
-    justify-content: space-evenly;
     /* margin: auto; */
     /* max-width: 700px; */
     font-family: Jost;
     width: 100%;
+    justify-content: space-evenly;
+}
+
+.justContStart{
+    justify-content: flex-start;
+    gap: 4rem;
 }
 
 .item {
@@ -16,6 +21,7 @@
     word-wrap: break-word;
     gap: 0.9rem;
 }
+
 .word{
     word-wrap: break-word;
     max-width: 6rem;

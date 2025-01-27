@@ -5,8 +5,10 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSpring, animated } from 'react-spring';
 import styles from './styles/addtocartbuttonwithorder.module.css';
-import RemoveIcon from '@mui/icons-material/Remove';
 import AddIcon from '@mui/icons-material/Add';
+import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
+import RemoveIcon from '@mui/icons-material/Remove';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import {
   addItem,
   incrementQuantity,
@@ -105,11 +107,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   return (
     <div className={mainClasses}>
       {/* Add to Cart Section */}
-      <div
-        className={`${styles.addToCartSection} ${
-          cartItem ? styles.fullWidth : styles.halfWidth
-        }`}
-      >
+      <div className={`${styles.addToCartSection}`}>
         {cartItem ? (
           <div className={styles.quantityContainer}>
             <button onClick={handleDecrement} className={styles.decrement}>
@@ -131,19 +129,21 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
           </div>
         ) : (
           <div onClick={handleAdd} className={styles.addToCartButton}>
-           Add To <br /> Cart
+            <ShoppingCartIcon fontSize='medium' className={styles.cartIcon} />
+           Add To Cart
           </div>
         )}
       </div>
 
       {/* Order Now Section */}
-      {!cartItem && (
+  
         <div className={`${styles.orderNowSection} ${styles.halfWidth}`}>
           <div onClick={handleOrderNow} className={styles.orderNowButton}>
-            Order <br /> Now
+            <BoltOutlinedIcon fontSize='medium' className={styles.boltIcon} />
+            Order Now
           </div>
         </div>
-      )}
+
     </div>
   );
 }
