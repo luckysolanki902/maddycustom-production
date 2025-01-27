@@ -1,11 +1,11 @@
-
+// /app/api/products/route.js
 
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Product from '@/models/Product';
 import SpecificCategory from '@/models/SpecificCategory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import { NextResponse } from 'next/server';
-import js2xmlparser from 'js2xmlparser'; // Import the XML parser
+import { create } from 'xmlbuilder2';
 
 /**
  * GET /api/products
@@ -54,16 +54,19 @@ export async function GET() {
       brand: 'Maddy Custom', // Static value as per requirements
     }));
 
-    // Define the root element and its structure for the XML
-    const xmlOptions = {
-      declaration: { encoding: 'UTF-8' },
-      format: {
-        doubleQuotes: true
-      }
-    };
+    // Build the XML structure using xmlbuilder2
+    const root = create({ version: '1.0', encoding: 'UTF-8' })
+      .ele('products');
 
-    // Convert the JSON data to XML
-    const xmlData = js2xmlparser.parse("products", { product: xmlProducts }, xmlOptions);
+    xmlProducts.forEach(prod => {
+      const productEle = root.ele('product');
+      for (const [key, value] of Object.entries(prod)) {
+        productEle.ele(key).txt(value).up();
+      }
+      productEle.up();
+    });
+
+    const xmlData = root.end({ prettyPrint: true });
 
     // Return the XML as a response
     return new NextResponse(xmlData, {
