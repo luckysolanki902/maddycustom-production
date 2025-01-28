@@ -1,17 +1,17 @@
-// /app/api/products/route.js
+// /app/api/products-xml/route.js
 
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Product from '@/models/Product';
 import SpecificCategory from '@/models/SpecificCategory';
-import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import { NextResponse } from 'next/server';
 import { create } from 'xmlbuilder2';
 
 /**
- * GET /api/products
+ * GET /api/products-xml
  * 
  * Retrieves all products with specificCategoryCode of 'win', 'bw', or 'tw',
- * transforms the data into XML, and returns it as an XML response.
+ * transforms the data into XML format as per Facebook's RSS XML specifications,
+ * and returns it as an XML response.
  */
 export async function GET() {
   try {
@@ -37,42 +37,59 @@ export async function GET() {
       .populate('specificCategoryVariant') // Populate the specificCategoryVariant field
       .lean(); // Use lean() for faster Mongoose queries by returning plain JavaScript objects
 
-    // Transform the product data to match the XML requirements
+    // Transform the product data to include only required fields
     const xmlProducts = products.map(product => ({
-      id: product.sku,
-      title: product.title,
-      description: product.specificCategoryVariant && product.specificCategoryVariant.productDescription
+      'g:id': product.sku,
+      'g:title': product.title,
+      'g:description': product.specificCategoryVariant && product.specificCategoryVariant.productDescription
         ? product.specificCategoryVariant.productDescription.replace('{uniqueName}', product.name)
         : '',
-      availability: 'in stock', // Static value as per requirements
-      condition: 'new',         // Static value as per requirements
-      price: product.price,
-      link: `https://www.maddycustom.com/shop${product.pageSlug}`,
-      image_link: product.images[0]
+      'g:availability': 'in stock', // Static value as per requirements
+      'g:condition': 'new',         // Static value as per requirements
+      'g:price': `${product.price} INR`, // Ensure format: number + space + currency code
+      'g:link': `https://www.maddycustom.com/shop${product.pageSlug}`,
+      'g:image_link': product.images[0]
         ? `https://d26w01jhwuuxpo.cloudfront.net${product.images[0]}`
         : '',
-      brand: 'Maddy Custom', // Static value as per requirements
+      'g:brand': 'Maddy Custom', // Static value as per requirements
     }));
 
     // Build the XML structure using xmlbuilder2
     const root = create({ version: '1.0', encoding: 'UTF-8' })
-      .ele('products');
+      .ele('rss', {
+        version: '2.0',
+        'xmlns:g': 'http://base.google.com/ns/1.0',
+        'xmlns:atom': 'http://www.w3.org/2005/Atom',
+      });
 
+    const channel = root.ele('channel');
+    channel.ele('title').txt('My Deal Shop Products');
+    channel.ele('description').txt('Product Feed for Facebook');
+    channel.ele('link').txt('https://www.mydealsshop.foo');
+    channel.ele('atom:link', {
+      href: 'https://www.mydealsshop.foo/pages/test-feed',
+      rel: 'self',
+      type: 'application/rss+xml',
+    }).up();
+
+    // Append each product as an item
     xmlProducts.forEach(prod => {
-      const productEle = root.ele('product');
+      const item = channel.ele('item');
       for (const [key, value] of Object.entries(prod)) {
-        productEle.ele(key).txt(value).up();
+        item.ele(key).txt(value).up();
       }
-      productEle.up();
+      item.up();
     });
 
+    // Finalize the XML
     const xmlData = root.end({ prettyPrint: true });
 
     // Return the XML as a response
     return new NextResponse(xmlData, {
       status: 200,
       headers: {
-        'Content-Type': 'application/xml',
+        'Content-Type': 'application/rss+xml',
+        // Removed 'Content-Disposition' to allow direct fetching by Facebook
       },
     });
   } catch (error) {
