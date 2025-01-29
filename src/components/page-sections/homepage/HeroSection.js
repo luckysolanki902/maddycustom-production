@@ -11,7 +11,8 @@ export default function HeroSection() {
             <div className={styles.logoDiv}>
                 <Image
                     className={styles.logoImg}
-                    src={`${baseUrl}/assets/logos/maddycustom-old-full-logo-horizontal.png`}
+                    // src={`${baseUrl}/assets/logos/maddycustom-old-full-logo-horizontal.png`}
+                    src={`${baseUrl}/assets/logos/maddy_custom3_main_logo.png`}
                     alt='maddylogo'
                     title='maddylogo'
                     width={976}
