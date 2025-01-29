@@ -1,0 +1,62 @@
+/* src/components/styles/imageReviewDialog.module.css */
+
+.dialogTitle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.closeButton {
+    color: #fff;
+}
+
+.mainContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.imageContainer {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.largeImage {
+    border-radius: 8px;
+    width: 400px;
+    height: auto;
+}
+
+.reviewContainer {
+    width: 100%;
+}
+
+.thumbnailScroller {
+    display: flex;
+    overflow-x: auto;
+    padding: 8px 2rem;
+    margin-top: 16px;
+}
+
+.thumbnail {
+    flex: 0 0 auto;
+    margin-right: 8px;
+    /* border: 2px solid transparent; */
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border 0.3s;
+}
+/* 
+.thumbnail:hover {
+    border: 2px solid #00c853;
+}
+
+.activeThumbnail {
+    border: 2px solid #00c853;
+} */
+
+.thumbnailImage {
+    border-radius: 4px;
+}

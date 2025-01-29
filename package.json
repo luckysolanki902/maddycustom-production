@@ -39,7 +39,8 @@
     "shortid": "^2.2.16",
     "swiper": "^11.1.14",
     "typewriter-effect": "^2.21.0",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "xmlbuilder2": "^3.1.1"
   },
   "devDependencies": {
     "eslint": "^8",

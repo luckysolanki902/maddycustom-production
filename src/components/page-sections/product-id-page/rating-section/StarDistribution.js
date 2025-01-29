@@ -14,7 +14,6 @@ export default function StarDistribution({ starCounts, totalReviews }) {
         <div className={styles.starDistribution}>
             {starCounts.map(({ star, count }) => {
                 const percentage = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
-
                 return (
                     <div key={star} className={styles.starRow}>
                         {/* Star Label */}
@@ -30,12 +29,13 @@ export default function StarDistribution({ starCounts, totalReviews }) {
                             <LinearProgress
                                 variant="determinate"
                                 value={percentage}
+                                className={styles.linearProgress}
                                 sx={{
-                                    height: 8,
                                     borderRadius: 5,
                                     backgroundColor: "#dedede",
                                     "& .MuiLinearProgress-bar": {
-                                        backgroundColor: "#00C853", // Green color for the progress bar
+                                        backgroundColor: "#00ec23", // Green color for the progress bar
+                                        borderRadius: "0 5px 5px 0", // Rounded on one side
                                     },
                                 }}
                             />
