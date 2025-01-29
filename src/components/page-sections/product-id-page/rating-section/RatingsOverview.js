@@ -1,10 +1,12 @@
 import React from "react";
 import { Box, CircularProgress, Divider, Typography } from "@mui/material";
-import { styled } from "@mui/system";
+import { styled, useMediaQuery } from "@mui/system";
 import StarDistribution from "./StarDistribution";
 import styles from "./styles/RatingsOverview.module.css";
 
 export default function RatingsOverview({ averageRating, totalReviews, starCounts }) {
+  const isSmallDevice = useMediaQuery("(max-width: 600px)");
+  const isMediumDevice = useMediaQuery("(max-width: 900px)");
   const progressValue = (averageRating / 5) * 100;
 
   const CircularContainer = styled(Box)({
@@ -36,8 +38,20 @@ export default function RatingsOverview({ averageRating, totalReviews, starCount
           }}
         >
           <CircularContainer>
-            <TrackProgress variant="determinate" value={100} size={180} thickness={3.4} />
-            <FilledProgress variant="determinate" value={progressValue} size={180} thickness={3.4} />
+            <TrackProgress
+              variant="determinate"
+              value={100}
+              size={isSmallDevice ? 90 : isMediumDevice ? 120 : 180}
+              thickness={isSmallDevice ? 1.7 : isMediumDevice ? 2.3 : 3.4}
+            />
+            <FilledProgress
+              variant="determinate"
+              value={progressValue}
+              size={isSmallDevice ? 90 : isMediumDevice ? 120 : 180}
+              thickness={isSmallDevice ? 1.7 : isMediumDevice ? 2.3 : 3.4}
+              sx={{ color: "#00ec23" }}
+            />
+
             <Box
               sx={{
                 top: 0,
@@ -50,9 +64,9 @@ export default function RatingsOverview({ averageRating, totalReviews, starCount
                 justifyContent: "center",
               }}
             >
-              <Typography variant="body1" component="div" className={styles.circularInnerText}>
+              <div className={styles.circularInnerText}>
                 {averageRating.toFixed(2)}
-              </Typography>
+              </div>
             </Box>
           </CircularContainer>
         </Box>
@@ -63,7 +77,6 @@ export default function RatingsOverview({ averageRating, totalReviews, starCount
       <Divider
         orientation="vertical"
         flexItem
-      
         sx={{ mx: 2 }}
         className={styles.verticalDivider}
       />

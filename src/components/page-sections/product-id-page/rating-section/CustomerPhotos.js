@@ -1,0 +1,76 @@
+// src/components/CustomerPhotos.js
+
+"use client";
+
+import React, { useState } from 'react';
+import styles from './styles/customerphotos.module.css';
+import { Typography } from '@mui/material';
+import Image from 'next/image';
+import { constReviews } from '../constReviews';
+import ImageReviewDialog from './ImageReviewDialog'; // Adjust the import path as needed
+
+const CustomerPhotos = () => {
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [currentReview, setCurrentReview] = useState(null);
+
+    const handleImageClick = (review) => {
+        setCurrentReview(review);
+        setDialogOpen(true);
+    };
+
+    const handleCloseDialog = () => {
+        setDialogOpen(false);
+        setCurrentReview(null);
+    };
+
+    // Filter reviews that have an image
+    const reviewsWithImages = constReviews.filter((review) => review.image);
+
+    return (
+        <div className={styles.mainContainer}>
+            <div className={styles.container}>
+                <h3 className={styles.mainHeading}>Customer Photos</h3>
+                {reviewsWithImages.length === 0 ? (
+                    <Typography
+                        variant="body1"
+                        color="textSecondary"
+                        align="center"
+                        gutterBottom
+                    >
+                        No photos yet
+                    </Typography>
+                ) : (
+                    <div className={styles.imageGrid}>
+                        {reviewsWithImages.map((review) => (
+                            <div
+                                key={review.id}
+                                className={styles.reviewImageContainer}
+                                onClick={() => handleImageClick(review)}
+                            >
+                                <Image
+                                    width={200}
+                                    height={200}
+                                    className={styles.reviewImage}
+                                    src={review.image}
+                                    alt={`Review photo by ${review.name}`}
+                                    title={`Review photo by ${review.name}`}
+                                    style={{ borderRadius: '8px' }}
+                                    objectFit="cover"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {currentReview && (
+                    <ImageReviewDialog
+                        open={dialogOpen}
+                        handleClose={handleCloseDialog}
+                        initialReview={currentReview}
+                    />
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default CustomerPhotos;

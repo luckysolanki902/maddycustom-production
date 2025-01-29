@@ -129,6 +129,7 @@ export default function ImageGallery({ images, alt }) {
                   <Image
                     src={url}
                     alt={`${alt}-${index}`}
+                    loading="eager"
                     width={1242}
                     height={547}
                     className={styles.mainImage}
@@ -153,9 +154,8 @@ export default function ImageGallery({ images, alt }) {
               {images.map((url, index) => (
                 <SwiperSlide key={`thumb-${index}`} style={{ width: "auto" }}>
                   <div
-                    className={`${styles.thumbWrapper} ${
-                      currentIndex === index ? styles.activeThumb : ""
-                    }`}
+                    className={`${styles.thumbWrapper} ${currentIndex === index ? styles.activeThumb : ""
+                      }`}
                     onClick={() => handleChangeIndexNormal(index)}
                   >
                     <Image
@@ -249,42 +249,41 @@ export default function ImageGallery({ images, alt }) {
               </Swiper>
 
               {/* Fullscreen Thumbnails */}
-              {!isSmallDevice && 
+              {!isSmallDevice &&
                 (
-                // ===== DESKTOP: Thumbs on Right w/ Vertical Arrows =====
-                <div className={styles.fullThumbColumnContainer}>
-                  <Swiper
-                    onSwiper={(swiper) => (fullThumbSwiperRef.current = swiper)}
-                    slidesPerView="auto"
-                    direction="vertical"
-                    spaceBetween={10}
-                    speed={300}
-                    className={styles.fullThumbSwiperColumn}
-                  >
-                    {images.map((url, idx) => (
-                      <SwiperSlide key={`f-thumb-${idx}`} style={{ height: "auto" }}>
-                        <div
-                          className={`${styles.thumbWrapper} ${
-                            currentIndex === idx ? styles.activeThumb : ""
-                          }`}
-                          onClick={() => handleChangeIndexFull(idx)}
-                        >
-                          <Image
-                            src={url}
-                            alt={`full-thumb-${idx}`}
-                            width={180}
-                            height={80}
-                            className={styles.thumbnailImage}
-                            style={{ maxWidth: "100%", height: "auto" }}
-                          />
-                        </div>
-                      </SwiperSlide>
-                    ))}
-                  </Swiper>
+                  // ===== DESKTOP: Thumbs on Right w/ Vertical Arrows =====
+                  <div className={styles.fullThumbColumnContainer}>
+                    <Swiper
+                      onSwiper={(swiper) => (fullThumbSwiperRef.current = swiper)}
+                      slidesPerView="auto"
+                      direction="vertical"
+                      spaceBetween={10}
+                      speed={300}
+                      className={styles.fullThumbSwiperColumn}
+                    >
+                      {images.map((url, idx) => (
+                        <SwiperSlide key={`f-thumb-${idx}`} style={{ height: "auto" }}>
+                          <div
+                            className={`${styles.thumbWrapper} ${currentIndex === idx ? styles.activeThumb : ""
+                              }`}
+                            onClick={() => handleChangeIndexFull(idx)}
+                          >
+                            <Image
+                              src={url}
+                              alt={`full-thumb-${idx}`}
+                              width={180}
+                              height={80}
+                              className={styles.thumbnailImage}
+                              style={{ maxWidth: "100%", height: "auto" }}
+                            />
+                          </div>
+                        </SwiperSlide>
+                      ))}
+                    </Swiper>
 
 
-                </div>
-              )}
+                  </div>
+                )}
             </div>
           </div>
         </div>
