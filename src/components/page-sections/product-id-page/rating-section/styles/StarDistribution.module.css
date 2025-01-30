@@ -1,0 +1,77 @@
+.starDistribution {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    flex: 1;
+    max-width: 375px;
+  }
+
+  .linearProgress{
+    height: 12!important;
+  }
+
+  .starRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .starLabel {
+    width: 20px;
+    text-align: right;
+    font-weight: bold;
+    color: #333;
+    display: flex;
+    font-family: Jost;
+  }
+  
+  .starLabel span {
+    margin-left: 0.5rem;
+  }
+  
+  .progressBarWrapper {
+    margin-left: 1rem;
+    flex: 1;
+  }
+  
+  .starCount {
+    /* min-width: 25px; */
+    text-align: right;
+    font-weight: bold;
+    color: #555;
+    font-family: Jost;
+    width: fit-content;
+    margin: 0;
+  }
+  
+
+  @media (width< 600px){
+    .starDistribution {
+        max-width: 300px;
+        font-size: 0.9rem;
+        gap: 4px;
+    }
+
+    
+  .linearProgress{
+    height: 8!important;
+  }
+
+
+    .starLabel {
+        width: 15px;
+    }
+    
+    .starLabel span {
+        margin-left: 0.25rem;
+    }
+    
+    .progressBarWrapper {
+        margin-left: 0.5rem;
+    }
+    
+  }

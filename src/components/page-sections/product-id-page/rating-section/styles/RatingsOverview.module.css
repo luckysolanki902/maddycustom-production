@@ -1,0 +1,81 @@
+/* Container for the entire rating overview */
+.ratingsOverviewContainer {
+    display: flex;
+    /* Make sure it spans the full width so we can split it 50%-50% */
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    /* horizontally center the "halves" as a group */
+    /* height: fit-content;  <-- optional. Keep or remove as needed */
+}
+
+/* Left half (Circular Section) */
+.circularSection {
+    /* Make this half of the container */
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Right half (Star Distribution) */
+.starDistributionSection {
+    width: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Optional style for the divider to ensure it stretches in the middle nicely */
+.verticalDivider {
+    width: 3px;
+    background-color: #dedede;
+    outline:'none';
+    border:'none'
+}
+
+/* The rest of your existing classes remain the same */
+.circularWrapper {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 50%;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.circularInnerText {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 600;
+    font-family: Jost;
+}
+
+.basedOnReviews {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    font-family: Jost;
+    color: #555;
+}
+
+
+@media (width < 600px){
+    /* decreasing size of everything */
+    .circularWrapper {
+        padding: 8px;
+    }
+    
+    .circularInnerText {
+        font-size: 1.7rem;
+    }
+
+    .basedOnReviews {
+        margin-top: 4px;
+        font-size: 0.8rem;
+    }
+}
