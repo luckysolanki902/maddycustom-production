@@ -1,0 +1,256 @@
+/* ===================== Overall Container ===================== */
+.galleryContainer {
+    width: 100%;
+    margin: 0 auto;
+    position: relative;
+    padding: 1rem;
+}
+
+
+/* ===================== Main Swiper (Normal Mode) ===================== */
+.mainSwiper {
+    width: 100%;
+    margin-bottom: 1rem;
+
+}
+
+.mainImageContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.mainImage {
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+
+
+/* .mainImage:hover {
+    transform: scale(1.01);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  } */
+
+/* ===================== Thumbnails (Normal Mode) ===================== */
+.thumbnailRowContainer {
+    padding: 0rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+@media (width > 600px) {
+    .thumbnailRowContainer {
+        width: 45%;
+    }
+}
+
+
+.thumbSwiper {
+    flex: 1;
+    margin-right: 40px;
+    /* space for arrows on desktop */
+}
+
+.thumbWrapper {
+    /* border: 2px solid transparent; */
+    border-radius: 0.3rem;
+    transition: all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    padding: 2px;
+    cursor: pointer;
+
+}
+
+.thumbWrapper:hover {
+    transform: scale(0.99);
+}
+
+.thumbnailImage {
+    border-radius: 0.3rem;
+    object-fit: cover;
+    display: block;
+    width: 150px;
+    height: auto;
+}
+
+
+@media (width < 600px) {
+    .galleryContainer {
+        padding: 0;
+    }
+
+    .mainImage {
+        border-radius: 0;
+    }
+
+    .thumbnailRowContainer {
+        padding: 0.5rem;
+        padding-top: 0;
+    }
+    .thumbnailImage{
+        width: 100px;
+    }
+}
+
+.activeThumb {
+    border-color: #000000;
+}
+
+/* Arrow buttons for normal mode thumbnails (Desktop only) */
+.thumbArrowsContainer {
+    position: absolute;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.thumbArrowButton {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    color: #000 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ===================== Fullscreen Overlay ===================== */
+.fullscreenOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+    /* White background for minimalism */
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fullscreenContainer {
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+    border-radius: 0.5rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Close button */
+.closeButton {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    color: #000 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    z-index: 10000;
+    /* Ensure it's above everything */
+}
+
+
+
+/* ===================== Fullscreen Inner Layout ===================== */
+.fullscreenInnerDesktop {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+}
+
+.fullscreenInnerMobile {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* ===================== Fullscreen Main Swiper ===================== */
+.fullMainSwiper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    /* important when using flex:1 in a column layout */
+    overflow: hidden;
+    /* prevents spillage */
+    z-index: 999;
+    /* border: 1px solid red; */
+    width: 90%;
+    margin: 1rem;
+
+}
+
+.fullMainImageContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    z-index: 999;
+    /* border: 1px solid green; */
+
+}
+
+.fullMainImage {
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    /* maintain aspect ratio without cropping */
+    z-index: 99999;
+}
+
+/* ===================== Fullscreen Thumbnails: Mobile ===================== */
+.fullThumbRowContainer {
+    flex-shrink: 0;
+    /* ensure the row doesn't get squashed */
+    height: 120px;
+    position: relative;
+    background-color: #fff;
+    box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.05);
+    padding: 0.5rem;
+}
+
+.fullThumbSwiperRow {
+    width: 100%;
+    height: 100%;
+}
+
+/* ===================== Fullscreen Thumbnails: Desktop ===================== */
+.fullThumbColumnContainer {
+    width: 18%;
+    padding: 1rem;
+    min-width: 120px;
+    max-width: 220px;
+    position: relative;
+    background-color: #fff;
+    /* border-left: 1px solid #eee; */
+    box-shadow: -1px 0 10px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.fullThumbSwiperColumn {
+    flex: 1;
+    overflow: hidden;
+}
+
+.thumbArrowsContainerDesktop {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transform: translateY(-50%);
+}
+
+.thumbArrowButtonDesktop {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    color: #000 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
