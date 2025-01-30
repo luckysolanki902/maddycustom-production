@@ -11,7 +11,7 @@ const instance = new Razorpay({
   key_secret: process.env.RAZORPAY_SECRET,
 });
 
-const isTesting = process.env.IS_TESTING === 'true' || false;
+
 
 export async function POST(request) {
   try {
@@ -66,7 +66,7 @@ export async function POST(request) {
 
     // Calculate the amount in the smallest currency unit (e.g., paise)
     const actualAmount = Math.floor(amountToPayOnline * 100); // Assuming amount is in INR
-    const amount = isTesting ? 100 : actualAmount; // in paise
+    const amount =  actualAmount; // in paise
     const currency = 'INR';
     const receipt = shortid.generate(); // Generate a short, unique receipt ID
 
