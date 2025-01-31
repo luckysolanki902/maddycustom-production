@@ -12,7 +12,7 @@ export async function GET() {
         }
 
         const templateParams = ["Lucky"]; // Ensure this aligns with placeholder indexing
-
+        
         const payload = {
             apiKey: AISENSY_API_KEY,
             campaignName: "abandoned_cart_api",
