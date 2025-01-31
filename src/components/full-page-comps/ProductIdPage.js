@@ -11,6 +11,7 @@ import ContactUs from '../layouts/ContactUs';
 import AddToCartButtonWithOrder from '../utils/AddToCartButtonWithOrder';
 import ImageGallery from '../page-sections/product-id-page/ImageGallery';
 import ReviewFullComp from '../page-sections/product-id-page/ReviewFullComp';
+import {TopBoughtProducts} from '../showcase/products/TopBoughtProducts';
 
 export default function ProductIdPage({ product, variant, category, description }) {
   const [viewFullDescription, setViewFullDescription] = useState(false);
@@ -23,6 +24,7 @@ export default function ProductIdPage({ product, variant, category, description 
   const imagesForProductCarousel = product?.images.map((image) => `${imageBaseUrl}${image}`);
   // Final all images (make sure default Last images are in the last)
   const allImages = [...imagesForProductCarousel, ...defaultLastImagesForCarousel];
+
   useEffect(() => {
     if (!hasTracked.current) {
       viewContent(product, { email, phoneNumber });
@@ -35,14 +37,14 @@ export default function ProductIdPage({ product, variant, category, description 
       <div className={styles.container}>
 
         <div className={styles.imageGallery}>
-        <ImageGallery
-          src={`${imageBaseUrl}${product?.images[0]}`}
-          images={allImages}
-          isZoomed={isZoomed}
-          alt={product.title}
-          setIsZoomed={setIsZoomed}
+          <ImageGallery
+            src={`${imageBaseUrl}${product?.images[0]}`}
+            images={allImages}
+            isZoomed={isZoomed}
+            alt={product.title}
+            setIsZoomed={setIsZoomed}
           />
-          </div>
+        </div>
 
         {!isZoomed &&
           <div className={styles.productDetails}>
@@ -52,7 +54,7 @@ export default function ProductIdPage({ product, variant, category, description 
               <h1 className={styles.title}>
                 {product.title}
               </h1>
-              {variant?.cardCaptions?.length > 0 && <p style={{marginTop:'-0.5rem', marginLeft:'0.3rem'}} className={styles.cardCaption}>{variant?.cardCaptions[0]}</p>}
+              {variant?.cardCaptions?.length > 0 && <p style={{ marginTop: '-0.5rem', marginLeft: '0.3rem' }} className={styles.cardCaption}>{variant?.cardCaptions[0]}</p>}
 
               {/* <div className={styles.description}>
                 {viewFullDescription ? description : description.slice(0, 100)}
@@ -67,12 +69,12 @@ export default function ProductIdPage({ product, variant, category, description 
             </div>
 
             <PriceAndChat price={variant?.availableBrands?.length > 0
-            ? variant.availableBrands[0].brandBasePrice + product.price
+              ? variant.availableBrands[0].brandBasePrice + product.price
               : product.price} />
 
 
             <div className={styles.orderSpecificationsContainer}>
-              <OrderSpecifications features={variant.features} justContStart={true}/>
+              <OrderSpecifications features={variant.features} justContStart={true} />
             </div>
 
             <div className={styles.buttonDiv}>
@@ -93,10 +95,20 @@ export default function ProductIdPage({ product, variant, category, description 
 
       </div>
 
-      <ReviewFullComp/>
+      {/* Showcase */}
+      {/* Top bought products */}
+      <TopBoughtProducts 
+    subCategories={[category?.subCategory]} 
+    excludeProductIds={[product?._id]} 
+/>
 
-        {/* <HappyCustomersClient parentSpecificCategoryId={category._id} /> */}
-        <ContactUs />
+
+
+      {/* Reviews */}
+      <ReviewFullComp />
+
+      {/* <HappyCustomersClient parentSpecificCategoryId={category._id} /> */}
+      <ContactUs />
     </>
   );
 }
