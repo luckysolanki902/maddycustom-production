@@ -2,7 +2,6 @@
 import styles from './styles/productid.module.css';
 import { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import ZoomableImage from '../page-sections/product-id-page/ZoomableImage';
 import OrderSpecifications from '../page-sections/product-id-page/OrderSpecifications';
 import PriceAndChat from '../page-sections/product-id-page/PriceAndChat';
 // import AddToCartButton from '../utils/AddToCartButton';
@@ -10,6 +9,8 @@ import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
 import { viewContent } from '@/lib/metadata/facebookPixels';
 import ContactUs from '../layouts/ContactUs';
 import AddToCartButtonWithOrder from '../utils/AddToCartButtonWithOrder';
+import ImageGallery from '../page-sections/product-id-page/ImageGallery';
+import ReviewFullComp from '../page-sections/product-id-page/ReviewFullComp';
 
 export default function ProductIdPage({ product, variant, category, description }) {
   const [viewFullDescription, setViewFullDescription] = useState(false);
@@ -32,54 +33,70 @@ export default function ProductIdPage({ product, variant, category, description 
   return (
     <>
       <div className={styles.container}>
-        <ZoomableImage
+
+        <div className={styles.imageGallery}>
+        <ImageGallery
           src={`${imageBaseUrl}${product?.images[0]}`}
           images={allImages}
           isZoomed={isZoomed}
           alt={product.title}
           setIsZoomed={setIsZoomed}
-        />
-        {!isZoomed && <PriceAndChat price={variant?.availableBrands?.length > 0
-          ? variant.availableBrands[0].brandBasePrice + product.price
-          : product.price} />}
-        {!isZoomed && (
-          <div className={styles.details}>
-            <h1 style={{ fontSize: '2rem', margin: '0.5rem 0' }} className={styles.title}>
-              {product.title}
-            </h1>
-            {variant?.cardCaptions?.length > 0 && <p>{variant?.cardCaptions[0]}</p>}
-            <div className={styles.description}>
-              {viewFullDescription ? description : description.slice(0, 100)}
-              <p
-                style={{ display: 'inline', cursor: 'pointer', color: 'black' }}
-                onClick={() => setViewFullDescription(!viewFullDescription)}
-              >
-                {viewFullDescription ? ' view less' : '...view more'}
-              </p>
+          />
+          </div>
+
+        {!isZoomed &&
+          <div className={styles.productDetails}>
+
+
+            <div className={styles.details}>
+              <h1 className={styles.title}>
+                {product.title}
+              </h1>
+              {variant?.cardCaptions?.length > 0 && <p style={{marginTop:'-0.5rem', marginLeft:'0.3rem'}} className={styles.cardCaption}>{variant?.cardCaptions[0]}</p>}
+
+              {/* <div className={styles.description}>
+                {viewFullDescription ? description : description.slice(0, 100)}
+                <p
+                  style={{ display: 'inline', cursor: 'pointer', color: 'black' }}
+                  onClick={() => setViewFullDescription(!viewFullDescription)}
+                >
+                  {viewFullDescription ? ' view less' : '...view more'}
+                </p>
+              </div> */}
+
+            </div>
+
+            <PriceAndChat price={variant?.availableBrands?.length > 0
+            ? variant.availableBrands[0].brandBasePrice + product.price
+              : product.price} />
+
+
+            <div className={styles.orderSpecificationsContainer}>
+              <OrderSpecifications features={variant.features} justContStart={true}/>
+            </div>
+
+            <div className={styles.buttonDiv}>
+              <AddToCartButtonWithOrder
+                product={{
+                  ...product, variantDetails: variant, category: category, price:
+                    variant?.availableBrands?.length > 0
+                      ? variant.availableBrands[0].brandBasePrice + product.price
+                      : product.price,
+                }}
+                isLarge={true}
+              />
             </div>
           </div>
-        )}
-        {!isZoomed && (
-          <div className={styles.carDiv}>
-            <OrderSpecifications features={variant.features} />
-          </div>
-        )}
-        {!isZoomed && (
-          <div className={styles.buttonDiv}>
-            <AddToCartButtonWithOrder
-              product={{
-                ...product, variantDetails: variant, category: category, price:
-                  variant?.availableBrands?.length > 0
-                    ? variant.availableBrands[0].brandBasePrice + product.price
-                    : product.price,
-              }}
-              isLarge={true}
-            />
-          </div>
-        )}
+        }
+
+
+
       </div>
-      {!isZoomed && <HappyCustomersClient parentSpecificCategoryId={category._id} />}
-      {!isZoomed && <ContactUs />}
+
+      <ReviewFullComp/>
+
+        {/* <HappyCustomersClient parentSpecificCategoryId={category._id} /> */}
+        <ContactUs />
     </>
   );
 }
