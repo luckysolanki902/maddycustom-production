@@ -12,7 +12,9 @@ import AddToCartButtonWithOrder from '../utils/AddToCartButtonWithOrder';
 import ImageGallery from '../page-sections/product-id-page/ImageGallery';
 import ReviewFullComp from '../page-sections/product-id-page/ReviewFullComp';
 
+
 export default function ProductIdPage({ product, variant, category, description }) {
+  console.log({productid: product._id});
   const [viewFullDescription, setViewFullDescription] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -93,9 +95,10 @@ export default function ProductIdPage({ product, variant, category, description 
 
       </div>
 
-      <ReviewFullComp/>
+      <ReviewFullComp productId={product._id}/>
 
         {/* <HappyCustomersClient parentSpecificCategoryId={category._id} /> */}
+        
         <ContactUs />
     </>
   );
