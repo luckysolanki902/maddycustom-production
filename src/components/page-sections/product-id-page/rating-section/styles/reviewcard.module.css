@@ -1,0 +1,65 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    background: white;
+    border-radius: 10px;
+    padding: 15px 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    gap: 10px;
+    font-family: 'Arial', sans-serif;
+}
+
+.fullwidthclass{
+    box-shadow: none;
+    border-radius: 0;
+}
+
+.ratingAndDateCont {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+}
+
+.rating {
+    display: flex;
+    gap: 3px;
+}
+
+.filledStar {
+    color: green;
+}
+
+.emptyStar {
+    color: #ccc;
+}
+
+.date {
+    font-size: 14px;
+    color: #666;
+}
+
+.userInfo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.avatar {
+    width: 35px;
+    height: 35px;
+}
+
+.name {
+    font-weight: 500;
+    font-size: 16px;
+}
+
+.comment {
+    font-size: 14px;
+    color: #333;
+    margin-top: 5px;
+}
