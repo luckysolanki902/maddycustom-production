@@ -33,7 +33,7 @@ export async function GET(request) {
       // Redirect to the Shiprocket tracking URL
       return NextResponse.redirect(trackUrl);
     } else {
-      return NextResponse.json({ message: 'Tracking information not available yet!' }, { status: 404 });
+      return NextResponse.json({ message: 'Will be shipped soon! Please Check again tomorrow.' }, { status: 404 });
     }
   } catch (error) {
     console.error('Error tracking order:', error);

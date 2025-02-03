@@ -1,90 +1,71 @@
 import CampaignLog from '@/models/CampaignLog';
-import Order from '@/models/Order';
-import User from '@/models/User';
 
 /**
- * Reusable function to send or simulate sending a WhatsApp message via AiSensy
+ * Sends a WhatsApp message via AiSensy and logs the campaign result.
  *
  * @param {Object} options
- * @param {Object} options.user - The user object containing _id, phoneNumber, name, etc.
- * @param {String} options.campaignName - Name of the campaign (e.g., 'firstAbandonedCart').
- * @param {ObjectId} [options.orderId] - The order ID relevant to the campaign.
- * @param {String[]} [options.templateParams] - AiSensy template placeholders.
- * @param {Boolean} [options.isTesting=true] - If true, only log and return sender info without sending.
- * @returns {Object} - Contains { success: boolean, message: string, data?: Object }
+ * @param {Object} options.user - The user object containing _id, name, phoneNumber, etc.
+ * @param {String} options.campaignName - Campaign name (e.g., "abandoned-cart-first-campaign").
+ * @param {ObjectId} options.orderId - The order ID related to the campaign (can be null for testing).
+ * @param {String[]} [options.templateParams] - Template placeholders.
+ * @param {Array} [options.carouselCards] - Array of carousel card objects.
+ *
+ * @returns {Object} - { success: boolean, message: string, data?: Object }
  */
 export async function sendWhatsAppMessage({
   user,
   campaignName,
   orderId,
   templateParams = [],
-  isTesting = true,
+  carouselCards = [],
+  countryCode = '91',
 }) {
+  let campaignLog;
   try {
-    if (isTesting) {
-      // In testing mode, return the sender's information without modifying the database or sending messages
-      const order = await Order.findById(orderId).lean();
-      if (!order) {
-        return { success: false, message: 'Order not found.', data: null };
-      }
-
-      return {
-        success: true,
-        message: 'Testing mode: Sender info retrieved.',
-        data: {
-          phoneNumber: user.phoneNumber,
-          name: user.name,
-          orderDateTime: order.createdAt.toLocaleString(), // Readable format
-          orderTotalAmount: order.totalAmount,
-        },
-      };
-    }
-
-    // Production Mode: Proceed with sending the message
-
-    // Check CampaignLog to prevent duplicate sends
-    const existingLog = await CampaignLog.findOne({
+    // Check if a successful message has already been sent for this user/order/campaign
+    campaignLog = await CampaignLog.findOne({
       user: user._id,
       campaignName,
       order: orderId,
     });
-
-    if (existingLog) {
-      // If a message has already been sent for this campaign and order, skip
-      console.log(`Message already sent to user ${user._id} for campaign ${campaignName}. Skipping.`);
-      return { success: false, message: 'Message already sent for this campaign.' };
+    if (campaignLog && campaignLog.successfulCount >= 1) {
+      console.log(
+        `Message already successfully sent to user ${user._id} for campaign ${campaignName}. Skipping.`
+      );
+      return { success: false, message: 'Message already sent successfully for this campaign.' };
     }
 
-    // Create a new CampaignLog entry
-    await CampaignLog.create({
-      user: user._id,
-      order: orderId,
-      campaignName,
-      source: 'aisensy',
-      medium: 'whatsapp',
-      phoneNumber: user.phoneNumber, // Ensure this is in the correct format
-      count: 1,
-      lastSentAt: new Date(),
-    });
+    // Initialize campaign log if it doesn't exist
+    if (!campaignLog) {
+      campaignLog = new CampaignLog({
+        user: user._id,
+        order: orderId,
+        campaignName,
+        source: 'aisensy',
+        medium: 'whatsapp',
+        phoneNumber: `${user.phoneNumber}`,
+        totalCount: 0,
+        successfulCount: 0,
+        failedCount: 0,
+      });
+    }
 
-    // Real AiSensy send
     const AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2";
     const AISENSY_API_KEY = process.env.AISENSY_API_KEY;
 
     if (!AISENSY_API_KEY) {
       console.error("AiSensy API Key is missing!");
-      return {
-        success: false,
-        message: "AiSensy API key is missing. Check your .env.local file."
-      };
+      return { success: false, message: "AiSensy API key is missing. Check your .env.local file." };
     }
 
+    // Build the payload for AiSensy
     const payload = {
       apiKey: AISENSY_API_KEY,
-      campaignName, // AiSensy campaign name
-      destination: `91${user.phoneNumber}`, // Adjust based on your phone number format
-      userName: user.name || '', // Adjust based on your template placeholders
+      campaignName, // e.g., "abandoned-cart-first-campaign"
+      destination: user.phoneNumber.length === 10 ? `${countryCode}${user.phoneNumber}` : user.phoneNumber,
+      userName: user.name || '',
       templateParams,
+      carouselCards,
     };
 
     const response = await fetch(AISENSY_API_URL, {
@@ -95,25 +76,37 @@ export async function sendWhatsAppMessage({
 
     if (response.status === 401) {
       console.error("Unauthorized: Invalid API Key or permission issue.");
-      return {
-        success: false,
-        message: "Unauthorized: Invalid AiSensy API key or permission issue.",
-      };
+      campaignLog.totalCount += 1;
+      campaignLog.failedCount += 1;
+      campaignLog.lastSentAt = new Date();
+      await campaignLog.save();
+      return { success: false, message: "Unauthorized: Invalid AiSensy API key or permission issue." };
     }
 
     const result = await response.json();
     if (!response.ok) {
       console.error("AiSensy API Error:", result);
-      return {
-        success: false,
-        message: result.message || "Failed to send AiSensy WhatsApp message",
-      };
+      campaignLog.totalCount += 1;
+      campaignLog.failedCount += 1;
+      campaignLog.lastSentAt = new Date();
+      await campaignLog.save();
+      return { success: false, message: result.message || "Failed to send AiSensy WhatsApp message" };
     }
 
     console.log("WhatsApp message sent successfully via AiSensy!", result);
+    campaignLog.totalCount += 1;
+    campaignLog.successfulCount += 1;
+    campaignLog.lastSentAt = new Date();
+    await campaignLog.save();
     return { success: true, message: "WhatsApp message sent successfully!", data: result };
   } catch (error) {
     console.error("Error in sendWhatsAppMessage:", error);
+    if (campaignLog) {
+      campaignLog.totalCount += 1;
+      campaignLog.failedCount += 1;
+      campaignLog.lastSentAt = new Date();
+      await campaignLog.save();
+    }
     return { success: false, message: error.message, data: null };
   }
 }
