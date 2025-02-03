@@ -30,6 +30,7 @@ export default function ProductIdPage({ product, variant, category, description 
     }
   }, [product, email, phoneNumber]);
 
+  // console.log(product,variant,category)
   return (
     <>
       <div className={styles.container}>
@@ -93,7 +94,7 @@ export default function ProductIdPage({ product, variant, category, description 
 
       </div>
 
-      <ReviewFullComp/>
+      <ReviewFullComp productId={product._id} variantId={variant._id} categoryId={category._id} fetchReviewSource={category.reviewFetchSource}/>
 
         {/* <HappyCustomersClient parentSpecificCategoryId={category._id} /> */}
         <ContactUs />
