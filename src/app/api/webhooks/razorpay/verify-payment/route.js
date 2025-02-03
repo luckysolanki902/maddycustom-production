@@ -316,6 +316,7 @@ export async function POST(request) {
       if (userDoc) {
         await sendWhatsAppMessage({
           user: userDoc,
+          prefUserName: latestOrder.address.receiverName || '',
           campaignName: 'order_success_first_message_3feb', // as requested
           orderId: latestOrder._id,
           templateParams: [], // Pass any placeholders if needed
