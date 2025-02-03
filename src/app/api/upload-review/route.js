@@ -27,6 +27,13 @@ export async function POST(request) {
     const rating = Number(formData.get('rating'));
     const comment = formData.get('comment');
     const reviewTitle = formData.get('reviewTitle');
+    // const categoryId = formData.get('categoryId');
+    // const variantId = formData.get('variantId');
+    const specificCategory = formData.get('categoryId');
+    const specificCategoryVariant = formData.get('variantId');
+
+    // specificCategory
+    // specificCategoryVariant
 
     // Extra fields from the check-purchase API response:
     const receiverName = formData.get('receiverName');
@@ -98,6 +105,8 @@ export async function POST(request) {
       images: imageUrls,
       videos: videoUrls,
       product: productId,
+      specificCategory: specificCategory,
+      specificCategoryVariant: specificCategoryVariant,
       user: userId,
       // Optionally add reviewTitle if you have such a field in your schema:
       reviewTitle,

@@ -95,7 +95,7 @@ export default function ProductIdPage({ product, variant, category, description 
 
       </div>
 
-      <ReviewFullComp productId={product._id}/>
+      <ReviewFullComp productId={product._id} categoryId={category._id} variantId={variant._id}/>
 
         {/* <HappyCustomersClient parentSpecificCategoryId={category._id} /> */}
         

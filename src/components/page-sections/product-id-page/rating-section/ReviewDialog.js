@@ -18,6 +18,7 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { styled } from "@mui/material/styles";
 import { useSelector } from "react-redux";
 import { useDropzone } from "react-dropzone";
+import { green } from "@mui/material/colors";
 
 // A helper TabPanel component (per MUI docs)
 function TabPanel(props) {
@@ -56,7 +57,7 @@ const DropzoneBox = styled(Box)(({ theme }) => ({
 }));
 
 // The combined component
-export default function ReviewDialog({ open, onClose, productId }) {
+export default function ReviewDialog({ open, onClose, productId,categoryId,variantId }) {
   // Grab phone number and name from Redux (order form details)
   const reduxUserDetails = useSelector((state) => state.orderForm.userDetails);
   const initialPhone = reduxUserDetails?.phoneNumber || "";
@@ -146,6 +147,8 @@ export default function ReviewDialog({ open, onClose, productId }) {
         formData.append("phoneNumber", phoneNumber);
         formData.append("name", userName);
         formData.append("productId", productId);
+        formData.append("categoryId", categoryId);
+        formData.append("variantId", variantId);
         formData.append("rating", rating);
         formData.append("comment", review);
         formData.append("reviewTitle", reviewTitle);
@@ -158,6 +161,58 @@ export default function ReviewDialog({ open, onClose, productId }) {
         selectedFiles.forEach((file) => {
           formData.append("images", file);
         });
+
+
+      // generate presigned url can be done this way but i dont this is esfficeint  
+  // Image Upload Handlers
+
+    // const fileName = `${Date.now()}-${file.name}`;
+//     const fullPath = `reviews/${Date.now()}-${file.name}`;
+//     const fileType = file.type;
+// // app/api/aws/generate-presigned-url/route.js
+//     try {
+//       // Request presigned URL from the backend
+//       const res = await fetch('/api/aws/generate-presigned-url', {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//         },
+//         body: JSON.stringify({ fullPath, fileType }),
+//       });
+
+
+//       if (!res.ok) {
+//         const errorData = await res.json();
+//         throw new Error(errorData.message || 'Failed to get presigned URL.');
+//       }
+
+//       const { presignedUrl } = await res.json();
+//      const url = fullPath; // Use the full path as the image URL
+//       // Upload the file directly to S3 using the presigned URL
+//       const uploadRes = await fetch(presignedUrl, {
+//         method: 'PUT',
+//         headers: {
+//           'Content-Type': fileType,
+//         },
+//         body: file,
+//       });
+
+//       if (!uploadRes.ok) {
+//         throw new Error('Failed to upload image to S3.');
+//       }
+
+//       // Update the currentReview's images array with the new image URL
+//       setCurrentReview((prev) => ({
+//         ...prev,
+//         images: [...prev.images, url],
+//       }));
+//     } catch (error) {
+//       console.error('Error uploading image:', error);
+//       setUploadError(error.message);
+//     } finally {
+//       setUploading(false);
+//     }
+//   }, []);
 
         const response = await fetch("/api/upload-review", {
           method: "POST",
@@ -180,19 +235,24 @@ export default function ReviewDialog({ open, onClose, productId }) {
     };
 
     return (
-      <Box component="form" sx={{ mt: 2 }} onSubmit={handleSubmit}>
+      <Box component="form" sx={{ mt: 2 }} onSubmit={handleSubmit} alignItems="center" alignContent="center">
         <Typography variant="body1" align="center" gutterBottom>
           Rating
         </Typography>
         <Rating
+    
           value={rating}
           
           onChange={(event, newValue) => setRating(newValue)}
           precision={0.5}
           size="large"
           sx={{
+            "& .MuiRating-iconFilled": {
+                color: "green", // Filled star color
+              },
             "& .MuiRating-iconEmpty": {
               color: "green", // empty star color
+             
               
             },
           }}
