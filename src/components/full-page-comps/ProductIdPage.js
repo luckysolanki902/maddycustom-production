@@ -12,6 +12,7 @@ import ContactUs from '../layouts/ContactUs';
 import AddToCartButtonWithOrder from '../utils/AddToCartButtonWithOrder';
 
 export default function ProductIdPage({ product, variant, category, description }) {
+  console.info(product.images[0])
   const [viewFullDescription, setViewFullDescription] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;

@@ -31,8 +31,16 @@ const CampaignLogSchema = new mongoose.Schema({
   email: {
     type: String,
   },
-  // How many times a message has been sent for this campaign
-  count: {
+  // Counters for tracking messages sent via this campaign
+  totalCount: {
+    type: Number,
+    default: 0,
+  },
+  successfulCount: {
+    type: Number,
+    default: 0,
+  },
+  failedCount: {
     type: Number,
     default: 0,
   },
@@ -41,22 +49,11 @@ const CampaignLogSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
-// Create a unique index to prevent duplicate logs for the same user, order, and campaign
+// Unique index to prevent duplicate logs for the same user, order, and campaign
 CampaignLogSchema.index({ user: 1, order: 1, campaignName: 1 }, { unique: true });
 
 module.exports = mongoose.models.CampaignLog || mongoose.model('CampaignLog', CampaignLogSchema);
 
 
 
-// {
-//   "crons": [
-//     {
-//       "path": "/api/cron/aisensy/abandoned-cart-first-campaign",
-//       "schedule": "*/10 * * * *"
-//     },
-//     {
-//       "path": "/api/aisensy//abandoned-cart-second-campaign",
-//       "schedule": "*/10 * * * *"
-//     }
-//   ]
-// }
+
