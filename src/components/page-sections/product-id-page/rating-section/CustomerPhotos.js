@@ -24,12 +24,10 @@ const CustomerPhotos = ({reviews}) => {
         setDialogOpen(false);
         setCurrentReview(null);
     };
-    console.log(reviews,"sdgdg")
 
     // Filter reviews that have an image
     const reviewsWithImages = reviews.filter((review) => review.images.length!==0);
-    console.log(reviewsWithImages)
-    console.log(`${imageBaseUrl}${reviews.images}`)
+   
 
     return (
         <div className={styles.mainContainer}>
@@ -53,7 +51,7 @@ const CustomerPhotos = ({reviews}) => {
                                 className={styles.reviewImageContainer}
                                 onClick={() => handleImageClick(review)}
                             >
-                            {console.log(`${imageBaseUrl}/${review.images}`)}
+                           
                                 <Image
                                     width={200}
                                     height={200}

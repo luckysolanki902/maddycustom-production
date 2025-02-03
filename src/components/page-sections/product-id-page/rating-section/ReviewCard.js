@@ -5,7 +5,7 @@ import { Star, StarBorder } from '@mui/icons-material';
 import { Avatar } from '@mui/material';
 import Image from 'next/image';
 
-const ReviewCard = ({ rating = 4, name = 'Maddy Singh', comment = 'Awesome', date = '16/08/2025', fullWidth=false }) => {
+const ReviewCard = ({ rating = 4,status='approved', name = 'Maddy Singh', comment = 'Awesome', date = '16/08/2025', fullWidth=false }) => {
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   return (
     <div className={`${styles.container} ${fullWidth ? styles.fullwidthclass : ''}`}>

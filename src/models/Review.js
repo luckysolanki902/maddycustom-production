@@ -2,33 +2,6 @@
 
 const mongoose = require('mongoose');
 
-/**
- * This schema supports two main “types” of reviews:
- *  1. Admin reviews that can be attached to a whole specificCategory OR a variant OR a single product.
- *  2. User reviews that are attached to the exact product they purchased.
- *
- * The “scope” fields in the schema are:
- *    product               -> If review is for a single Product
- *    specificCategoryVariant -> If review is for all products under a specific variant
- *    specificCategory      -> If review is for all products under a specific category
- *
- * For user-created reviews, we typically store product + user + order references.
- * For admin-created reviews, we can store a single scope reference (e.g., specificCategoryVariant) 
- * or even product if you wish. 
- * 
- * On the front-end, to show all relevant reviews for a product, you can query:
- *
- *   Review.find({
- *     status: 'approved',
- *     $or: [
- *       { product: currentProductId },                 // exact product-level reviews
- *       { specificCategoryVariant: productVariantId }, // variant-level reviews
- *       { specificCategory: productCategoryId },       // category-level reviews
- *     ],
- *   });
- *
- * And that will bring back both admin “common” reviews and user “unique” reviews, all displayed on the product page.
- */
 
 const ReviewSchema = new mongoose.Schema(
   {
@@ -57,12 +30,7 @@ const ReviewSchema = new mongoose.Schema(
       trim: true,
     },
 
-    /**
-     * Who created the review?
-     * - For user-submitted reviews, store the user’s ObjectId
-     * - For admin-created “common” reviews, this might be empty or 
-     *   store an admin user’s ObjectId if you have separate Admin docs.
-     */
+    
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -102,7 +70,16 @@ const ReviewSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Order',
     },
-
+    createdAt:{
+      type: Date,
+      required:true,
+      default:Date.now()
+    },
+    updatedAt:{
+      type: Date,
+      required:true,
+      default:Date.now()
+    },
     /**
      * Whether the review is live or not.
      * Admin will moderate and change from 'pending' -> 'approved' or 'rejected'.
@@ -113,8 +90,7 @@ const ReviewSchema = new mongoose.Schema(
       default: 'pending',
       index: true,
     },
-  },
-  { timestamps: true }
+  }
 );
 
 /**
@@ -144,5 +120,9 @@ ReviewSchema.pre('validate', function (next) {
   }
   next();
 });
+ReviewSchema.pre(["findOneAndUpdate", "updateOne","save"],function(next){
+  this.updatedAt=new Date();
+  next();
+})
 
 module.exports = mongoose.models.Review || mongoose.model('Review', ReviewSchema);
