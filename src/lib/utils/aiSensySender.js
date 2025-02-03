@@ -5,6 +5,7 @@ import CampaignLog from '@/models/CampaignLog';
  * Sends a WhatsApp message via AiSensy and logs the campaign result.
  *
  * @param {Object} options
+ * @param {String} prefUserName
  * @param {Object} options.user - The user object containing _id, name, phoneNumber, etc.
  * @param {String} options.campaignName - Campaign name (e.g., "abandoned-cart-first-campaign").
  * @param {ObjectId} options.orderId - The order ID related to the campaign (can be null for testing).
@@ -15,6 +16,7 @@ import CampaignLog from '@/models/CampaignLog';
  */
 export async function sendWhatsAppMessage({
   user,
+  prefUserName,
   campaignName,
   orderId,
   templateParams = [],
@@ -64,7 +66,7 @@ export async function sendWhatsAppMessage({
       apiKey: AISENSY_API_KEY,
       campaignName, // e.g., "abandoned-cart-first-campaign"
       destination: user.phoneNumber.length === 10 ? `${countryCode}${user.phoneNumber}` : user.phoneNumber,
-      userName: user.name || '',
+      userName: prefUserName || user.name || '',
       templateParams,
       carouselCards,
     };

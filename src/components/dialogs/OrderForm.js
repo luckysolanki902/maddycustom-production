@@ -446,7 +446,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
       // Step 6: Cleanup and Navigation
       dispatch(clearUTMDetails());
       dispatch(clearCart());
-      dispatch(resetOrderForm());
       reset();
       handleClose();
       router.push(`/orders/myorder/${orderId}`);
