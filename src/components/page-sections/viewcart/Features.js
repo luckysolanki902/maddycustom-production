@@ -8,7 +8,6 @@ import styles from './styles/viewcart.module.css';
 import OrderSpecifications from '../product-id-page/OrderSpecifications';
 
 const Features = ({ features}) => { 
-  console.log({features})
  return (
   <div className={`${styles.cartItem} ${styles.priceDetails}`}>
     <OrderSpecifications features={features} />

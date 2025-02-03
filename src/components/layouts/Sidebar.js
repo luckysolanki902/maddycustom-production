@@ -111,13 +111,13 @@ const Sidebar = (props) => {
                         display: 'flex',
                         justifyContent: 'flex-start',
                         overflow: 'hidden',
-                        paddingLeft: '1rem',
+                        paddingLeft: '0rem',
                     }}
                 >
                     <Image
                         height={1000}
                         width={1000}
-                        src={`${baseUrl}/assets/logos/maddycustom-old-full-logo-horizontal.png`}
+                        src={`${baseUrl}/assets/logos/maddy_custom3_main_logo.png`}
                         alt="Maddy Logo"
                         title="Maddy Logo"
                         style={{ width: '55%', overflow: 'hidden', height: 'auto' }}                    />

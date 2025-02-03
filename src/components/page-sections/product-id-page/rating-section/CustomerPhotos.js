@@ -8,10 +8,12 @@ import { Typography } from '@mui/material';
 import Image from 'next/image';
 import { constReviews } from '../constReviews';
 import ImageReviewDialog from './ImageReviewDialog'; // Adjust the import path as needed
+import { Reviews } from '@mui/icons-material';
 
-const CustomerPhotos = () => {
+const CustomerPhotos = ({reviews}) => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [currentReview, setCurrentReview] = useState(null);
+    const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
     const handleImageClick = (review) => {
         setCurrentReview(review);
@@ -24,7 +26,8 @@ const CustomerPhotos = () => {
     };
 
     // Filter reviews that have an image
-    const reviewsWithImages = constReviews.filter((review) => review.image);
+    const reviewsWithImages = reviews.filter((review) => review.images.length!==0);
+   
 
     return (
         <div className={styles.mainContainer}>
@@ -42,16 +45,18 @@ const CustomerPhotos = () => {
                 ) : (
                     <div className={styles.imageGrid}>
                         {reviewsWithImages.map((review) => (
+                            
                             <div
                                 key={review.id}
                                 className={styles.reviewImageContainer}
                                 onClick={() => handleImageClick(review)}
                             >
+                           
                                 <Image
                                     width={200}
                                     height={200}
                                     className={styles.reviewImage}
-                                    src={review.image}
+                                    src={`${imageBaseUrl}/${review.images}`}
                                     alt={`Review photo by ${review.name}`}
                                     title={`Review photo by ${review.name}`}
                                     style={{ borderRadius: '8px' }}
@@ -66,6 +71,7 @@ const CustomerPhotos = () => {
                         open={dialogOpen}
                         handleClose={handleCloseDialog}
                         initialReview={currentReview}
+                        reviews={reviewsWithImages}
                     />
                 )}
             </div>

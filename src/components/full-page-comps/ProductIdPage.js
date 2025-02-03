@@ -11,7 +11,7 @@ import ContactUs from '../layouts/ContactUs';
 import AddToCartButtonWithOrder from '../utils/AddToCartButtonWithOrder';
 import ImageGallery from '../page-sections/product-id-page/ImageGallery';
 import ReviewFullComp from '../page-sections/product-id-page/ReviewFullComp';
-import {TopBoughtProducts} from '../showcase/products/TopBoughtProducts';
+import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
 
 export default function ProductIdPage({ product, variant, category, description }) {
   const [viewFullDescription, setViewFullDescription] = useState(false);
@@ -97,15 +97,17 @@ export default function ProductIdPage({ product, variant, category, description 
 
       {/* Showcase */}
       {/* Top bought products */}
-      <TopBoughtProducts 
-    subCategories={[category?.subCategory]} 
-    excludeProductIds={[product?._id]} 
-/>
+      <TopBoughtProducts
+        subCategories={[category?.subCategory]}
+        excludeProductIds={[product?._id]}
+      />
 
 
 
       {/* Reviews */}
-      <ReviewFullComp />
+      <ReviewFullComp productId={product?._id} variantId={variant?._id} categoryId={category?._id} fetchReviewSource={category?.fetchReviewSource} />
+
+
 
       {/* <HappyCustomersClient parentSpecificCategoryId={category._id} /> */}
       <ContactUs />
