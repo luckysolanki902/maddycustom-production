@@ -67,6 +67,17 @@ const SpecificCategorySchema = new mongoose.Schema(
       default: 'variant',
       lowercase:true
     },
+    productInfoTabs:[
+      {
+        title: {
+          type: String
+        },
+        fetchSource: {
+          type: String,
+          enum: ['Variant', 'SpecCat', 'Product']
+        }
+      }
+    ]
   },
   { timestamps: true }
 );
