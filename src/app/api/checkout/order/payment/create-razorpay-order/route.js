@@ -5,6 +5,7 @@ import Razorpay from 'razorpay';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
 import shortid from 'shortid';
+import ModeOfPayment from '@/models/ModeOfPayment';
 
 const instance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY,
