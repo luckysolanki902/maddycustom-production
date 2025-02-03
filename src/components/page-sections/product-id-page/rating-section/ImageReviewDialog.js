@@ -18,9 +18,9 @@ import ReviewCard from './ReviewCard'; // Adjust the import path as needed
 import styles from './styles/imageReviewDialog.module.css';
 import { constReviews } from '../constReviews'; // Import constReviews directly
 
-const ImageReviewDialog = ({ open, handleClose, initialReview }) => {
+const ImageReviewDialog = ({ open, handleClose, initialReview , reviews }) => {
     const [selectedReview, setSelectedReview] = useState(initialReview);
-
+    const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
     // Update selectedReview when initialReview changes
     useEffect(() => {
         setSelectedReview(initialReview);
@@ -58,7 +58,7 @@ const ImageReviewDialog = ({ open, handleClose, initialReview }) => {
                 <Box className={styles.mainContent}>
                     <Box className={styles.imageContainer}>
                         <Image
-                            src={selectedReview.image}
+                            src={`${imageBaseUrl}/${selectedReview.images}`}
                             alt={`Review photo by ${selectedReview.name}`}
                             width={800}
                             height={800}
@@ -71,8 +71,8 @@ const ImageReviewDialog = ({ open, handleClose, initialReview }) => {
 
                 {/* Thumbnail Scroller */}
                 <Box className={styles.thumbnailScroller}>
-                    {constReviews
-                        .filter((review) => review.image) // Ensure only reviews with images are shown
+                    {reviews
+                        .filter((review) => review.images.length!==0) // Ensure only reviews with images are shown
                         .map((review) => (
                             <Box
                                 key={review.id}
@@ -82,7 +82,7 @@ const ImageReviewDialog = ({ open, handleClose, initialReview }) => {
                                 onClick={() => handleThumbnailClick(review)}
                             >
                                 <Image
-                                    src={review.image}
+                                    src={`${imageBaseUrl}/${review.images}`}
                                     alt={`Thumbnail of review by ${review.name}`}
                                     width={100}
                                     height={100}

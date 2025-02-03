@@ -81,7 +81,6 @@ const LoginDialog = () => {
     ) {
       setOpen(true);
       dispatch(setLoginDialogShown(true)); // Prevent showing again
-      console.log('Opening LoginDialog.');
     }
   }, [timeSpentOnWebsite, scrolledMoreThan60Percent, loginDialogShown, userExists, pathname, dispatch]);
 
