@@ -1,3 +1,4 @@
+// @/lib/utils/aiSensySender.js
 import CampaignLog from '@/models/CampaignLog';
 
 /**
@@ -7,8 +8,8 @@ import CampaignLog from '@/models/CampaignLog';
  * @param {Object} options.user - The user object containing _id, name, phoneNumber, etc.
  * @param {String} options.campaignName - Campaign name (e.g., "abandoned-cart-first-campaign").
  * @param {ObjectId} options.orderId - The order ID related to the campaign (can be null for testing).
- * @param {String[]} [options.templateParams] - Template placeholders.
- * @param {Array} [options.carouselCards] - Array of carousel card objects.
+ * @param {String[]} [options.templateParams] - Template placeholders. (optional)
+ * @param {Array} [options.carouselCards] - Array of carousel card objects. (optional)
  *
  * @returns {Object} - { success: boolean, message: string, data?: Object }
  */
