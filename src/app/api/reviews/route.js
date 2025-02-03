@@ -3,20 +3,24 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Review from '@/models/Review';
 import { NextResponse } from 'next/server';
 
+// Import the User model for looking up the phone number.
+import User from '@/models/User';
+
 export async function GET(request) {
   // Extract query parameters from the request URL
   const { searchParams } = new URL(request.url);
   const fetchReviewSource = searchParams.get('fetchReviewSource');
   const productId = searchParams.get('productId');
   const variantId = searchParams.get('variantId');
+  const userPhoneNumber = searchParams.get('userPhoneNumber'); // Note: renamed for clarity
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '5'); // Default to 5 reviews per page
 
   // Connect to the database
   await connectToDatabase();
 
-  // Build the query
-  let query = { status: 'approved' };
+  // Build the base query using the product/variant criteria.
+  const query = {};
 
   if (fetchReviewSource === 'variant') {
     if (!variantId) {
@@ -41,6 +45,34 @@ export async function GET(request) {
       { message: 'Invalid fetchReviewSource value' },
       { status: 400 }
     );
+  }
+
+  // Modify the query based on whether a userPhoneNumber was provided.
+  // We want to fetch reviews that are either approved, or
+  // pending reviews for the user with the given phone number.
+  if (userPhoneNumber) {
+    try {
+      // Look up the user by phone number.
+      const user = await User.findOne({ phoneNumber: userPhoneNumber });
+      if (user) {
+        // Use $or so that either approved reviews are returned,
+        // or pending reviews that belong to this user.
+        query.$or = [
+          { status: 'approved' },
+          { status: 'pending', user: user._id }
+        ];
+      } else {
+        // If no user is found, just return approved reviews.
+        query.status = 'approved';
+      }
+    } catch (error) {
+      console.error('Error fetching user:', error.message);
+      // In case of error with user lookup, fallback to approved reviews.
+      query.status = 'approved';
+    }
+  } else {
+    // No phone number provided: only return approved reviews.
+    query.status = 'approved';
   }
 
   try {

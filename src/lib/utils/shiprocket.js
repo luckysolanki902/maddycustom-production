@@ -320,7 +320,6 @@ export const getDimensionsAndWeight = async (items) => {
 
     // Log a line about the box usage
     
-    // console.log(
     //   `${totalBoxCount} boxes: ${usedBoxNames.join(', ')} are required.`
     // );
 

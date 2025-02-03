@@ -12,7 +12,7 @@ export async function GET(req) {
         const { searchParams } = new URL(req.url);
         const phoneNumber = searchParams.get('phoneNumber');
         const productId = searchParams.get('productId');
-        console.log({ productId, phoneNumber },)
+        
 
 
         if (!phoneNumber || !productId) {
@@ -29,11 +29,11 @@ export async function GET(req) {
                 { status: 404 }
             );
         }
-
         // Find orders where address.receiverPhoneNumber matches and items array contains the productId
         const order = await Order.findOne({
             'address.receiverPhoneNumber': phoneNumber,
             'items.product': productId,
+            'deliveryStatus':{$in:['orderCreated', 'processing', 'shipped', 'delivered']}
         }).select('address.receiverName');
 
         if (order) {

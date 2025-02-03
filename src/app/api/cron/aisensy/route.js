@@ -40,7 +40,6 @@ export async function GET() {
         const result = await response.json();
 
         if (response.ok) {
-            console.log("WhatsApp message sent successfully!", result);
             return Response.json({ success: true, message: "WhatsApp message sent successfully!", data: result });
         } else {
             console.error("AiSensy API Error:", result);

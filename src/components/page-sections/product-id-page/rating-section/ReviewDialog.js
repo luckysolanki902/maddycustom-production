@@ -16,9 +16,10 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { styled } from "@mui/material/styles";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useDropzone } from "react-dropzone";
 import { green } from "@mui/material/colors";
+import { setUserDetails } from "@/store/slices/orderFormSlice";
 
 // A helper TabPanel component (per MUI docs)
 function TabPanel(props) {
@@ -84,7 +85,6 @@ export default function ReviewDialog({ open, onClose, productId,categoryId,varia
 
   // Check purchase when user clicks the button
   const handleCheckPurchase = async () => {
-    console.log({ productId, phoneNumber });
     try {
       setErrorMessage("");
       const response = await fetch(
@@ -100,7 +100,6 @@ export default function ReviewDialog({ open, onClose, productId,categoryId,varia
         // Save extra data from the response to pass to the upload API
         setReceiverName(data.receiverName);
         setUserId(data.userId);
-        console.log("Purchase verified – switching to review form");
         setTabValue(1);
       } else {
         setErrorMessage(data?.message || "You must purchase this product first.");
@@ -125,15 +124,26 @@ export default function ReviewDialog({ open, onClose, productId,categoryId,varia
     const [reviewTitle, setReviewTitle] = useState("");
     const [review, setReview] = useState("");
     const [selectedFiles, setSelectedFiles] = useState([]);
+    const [fileErrors, setFileErrors] = useState([]);
+    const dispatch =useDispatch();
 
-    // Set up react-dropzone
-    const { getRootProps, getInputProps, acceptedFiles } = useDropzone({
+    const {
+      getRootProps,
+      getInputProps,
+      acceptedFiles,
+      fileRejections, // Contains files that were rejected (e.g., due to size)
+    } = useDropzone({
       accept: {
-        "image/*": [],
-        "video/*": [],
+        'image/*': [],
       },
+      maxSize: 10 * 1024 * 1024, // 10 MB in bytes
       onDrop: (files) => {
         setSelectedFiles(files);
+        setFileErrors([]); // Reset any previous errors
+      },
+      onDropRejected: (rejections) => {
+        // Handle rejected files (e.g., due to exceeding maxSize)
+        setFileErrors(rejections.map(rejection => rejection.errors));
       },
     });
 
@@ -225,8 +235,9 @@ export default function ReviewDialog({ open, onClose, productId,categoryId,varia
           alert(data.message || "Failed to submit review.");
           return;
         }
-
-        console.log("Review Submitted:", data);
+        dispatch(setUserDetails({ phoneNumber: phoneNumber }));
+        
+        
         alert("Review submitted successfully!");
         onClose(); // Close the dialog on success
       } catch (error) {
@@ -282,14 +293,14 @@ export default function ReviewDialog({ open, onClose, productId,categoryId,varia
         </Typography>
 
         <Typography variant="body2" sx={{ mb: 1 }}>
-          Pictures/Videos (Optional)
+          Picture (Optional)
         </Typography>
         {/* React Dropzone area */}
         <DropzoneBox {...getRootProps()}>
           <input {...getInputProps()} />
           <UploadFileIcon fontSize="large" />
           <Typography variant="body2">
-            Drag & drop some files here, or click to select files
+            Drag & drop your photo here, or click to select file
           </Typography>
         </DropzoneBox>
 

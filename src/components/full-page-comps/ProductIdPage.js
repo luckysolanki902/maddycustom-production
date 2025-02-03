@@ -14,7 +14,6 @@ import ReviewFullComp from '../page-sections/product-id-page/ReviewFullComp';
 
 
 export default function ProductIdPage({ product, variant, category, description }) {
-  console.log({productid: product._id});
   const [viewFullDescription, setViewFullDescription] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -32,7 +31,7 @@ export default function ProductIdPage({ product, variant, category, description 
     }
   }, [product, email, phoneNumber]);
 
-  // console.log(product,variant,category)
+
   return (
     <>
       <div className={styles.container}>
