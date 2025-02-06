@@ -4,7 +4,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
   IconButton,
   Typography,
@@ -18,8 +17,9 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { styled } from "@mui/material/styles";
 import { useSelector, useDispatch } from "react-redux";
 import { useDropzone } from "react-dropzone";
-import { green } from "@mui/material/colors";
 import { setUserDetails } from "@/store/slices/orderFormSlice";
+// --- IMPORT IMAGE COMPRESSION ---
+import imageCompression from "browser-image-compression";
 
 // A helper TabPanel component (per MUI docs)
 function TabPanel(props) {
@@ -58,7 +58,7 @@ const DropzoneBox = styled(Box)(({ theme }) => ({
 }));
 
 // The combined component
-export default function ReviewDialog({ open, onClose, productId,categoryId,variantId }) {
+export default function ReviewDialog({ open, onClose, productId, categoryId, variantId }) {
   // Grab phone number and name from Redux (order form details)
   const reduxUserDetails = useSelector((state) => state.orderForm.userDetails);
   const initialPhone = reduxUserDetails?.phoneNumber || "";
@@ -71,7 +71,7 @@ export default function ReviewDialog({ open, onClose, productId,categoryId,varia
   // Tab state: 0 = Verify Purchase, 1 = Write a Review
   const [tabValue, setTabValue] = useState(0);
 
-  // New states to capture data returned from the check-purchase API
+  // Data returned from the check-purchase API
   const [receiverName, setReceiverName] = useState("");
   const [userId, setUserId] = useState("");
 
@@ -88,10 +88,7 @@ export default function ReviewDialog({ open, onClose, productId,categoryId,varia
     try {
       setErrorMessage("");
       const response = await fetch(
-        `/api/checkpurchase?productId=${productId}&phoneNumber=${phoneNumber}`,
-        {
-          method: "GET",
-        }
+        `/api/checkpurchase?productId=${productId}&phoneNumber=${phoneNumber}`
       );
       const data = await response.json();
 
@@ -119,152 +116,147 @@ export default function ReviewDialog({ open, onClose, productId,categoryId,varia
   };
 
   // The review form component with react-dropzone integration
-  const ReviewForm = ({ productId, phoneNumber, userName, receiverName, userId, onClose }) => {
+  const ReviewForm = ({
+    productId,
+    phoneNumber,
+    userName,
+    receiverName,
+    userId,
+    onClose,
+  }) => {
+    const dispatch = useDispatch();
+
     const [rating, setRating] = useState(0);
     const [reviewTitle, setReviewTitle] = useState("");
     const [review, setReview] = useState("");
+
+    // Files the user selected (no immediate upload)
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [fileErrors, setFileErrors] = useState([]);
-    const dispatch =useDispatch();
 
     const {
       getRootProps,
       getInputProps,
-      acceptedFiles,
-      fileRejections, // Contains files that were rejected (e.g., due to size)
+      fileRejections,
     } = useDropzone({
-      accept: {
-        'image/*': [],
-      },
-      maxSize: 10 * 1024 * 1024, // 10 MB in bytes
+      accept: { "image/*": [] },
+      multiple: true,
+      maxSize: 10 * 1024 * 1024, // 10 MB
       onDrop: (files) => {
-        setSelectedFiles(files);
-        setFileErrors([]); // Reset any previous errors
+        setSelectedFiles((prev) => [...prev, ...files]);
+        setFileErrors([]);
       },
       onDropRejected: (rejections) => {
-        // Handle rejected files (e.g., due to exceeding maxSize)
-        setFileErrors(rejections.map(rejection => rejection.errors));
+        setFileErrors(rejections.map((rej) => rej.errors));
       },
     });
 
-    // Handle form submission
+    // Handle form submission -> compress & upload, then send data
     const handleSubmit = async (e) => {
       e.preventDefault();
-
       try {
-        // Prepare form data for file upload and other fields
-        const formData = new FormData();
-        formData.append("phoneNumber", phoneNumber);
-        formData.append("name", userName);
-        formData.append("productId", productId);
-        formData.append("categoryId", categoryId);
-        formData.append("variantId", variantId);
-        formData.append("rating", rating);
-        formData.append("comment", review);
-        formData.append("reviewTitle", reviewTitle);
+        // 1. For each file, compress and upload using a presigned URL
+        const uploadedImagePaths = [];
+        for (const file of selectedFiles) {
+          // Compress file
+          const compressedFile = await imageCompression(file, {
+            maxSizeMB: 0.6,
+            maxWidthOrHeight: 1920/2,
+            useWebWorker: true,
+          });
 
-        // Append extra fields from the verified purchase response
-        formData.append("receiverName", receiverName);
-        formData.append("userId", userId);
+          // Generate a random path/filename
+          // e.g. "reviews/1693412345-abcxyz-somefile.jpg"
+          const folder = "reviews";
+          const randomStr = Math.random().toString(36).substring(2, 10);
+          const fullPath = `${folder}/${Date.now()}-${randomStr}-${file.name}`;
+          const fileType = compressedFile.type;
 
-        // Append files (all files are sent under the field name "images")
-        selectedFiles.forEach((file) => {
-          formData.append("images", file);
-        });
+          // Request a presigned URL from your API
+          const presignRes = await fetch("/api/aws/generate-presigned-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fullPath, fileType }),
+          });
+          const presignData = await presignRes.json();
+          if (!presignRes.ok) {
+            console.error("Error generating presigned URL:", presignData?.message);
+            throw new Error(presignData?.message || "Failed to get presigned URL.");
+          }
 
+          const { presignedUrl } = presignData;
 
-      // generate presigned url can be done this way but i dont this is esfficeint  
-  // Image Upload Handlers
+          // Upload the compressed file to S3
+          const uploadRes = await fetch(presignedUrl, {
+            method: "PUT",
+            headers: { "Content-Type": fileType },
+            body: compressedFile,
+          });
+          if (!uploadRes.ok) {
+            console.error("Error uploading to S3");
+            throw new Error("Failed to upload image to S3.");
+          }
 
-    // const fileName = `${Date.now()}-${file.name}`;
-//     const fullPath = `reviews/${Date.now()}-${file.name}`;
-//     const fileType = file.type;
-// // app/api/aws/generate-presigned-url/route.js
-//     try {
-//       // Request presigned URL from the backend
-//       const res = await fetch('/api/aws/generate-presigned-url', {
-//         method: 'POST',
-//         headers: {
-//           'Content-Type': 'application/json',
-//         },
-//         body: JSON.stringify({ fullPath, fileType }),
-//       });
+          // If successful, push the S3 key (fullPath) or final URL
+          uploadedImagePaths.push(fullPath);
+        }
 
-
-//       if (!res.ok) {
-//         const errorData = await res.json();
-//         throw new Error(errorData.message || 'Failed to get presigned URL.');
-//       }
-
-//       const { presignedUrl } = await res.json();
-//      const url = fullPath; // Use the full path as the image URL
-//       // Upload the file directly to S3 using the presigned URL
-//       const uploadRes = await fetch(presignedUrl, {
-//         method: 'PUT',
-//         headers: {
-//           'Content-Type': fileType,
-//         },
-//         body: file,
-//       });
-
-//       if (!uploadRes.ok) {
-//         throw new Error('Failed to upload image to S3.');
-//       }
-
-//       // Update the currentReview's images array with the new image URL
-//       setCurrentReview((prev) => ({
-//         ...prev,
-//         images: [...prev.images, url],
-//       }));
-//     } catch (error) {
-//       console.error('Error uploading image:', error);
-//       setUploadError(error.message);
-//     } finally {
-//       setUploading(false);
-//     }
-//   }, []);
+        // 2. Send the rest of the review data + array of image paths to your API
+        // (Here we use JSON, but if you need multipart/form-data, adapt accordingly)
+        const finalPayload = {
+          phoneNumber,
+          name: userName,
+          productId,
+          categoryId,
+          variantId,
+          rating,
+          comment: review,
+          reviewTitle,
+          receiverName,
+          userId,
+          images: uploadedImagePaths, // array of S3 keys
+        };
 
         const response = await fetch("/api/upload-review", {
           method: "POST",
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(finalPayload),
         });
-
         const data = await response.json();
+
         if (!response.ok) {
           console.error("Error submitting review:", data.message);
           alert(data.message || "Failed to submit review.");
           return;
         }
-        dispatch(setUserDetails({ phoneNumber: phoneNumber }));
-        
-        
+
+        // Store phoneNumber back to Redux for convenience
+        dispatch(setUserDetails({ phoneNumber }));
+
         alert("Review submitted successfully!");
         onClose(); // Close the dialog on success
       } catch (error) {
         console.error("Error submitting review:", error);
+        alert(error.message || "Error submitting review.");
       }
     };
 
     return (
-      <Box component="form" sx={{ mt: 2 }} onSubmit={handleSubmit} alignItems="center" alignContent="center">
+      <Box component="form" sx={{ mt: 2 }} onSubmit={handleSubmit}>
         <Typography variant="body1" align="center" gutterBottom>
           Rating
         </Typography>
         <Rating
-    
           value={rating}
-          
           onChange={(event, newValue) => setRating(newValue)}
           precision={0.5}
           size="large"
           sx={{
             "& .MuiRating-iconFilled": {
-                color: "green", // Filled star color
-              },
+              color: "green", // Filled star color
+            },
             "& .MuiRating-iconEmpty": {
-              color: "green", // empty star color
-             
-              
+              color: "green", // Empty star color
             },
           }}
         />
@@ -288,23 +280,25 @@ export default function ReviewDialog({ open, onClose, productId,categoryId,varia
           onChange={(e) => setReview(e.target.value)}
           sx={{ mb: 2 }}
         />
+
         <Typography variant="body2" sx={{ mb: 1 }}>
-            {receiverName}
+          {receiverName}
         </Typography>
 
         <Typography variant="body2" sx={{ mb: 1 }}>
           Picture (Optional)
         </Typography>
+
         {/* React Dropzone area */}
         <DropzoneBox {...getRootProps()}>
           <input {...getInputProps()} />
           <UploadFileIcon fontSize="large" />
           <Typography variant="body2">
-            Drag & drop your photo here, or click to select file
+            Drag &amp; drop your photo(s) here, or click to select file(s)
           </Typography>
         </DropzoneBox>
 
-        {/* Optionally list selected file names */}
+        {/* List chosen files */}
         {selectedFiles.length > 0 && (
           <Box sx={{ mt: 1 }}>
             <Typography variant="caption">Files:</Typography>
@@ -313,6 +307,17 @@ export default function ReviewDialog({ open, onClose, productId,categoryId,varia
                 <li key={file.name}>{file.name}</li>
               ))}
             </ul>
+          </Box>
+        )}
+
+        {/* Display file errors if any */}
+        {fileErrors.length > 0 && (
+          <Box sx={{ mt: 1 }}>
+            {fileErrors.map((errors, idx) => (
+              <Typography key={idx} color="error" variant="body2">
+                {errors.map((err) => err.message).join(", ")}
+              </Typography>
+            ))}
           </Box>
         )}
 

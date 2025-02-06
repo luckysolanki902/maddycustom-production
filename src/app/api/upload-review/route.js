@@ -31,6 +31,7 @@ export async function POST(request) {
     // const variantId = formData.get('variantId');
     const specificCategory = formData.get('categoryId');
     const specificCategoryVariant = formData.get('variantId');
+    const imagePath = formData.get('imagePath');
 
     // specificCategory
     // specificCategoryVariant
@@ -45,56 +46,7 @@ export async function POST(request) {
     }
 
     // Process uploaded files (both images and videos are appended under "images")
-    const files = formData.getAll('images'); // files may be images OR videos
-    const imageUrls = [];
-    const videoUrls = [];
 
-    for (const file of files) {
-      // file is a File (Blob) object; get its MIME type
-      const fileType = file.type; 
-      // Create a unique file name (replace spaces if necessary)
-      const timestamp = Date.now();
-      const sanitizedFileName = file.name.replace(/\s+/g, '_');
-
-      // Determine folder based on file type and create a full path
-      let folder;
-      if (fileType.startsWith('image/')) {
-        folder = 'reviews/images';
-      } else if (fileType.startsWith('video/')) {
-        folder = 'reviews/videos';
-      } else {
-        // Skip files that are neither image nor video
-        continue;
-      }
-      const fileName = `${timestamp}_${sanitizedFileName}`;
-      const fullPath = `${folder}/${fileName}`;
-
-      // Get presigned URL from AWS helper
-      const { presignedUrl, url } = await getPresignedUrl(fullPath, fileType);
-
-      // Read file content (as a Buffer)
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-
-      // Upload file directly to AWS S3 using the presigned URL
-      const uploadResponse = await fetch(presignedUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': fileType,
-        },
-        body: buffer,
-      });
-
-      if (!uploadResponse.ok) {
-        console.error(`Failed to upload file: ${file.name}`);
-      } else {
-        if (fileType.startsWith('image/')) {
-          imageUrls.push(url);
-        } else {
-          videoUrls.push(url);
-        }
-      }
-    }
 
     // Create the review object (note that if you want to store reviewTitle,
     // ensure your Mongoose schema supports it or add it to your schema)
@@ -102,8 +54,7 @@ export async function POST(request) {
       name,
       comment,
       rating,
-      images: imageUrls,
-      videos: videoUrls,
+      images: [imagePath],
       product: productId,
       specificCategory: specificCategory,
       specificCategoryVariant: specificCategoryVariant,
