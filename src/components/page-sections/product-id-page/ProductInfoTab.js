@@ -19,9 +19,6 @@ export default function ProductDescription({ imageUrl, productId, variantId, sel
   const [fetchedContent, setFetchedContent] = useState(null);
 
   // Early return if there are no productInfoTabs.
-  if (availableTabs.length === 0) {
-    return null;
-  }
 
   // Reset the selected tab index when available tabs change.
   useEffect(() => {
@@ -86,6 +83,10 @@ export default function ProductDescription({ imageUrl, productId, variantId, sel
     fetchProductInfoContent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabIndex, productId, variantId, selectedCategory]);
+
+  if (availableTabs.length === 0) {
+    return null;
+  }
 
   return (
     <Box
