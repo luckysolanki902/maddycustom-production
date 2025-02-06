@@ -11,16 +11,9 @@ import styles from "./styles/StarDistribution.module.css";
  */
 export default function StarDistribution({ starCounts, totalReviews,variant }) {
     // console.log(starCounts,variant);
-    const tempStarCounts=variant.tempReviewDistribution
-    const finalStarCounts = starCounts.map(({ star, count }) => ({
-        star,
-        count: count + (tempStarCounts?.[star] || 0),
-    }));
-    console.log(finalStarCounts);
-    console.log(totalReviews)
     return (
         <div className={styles.starDistribution}>
-            {finalStarCounts.map(({ star, count }) => {
+            {starCounts.map(({ star, count }) => {
                 const percentage = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
                 return (
                     <div key={star} className={styles.starRow}>
