@@ -446,7 +446,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
       // Step 6: Cleanup and Navigation
       dispatch(clearUTMDetails());
       dispatch(clearCart());
-      dispatch(resetOrderForm());
       reset();
       handleClose();
       router.push(`/orders/myorder/${orderId}`);
@@ -890,7 +889,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                 />
 
                 {/* Render Extra Fields */}
-                {aggregatedExtraFields.length > 0 && (
+                {/* {aggregatedExtraFields.length > 0 && (
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="h6">Additional Information</Typography>
 
@@ -949,7 +948,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
 
 
                   </Box>
-                )}
+                )} */}
 
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                   <BlackButton

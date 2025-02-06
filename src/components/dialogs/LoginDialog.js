@@ -25,7 +25,7 @@ const LoginDialog = () => {
       phoneNumber: '',
     },
   });
-
+  const isUserPhoneNumberValid = useSelector((state) => state.orderForm.userDetails?.phoneNumber?.length === 10);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -70,19 +70,22 @@ const LoginDialog = () => {
     dispatch(setLoginDialogShown(true));
   };
 
+
   // Open the dialog if conditions are met
   useEffect(() => {
     if (
       timeSpentOnWebsite >= 30 && // Total time spent on website is at least 30 seconds
       scrolledMoreThan60Percent &&
       !loginDialogShown &&
+      !isUserPhoneNumberValid &&
       !userExists &&
       pathname !== '/viewcart'
+      && !pathname.startsWith('/orders/myorder/')
     ) {
       setOpen(true);
       dispatch(setLoginDialogShown(true)); // Prevent showing again
     }
-  }, [timeSpentOnWebsite, scrolledMoreThan60Percent, loginDialogShown, userExists, pathname, dispatch]);
+  }, [timeSpentOnWebsite, scrolledMoreThan60Percent, loginDialogShown, userExists, pathname, dispatch, isUserPhoneNumberValid]);
 
   // Prevent rendering on /viewcart
   if (pathname === '/viewcart') return null;
@@ -191,7 +194,7 @@ const LoginDialog = () => {
                         color: "rgb(85, 85, 85)",
                         width: '100%',
                         boxSizing: 'border-box',
-                        fontFamily:"Jost",
+                        fontFamily: "Jost",
                       }}
                       placeholder='Mobile Number'
                       aria-invalid={errors.phoneNumber ? 'true' : 'false'}
@@ -206,7 +209,7 @@ const LoginDialog = () => {
                           position: 'absolute',
                           top: '100%',
                           left: '0',
-                        fontFamily:"Jost",
+                          fontFamily: "Jost",
 
                         }}
                       >
@@ -233,7 +236,7 @@ const LoginDialog = () => {
                   margin: 'auto',
                   color: '#77c6cb',
                   cursor: 'pointer',
-                  fontFamily:'Jost',
+                  fontFamily: 'Jost',
                 }}
               >
                 Login
