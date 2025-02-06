@@ -299,7 +299,7 @@ export const getDimensionsAndWeight = async (items) => {
           packedItems: ub.packedItems.map((pi) => ({
             variantName: pi.variantName,
             variantBoxName: pi.variantBoxName,
-            quantity: pi.quantity,
+            quantity: pi.quantity, 
           })),
         });
       });
