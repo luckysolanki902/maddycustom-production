@@ -52,14 +52,14 @@ export default function ReviewFullComp({
   productId,
   variantId,
   categoryId,
-  fetchReviewSource = "variant", // default to 'variant'
+  fetchReviewSource = "variant",
+  variant // default to 'variant'
 }) {
   const [reviews, setReviews] = useState([]);
   const [openReviewDialog, setOpenReviewDialog] = useState(false);
-  const userPhoneNumber = useSelector((state) => state.orderForm.userDetails.phoneNumber);
- 
-  
-
+  const userPhoneNumber = useSelector(
+    (state) => state.orderForm.userDetails.phoneNumber
+  );
 
   const [pagination, setPagination] = useState({
     totalCount: 0,
@@ -67,6 +67,9 @@ export default function ReviewFullComp({
     currentPage: 1,
     limit: 5,
   });
+  // New state variables to store overall rating and star counts from the API.
+  const [averageRating, setAverageRating] = useState(0);
+  const [starCounts, setStarCounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -85,9 +88,13 @@ export default function ReviewFullComp({
       });
       const res = await fetch(`/api/reviews?${params.toString()}`);
       const data = await res.json();
+      console.log(data)
       if (res.ok) {
         setReviews(data.reviews);
         setPagination(data.pagination);
+        // Set the overall average rating and star counts computed in the backend
+        setAverageRating(data.averageRating);
+        setStarCounts(data.starCounts);
       } else {
         setError(data.message);
       }
@@ -102,7 +109,6 @@ export default function ReviewFullComp({
   const handleOpenReviewDialog = () => setOpenReviewDialog(true);
   const handleCloseReviewDialog = () => setOpenReviewDialog(false);
 
-
   // Initial fetch or when dependencies change
   useEffect(() => {
     fetchReviews(pagination.currentPage);
@@ -113,17 +119,6 @@ export default function ReviewFullComp({
   const handlePageChange = (event, value) => {
     fetchReviews(value);
   };
-
-  // Calculate summary information based on fetched reviews
-  const totalReviews = reviews.length;
-  const averageRating =
-    totalReviews > 0
-      ? reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
-      : 0;
-  const starCounts = [5, 4, 3, 2, 1].map((star) => ({
-    star,
-    count: reviews.filter((r) => r.rating === star).length,
-  }));
 
   return (
     <div className={styles.reviewContainer}>
@@ -139,6 +134,7 @@ export default function ReviewFullComp({
         averageRating={averageRating}
         totalReviews={pagination.totalCount}
         starCounts={starCounts}
+        variant={variant}
       />
 
       {/* Write a Review Button */}
@@ -152,7 +148,9 @@ export default function ReviewFullComp({
           "@media (max-width: 480px)": { margin: "1.5rem 0" },
         }}
       >
-        <StyledButton variant="outlined" onClick={handleOpenReviewDialog}>Write a review</StyledButton>
+        <StyledButton variant="outlined" onClick={handleOpenReviewDialog}>
+          Write a review
+        </StyledButton>
       </Box>
 
       {/* Customer Photos Section */}

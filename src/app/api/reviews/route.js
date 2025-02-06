@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 
 // Import the User model for looking up the phone number.
 import User from '@/models/User';
+import mongoose from 'mongoose';
 
 export async function GET(request) {
   // Extract query parameters from the request URL
@@ -29,8 +30,8 @@ export async function GET(request) {
         { status: 400 }
       );
     }
-    // Reviews for a specific variant
-    query.specificCategoryVariant = variantId;
+    // Convert the variantId string to an ObjectId.
+    query.specificCategoryVariant = new mongoose.Types.ObjectId(variantId);
   } else if (fetchReviewSource === 'product') {
     if (!productId) {
       return NextResponse.json(
@@ -38,8 +39,8 @@ export async function GET(request) {
         { status: 400 }
       );
     }
-    // Reviews for a specific product
-    query.product = productId;
+    // Convert the productId string to an ObjectId.
+    query.product = new mongoose.Types.ObjectId(productId);
   } else {
     return NextResponse.json(
       { message: 'Invalid fetchReviewSource value' },
@@ -81,6 +82,34 @@ export async function GET(request) {
     const totalPages = Math.ceil(totalCount / limit);
     const skip = (page - 1) * limit;
 
+    // Aggregate the overall average rating and star counts from all matching reviews.
+    const starAggregation = await Review.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$rating',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Create an array with star counts for stars 5 through 1.
+    const starCounts = [5, 4, 3, 2, 1].map((star) => {
+      const found = starAggregation.find((doc) => doc._id === star);
+      return { star, count: found ? found.count : 0 };
+    });
+
+    // Calculate the average rating using the aggregation result.
+    let averageRating = 0;
+    if (totalCount > 0) {
+      const sumRatings = starAggregation.reduce(
+        (acc, curr) => acc + curr._id * curr.count,
+        0
+      );
+      averageRating = sumRatings / totalCount;
+    }
+
+    // Fetch the paginated reviews
     const reviews = await Review.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -90,6 +119,8 @@ export async function GET(request) {
       {
         reviews,
         pagination: { totalCount, totalPages, currentPage: page, limit },
+        averageRating,
+        starCounts,
       },
       { status: 200 }
     );

@@ -11,6 +11,7 @@ import ContactUs from '../layouts/ContactUs';
 import AddToCartButtonWithOrder from '../utils/AddToCartButtonWithOrder';
 import ImageGallery from '../page-sections/product-id-page/ImageGallery';
 import ReviewFullComp from '../page-sections/product-id-page/ReviewFullComp';
+import ProductDescription from '../page-sections/product-id-page/ProductInfoTab';
 
 
 export default function ProductIdPage({ product, variant, category, description }) {
@@ -90,12 +91,14 @@ export default function ProductIdPage({ product, variant, category, description 
             </div>
           </div>
         }
+       
 
 
 
       </div>
+      <ProductDescription imageUrl={`${imageBaseUrl}${product?.images[0]}`} productId={product._id} variantId={variant._id} selectedCategory={category}/>
 
-      <ReviewFullComp productId={product._id} variantId={variant._id} categoryId={category._id} fetchReviewSource={category.reviewFetchSource}/>
+      <ReviewFullComp productId={product._id} variantId={variant._id} categoryId={category._id} fetchReviewSource={category.reviewFetchSource} variant={variant}/>
 
         {/* <HappyCustomersClient parentSpecificCategoryId={category._id} /> */}
         

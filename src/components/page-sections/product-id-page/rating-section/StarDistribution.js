@@ -9,10 +9,18 @@ import styles from "./styles/StarDistribution.module.css";
  * - starCounts: Array of objects (e.g., [{ star: 5, count: 49 }, { star: 4, count: 30 }, ...])
  * - totalReviews: Number of total reviews
  */
-export default function StarDistribution({ starCounts, totalReviews }) {
+export default function StarDistribution({ starCounts, totalReviews,variant }) {
+    // console.log(starCounts,variant);
+    const tempStarCounts=variant.tempReviewDistribution
+    const finalStarCounts = starCounts.map(({ star, count }) => ({
+        star,
+        count: count + (tempStarCounts?.[star] || 0),
+    }));
+    console.log(finalStarCounts);
+    console.log(totalReviews)
     return (
         <div className={styles.starDistribution}>
-            {starCounts.map(({ star, count }) => {
+            {finalStarCounts.map(({ star, count }) => {
                 const percentage = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
                 return (
                     <div key={star} className={styles.starRow}>

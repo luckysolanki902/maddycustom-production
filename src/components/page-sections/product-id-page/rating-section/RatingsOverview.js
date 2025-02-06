@@ -4,7 +4,7 @@ import { styled, useMediaQuery } from "@mui/system";
 import StarDistribution from "./StarDistribution";
 import styles from "./styles/RatingsOverview.module.css";
 
-export default function RatingsOverview({ averageRating, totalReviews, starCounts }) {
+export default function RatingsOverview({ averageRating, totalReviews, starCounts,variant }) {
   const isSmallDevice = useMediaQuery("(max-width: 600px)");
   const isMediumDevice = useMediaQuery("(max-width: 900px)");
   const progressValue = (averageRating / 5) * 100;
@@ -83,7 +83,7 @@ export default function RatingsOverview({ averageRating, totalReviews, starCount
 
       {/* Right (Star Distribution) */}
       <div className={styles.starDistributionSection}>
-        <StarDistribution starCounts={starCounts} totalReviews={totalReviews} />
+        <StarDistribution starCounts={starCounts} totalReviews={totalReviews} variant={variant} />
       </div>
     </div>
   );
