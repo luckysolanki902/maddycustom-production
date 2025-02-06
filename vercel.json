@@ -1,9 +1,13 @@
 {
-    "crons": [
-      {
-        "path": "/api/test",
-        "schedule": "*/50 * * * *"
-      }
-    ]
-  }
+  "crons": [
+    {
+      "path": "/api/cron/aisensy/abandoned-cart-first-campaign",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/aisensy/abandoned-cart-second-campaign",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
   

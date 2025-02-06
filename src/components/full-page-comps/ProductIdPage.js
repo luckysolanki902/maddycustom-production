@@ -15,6 +15,7 @@ import ProductDescription from '../page-sections/product-id-page/ProductInfoTab'
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
 
 export default function ProductIdPage({ product, variant, category, description }) {
+  console.info(product.images[0])
   const [viewFullDescription, setViewFullDescription] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
