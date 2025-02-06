@@ -128,6 +128,18 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
         }
       }
     },
+    // temproary-review-count
+    tempReviewCount:{
+      type: Number,
+      default: 0,
+    },
+    // 
+
+    tempReviewDistribution: {
+      type: Object,
+      default: {}, // e.g., { "3": 0, "4": 0, "5": 0 }
+    },
+    
     variantInfo: {
       type: String,
       default: '',
