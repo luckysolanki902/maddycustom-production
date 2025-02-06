@@ -26,7 +26,7 @@ const CustomerPhotos = ({reviews}) => {
     };
 
     // Filter reviews that have an image
-    const reviewsWithImages = reviews.filter((review) => review.images.length!==0);
+    const reviewsWithImages = reviews && reviews.filter((review) => review.images.length!==0);
    
 
     return (
@@ -44,10 +44,10 @@ const CustomerPhotos = ({reviews}) => {
                     </Typography>
                 ) : (
                     <div className={styles.imageGrid}>
-                        {reviewsWithImages.map((review) => (
+                        {reviewsWithImages?.map((review) => (
                             
                             <div
-                                key={review.id}
+                                key={`${review.id}-${Math.random().toString(36).substring(2, 7)}`}
                                 className={styles.reviewImageContainer}
                                 onClick={() => handleImageClick(review)}
                             >
