@@ -56,10 +56,9 @@ export default function ReviewFullComp({
 }) {
   const [reviews, setReviews] = useState([]);
   const [openReviewDialog, setOpenReviewDialog] = useState(false);
-  const userPhoneNumber = useSelector((state) => state.orderForm.userDetails.phoneNumber);
- 
-  
-
+  const userPhoneNumber = useSelector(
+    (state) => state.orderForm.userDetails.phoneNumber
+  );
 
   const [pagination, setPagination] = useState({
     totalCount: 0,
@@ -69,6 +68,9 @@ export default function ReviewFullComp({
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // State to hold variant details (including tempReviewCount)
+  const [variantDetails, setVariantDetails] = useState(null);
 
   // Fetch reviews from the API
   const fetchReviews = async (page = 1) => {
@@ -99,9 +101,24 @@ export default function ReviewFullComp({
     }
   };
 
+  // Fetch variant details to get tempReviewCount
+  const fetchVariantDetails = async () => {
+    if (!variantId) return;
+    try {
+      const res = await fetch(`/api/get-variant?variantId=${variantId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setVariantDetails(data);
+      } else {
+        console.error("Failed to fetch variant details:", data.error);
+      }
+    } catch (err) {
+      console.error("Error fetching variant details:", err);
+    }
+  };
+
   const handleOpenReviewDialog = () => setOpenReviewDialog(true);
   const handleCloseReviewDialog = () => setOpenReviewDialog(false);
-
 
   // Initial fetch or when dependencies change
   useEffect(() => {
@@ -109,10 +126,17 @@ export default function ReviewFullComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId, variantId, fetchReviewSource]);
 
+  // Fetch variant details when variantId is available or changes
+  useEffect(() => {
+    fetchVariantDetails();
+  }, [variantId]);
+
   // Handle page change from the MUI Pagination component
   const handlePageChange = (event, value) => {
     fetchReviews(value);
   };
+
+  const fetchtempreview = (variantDetails !== null)?(variantDetails.tempReviewCount):0
 
   // Calculate summary information based on fetched reviews
   const totalReviews = reviews.length;
@@ -122,7 +146,8 @@ export default function ReviewFullComp({
       : 0;
   const starCounts = [5, 4, 3, 2, 1].map((star) => ({
     star,
-    count: reviews.filter((r) => r.rating === star).length,
+
+    count: reviews.length>0 && reviews.filter((r) => r.rating === star).length,
   }));
 
   return (
@@ -134,10 +159,12 @@ export default function ReviewFullComp({
         </StyledButton>
       </Box>
 
-      {/* Overall Ratings & Star Distribution */}
+
+    {/* Overall Ratings & Star Distribution */}
       <RatingsOverview
         averageRating={averageRating}
-        totalReviews={pagination.totalCount}
+
+        totalReviews={pagination.totalCount+fetchtempreview}
         starCounts={starCounts}
       />
 
@@ -152,7 +179,9 @@ export default function ReviewFullComp({
           "@media (max-width: 480px)": { margin: "1.5rem 0" },
         }}
       >
-        <StyledButton variant="outlined" onClick={handleOpenReviewDialog}>Write a review</StyledButton>
+        <StyledButton variant="outlined" onClick={handleOpenReviewDialog}>
+          Write a review
+        </StyledButton>
       </Box>
 
       {/* Customer Photos Section */}
@@ -197,10 +226,13 @@ export default function ReviewFullComp({
             date={new Date(review.createdAt).toLocaleDateString()}
           />
         ))}
+        {/* Display tempReviewCount at the bottom of the page */}
+      
       </div>
 
-      {/* MUI Pagination UI (only if there is more than one page) */}
-      {pagination.totalPages > 1 && (
+      {/* MUI Pagination UI (if applicable) */}
+      {/* Uncomment this block if you wish to display pagination */}
+      {/* {pagination.totalPages > 1 && (
         <Box
           sx={{
             display: "flex",
@@ -215,7 +247,9 @@ export default function ReviewFullComp({
             color="primary"
           />
         </Box>
-      )}
+      )} */}
+
+      {/* Review Dialog */}
       <ReviewDialog
         open={openReviewDialog}
         onClose={handleCloseReviewDialog}
@@ -223,6 +257,8 @@ export default function ReviewFullComp({
         categoryId={categoryId}
         variantId={variantId}
       />
+
+      
     </div>
   );
 }
