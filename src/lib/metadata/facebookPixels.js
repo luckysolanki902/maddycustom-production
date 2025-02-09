@@ -1,19 +1,25 @@
 'use client';
 import { v4 as uuidv4 } from 'uuid';
-import { getFbp, getFbc } from '@/lib/utils/cookies'; // Import utility functions to get cookies
+import { getFbp, getFbc } from '@/lib/utils/cookies';
 
-/**
- * Fetches the client's IP address using the ipify API.
- * @returns {Promise<string>} - The client's IP address or an empty string if an error occurs.
- */
+// 1. Get client IP address (attempt IPv6 first, then fallback to IPv4)
 const getClientIp = async () => {
   try {
-    const response = await fetch('https://api.ipify.org?format=json');
+    // Try IPv6
+    const response = await fetch('https://api64.ipify.org?format=json');
     const data = await response.json();
     return data.ip;
   } catch (error) {
-    console.error('Error fetching client IP:', error);
-    return '';
+    console.error('Error fetching IPv6 address:', error);
+    // Fallback to IPv4
+    try {
+      const response = await fetch('https://api.ipify.org?format=json');
+      const data = await response.json();
+      return data.ip;
+    } catch (err) {
+      console.error('Error fetching IPv4 address:', err);
+      return '';
+    }
   }
 };
 
@@ -75,11 +81,9 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       eventParams.phones = [formData.phoneNumber];
     }
 
-    // Send event to Facebook Pixel
+    // Send event to Facebook Pixel (client-side)
     if (window.fbq) {
       window.fbq('track', name, eventParams);
-    } else {
-      // console.warn('Facebook Pixel is not initialized.');
     }
 
     // Send event to server-side Conversion API
@@ -103,8 +107,8 @@ export const addToCart = async (product) => {
         quantity: product.quantity || 1,
         item_price: product.price || 0,
       }],
-      content_name: product.name, // Use product name
-      content_category: product.category, // Use product category object
+      content_name: product.name,
+      content_category: product.category,
       content_type: 'product',
     });
   } catch (error) {
@@ -173,8 +177,8 @@ export const initiateCheckout = async (checkoutData, userData = {}) => {
         quantity: item.quantity,
         item_price: item.price || 0,
       })),
-      content_name: checkoutData.contentName, // Should reflect specific product names
-      content_category: checkoutData.contentCategory, // Should reflect specific product categories
+      content_name: checkoutData.contentName,
+      content_category: checkoutData.contentCategory,
       content_type: 'product',
       num_items: checkoutData.numItems,
     });

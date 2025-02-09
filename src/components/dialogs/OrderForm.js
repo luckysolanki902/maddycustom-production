@@ -1,11 +1,8 @@
-// @/components/OrderForm.js
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
   Tabs,
   Tab,
@@ -46,13 +43,23 @@ import { initiateCheckout, purchase } from '@/lib/metadata/facebookPixels';
 import { v4 as uuidv4 } from 'uuid';
 import Image from 'next/image';
 
-const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, couponsDetails, deliveryCost, discountAmountFinal, items }) => {
+const OrderForm = ({
+  open,
+  onClose,
+  paymentModeConfig,
+  couponCode,
+  totalCost,
+  couponsDetails,
+  deliveryCost,
+  discountAmountFinal,
+  items
+}) => {
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
   const orderForm = useSelector((state) => state.orderForm);
   const utmDetails = useSelector((state) => state.utm);
-  const { userDetails, addressDetails, userExists, prefilledAddress, discountAmount } = orderForm;
+  const { userDetails, addressDetails, userExists, prefilledAddress } = orderForm;
 
   // Local Tab Index State
   const [tabIndex, setTabIndex] = useState(0);
@@ -69,7 +76,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
   // Extract and aggregate unique extraFields from cart items
   const aggregatedExtraFields = useMemo(() => {
     const fieldsMap = new Map();
-
     items.forEach((item) => {
       const category = item.productDetails.category;
       if (category && category.extraFields && category.extraFields.length > 0) {
@@ -80,7 +86,6 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
         });
       }
     });
-
     return Array.from(fieldsMap.values());
   }, [items]);
 
@@ -89,13 +94,13 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
     if (open && aggregatedExtraFields.length > 0) {
       const initialExtraFieldValues = {};
       aggregatedExtraFields.forEach((field) => {
-        initialExtraFieldValues[field.fieldName] = ''; // Initialize with empty string for both types
+        initialExtraFieldValues[field.fieldName] = ''; // Initialize with empty string
       });
       dispatch(setExtraFields(initialExtraFieldValues));
     }
   }, [open, aggregatedExtraFields, dispatch]);
 
-  // Initialize useForm after aggregatedExtraFields is defined
+  // Setup react-hook-form
   const {
     control,
     handleSubmit,
@@ -106,6 +111,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
     defaultValues: {
       name: userDetails.name || '',
       phoneNumber: userDetails.phoneNumber || '',
+      email: userDetails.email || '', // NEW: email field
       addressLine1: addressDetails.addressLine1 || '',
       addressLine2: addressDetails.addressLine2 || '',
       city: addressDetails.city || '',
@@ -113,20 +119,20 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
       pincode: addressDetails.pincode || '',
       country: addressDetails.country || 'India',
       ...aggregatedExtraFields.reduce((acc, field) => {
-        acc[field.fieldName] = ''; // Initialize all extraFields with empty string
+        acc[field.fieldName] = '';
         return acc;
       }, {}),
     },
   });
 
-  // Prevent multiple submissions by tracking if purchase has been initiated
+  // Prevent multiple form submissions
   const [purchaseInitiated, setPurchaseInitiated] = useState(false);
 
-  // Reset tabIndex to 0 when dialog opens
+  // Reset tabIndex when dialog opens
   useEffect(() => {
     if (open) {
       setTabIndex(0);
-      setPurchaseInitiated(false); // Reset purchase initiation flag
+      setPurchaseInitiated(false);
     }
   }, [open]);
 
@@ -135,6 +141,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
     if (open) {
       setValue('name', userDetails.name || '');
       setValue('phoneNumber', userDetails.phoneNumber || '');
+      setValue('email', userDetails.email || '');
       setValue('addressLine1', addressDetails.addressLine1 || '');
       setValue('addressLine2', addressDetails.addressLine2 || '');
       setValue('city', addressDetails.city || '');
@@ -144,34 +151,30 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
     }
   }, [userDetails, addressDetails, setValue, open]);
 
-  // Handle Prefilled Address and Show Snackbar
+  // Handle Prefilled Address
   useEffect(() => {
     if (userExists && prefilledAddress) {
-      // Prefill address fields with the latest address
       dispatch(setAddressDetails(prefilledAddress));
-
-      // Reset userExists and prefilledAddress to prevent snackbar from showing again
       dispatch(setUserExists(false));
       dispatch(setPrefilledAddress(null));
-
-      // Move to Address tab after prefill
       setTabIndex(1);
     } else if (userExists && !prefilledAddress) {
-      // If API doesn't provide latestAddress, check Redux store
+      // If there's already an address in Redux, skip to tab 1
+      const reduxAddress = addressDetails;
       if (
-        addressDetails.addressLine1 ||
-        addressDetails.addressLine2 ||
-        addressDetails.city ||
-        addressDetails.state ||
-        addressDetails.pincode ||
-        addressDetails.country
+        reduxAddress.addressLine1 ||
+        reduxAddress.addressLine2 ||
+        reduxAddress.city ||
+        reduxAddress.state ||
+        reduxAddress.pincode ||
+        reduxAddress.country
       ) {
-        setTabIndex(1); // Move to Address tab
+        setTabIndex(1);
       }
     }
   }, [userExists, prefilledAddress, dispatch, addressDetails]);
 
-  // Synchronize form fields with addressDetails from Redux store
+  // Sync Redux store address details with form
   useEffect(() => {
     if (open) {
       setValue('addressLine1', addressDetails.addressLine1 || '');
@@ -197,26 +200,31 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
     setIsLoading(true);
     try {
       // Update Redux store with user details
-      dispatch(setUserDetails({ name: data.name, phoneNumber: data.phoneNumber }));
+      dispatch(
+        setUserDetails({
+          name: data.name,
+          phoneNumber: data.phoneNumber,
+          email: data.email, // also store email in Redux
+        })
+      );
 
-      // Update user details using PATCH request
+      // If your API routes handle email, you can send email below:
       const response = await axios.patch('/api/user/check', {
         phoneNumber: data.phoneNumber,
         name: data.name,
+        email: data.email, // pass email if your API supports it
       });
-
 
       if (response.data.exists) {
         const latestAddress = response.data.latestAddress;
         const userId = response.data.userId;
-
         dispatch(setUserDetails({ userId }));
 
         if (latestAddress) {
           dispatch(setUserExists(true));
           dispatch(setPrefilledAddress(latestAddress));
         } else {
-          // If latestAddress is not available from API, check Redux store
+          // If no address found in DB, see if Redux has one
           const reduxAddress = addressDetails;
           if (
             reduxAddress.addressLine1 ||
@@ -234,16 +242,16 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
           }
         }
       } else {
-        // Create new user using POST request
+        // Create new user
         const createResponse = await axios.post('/api/user/create', {
           name: data.name,
           phoneNumber: data.phoneNumber,
+          email: data.email, // pass email if your API supports it
           source: 'order-form',
         });
         dispatch(setUserExists(false));
         dispatch(setPrefilledAddress(null));
-        dispatch(setUserDetails({ userId: createResponse.data.userId })); // Store userId
-        // Move to Address tab since user is newly created
+        dispatch(setUserDetails({ userId: createResponse.data.userId }));
         setTabIndex(1);
       }
     } catch (error) {
@@ -257,22 +265,13 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
   };
 
   const onSubmitAddressDetails = async (data) => {
-    if (purchaseInitiated) {
-      // Prevent multiple submissions
-      return;
-    }
+    if (purchaseInitiated) return; // Prevent multiple submissions
     setPurchaseInitiated(true);
     setIsLoading(true);
     setIsPaymentProcessing(true);
 
-    // Initialize variables to track steps
-    let addressAdded = false;
-    let checkoutInitiated = false;
-    let orderCreated = false;
-    let paymentProcessed = false;
-
     try {
-      // Step 1: Add/Update Address
+      // 1) Add/Update Address
       try {
         const addAddressResponse = await axios.post('/api/user/add-address', {
           phoneNumber: orderForm.userDetails.phoneNumber,
@@ -285,24 +284,19 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
             state: data.state,
             pincode: data.pincode,
             country: data.country || 'India',
-            ...orderForm.extraFields, // Include extraFields
+            ...orderForm.extraFields, // include extra fields
           },
         });
-
-        if (addAddressResponse.data.message === 'Address already exists.') {
-          // Address already exists, proceed
-        } else if (addAddressResponse.data.message === 'Address added successfully.') {
-          // Update Redux store with the latest address details from API response
+        if (addAddressResponse.data.message === 'Address added successfully.') {
           dispatch(setAddressDetails(addAddressResponse.data.latestAddress));
         }
-        addressAdded = true;
       } catch (error) {
         console.error('Error adding/updating address:', error.message);
         showSnackbar('Failed to add/update address. Please try again.', 'error');
-        throw error; // Exit the main try-catch
+        throw error;
       }
 
-      // Step 2: Initiate Checkout
+      // 2) Initiate Checkout (for FB Pixel)
       try {
         await initiateCheckout(
           {
@@ -318,18 +312,17 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
             numItems: cartItems.length,
           },
           {
-            // email: userDetails.email, 
-            phoneNumber: userDetails.phoneNumber,
+            email: orderForm.userDetails.email || '', // send email if available
+            phoneNumber: orderForm.userDetails.phoneNumber,
           }
         );
-        checkoutInitiated = true;
       } catch (error) {
         console.error('Error initiating checkout:', error.message);
         showSnackbar('Failed to initiate checkout. Please try again.', 'error');
         throw error;
       }
 
-      // Step 3: Create Order
+      // 3) Create Order
       let orderId = null;
       let paymentDetails = null;
       try {
@@ -338,10 +331,11 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
           phoneNumber: orderForm.userDetails.phoneNumber,
           items: cartItems.map((item) => ({
             product: item.productId,
-            name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-              ? item.productDetails.category?.name.slice(0, -1)
-              : item.productDetails.category?.name
-              }`,
+            name: `${item.productDetails.name} ${
+              item.productDetails.category?.name?.endsWith('s')
+                ? item.productDetails.category?.name.slice(0, -1)
+                : item.productDetails.category?.name
+            }`,
             quantity: item.quantity,
             priceAtPurchase: item.productDetails.price,
             sku: item.productDetails.sku,
@@ -371,43 +365,42 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
             },
           ],
           utmDetails: utmDetails.utmDetails || null,
-          extraFields: orderForm.extraFields, // Include extraFields
+          extraFields: orderForm.extraFields, // include extra fields
         });
 
-        const { orderId: createdOrderId, message, paymentDetails: createdPaymentDetails } = orderResponse.data;
-
+        const { orderId: createdOrderId, message, paymentDetails: createdPaymentDetails } =
+          orderResponse.data;
         dispatch(setLastOrderId(createdOrderId));
 
         orderId = createdOrderId;
         paymentDetails = createdPaymentDetails;
-
-        orderCreated = true;
       } catch (error) {
         console.error('Error creating order:', error.message);
         showSnackbar('Failed to create order. Please try again.', 'error');
         throw error;
       }
 
-      // Step 4: Process Payment (if applicable)
+      // 4) Process Payment (if amountDueOnline > 0)
       if (paymentDetails.amountDueOnline > 0) {
         try {
-          const paymentInitResponse = await axios.post('/api/checkout/order/payment/create-razorpay-order', {
-            orderId: orderId, // Internal orderId
-          });
-
+          const paymentInitResponse = await axios.post(
+            '/api/checkout/order/payment/create-razorpay-order',
+            {
+              orderId: orderId, // internal order ID
+            }
+          );
           const { order: razorpayOrder, msg } = paymentInitResponse.data;
 
           if (msg === 'success') {
             const paymentResult = await makePayment({
               customerName: orderForm.userDetails.name || '',
               customerMobile: orderForm.userDetails.phoneNumber,
-              orderId, // Internal orderId
-              razorpayOrder, // Pass the entire razorpayOrder object
+              orderId, // internal order ID
+              razorpayOrder,
             });
 
             if (paymentResult) {
               showSnackbar('Payment Successful!', 'success');
-              paymentProcessed = true;
             } else {
               showSnackbar('Payment failed. Please try again.', 'error');
               throw new Error('Payment processing failed.');
@@ -419,31 +412,38 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
           }
         } catch (error) {
           console.error('Error processing payment:', error.message);
-          // Depending on requirements, you might want to proceed or halt here
           throw error;
         }
       }
 
-      // Step 5: Send Purchase Event to FB Pixel
+      // 5) Send Purchase Event to FB Pixel
       try {
-        await purchase({
-          orderId: orderId,
-          totalAmount: totalCost,
-          items: cartItems.map((item) => ({
-            product: item.productId,
-            name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-              ? item.productDetails.category?.name.slice(0, -1)
-              : item.productDetails.category?.name
+        await purchase(
+          {
+            orderId,
+            totalAmount: totalCost,
+            items: cartItems.map((item) => ({
+              product: item.productId,
+              name: `${item.productDetails.name} ${
+                item.productDetails.category?.name?.endsWith('s')
+                  ? item.productDetails.category?.name.slice(0, -1)
+                  : item.productDetails.category?.name
               }`,
-            quantity: item.quantity,
-            priceAtPurchase: item.priceAtPurchase,
-          })),
-        });
+              quantity: item.quantity,
+              priceAtPurchase: item.priceAtPurchase,
+            })),
+          },
+          {
+            email: orderForm.userDetails.email || '',
+            phoneNumber: orderForm.userDetails.phoneNumber,
+          }
+        );
       } catch (error) {
         console.error('Error sending purchase event to FB Pixel:', error.message);
+        // Even if this fails, we don't stop the flow
       }
 
-      // Step 6: Cleanup and Navigation
+      // 6) Final Cleanup
       dispatch(clearUTMDetails());
       dispatch(clearCart());
       reset();
@@ -451,23 +451,21 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
       router.push(`/orders/myorder/${orderId}`);
       showSnackbar('Order placed successfully!', 'success');
     } catch (error) {
-      // General error handling if not already handled in specific steps
       console.error('Error during purchase process:', error.message);
       showSnackbar('An error occurred during the purchase process. Please try again.', 'error');
     } finally {
       setIsLoading(false);
       setIsPaymentProcessing(false);
-      setPurchaseInitiated(false); // Reset the purchase initiation flag
+      setPurchaseInitiated(false);
     }
   };
 
-  // Handle dialog close with conditions
+  // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
     if (isPaymentProcessing) {
-      // Prevent closing the dialog during payment processing
       return;
     }
-    setTabIndex(0); // Reset to first tab
+    setTabIndex(0);
     onClose();
     // Remove the history entry added when dialog was opened
     if (window.history.state && window.history.state.modal) {
@@ -478,9 +476,8 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
   // Handle browser back button
   useEffect(() => {
     if (open) {
-      // Push a new state to history when dialog is opened
       window.history.pushState({ modal: true }, '');
-      const onPopState = (event) => {
+      const onPopState = () => {
         if (open) {
           handleClose();
         }
@@ -498,39 +495,37 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
         open={open}
         onClose={handleClose}
         fullWidth
-        // maxWidth="xs"
-        sx={{}}
-        disableEscapeKeyDown={isPaymentProcessing} // Prevent closing with Escape key
+        disableEscapeKeyDown={isPaymentProcessing}
         PaperProps={{
           style: {
-            borderRadius: '1rem', // Adjust the border radius as needed
+            borderRadius: '1rem',
           },
         }}
       >
-        <DialogContent sx={{padding:'2rem 2rem'}}>
-          {/* <Tabs
-            value={tabIndex}
-            onChange={handleTabChange}
-            variant="fullWidth"
-          >
-            <Tab sx={{ fontSize: "1rem", }} label="Part 1" />
-            <Tab sx={{ fontSize: "1rem" }} label="Part 2" disabled={tabIndex !== 1} />
-          </Tabs> */}
-
-
-          {/* small logo in center of a Box */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom:"-1rem" }}>
+        <DialogContent sx={{ padding: '2rem 2rem' }}>
+          {/* Logo & optional back arrow */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             {tabIndex === 1 && (
-              <Box onClick={()=>{setTabIndex(0)}} sx={{ display: 'flex', alignItems: 'center', position: 'absolute', left: '2rem', cursor: 'pointer' }}>
+              <Box
+                onClick={() => setTabIndex(0)}
+                sx={{ position: 'absolute', left: '2rem', cursor: 'pointer' }}
+              >
                 <ArrowBackIcon sx={{ fontSize: '2rem' }} />
               </Box>
             )}
-            <Image loading='eager' src={`${baseImageUrl}/assets/logos/md_nothing_else.png`} width={200} height={200} alt="Small Logo" style={{ width: '70px', height:'auto' }} />
+            <Image
+              loading="eager"
+              src={`${baseImageUrl}/assets/logos/md_nothing_else.png`}
+              width={70}
+              height={70}
+              alt="Small Logo"
+              style={{ width: '70px', height: 'auto' }}
+            />
           </Box>
 
           <Box
             component="form"
-            sx={{  margin:'2rem auto', maxWidth:"400px" }}
+            sx={{ margin: '2rem auto', maxWidth: '400px' }}
             onSubmit={
               tabIndex === 0
                 ? handleSubmit(onSubmitUserDetails)
@@ -538,20 +533,16 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
             }
           >
             {tabIndex === 0 && (
-              <Box
-                sx={{
-                  padding: '0rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                }}
-              >
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <Controller
                   name="name"
                   control={control}
                   rules={{
                     required: 'Name is required',
-                    minLength: { value: 3, message: 'Name must be at least 3 characters' },
+                    minLength: {
+                      value: 3,
+                      message: 'Name must be at least 3 characters',
+                    },
                   }}
                   render={({ field }) => (
                     <TextField
@@ -569,24 +560,71 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                       }}
                       InputLabelProps={{
                         style: {
-                          fontSize: '0.75rem',  // Adjust the size of the label
-                          color: '#9e9e9e',     // Set the label color to grey
+                          fontSize: '0.75rem',
+                          color: '#9e9e9e',
                         },
                       }}
                       sx={{
                         '& .MuiInputBase-root': {
-                          fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                          fontSize: '1rem',
+                          fontWeight: '400',
+                          color: '#575252',
                         },
-                        margin: {
-                          xs: '0px 0', // Less margin for mobile view
-                          sm: 'normal', // Default margin for larger screens
-                        }, '& .MuiInputLabel-root': {
-                          lineHeight: '2', // Further fine-tune the label spacing
+                        margin: { xs: '0px 0', sm: 'normal' },
+                        '& .MuiInputLabel-root': {
+                          lineHeight: '2',
                         },
                       }}
                     />
                   )}
                 />
+
+                {/* NEW: Optional Email Field */}
+                <Controller
+                  name="email"
+                  control={control}
+                  rules={{
+                    pattern: {
+                      // Basic email validation
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: 'Enter a valid email address',
+                    },
+                  }}
+                  render={({ field }) => (
+                    <TextField
+                      variant="standard"
+                      {...field}
+                      label="Email (Optional)"
+                      fullWidth
+                      margin="normal"
+                      error={!!errors.email}
+                      helperText={errors.email ? errors.email.message : ''}
+                      disabled={isLoading || isPaymentProcessing}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        dispatch(setUserDetails({ email: e.target.value }));
+                      }}
+                      InputLabelProps={{
+                        style: {
+                          fontSize: '0.75rem',
+                          color: '#9e9e9e',
+                        },
+                      }}
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          fontSize: '1rem',
+                          fontWeight: '400',
+                          color: '#575252',
+                        },
+                        margin: { xs: '0px 0', sm: 'normal' },
+                        '& .MuiInputLabel-root': {
+                          lineHeight: '2',
+                        },
+                      }}
+                    />
+                  )}
+                />
+
                 <Controller
                   name="phoneNumber"
                   control={control}
@@ -613,27 +651,28 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                       }}
                       InputLabelProps={{
                         style: {
-                          fontSize: '0.75rem',  // Adjust the size of the label
-                          color: '#9e9e9e',     // Set the label color to grey
+                          fontSize: '0.75rem',
+                          color: '#9e9e9e',
                         },
                       }}
                       sx={{
                         '& .MuiInputBase-root': {
-                          fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                          fontSize: '1rem',
+                          fontWeight: '400',
+                          color: '#575252',
                         },
-                        margin: {
-                          xs: '0px 0', // Less margin for mobile view
-                          sm: 'normal', // Default margin for larger screens
-                        }, '& .MuiInputLabel-root': {
-                          lineHeight: '2', // Further fine-tune the label spacing
+                        margin: { xs: '0px 0', sm: 'normal' },
+                        '& .MuiInputLabel-root': {
+                          lineHeight: '2',
                         },
                       }}
                     />
                   )}
                 />
+
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                   <BlackButton
-                  extraClass={'lg'}
+                    extraClass="lg"
                     isLoading={isLoading}
                     buttonText="Next"
                     onClick={handleSubmit(onSubmitUserDetails)}
@@ -644,14 +683,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
             )}
 
             {tabIndex === 1 && (
-              <Box
-                sx={{
-                  padding: '0rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.5rem',
-                }}
-              >
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <Controller
                   name="addressLine1"
                   control={control}
@@ -672,58 +704,26 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                       }}
                       InputLabelProps={{
                         style: {
-                          fontSize: '0.75rem',  // Adjust the size of the label
-                          color: '#9e9e9e',     // Set the label color to grey
+                          fontSize: '0.75rem',
+                          color: '#9e9e9e',
                         },
                       }}
                       sx={{
                         '& .MuiInputBase-root': {
-                          fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                          fontSize: '1rem',
+                          fontWeight: '400',
+                          color: '#575252',
                         },
-                        margin: {
-                          xs: '0px 0', // Less margin for mobile view
-                          sm: 'normal', // Default margin for larger screens
-                        }, '& .MuiInputLabel-root': {
-                          lineHeight: '2', // Further fine-tune the label spacing
+                        margin: { xs: '0px 0', sm: 'normal' },
+                        '& .MuiInputLabel-root': {
+                          lineHeight: '2',
                         },
                       }}
                     />
                   )}
                 />
-                {/* Uncomment if Address Line 2 is needed */}
-                {/* <Controller
-                  name="addressLine2"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      variant="standard"
-                      {...field}
-                      label="Address Line 2 (Optional)"
-                      fullWidth
-                      margin="normal"
-                      disabled={isLoading || isPaymentProcessing}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        dispatch(setAddressDetails({ addressLine2: e.target.value }));
-                      }}
-                      InputLabelProps={{
-                        style: {
-                          fontSize: '0.75rem',  // Adjust the size of the label
-                          color: '#9e9e9e',     // Set the label color to grey
-                        },
-                      }}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
-                        },
-                        margin: {
-                          xs: '0px 0', // Less margin for mobile view
-                          sm: 'normal', // Default margin for larger screens
-                        },
-                      }}
-                    />
-                  )}
-                /> */}
+
+                {/* For brevity, addressLine2 omitted or optional */}
                 <Controller
                   name="city"
                   control={control}
@@ -744,24 +744,25 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                       }}
                       InputLabelProps={{
                         style: {
-                          fontSize: '0.75rem',  // Adjust the size of the label
-                          color: '#9e9e9e',     // Set the label color to grey
+                          fontSize: '0.75rem',
+                          color: '#9e9e9e',
                         },
                       }}
                       sx={{
                         '& .MuiInputBase-root': {
-                          fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                          fontSize: '1rem',
+                          fontWeight: '400',
+                          color: '#575252',
                         },
-                        margin: {
-                          xs: '0px 0', // Less margin for mobile view
-                          sm: 'normal', // Default margin for larger screens
-                        }, '& .MuiInputLabel-root': {
-                          lineHeight: '2', // Further fine-tune the label spacing
+                        margin: { xs: '0px 0', sm: 'normal' },
+                        '& .MuiInputLabel-root': {
+                          lineHeight: '2',
                         },
                       }}
                     />
                   )}
                 />
+
                 <Controller
                   name="state"
                   control={control}
@@ -787,19 +788,19 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                           disabled={isLoading || isPaymentProcessing}
                           InputLabelProps={{
                             style: {
-                              fontSize: '0.75rem',  // Adjust the size of the label
-                              color: '#9e9e9e',     // Set the label color to grey
+                              fontSize: '0.75rem',
+                              color: '#9e9e9e',
                             },
                           }}
                           sx={{
                             '& .MuiInputBase-root': {
-                              fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                              fontSize: '1rem',
+                              fontWeight: '400',
+                              color: '#575252',
                             },
-                            margin: {
-                              xs: '0px 0', // Less margin for mobile view
-                              sm: 'normal', // Default margin for larger screens
-                            }, '& .MuiInputLabel-root': {
-                              lineHeight: '2', // Further fine-tune the label spacing
+                            margin: { xs: '0px 0', sm: 'normal' },
+                            '& .MuiInputLabel-root': {
+                              lineHeight: '2',
                             },
                           }}
                         />
@@ -807,6 +808,7 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                     />
                   )}
                 />
+
                 <Controller
                   name="pincode"
                   control={control}
@@ -833,24 +835,25 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                       }}
                       InputLabelProps={{
                         style: {
-                          fontSize: '0.75rem',  // Adjust the size of the label
-                          color: '#9e9e9e',     // Set the label color to grey
+                          fontSize: '0.75rem',
+                          color: '#9e9e9e',
                         },
                       }}
                       sx={{
                         '& .MuiInputBase-root': {
-                          fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                          fontSize: '1rem',
+                          fontWeight: '400',
+                          color: '#575252',
                         },
-                        margin: {
-                          xs: '0px 0', // Less margin for mobile view
-                          sm: 'normal', // Default margin for larger screens
-                        }, '& .MuiInputLabel-root': {
-                          lineHeight: '2', // Further fine-tune the label spacing
+                        margin: { xs: '0px 0', sm: 'normal' },
+                        '& .MuiInputLabel-root': {
+                          lineHeight: '2',
                         },
                       }}
                     />
                   )}
                 />
+
                 <Controller
                   name="country"
                   control={control}
@@ -869,123 +872,189 @@ const OrderForm = ({ open, onClose, paymentModeConfig, couponCode, totalCost, co
                       }}
                       InputLabelProps={{
                         style: {
-                          fontSize: '0.75rem',  // Adjust the size of the label
-                          color: '#9e9e9e',     // Set the label color to grey
+                          fontSize: '0.75rem',
+                          color: '#9e9e9e',
                         },
                       }}
                       sx={{
                         '& .MuiInputBase-root': {
-                          fontSize: '1rem', fontWeight: '400', color: '#575252' // You can adjust this to fit your design needs
+                          fontSize: '1rem',
+                          fontWeight: '400',
+                          color: '#575252',
                         },
-                        margin: {
-                          xs: '0px 0', // Less margin for mobile view
-                          sm: 'normal', // Default margin for larger screens
-                        }, '& .MuiInputLabel-root': {
-                          lineHeight: '2', // Further fine-tune the label spacing
+                        margin: { xs: '0px 0', sm: 'normal' },
+                        '& .MuiInputLabel-root': {
+                          lineHeight: '2',
                         },
                       }}
                     />
                   )}
                 />
 
-                {/* Render Extra Fields */}
-                {/* {aggregatedExtraFields.length > 0 && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="h6">Additional Information</Typography>
-
-
-                    {aggregatedExtraFields.map((field) => (
-                      <Controller
-                        key={field.fieldName}
-                        name={field.fieldName}
-                        control={control}
-                        rules={{
-                          required:false,
-                          //  field.required ? `${field.question || field.fieldName} is required` : false,
-                          ...(field.fieldType === 'Number' && {
-                            validate: (value) => value !== '' || `${field.question || field.fieldName} is required`,
-                          }),
-                        }}
-                        render={({ field: controllerField }) => (
-                          <TextField
-                            {...controllerField}
-                            variant="standard"
-                            label={field.question || field.fieldName}
-                            type={field.fieldType === 'Number' ? 'number' : 'text'}
-                            fullWidth
-                            margin="normal"
-                            value={controllerField.value || ''} // Ensure controlled input
-                            error={!!errors[field.fieldName]}
-                            helperText={errors[field.fieldName]?.message || ''}
-                            onChange={(e) => {
-                              controllerField.onChange(e);
-                              dispatch(setExtraFields({ [field.fieldName]: e.target.value }));
-                            }}
-                            InputLabelProps={{
-                              style: {
-                                fontSize: '0.75rem',
-                                color: '#9e9e9e',
-                              },
-                            }}
-                            sx={{
-                              '& .MuiInputBase-root': {
-                                fontSize: '1rem',
-                                fontWeight: '400',
-                                color: '#575252',
-                              },
-                              margin: {
-                                xs: '0px 0',
-                                sm: 'normal',
-                              },
-                              '& .MuiInputLabel-root': {
-                                lineHeight: '2',
-                              },
-                            }}
-                          />
-                        )}
-                      />
-                    ))}
-
-
-                  </Box>
-                )} */}
+                {/* Additional ExtraFields if any */}
+                {/* aggregatedExtraFields.map(...) etc. as needed */}
 
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                   <BlackButton
                     isLoading={isLoading}
-                    buttonText={getPaymentButtonText(paymentModeConfig)} // Use utility function
+                    buttonText={getPaymentButtonText(paymentModeConfig)}
                     type="submit"
-                    disabled={isPaymentProcessing || isLoading || purchaseInitiated} // Disable if purchase is initiated
+                    disabled={isPaymentProcessing || isLoading || purchaseInitiated}
                   />
                 </Box>
               </Box>
             )}
           </Box>
 
-          <Box sx={{mt:4}}>
-            <Box sx={{display:'flex', justifyContent:'center', alignItems:'center', gap:'0rem', height:'90px'}}>
-              <Box sx={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', width:'100px', height:'100%', gap:'0.3rem'}}>
-              <Image loading='eager' style={{opacity:'0.4', width:'35px', height:'auto'}} src={`${baseImageUrl}/assets/icons/happiness.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
-              <Typography variant='caption'sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.6rem', marginBottom:'0.2rem', fontFamily:'Jost'}} >2000+ Happy <br />Customers</Typography>
+          {/* Some optional icons or disclaimers */}
+          <Box sx={{ mt: 4 }}>
+            <Box
+              sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0rem', height: '90px' }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  width: '100px',
+                  height: '100%',
+                  gap: '0.3rem',
+                }}
+              >
+                <Image
+                  loading="eager"
+                  style={{ opacity: '0.4', width: '35px', height: 'auto' }}
+                  src={`${baseImageUrl}/assets/icons/happiness.png`}
+                  width={50}
+                  height={50}
+                  alt="Happy Customers"
+                />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'black',
+                    opacity: '0.5',
+                    textAlign: 'center',
+                    lineHeight: '0.8rem',
+                    fontSize: '0.6rem',
+                    marginBottom: '0.2rem',
+                    fontFamily: 'Jost',
+                  }}
+                >
+                  2000+ Happy
+                  <br />
+                  Customers
+                </Typography>
               </Box>
 
-              <Box sx={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', width:'100px', height:'100%', gap:'0.3rem'}}>
-              <Image loading='eager' style={{opacity:'0.4', width:'35px', height:'auto'}} src={`${baseImageUrl}/assets/icons/shield.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
-              <Typography variant='caption' sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.6rem', marginBottom:'0.2rem', fontFamily:'Jost'}} >Payment <br />secured by</Typography>
-              <Image loading='eager' style={{opacity:'0.6', width:'55px', height:'auto'}} src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`} width={150} height={50} alt={`Secure Payment Icon`} ></Image>
-
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  width: '100px',
+                  height: '100%',
+                  gap: '0.3rem',
+                }}
+              >
+                <Image
+                  loading="eager"
+                  style={{ opacity: '0.4', width: '35px', height: 'auto' }}
+                  src={`${baseImageUrl}/assets/icons/shield.png`}
+                  width={50}
+                  height={50}
+                  alt="Shield"
+                />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'black',
+                    opacity: '0.5',
+                    textAlign: 'center',
+                    lineHeight: '0.8rem',
+                    fontSize: '0.6rem',
+                    marginBottom: '0.2rem',
+                    fontFamily: 'Jost',
+                  }}
+                >
+                  Payment
+                  <br />
+                  secured by
+                </Typography>
+                <Image
+                  loading="eager"
+                  style={{ opacity: '0.6', width: '55px', height: 'auto' }}
+                  src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`}
+                  width={150}
+                  height={50}
+                  alt="Razorpay Logo"
+                />
               </Box>
 
-              <Box sx={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', width:'100px', height:'100%', gap:'0.3rem'}}>
-              <Image loading='eager' style={{opacity:'0.4', width:'35px', height:'auto', transform:'scale(1.2)'}} src={`${baseImageUrl}/assets/icons/fast-delivery.png`} width={50} height={50} alt={`Secure Payment Icon`} ></Image>
-              <Typography variant='caption' sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.6rem', marginBottom:'0.2rem', fontFamily:'Jost'}}>On time <br />shipping</Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  width: '100px',
+                  height: '100%',
+                  gap: '0.3rem',
+                }}
+              >
+                <Image
+                  loading="eager"
+                  style={{ opacity: '0.4', width: '35px', height: 'auto', transform: 'scale(1.2)' }}
+                  src={`${baseImageUrl}/assets/icons/fast-delivery.png`}
+                  width={50}
+                  height={50}
+                  alt="Fast Delivery"
+                />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'black',
+                    opacity: '0.5',
+                    textAlign: 'center',
+                    lineHeight: '0.8rem',
+                    fontSize: '0.6rem',
+                    marginBottom: '0.2rem',
+                    fontFamily: 'Jost',
+                  }}
+                >
+                  On time
+                  <br />
+                  shipping
+                </Typography>
               </Box>
-
             </Box>
-            
-            <Box sx={{display:'flex', justifyContent:'center', alignItems:'center', gap:'0.3rem', marginTop:'2rem'}}>
-              <Typography variant='caption' sx={{color:'black', opacity:'0.5', textAlign:'center', lineHeight:'0.8rem', fontSize:'0.7rem', fontFamily:'Jost'}}>Shipping via</Typography>
-              <Image loading='eager' style={{opacity:'0.6', width:'55px', height:'auto'}} src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`} width={150} height={50} alt={`Secure Payment Icon`} ></Image>
+
+            <Box
+              sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.3rem', marginTop: '2rem' }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'black',
+                  opacity: '0.5',
+                  textAlign: 'center',
+                  lineHeight: '0.8rem',
+                  fontSize: '0.7rem',
+                  fontFamily: 'Jost',
+                }}
+              >
+                Shipping via
+              </Typography>
+              <Image
+                loading="eager"
+                style={{ opacity: '0.6', width: '55px', height: 'auto' }}
+                src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`}
+                width={150}
+                height={50}
+                alt="Shiprocket Logo"
+              />
             </Box>
           </Box>
         </DialogContent>

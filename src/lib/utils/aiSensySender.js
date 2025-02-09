@@ -32,9 +32,6 @@ export async function sendWhatsAppMessage({
       order: orderId,
     });
     if (campaignLog && campaignLog.successfulCount >= 1) {
-      console.log(
-        `Message already successfully sent to user ${user._id} for campaign ${campaignName}. Skipping.`
-      );
       return { success: false, message: 'Message already sent successfully for this campaign.' };
     }
 
@@ -96,7 +93,6 @@ export async function sendWhatsAppMessage({
       return { success: false, message: result.message || "Failed to send AiSensy WhatsApp message" };
     }
 
-    console.log("WhatsApp message sent successfully via AiSensy!", result);
     campaignLog.totalCount += 1;
     campaignLog.successfulCount += 1;
     campaignLog.lastSentAt = new Date();

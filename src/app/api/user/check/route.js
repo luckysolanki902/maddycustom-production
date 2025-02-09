@@ -7,7 +7,7 @@ import User from '@/models/User';
 export async function PATCH(request) {
   try {
     // Parse the JSON body
-    const { phoneNumber, name } = await request.json();
+    const { phoneNumber, name, email } = await request.json();
 
     // Validate phoneNumber
     if (!phoneNumber) {
@@ -36,13 +36,20 @@ export async function PATCH(request) {
       return NextResponse.json({ exists: false }, { status: 200 });
     }
 
-    let nameUpdated = false;
 
+    let saveNeeded = false;
     // Check if the 'name' field is missing or empty
     if (!user.name || user.name.trim() === '') {
       user.name = name.trim();
+      saveNeeded = true;
+    }
+    // checki if the 'email' field is missing or empty
+    if (!user.email || user.email.trim() === '') {
+      user.email = email.trim();
+      saveNeeded = true;
+    }
+    if (saveNeeded) {
       await user.save();
-      nameUpdated = true;
     }
 
     // Retrieve the latest address
@@ -56,7 +63,6 @@ export async function PATCH(request) {
       exists: true,
       latestAddress,
       userId: user._id.toString(),
-      nameUpdated,
       name: user.name,
     }, { status: 200 });
 

@@ -15,6 +15,16 @@ const UserSchema = new mongoose.Schema(
       maxlength: 100,
       required: false,
     },
+    email:{
+      type: String,
+      required: false,
+      unique: true,
+      //validation for email:
+      match: [
+        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+        'Please add a valid email address',
+      ],
+    },
     // Array of address objects
     addresses: [
       {
