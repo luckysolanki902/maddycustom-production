@@ -18,7 +18,7 @@ import ReviewCard from './ReviewCard'; // Adjust the import path as needed
 import styles from './styles/imageReviewDialog.module.css';
 import { constReviews } from '../constReviews'; // Import constReviews directly
 
-const ImageReviewDialog = ({ open, handleClose, initialReview , reviews }) => {
+const ImageReviewDialog = ({ open, handleClose, initialReview, reviews }) => {
     const [selectedReview, setSelectedReview] = useState(initialReview);
     const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
     // Update selectedReview when initialReview changes
@@ -37,6 +37,11 @@ const ImageReviewDialog = ({ open, handleClose, initialReview , reviews }) => {
             fullWidth
             maxWidth="md"
             aria-labelledby="image-review-dialog-title"
+            PaperProps={{
+                style: {
+                    borderRadius: '0.5rem'
+                },
+            }}
         >
             <DialogContent
                 dividers
@@ -64,7 +69,6 @@ const ImageReviewDialog = ({ open, handleClose, initialReview , reviews }) => {
                             height={800}
                             className={styles.largeImage}
                             style={{ borderRadius: '8px' }}
-                            objectFit="contain"
                         />
                     </Box>
                 </Box>
@@ -72,13 +76,12 @@ const ImageReviewDialog = ({ open, handleClose, initialReview , reviews }) => {
                 {/* Thumbnail Scroller */}
                 <Box className={styles.thumbnailScroller}>
                     {reviews
-                        .filter((review) => review.images.length!==0) // Ensure only reviews with images are shown
+                        .filter((review) => review.images.length !== 0) // Ensure only reviews with images are shown
                         .map((review) => (
                             <Box
                                 key={review.id}
-                                className={`${styles.thumbnail} ${
-                                    review.id === selectedReview.id ? styles.activeThumbnail : ''
-                                }`}
+                                className={`${styles.thumbnail} ${review.id === selectedReview.id ? styles.activeThumbnail : ''
+                                    }`}
                                 onClick={() => handleThumbnailClick(review)}
                             >
                                 <Image

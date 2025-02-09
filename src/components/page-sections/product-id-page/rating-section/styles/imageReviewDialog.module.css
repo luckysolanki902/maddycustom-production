@@ -25,8 +25,11 @@
 
 .largeImage {
     border-radius: 8px;
-    width: 400px;
+    width: 100%;
+    max-width: 250px;
+    aspect-ratio: 1;
     height: auto;
+    object-fit: cover;
 }
 
 .reviewContainer {
@@ -59,4 +62,6 @@
 
 .thumbnailImage {
     border-radius: 4px;
+    aspect-ratio: 1;
+    object-fit: cover;
 }

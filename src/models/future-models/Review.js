@@ -20,6 +20,12 @@ const ReviewSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    reviewTitle:{
+      type: String,
+      required: true,
+      maxlength: 100,
+      trim: true
+    },
     // Rating given by the user
     // Example: 4.5
     rating: {

@@ -1,7 +1,7 @@
 // File: src/components/page-sections/product-id-page/rating-section/ReviewDialog.js
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
   Button,
   Box,
   Rating,
+  Paper,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
@@ -18,8 +19,10 @@ import { styled } from "@mui/material/styles";
 import { useSelector, useDispatch } from "react-redux";
 import { useDropzone } from "react-dropzone";
 import { setUserDetails } from "@/store/slices/orderFormSlice";
-// --- IMPORT IMAGE COMPRESSION ---
 import imageCompression from "browser-image-compression";
+import { ArrowBack } from "@mui/icons-material";
+
+// ---------------- Helper Components ----------------
 
 // A helper TabPanel component (per MUI docs)
 function TabPanel(props) {
@@ -37,28 +40,32 @@ function TabPanel(props) {
   );
 }
 
-function a11yProps(index) {
-  return {
-    id: `review-tab-${index}`,
-    "aria-controls": `review-tabpanel-${index}`,
-  };
-}
+// ---------------- Styled Components ----------------
 
-// A styled component for the dropzone area
+// A styled component for the dropzone area with an elevated look and black accents
 const DropzoneBox = styled(Box)(({ theme }) => ({
-  border: `2px dashed ${theme.palette.primary.main}`,
-  borderRadius: "8px",
-  padding: theme.spacing(2),
+  border: "2px dashed black",
+  borderRadius: theme.shape.borderRadius,
+  padding: theme.spacing(3),
   textAlign: "center",
   cursor: "pointer",
-  transition: "background-color 0.3s ease",
+  transition: "background-color 0.3s ease, border-color 0.3s ease",
+  backgroundColor: theme.palette.background.default,
   "&:hover": {
     backgroundColor: theme.palette.action.hover,
+    borderColor: "black",
   },
 }));
 
-// The combined component
-export default function ReviewDialog({ open, onClose, productId, categoryId, variantId }) {
+// ---------------- Main Component ----------------
+
+export default function ReviewDialog({
+  open,
+  onClose,
+  productId,
+  categoryId,
+  variantId,
+}) {
   // Grab phone number and name from Redux (order form details)
   const reduxUserDetails = useSelector((state) => state.orderForm.userDetails);
   const initialPhone = reduxUserDetails?.phoneNumber || "";
@@ -75,15 +82,14 @@ export default function ReviewDialog({ open, onClose, productId, categoryId, var
   const [receiverName, setReceiverName] = useState("");
   const [userId, setUserId] = useState("");
 
-  // Handle tab change (only allow switching to review form if verified)
   const handleTabChange = (event, newValue) => {
+    // Only allow switching to review form if purchase is verified
     if (newValue === 1 && !hasPurchased) {
       return;
     }
     setTabValue(newValue);
   };
 
-  // Check purchase when user clicks the button
   const handleCheckPurchase = async () => {
     try {
       setErrorMessage("");
@@ -115,7 +121,8 @@ export default function ReviewDialog({ open, onClose, productId, categoryId, var
     onClose();
   };
 
-  // The review form component with react-dropzone integration
+  // ---------------- Review Form Component ----------------
+
   const ReviewForm = ({
     productId,
     phoneNumber,
@@ -130,46 +137,46 @@ export default function ReviewDialog({ open, onClose, productId, categoryId, var
     const [reviewTitle, setReviewTitle] = useState("");
     const [review, setReview] = useState("");
 
-    // Files the user selected (no immediate upload)
-    const [selectedFiles, setSelectedFiles] = useState([]);
+    // For a single file upload
+    const [selectedFile, setSelectedFile] = useState(null);
     const [fileErrors, setFileErrors] = useState([]);
 
-    const {
-      getRootProps,
-      getInputProps,
-      fileRejections,
-    } = useDropzone({
+    const { getRootProps, getInputProps } = useDropzone({
       accept: { "image/*": [] },
-      multiple: true,
+      multiple: false, // Allow only one file
       maxSize: 10 * 1024 * 1024, // 10 MB
       onDrop: (files) => {
-        setSelectedFiles((prev) => [...prev, ...files]);
-        setFileErrors([]);
+        if (files && files.length) {
+          setSelectedFile(files[0]);
+          setFileErrors([]);
+        }
       },
       onDropRejected: (rejections) => {
         setFileErrors(rejections.map((rej) => rej.errors));
       },
     });
 
-    // Handle form submission -> compress & upload, then send data
+    const handleRemoveFile = () => {
+      setSelectedFile(null);
+    };
+
     const handleSubmit = async (e) => {
       e.preventDefault();
       try {
-        // 1. For each file, compress and upload using a presigned URL
+        // 1. If a file is selected, compress and upload using a presigned URL
         const uploadedImagePaths = [];
-        for (const file of selectedFiles) {
+        if (selectedFile) {
           // Compress file
-          const compressedFile = await imageCompression(file, {
+          const compressedFile = await imageCompression(selectedFile, {
             maxSizeMB: 0.6,
-            maxWidthOrHeight: 1920/2,
+            maxWidthOrHeight: 960,
             useWebWorker: true,
           });
 
-          // Generate a random path/filename
-          // e.g. "reviews/1693412345-abcxyz-somefile.jpg"
+          // Generate a random path/filename (e.g., "reviews/1693412345-abcxyz-somefile.jpg")
           const folder = "reviews";
           const randomStr = Math.random().toString(36).substring(2, 10);
-          const fullPath = `${folder}/${Date.now()}-${randomStr}-${file.name}`;
+          const fullPath = `${folder}/${Date.now()}-${randomStr}-${selectedFile.name}`;
           const fileType = compressedFile.type;
 
           // Request a presigned URL from your API
@@ -202,7 +209,6 @@ export default function ReviewDialog({ open, onClose, productId, categoryId, var
         }
 
         // 2. Send the rest of the review data + array of image paths to your API
-        // (Here we use JSON, but if you need multipart/form-data, adapt accordingly)
         const finalPayload = {
           phoneNumber,
           name: userName,
@@ -214,7 +220,7 @@ export default function ReviewDialog({ open, onClose, productId, categoryId, var
           reviewTitle,
           receiverName,
           userId,
-          images: uploadedImagePaths, // array of S3 keys
+          images: uploadedImagePaths, // array of S3 keys (empty if no file selected)
         };
 
         const response = await fetch("/api/upload-review", {
@@ -242,24 +248,32 @@ export default function ReviewDialog({ open, onClose, productId, categoryId, var
     };
 
     return (
-      <Box component="form" sx={{ mt: 2 }} onSubmit={handleSubmit}>
-        <Typography variant="body1" align="center" gutterBottom>
-          Rating
+      <Box
+        component="form"
+        sx={{
+          mt: 2,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+        onSubmit={handleSubmit}
+      >
+        <Typography variant="h6" align="center" sx={{ fontWeight: 600 }}>
+          How was your experience?
         </Typography>
-        <Rating
-          value={rating}
-          onChange={(event, newValue) => setRating(newValue)}
-          precision={0.5}
-          size="large"
-          sx={{
-            "& .MuiRating-iconFilled": {
-              color: "green", // Filled star color
-            },
-            "& .MuiRating-iconEmpty": {
-              color: "green", // Empty star color
-            },
-          }}
-        />
+
+        <Box sx={{ textAlign: "center" }}>
+          <Rating
+            value={rating}
+            onChange={(event, newValue) => setRating(newValue)}
+            precision={0.5}
+            size="large"
+            sx={{
+              "& .MuiRating-iconFilled": { color: "#00C853" },
+              "& .MuiRating-iconEmpty": { color: "#00C853" },
+            }}
+          />
+        </Box>
 
         <TextField
           label="Review Title"
@@ -267,7 +281,13 @@ export default function ReviewDialog({ open, onClose, productId, categoryId, var
           fullWidth
           value={reviewTitle}
           onChange={(e) => setReviewTitle(e.target.value)}
-          sx={{ my: 2 }}
+          sx={{
+            "& .MuiInputLabel-root": { color: "text.secondary" },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              "&.Mui-focused fieldset": { borderColor: "#00C853" },
+            },
+          }}
         />
 
         <TextField
@@ -275,42 +295,50 @@ export default function ReviewDialog({ open, onClose, productId, categoryId, var
           variant="outlined"
           fullWidth
           multiline
-          rows={3}
+          rows={4}
           value={review}
           onChange={(e) => setReview(e.target.value)}
-          sx={{ mb: 2 }}
+          sx={{
+            "& .MuiInputLabel-root": { color: "text.secondary" },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              "&.Mui-focused fieldset": { borderColor: "#00C853" },
+            },
+          }}
         />
 
-        <Typography variant="body2" sx={{ mb: 1 }}>
-          {receiverName}
+        <Typography variant="body2" align="center">
+          Upload a picture (Optional)
         </Typography>
 
-        <Typography variant="body2" sx={{ mb: 1 }}>
-          Picture (Optional)
-        </Typography>
-
-        {/* React Dropzone area */}
-        <DropzoneBox {...getRootProps()}>
+        {!selectedFile && <DropzoneBox {...getRootProps()}>
           <input {...getInputProps()} />
-          <UploadFileIcon fontSize="large" />
+          <UploadFileIcon fontSize="large" style={{ color: "#000" }} />
           <Typography variant="body2">
-            Drag &amp; drop your photo(s) here, or click to select file(s)
+            Drag &amp; drop your photo here, or click to select a file
           </Typography>
-        </DropzoneBox>
+        </DropzoneBox>}
 
-        {/* List chosen files */}
-        {selectedFiles.length > 0 && (
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="caption">Files:</Typography>
-            <ul>
-              {selectedFiles.map((file) => (
-                <li key={file.name}>{file.name}</li>
-              ))}
-            </ul>
+        {/* Display selected file (if any) with a remove option */}
+        {selectedFile && (
+          <Box
+            sx={{
+              mt: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              overflow: "hidden", // Hides any scrollbar if present
+            }}
+          >
+            <Typography variant="caption" noWrap>
+              {selectedFile.name}
+            </Typography>
+            <Button onClick={handleRemoveFile} size="small">
+              Remove
+            </Button>
           </Box>
         )}
 
-        {/* Display file errors if any */}
         {fileErrors.length > 0 && (
           <Box sx={{ mt: 1 }}>
             {fileErrors.map((errors, idx) => (
@@ -321,26 +349,43 @@ export default function ReviewDialog({ open, onClose, productId, categoryId, var
           </Box>
         )}
 
-        <Box sx={{ mt: 3, textAlign: "center" }}>
-          <Button
-            type="submit"
-            variant="contained"
-            sx={{
-              backgroundColor: "gray",
-              "&:hover": {
-                backgroundColor: "darkgray",
-              },
-            }}
-          >
-            Submit
-          </Button>
-        </Box>
+        <Button
+          type="submit"
+          variant="contained"
+          sx={{
+            mt: 2,
+            background: "linear-gradient(45deg, #00C853, #B2FF59)",
+            color: "#fff",
+            boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+            borderRadius: 2,
+            textTransform: "none",
+            "&:hover": {
+              background: "linear-gradient(45deg, #00E676, #CCFF90)",
+            },
+          }}
+        >
+          Submit Review
+        </Button>
       </Box>
     );
   };
 
+  // ---------------- Dialog Markup ----------------
+
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          padding: 2,
+          boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.2)",
+        },
+      }}
+    >
       <IconButton
         aria-label="close"
         onClick={handleClose}
@@ -348,45 +393,73 @@ export default function ReviewDialog({ open, onClose, productId, categoryId, var
           position: "absolute",
           right: 8,
           top: 8,
-          color: (theme) => theme.palette.grey[500],
+          color: "grey.500",
         }}
       >
         <CloseIcon />
       </IconButton>
 
-      <DialogContent dividers>
-        <Box sx={{ display: "flex", justifyContent: "center" }}>
-          {tabValue === 0 ? (
-            <Typography variant="body1" gutterBottom>
-              Verify your number
-            </Typography>
-          ) : (
-            <Typography variant="body1" gutterBottom>
-              Write a Review
-            </Typography>
-          )}
-        </Box>
+      <DialogContent>
+        {/* When the review form is open (tabValue === 1), show a back button */}
+        {tabValue === 1 && (
+          <IconButton
+            aria-label="back"
+            onClick={() => setTabValue(0)}
+            sx={{
+              position: "absolute",
+              left: 8,
+              top: 8,
+              color: "grey.500",
+            }}
+          >
+            <ArrowBack />
+          </IconButton>
+        )}
 
         {/* Tab Panel for Verify Purchase */}
         <TabPanel value={tabValue} index={0}>
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body1" gutterBottom>
-              Enter your phone number to verify purchase:
+          <Box sx={{ mt: 2, textAlign: "center" }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            Please enter your phone number
             </Typography>
+            {/* <Typography variant="body1" sx={{ mb: 2, color: "text.secondary" }}>
+              Please enter your phone number to verify your purchase.
+            </Typography> */}
             <TextField
               label="Phone Number"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               fullWidth
-              sx={{ mb: 2 }}
+              sx={{
+                mb: 2,
+                "& .MuiInputLabel-root": { color: "text.secondary" },
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  "&.Mui-focused fieldset": { borderColor: "#00C853" },
+                },
+              }}
             />
             {errorMessage && (
               <Typography color="error" sx={{ mb: 2 }}>
-                {errorMessage}
+                {errorMessage === 'phoneNumber and productId are required' ? 'Phone number is required!' : errorMessage}
               </Typography>
             )}
-            <Button variant="contained" onClick={handleCheckPurchase}>
-              Check Purchase
+            <Button
+              variant="contained"
+              onClick={handleCheckPurchase}
+              sx={{
+                background: "linear-gradient(45deg, #00C853, #B2FF59)",
+                color: "#fff",
+                boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+                borderRadius: 2,
+                textTransform: "none",
+                padding:'0.5rem 3rem',
+                "&:hover": {
+                  background: "linear-gradient(45deg, #00E676, #CCFF90)",
+                },
+              }}
+            >
+              Verify
             </Button>
           </Box>
         </TabPanel>

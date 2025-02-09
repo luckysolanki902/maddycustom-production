@@ -1,12 +1,26 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { Box, Typography, Collapse, Button, Divider } from '@mui/material';
-import Image from 'next/image';
-import CustomRenderer from './CustomRenderer';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import {
+  Box,
+  Typography,
+  Collapse,
+  Button,
+  Divider,
+  Skeleton,
+} from "@mui/material";
+import Image from "next/image";
+import CustomRenderer from "./CustomRenderer";
+import styles from "./styles/product-info-tabs.module.css";
+import { useSpring, animated } from "react-spring";
 
-export default function ProductDescription({ imageUrl, productId, variantId, selectedCategory }) {
-  // Always call hooks first.
+export default function ProductDescription({
+  imageUrl,
+  productId,
+  variantId,
+  selectedCategory,
+}) {
+  // Compute available tabs from selectedCategory.
   const availableTabs = useMemo(() => {
     if (selectedCategory && Array.isArray(selectedCategory.productInfoTabs)) {
       return selectedCategory.productInfoTabs;
@@ -16,11 +30,28 @@ export default function ProductDescription({ imageUrl, productId, variantId, sel
 
   const [tabIndex, setTabIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
-  const [fetchedContent, setFetchedContent] = useState(null);
+  /**
+   * contentCache will hold the fetched data (or a loading flag) for each tab.
+   * The cache key here is the tab title.
+   * Example:
+   * {
+   *   "Description": { loading: false, content: { ... } },
+   *   "Specifications": { loading: false, content: null },
+   * }
+   */
+  const [contentCache, setContentCache] = useState({});
 
-  // Early return if there are no productInfoTabs.
+  // Create refs for each tab to measure dimensions for the animated underline.
+  const tabRefs = useRef([]);
 
-  // Reset the selected tab index when available tabs change.
+  // Underline spring animation.
+  const [underlineStyle, api] = useSpring(() => ({
+    left: 0,
+    width: 0,
+    config: { tension: 300, friction: 30 },
+  }));
+
+  // If the available tabs change and the current index is out of range, reset it.
   useEffect(() => {
     if (availableTabs.length > 0 && tabIndex >= availableTabs.length) {
       setTabIndex(0);
@@ -29,17 +60,38 @@ export default function ProductDescription({ imageUrl, productId, variantId, sel
 
   const handleTabClick = (index) => {
     setTabIndex(index);
-    setExpanded(false); // Optionally collapse when changing tabs
+    setExpanded(false); // Collapse content when changing tab.
   };
 
-  const fetchProductInfoContent = async () => {
+  // Clear the cache when key props change (in case product info is different).
+  useEffect(() => {
+    setContentCache({});
+    setExpanded(false);
+  }, [productId, variantId, selectedCategory]);
+
+  // Fetch product info content for the current tab if not already cached.
+  useEffect(() => {
     if (!selectedCategory || availableTabs.length === 0) return;
-
-    // Use the current tab's title.
     const currentTab = availableTabs[tabIndex];
-    const tabName = currentTab.title;
-    const fetchSource = currentTab.fetchSource; // e.g., "Product", "Variant", or "SpecCat"
+    if (!currentTab) return;
+    const currentTabKey = currentTab.title;
 
+    // If this tab is already loading or fetched (even if null) then do nothing.
+    if (
+      contentCache[currentTabKey]?.loading ||
+      contentCache[currentTabKey]?.content !== undefined
+    ) {
+      return;
+    }
+
+    // Set loading state for the current tab.
+    setContentCache((prev) => ({
+      ...prev,
+      [currentTabKey]: { loading: true, content: null },
+    }));
+
+    const tabName = currentTab.title;
+    const fetchSource = currentTab.fetchSource; // "Product", "Variant", or "SpecCat"
     let queryParam = "";
     let type = "";
 
@@ -53,145 +105,181 @@ export default function ProductDescription({ imageUrl, productId, variantId, sel
       queryParam = selectedCategory._id;
       type = "category";
     } else {
-      // If required IDs are missing, do not fetch.
-      setFetchedContent(null);
+      setContentCache((prev) => ({
+        ...prev,
+        [currentTabKey]: { loading: false, content: null },
+      }));
       return;
     }
 
-    try {
-      const res = await fetch(
-        `/api/productinfo?type=${type}&id=${queryParam}&tab=${encodeURIComponent(tabName)}`
-      );
-      if (res.ok) {
-        const data = await res.json();
+    fetch(
+      `/api/productinfo?type=${type}&id=${queryParam}&tab=${encodeURIComponent(
+        tabName
+      )}`
+    )
+      .then((res) => {
+        if (res.ok) return res.json();
+        else throw new Error("Failed to load product info.");
+      })
+      .then((data) => {
         if (data && data.content) {
-          setFetchedContent(data.content);
+          setContentCache((prev) => ({
+            ...prev,
+            [currentTabKey]: { loading: false, content: data.content },
+          }));
         } else {
-          setFetchedContent(null);
+          setContentCache((prev) => ({
+            ...prev,
+            [currentTabKey]: { loading: false, content: null },
+          }));
         }
-      } else {
-        console.error("Failed to load product info.");
-        setFetchedContent(null);
-      }
-    } catch (error) {
-      console.error("Error loading product info:", error);
-      setFetchedContent(null);
+      })
+      .catch((error) => {
+        console.error("Error loading product info:", error);
+        setContentCache((prev) => ({
+          ...prev,
+          [currentTabKey]: { loading: false, content: null },
+        }));
+      });
+  }, [tabIndex, productId, variantId, selectedCategory, availableTabs, contentCache]);
+
+  // Update the animated underline dimensions when the active tab changes.
+  useLayoutEffect(() => {
+    if (tabRefs.current[tabIndex]) {
+      const { offsetLeft, clientWidth } = tabRefs.current[tabIndex];
+      api.start({ left: offsetLeft, width: clientWidth });
     }
-  };
+  }, [tabIndex, availableTabs, api]);
 
-  useEffect(() => {
-    fetchProductInfoContent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabIndex, productId, variantId, selectedCategory]);
-
-  if (availableTabs.length === 0) {
-    return null;
-  }
+  // Determine the current tab's cached data.
+  const currentTabKey = availableTabs[tabIndex]?.title;
+  const tabData = currentTabKey ? contentCache[currentTabKey] : null;
+  const isLoading = tabData ? tabData.loading : false;
+  const fetchedContent = tabData ? tabData.content : null;
+  const hasFetchedContent =
+    fetchedContent && fetchedContent.blocks && fetchedContent.blocks.length > 0;
 
   return (
-    <Box
-      sx={{
-        maxWidth: { xs: '100%', sm: 700 },
-        mx: 'auto',
-        p: { xs: 1, sm: 3 },
-        bgcolor: 'rgba(217, 217, 217, 0.6)',
-        borderRadius: 2,
-        position: 'relative',
-        fontFamily: 'Jost',
-      }}
-    >
-      {/* Render the tabs header only if there are available tabs */}
+    <Box className={styles.mainCont}>
       <Box
         sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          justifyContent: 'flex-start',
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          mb: { xs: 3, sm: 5 },
-          ml: { xs: 2, sm: 4 },
-          fontFamily: 'Jost',
-          gap: { xs: 1, sm: 0 },
+          maxWidth: "100%",
+          mx: "auto",
+          p: { xs: 1, sm: 3 },
+          // bgcolor: "rgba(217, 217, 217, 0.6)",
+          bgcolor: "rgba(255, 255, 255, 1)",
+          borderRadius: 2,
+          position: "relative",
+          fontFamily: "Jost",
         }}
       >
-        {availableTabs.map((tab, index) => (
-          <Box key={tab.title} sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography
+        {/* Tabs Header */}
+        <Box
+          className={styles.tabsContainer}
+          sx={{
+            position: "relative",
+            overflowX: "auto",
+            whiteSpace: "nowrap",
+            mb: { xs: 2, sm: 3 },
+          }}
+        >
+          {availableTabs.map((tab, index) => (
+            <Box
+              key={tab.title}
+              ref={(el) => (tabRefs.current[index] = el)}
+              className={styles.tabItem}
               onClick={() => handleTabClick(index)}
-              sx={{
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                borderBottom: tabIndex === index ? '3px solid black' : 'none',
-                fontFamily: 'Jost',
-                fontSize: { xs: '1rem', sm: '1.2rem' },
-              }}
             >
-              {tab.title}
-            </Typography>
-            {index !== availableTabs.length - 1 && (
-              <Divider
-                orientation="vertical"
-                flexItem
+              <Typography
                 sx={{
-                  display: { xs: 'none', sm: 'block' },
-                  height: 20,
-                  mx: 2,
-                  bgcolor: 'black',
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  fontFamily: "Jost",
+                  fontSize: { xs: "1rem", sm: "1.2rem" },
+                  px: 2,
+                  py: 1,
                 }}
-              />
-            )}
-          </Box>
-        ))}
-      </Box>
-
-      {availableTabs[tabIndex]?.title?.toLowerCase() === 'description' && (
-        <Box sx={{ mx: { xs: 2, sm: 2 }, mb: { xs: 3, sm: 4 } }}>
-          {/* Wrap Image in a responsive Box */}
-          <Box
-            sx={{
-              position: 'relative',
-              width: { xs: 260, sm: 600 },
-              height: { xs: 200, sm: 350 },
-              borderRadius: '8px',
-              overflow: 'hidden',
-              mx: 'auto',
-            }}
-          >
-            <Image
-              src={imageUrl}
-              alt="Product Image"
-              fill
-              sizes="(max-width: 600px) 300px, 600px"
-              style={{ objectFit: 'cover' }}
-            />
-          </Box>
+              >
+                {tab.title}
+              </Typography>
+            </Box>
+          ))}
+          {/* Animated Underline */}
+          <animated.div className={styles.underline} style={underlineStyle} />
         </Box>
-      )}
 
-      <Collapse in={expanded}>
-        <Box sx={{ p: { xs: 1, sm: 2 } }}>
-          {fetchedContent ? (
-            <CustomRenderer data={fetchedContent} />
+        <Divider />
+
+        {/* Main Product Image for "Description" tab */}
+        {availableTabs[tabIndex]?.title?.toLowerCase() === "description" &&
+          imageUrl && (
+            <Box sx={{ my: { xs: 2, sm: 3 }, textAlign: "center" }}>
+              <Box
+                sx={{
+                  position: "relative",
+                  width: { xs: "90%", sm: "90%" },
+                  height: expanded ? "auto" : { xs: "200px", sm: "350px" },
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  mx: "auto",
+                }}
+              >
+                <Image
+                  src={imageUrl}
+                  alt="Product Image"
+                  width={1000}
+                  height={1000}
+                  style={{ objectFit: "cover", width: "100%", height: "auto" }}
+                  className={styles.commonProductImage}
+                />
+              </Box>
+            </Box>
+          )}
+
+        {/* Fetched Additional Content */}
+        <Box sx={{ mt: 2 }}>
+          {isLoading ? (
+            // Show skeleton until data is loaded.
+            <Box sx={{ textAlign: "center" }}>Loading...</Box>
+          ) : hasFetchedContent ? (
+            <>
+              <Collapse in={expanded} timeout="auto" unmountOnExit>
+                <Box sx={{ p: { xs: 1, sm: 2 } }}>
+                  <CustomRenderer data={fetchedContent} />
+                </Box>
+              </Collapse>
+              <Box sx={{ textAlign: "center", mt: 1 }}>
+                <Button
+                  onClick={() => setExpanded(!expanded)}
+                  sx={{
+                    color: "#000",
+                    fontWeight: "bold",
+                    textTransform: "none",
+                    fontFamily: "Jost",
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                  }}
+                >
+                  {expanded ? "Read less" : "Read more"} ▼
+                </Button>
+              </Box>
+            </>
           ) : (
-            <Typography sx={{ color: '#333', fontSize: { xs: '0.9rem', sm: '1rem' } }}>
-              {`No ${availableTabs[tabIndex]?.title?.toLowerCase() || 'content'} available for this product.`}
-            </Typography>
+            // Only display the "no details" message after loading is finished.
+            !isLoading && (
+              <Typography
+                sx={{
+                  color: "#333",
+                  fontSize: { xs: "0.9rem", sm: "1rem" },
+                  textAlign: "center",
+                  mt: 2,
+                }}
+              >
+                No additional details available for this product.
+              </Typography>
+            )
           )}
         </Box>
-      </Collapse>
-
-      <Button
-        onClick={() => setExpanded(!expanded)}
-        sx={{
-          mt: 2,
-          color: '#000',
-          fontWeight: 'bold',
-          textTransform: 'none',
-          fontFamily: 'Jost',
-          fontSize: { xs: '0.9rem', sm: '1rem' },
-        }}
-      >
-        Read {expanded ? 'less' : 'more'} ▼
-      </Button>
+      </Box>
     </Box>
   );
 }

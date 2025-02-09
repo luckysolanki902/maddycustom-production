@@ -1,0 +1,39 @@
+.mainCont {
+    padding: 0 5rem;
+  }
+  
+  .tabsContainer {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    margin-bottom: 1rem;
+    position: relative;
+  }
+  
+  .tabItem {
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.3s;
+  }
+  
+  .tabItem:hover {
+    border-color: #aaa;
+  }
+  
+  .underline {
+    position: absolute;
+    bottom: 0;
+    height: 3px;
+    background: #000;
+    border-radius: 2px;
+  }
+
+
+  @media (max-width: 1000px) {
+    .mainCont {
+      padding: 1rem;
+    }
+  }
+  
