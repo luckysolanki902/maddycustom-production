@@ -56,6 +56,7 @@ const OrderSchema = new mongoose.Schema(
           required: true,
           min: 0,
         },
+
       },
     ],
 
@@ -104,6 +105,10 @@ const OrderSchema = new mongoose.Schema(
       required: true,
       min: 0,
       default: 0,
+    },
+    isTestingOrder:{
+      type: Boolean,
+      default: false
     },
     // Payment details
     paymentDetails: {
@@ -280,9 +285,10 @@ OrderSchema.pre('findOneAndUpdate', function(next) {
   next();
 });
 
-
+if (mongoose.models.Order) {
+  delete mongoose.models.Order;
+}
 // Indexes for better performance
 OrderSchema.index({ 'address.receiverName': 'text', 'address.receiverPhoneNumber': 'text' });
-OrderSchema.index({ 'items.product': 1 });
 
 module.exports = mongoose.models.Order || mongoose.model('Order', OrderSchema);

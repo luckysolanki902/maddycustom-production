@@ -1,8 +1,6 @@
-// @/components/analytics/FacebookPixel.js
 import Script from 'next/script';
+
 const FacebookPixel = () => {
-
-
   return (
     <>
       <Script

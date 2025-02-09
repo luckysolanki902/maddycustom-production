@@ -7,7 +7,7 @@ import User from '@/models/User';
 export async function POST(request) {
   try {
     // Parse the JSON body
-    const { name, phoneNumber } = await request.json();
+    const { name, phoneNumber, email } = await request.json();
 
     // Validate input
     if (!phoneNumber) {
@@ -53,6 +53,7 @@ export async function POST(request) {
       name: name || '', // Name is optional
       addresses: [],
       isVerified: false,
+      email: email || '',
     });
 
     await newUser.save();
