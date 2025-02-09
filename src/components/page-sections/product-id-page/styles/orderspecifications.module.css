@@ -34,8 +34,22 @@
 
 }
 
+@media (width < 1100px) {
+    .item img {
+        width: 5rem;   
+    }
+}
+@media (width < 1000px) {
+    .justContStart {
+        justify-content: space-around;
+    }
+}
 @media (width < 600px) {
     .item img {
-        width: 4.5rem;   
+        width: 4rem;   
+    }
+    .justContStart{
+    gap: 2rem;
+
     }
 }
