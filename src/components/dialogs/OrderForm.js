@@ -325,17 +325,17 @@ const OrderForm = ({
       // 3) Create Order
       let orderId = null;
       let paymentDetails = null;
-      let paymentSuccess = false;
       try {
         const orderResponse = await axios.post('/api/checkout/order/create', {
           userId: orderForm.userDetails.userId,
           phoneNumber: orderForm.userDetails.phoneNumber,
           items: cartItems.map((item) => ({
             product: item.productId,
-            name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+            name: `${item.productDetails.name} ${
+              item.productDetails.category?.name?.endsWith('s')
                 ? item.productDetails.category?.name.slice(0, -1)
                 : item.productDetails.category?.name
-              }`,
+            }`,
             quantity: item.quantity,
             priceAtPurchase: item.productDetails.price,
             sku: item.productDetails.sku,
@@ -400,52 +400,47 @@ const OrderForm = ({
             });
 
             if (paymentResult) {
-              paymentSuccess = true;
               showSnackbar('Payment Successful!', 'success');
             } else {
-              paymentSuccess = false;
               showSnackbar('Payment failed. Please try again.', 'error');
               throw new Error('Payment processing failed.');
             }
           } else {
-            paymentSuccess = false;
             console.error('Failed to initiate payment:', msg);
             showSnackbar('Failed to initiate payment.', 'error');
             throw new Error('Payment initiation failed.');
           }
         } catch (error) {
-          paymentSuccess = true;
           console.error('Error processing payment:', error.message);
           throw error;
         }
       }
 
       // 5) Send Purchase Event to FB Pixel
-      if (paymentSuccess) {
-        try {
-          await purchase(
-            {
-              orderId,
-              totalAmount: totalCost,
-              items: cartItems.map((item) => ({
-                product: item.productId,
-                name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-                    ? item.productDetails.category?.name.slice(0, -1)
-                    : item.productDetails.category?.name
-                  }`,
-                quantity: item.quantity,
-                priceAtPurchase: item.priceAtPurchase,
-              })),
-            },
-            {
-              email: orderForm.userDetails.email || '',
-              phoneNumber: orderForm.userDetails.phoneNumber,
-            }
-          );
-        } catch (error) {
-          console.error('Error sending purchase event to FB Pixel:', error.message);
-          // Even if this fails, we don't stop the flow
-        }
+      try {
+        await purchase(
+          {
+            orderId,
+            totalAmount: totalCost,
+            items: cartItems.map((item) => ({
+              product: item.productId,
+              name: `${item.productDetails.name} ${
+                item.productDetails.category?.name?.endsWith('s')
+                  ? item.productDetails.category?.name.slice(0, -1)
+                  : item.productDetails.category?.name
+              }`,
+              quantity: item.quantity,
+              priceAtPurchase: item.priceAtPurchase,
+            })),
+          },
+          {
+            email: orderForm.userDetails.email || '',
+            phoneNumber: orderForm.userDetails.phoneNumber,
+          }
+        );
+      } catch (error) {
+        console.error('Error sending purchase event to FB Pixel:', error.message);
+        // Even if this fails, we don't stop the flow
       }
 
       // 6) Final Cleanup
