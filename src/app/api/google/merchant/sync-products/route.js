@@ -54,7 +54,7 @@ export async function GET() {
       },
       link: `https://www.maddycustom.com/shop${product.pageSlug}`,
       imageLink: product.images[0]
-        ? `https://d26w01jhwuuxpo.cloudfront.net${product.images[0]}`
+        ? `https://d26w01jhwuuxpo.cloudfront.net${product.images[0].startsWith('/') ? product.images[0] : '/' + product.images[0]}`
         : '', // Ensure imageLink is present
       brand: 'Maddy Custom', // Static value
       channel: 'online', // **Added Required Field**

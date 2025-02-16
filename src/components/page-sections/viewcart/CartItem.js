@@ -39,7 +39,7 @@ const CartItem = ({ item, onRemove }) => {
         height={341.5}
         src={
           item.productDetails.images && item.productDetails.images.length > 0
-            ? `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${item.productDetails.images[0]}`
+            ? `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${item.productDetails.images[0].startsWith('/') ? item.productDetails.images[0] : '/' + item.productDetails.images[0]}`
             : '/images/assets/gifs/helmetloadinggiflandscape2.gif'
         }
         alt={item.productDetails.name}

@@ -27,7 +27,7 @@ export async function GET() {
       return {
         url: `${baseUrl}/shop${product.pageSlug}`,
         images: product.images.map((image) => ({
-          loc: `${baseImageUrl}${image}`,
+          loc: `${baseImageUrl}${image.startsWith('/') ? image : '/' + image}`,
           title: `${product.title} - Buy Now | Maddy Custom`,
           caption: description || '',
           alt: `${product.title} - Custom Wraps and Graphics`,

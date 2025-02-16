@@ -81,7 +81,7 @@ const OurUniqueProductCarousel = ({ products }) => { // Accept products as props
                     {products.map((card, index) => (
                         <SwiperSlide key={index} style={{ background: 'transparent', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
                             <Card
-                                imageSrc={`${baseImageUrl}${card.images[0]}`} // assuming first image is used in carousel
+                                imageSrc={`${baseImageUrl}${card.images[0].startsWith('/') ? card.images[0] : '/' + card.images[0]}`} // assuming first image is used in carousel
                                 name={card.name}
                                 price={card.price}
                                 link={`/shop${card.pageSlug}`}

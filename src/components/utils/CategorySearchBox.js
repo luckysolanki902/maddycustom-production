@@ -197,7 +197,7 @@ const CategorySearchBox = ({ categories, variants }) => { // Receive categories 
                                     value={searchText} // Corrected here
                                     className={`${searchStyles.inputField} ${searchStyles.nonDialogInputField}`}
                                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'transparent', border: 'none' }}
-                                    // placeholder="Search..."
+                                // placeholder="Search..."
                                 />
                             </div>
                         </div>
@@ -227,8 +227,8 @@ const CategorySearchBox = ({ categories, variants }) => { // Receive categories 
                                 style={{ cursor: 'pointer' }}
                             />
                         </IconButton>
-                        <Typography sx={{ ml: 2, flex: 1, color: 'black' , fontFamily:'Jost'}} variant="h6" component="div">
-                            Search Your Bike
+                        <Typography sx={{ ml: 2, flex: 1, color: 'black', fontFamily: 'Jost' }} variant="h6" component="div">
+                            Customize your vehicle, your way!
                         </Typography>
                     </Toolbar>
                 </AppBar>
@@ -280,7 +280,7 @@ const CategorySearchBox = ({ categories, variants }) => { // Receive categories 
                                         </ListItemIcon>
                                         <ListItemText primary={
                                             <Box display='flex' alignItems='center'>
-                                                <Typography variant="body1" component="span" sx={{fontFamily:'Jost'}}>
+                                                <Typography variant="body1" component="span" sx={{ fontFamily: 'Jost' }}>
                                                     {suggestion}
                                                 </Typography>
                                                 {(['helmet', 'tank', 'pillar', 'bonnet'].some(word => suggestion?.toLowerCase().includes(word))) && (
@@ -292,7 +292,7 @@ const CategorySearchBox = ({ categories, variants }) => { // Receive categories 
                                 ))}
                             </List>
                         ) : (
-                            <Typography variant="h6" align="center" sx={{ mt: 4 , fontFamily:'Jost'}}>
+                            <Typography variant="h6" align="center" sx={{ mt: 4, fontFamily: 'Jost' }}>
                                 No results found
                             </Typography>
                         )}

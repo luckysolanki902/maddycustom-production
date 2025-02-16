@@ -15,7 +15,7 @@ const OrderSpecifications = ({ features = [], borderUrl, justContStart }) => {
                     style={{ borderImage: `url(${borderUrl}) 30 round` }}
                 >
                     <Image 
-                        src={`${imageBaseUrl}${feature.imageUrl}`} 
+                        src={`${imageBaseUrl}${feature.imageUrl.startsWith('/') ? feature.imageUrl : '/' + feature.imageUrl}`} 
                         width={500} 
                         height={500} 
                         alt={feature.name} 
