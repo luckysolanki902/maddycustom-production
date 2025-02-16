@@ -27,6 +27,7 @@ export const config = {
  */
 export async function POST(request) {
   // Start a MongoDB session
+  await connectToDatabase();
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -82,7 +83,7 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Event type not handled.' }, { status: 200 });
     }
 
-    await connectToDatabase();
+    
 
     const payment = event.payload.payment.entity;
     const paymentId = payment.id;
