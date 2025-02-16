@@ -32,9 +32,8 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
+const isTestingOrder = process.env.isTestingOrder || false;
     await connectToDatabase();
-
     // Find or create user
     let user = null;
     if (userId) {
@@ -159,6 +158,7 @@ export async function POST(request) {
         amountPaidCod: amountPaidCod,
         razorpayDetails: {},
       },
+      isTestingOrder: isTestingOrder,
       address: {
         receiverName: address.receiverName,
         receiverPhoneNumber: address.receiverPhoneNumber,

@@ -39,7 +39,7 @@ export async function GET() {
 
     // Transform the product data to include only required fields
     const xmlProducts = products.map(product => ({
-      'g:id': product.sku,
+      'g:id': product._id,
       'g:title': product.title,
       'g:description': product.specificCategoryVariant && product.specificCategoryVariant.productDescription
         ? product.specificCategoryVariant.productDescription.replace('{uniqueName}', product.name)
