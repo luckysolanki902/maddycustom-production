@@ -198,7 +198,8 @@ const ViewCart = () => {
       <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
 
       {/* Cart Items List */}
-      <CartList cartItems={cartItems} onRemove={handleRemoveItem} />
+{ totalQuantity > 0 &&      
+      <CartList cartItems={cartItems} onRemove={handleRemoveItem} /> }
 
 
 

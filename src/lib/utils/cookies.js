@@ -6,4 +6,5 @@ export const getCookie = (name) => {
   };
   
   export const getFbp = () => getCookie('_fbp');
-  export const getFbc = () => getCookie('fbc');  
+  export const getFbc = () => getCookie('fbc'); 
+ 
