@@ -284,6 +284,7 @@ const Footer = () => {
               className={styles.subscribeInput}
               value={phoneNumber}
               onChange={(e) => {
+                console.log(e.target.value)
                 // Allow only digits
                 const numeric = e.target.value.replace(/\D/g, "");
                 setPhoneNumber(numeric);
@@ -316,7 +317,7 @@ const Footer = () => {
             }}
           />
           <span>
-            VIP Rd, Kasimpur Patri, Tiwaripur, Lucknow, UP 226005
+         {`   VIP Rd, Kasimpur Patri, Tiwaripur, Lucknow, UP (226005) `}
           </span>
         </Link>}
         {isMobile ? mobileAccordionForCategories : desktopCategories}
