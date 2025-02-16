@@ -75,6 +75,18 @@
     scale: 0.98;
 }
 
+.soldByCategory{
+    display: flex;
+    align-items: center;
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #e6f9ec;
+    width: 100%;
+    justify-content: center;
+    border-radius: 0.5rem;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
 @media (width<1000px) {
     .container {
         flex-direction: column;
@@ -112,6 +124,9 @@
 @media (width<600px) {
     .buttonDiv {
         margin-top: 2.5rem;
+    }
+    .soldByCategory{
+        margin-top: 0rem;
     }
 
     .chatwithus {

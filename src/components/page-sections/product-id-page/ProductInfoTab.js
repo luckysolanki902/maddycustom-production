@@ -19,6 +19,9 @@ export default function ProductDescription({
   productId,
   variantId,
   selectedCategory,
+  // When true, render a dedicated product image (via imageUrl) above the content.
+  // When false, check if the fetched Editor JS content starts with an image block.
+  showProductImageFirst = false,
 }) {
   // Compute available tabs from selectedCategory.
   const availableTabs = useMemo(() => {
@@ -31,13 +34,8 @@ export default function ProductDescription({
   const [tabIndex, setTabIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
   /**
-   * contentCache will hold the fetched data (or a loading flag) for each tab.
-   * The cache key here is the tab title.
-   * Example:
-   * {
-   *   "Description": { loading: false, content: { ... } },
-   *   "Specifications": { loading: false, content: null },
-   * }
+   * contentCache holds the fetched data (or a loading flag) for each tab.
+   * Cache key is the tab title.
    */
   const [contentCache, setContentCache] = useState({});
 
@@ -51,7 +49,7 @@ export default function ProductDescription({
     config: { tension: 300, friction: 30 },
   }));
 
-  // If the available tabs change and the current index is out of range, reset it.
+  // Reset tab index if available tabs change.
   useEffect(() => {
     if (availableTabs.length > 0 && tabIndex >= availableTabs.length) {
       setTabIndex(0);
@@ -63,7 +61,7 @@ export default function ProductDescription({
     setExpanded(false); // Collapse content when changing tab.
   };
 
-  // Clear the cache when key props change (in case product info is different).
+  // Clear cache when key props change.
   useEffect(() => {
     setContentCache({});
     setExpanded(false);
@@ -76,7 +74,6 @@ export default function ProductDescription({
     if (!currentTab) return;
     const currentTabKey = currentTab.title;
 
-    // If this tab is already loading or fetched (even if null) then do nothing.
     if (
       contentCache[currentTabKey]?.loading ||
       contentCache[currentTabKey]?.content !== undefined
@@ -84,7 +81,6 @@ export default function ProductDescription({
       return;
     }
 
-    // Set loading state for the current tab.
     setContentCache((prev) => ({
       ...prev,
       [currentTabKey]: { loading: true, content: null },
@@ -122,17 +118,10 @@ export default function ProductDescription({
         else throw new Error("Failed to load product info.");
       })
       .then((data) => {
-        if (data && data.content) {
-          setContentCache((prev) => ({
-            ...prev,
-            [currentTabKey]: { loading: false, content: data.content },
-          }));
-        } else {
-          setContentCache((prev) => ({
-            ...prev,
-            [currentTabKey]: { loading: false, content: null },
-          }));
-        }
+        setContentCache((prev) => ({
+          ...prev,
+          [currentTabKey]: { loading: false, content: data?.content || null },
+        }));
       })
       .catch((error) => {
         console.error("Error loading product info:", error);
@@ -159,6 +148,21 @@ export default function ProductDescription({
   const hasFetchedContent =
     fetchedContent && fetchedContent.blocks && fetchedContent.blocks.length > 0;
 
+  // --- EXTRA LOGIC FOR RENDERING A LEADING IMAGE FROM THE Fetched CONTENT ---
+  // Only when we are NOT using a separate product image (i.e. showProductImageFirst is false)
+  // and we have content, check if the first block is an image.
+  let firstImageBlock = null;
+  let remainingContent = fetchedContent;
+  if (!showProductImageFirst && hasFetchedContent) {
+    if (fetchedContent.blocks[0].type === "image") {
+      firstImageBlock = fetchedContent.blocks[0];
+      remainingContent = {
+        ...fetchedContent,
+        blocks: fetchedContent.blocks.slice(1),
+      };
+    }
+  }
+
   return (
     <Box className={styles.mainCont}>
       <Box
@@ -166,7 +170,6 @@ export default function ProductDescription({
           maxWidth: "100%",
           mx: "auto",
           p: { xs: 1, sm: 3 },
-          // bgcolor: "rgba(217, 217, 217, 0.6)",
           bgcolor: "rgba(255, 255, 255, 1)",
           borderRadius: 2,
           position: "relative",
@@ -210,8 +213,9 @@ export default function ProductDescription({
 
         <Divider />
 
-        {/* Main Product Image for "Description" tab */}
-        {availableTabs[tabIndex]?.title?.toLowerCase() === "description" &&
+        {/* --- CASE 1: Render separate product image via imageUrl --- */}
+        {showProductImageFirst &&
+          availableTabs[tabIndex]?.title?.toLowerCase() === "description" &&
           imageUrl && (
             <Box sx={{ my: { xs: 2, sm: 3 }, textAlign: "center" }}>
               <Box
@@ -236,35 +240,97 @@ export default function ProductDescription({
             </Box>
           )}
 
-        {/* Fetched Additional Content */}
+        {/* --- CASE 2: Render additional content (and possibly a leading image from fetched content) --- */}
         <Box sx={{ mt: 2 }}>
           {isLoading ? (
-            // Show skeleton until data is loaded.
             <Box sx={{ textAlign: "center" }}>Loading...</Box>
           ) : hasFetchedContent ? (
             <>
-              <Collapse in={expanded} timeout="auto" unmountOnExit>
-                <Box sx={{ p: { xs: 1, sm: 2 } }}>
-                  <CustomRenderer data={fetchedContent} />
-                </Box>
-              </Collapse>
-              <Box sx={{ textAlign: "center", mt: 1 }}>
-                <Button
-                  onClick={() => setExpanded(!expanded)}
-                  sx={{
-                    color: "#000",
-                    fontWeight: "bold",
-                    textTransform: "none",
-                    fontFamily: "Jost",
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
-                  }}
-                >
-                  {expanded ? "Read less" : "Read more"} ▼
-                </Button>
-              </Box>
+              {showProductImageFirst ? (
+                // When using a separate product image, show fetched content in a Collapse.
+                <>
+                  <Collapse in={expanded} timeout="auto" unmountOnExit>
+                    <Box sx={{ p: { xs: 1, sm: 2 } }}>
+                      <CustomRenderer data={fetchedContent} />
+                    </Box>
+                  </Collapse>
+                  <Box sx={{ textAlign: "center", mt: 1 }}>
+                    <Button
+                      onClick={() => setExpanded(!expanded)}
+                      sx={{
+                        color: "#000",
+                        fontWeight: "bold",
+                        textTransform: "none",
+                        fontFamily: "Jost",
+                        fontSize: { xs: "0.9rem", sm: "1rem" },
+                      }}
+                    >
+                      {expanded ? "Read less" : "Read more"} ▼
+                    </Button>
+                  </Box>
+                </>
+              ) : (
+                // When NOT using a separate product image:
+                <>
+                  {/* If the first block of fetched content is an image, render it separately */}
+                  {firstImageBlock && (
+                    <Box sx={{ my: { xs: 2, sm: 3 }, textAlign: "center" }}>
+                      <Box
+                        sx={{
+                          position: "relative",
+                          width: { xs: "90%", sm: "90%" },
+                          height: expanded ? "auto" : { xs: "200px", sm: "350px" },
+                          borderRadius: "8px",
+                          overflow: "hidden",
+                          mx: "auto",
+                        }}
+                      >
+                        <Image
+                          src={firstImageBlock.data.file.url}
+                          alt={firstImageBlock.data.caption || "Content image"}
+                          width={1000}
+                          height={1000}
+                          style={{
+                            objectFit: "cover",
+                            width: "100%",
+                            height: "auto",
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Render the remaining content (or all content if no image block was found)
+                      inside a container that shows a preview height when not expanded. */}
+                  <Box
+                    sx={{
+                      p: { xs: 1, sm: 2 },
+                      overflow: "hidden",
+                      maxHeight: expanded ? "none" : { xs: "150px", sm: "250px" },
+                      transition: "max-height 0.3s ease",
+                    }}
+                  >
+                    <CustomRenderer data={remainingContent} />
+                  </Box>
+                  <Box sx={{ textAlign: "center", mt: 1 }}>
+                    <Button
+                      onClick={() => setExpanded(!expanded)}
+                      sx={{
+                        color: "#000",
+                        fontWeight: "bold",
+                        textTransform: "none",
+                        fontFamily: "Jost",
+                        fontSize: { xs: "0.9rem", sm: "1rem" },
+                      }}
+                    >
+                      {expanded ? "Read less" : "Read more"} ▼
+                    </Button>
+                  </Box>
+                </>
+              )}
             </>
           ) : (
-            // Only display the "no details" message after loading is finished.
+            // Display a message if no additional content is available.
             !isLoading && (
               <Typography
                 sx={{

@@ -140,6 +140,7 @@ const CustomRenderer = ({ data, seamlessImages = false }) => {
         h2 {
           font-size: 1.75em;
           margin: 1em 0 0.5em;
+          margin-top: 0;
         }
         h3 {
           font-size: 1.5em;

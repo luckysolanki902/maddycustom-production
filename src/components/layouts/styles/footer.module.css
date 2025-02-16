@@ -15,7 +15,7 @@
 }
 
 /* Stack grid columns on mobile */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .footerGrid {
     flex-direction: column;
   }
@@ -95,7 +95,7 @@ flex-direction: column;
   background-color: transparent;
   color: white;
   outline: none;
-
+  min-width: 180px;
 }
 
 .subscribeButton {
@@ -135,6 +135,7 @@ flex-direction: column;
   color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
   transition: opacity 0.2s;
+
 }
 
 .categoryList li a:hover,
@@ -174,6 +175,7 @@ flex-direction: column;
   gap: 10px;
   margin-bottom: 10px;
   font-size: 14px;
+
 }
 
 .contactList li a {
@@ -182,8 +184,9 @@ flex-direction: column;
   gap: 10px;
   margin-bottom: 10px;
   font-size: 14px;
-  word-break: normal;
-  color: white
+  word-break: break-all;
+    color: white
+  
 }
 
 
