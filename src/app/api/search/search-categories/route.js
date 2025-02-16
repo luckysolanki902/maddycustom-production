@@ -24,7 +24,7 @@ export async function GET(request) {
     }, {});
 
     // Fetch all specific category variants
-    const variants = await SpecificCategoryVariant.find({ }).lean();
+    const variants = await SpecificCategoryVariant.find({ available: true }).lean();
 
     if (!variants || variants.length === 0) {
       // console.warn('No specific category variants found.');

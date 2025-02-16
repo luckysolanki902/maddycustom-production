@@ -63,7 +63,7 @@ const ImageReviewDialog = ({ open, handleClose, initialReview, reviews }) => {
                 <Box className={styles.mainContent}>
                     <Box className={styles.imageContainer}>
                         <Image
-                            src={`${imageBaseUrl}/${selectedReview.images}`}
+                            src={`${imageBaseUrl}${selectedReview?.images?.startsWith('/') ? selectedReview.images : '/' + selectedReview.images}`}
                             alt={`Review photo by ${selectedReview.name}`}
                             width={800}
                             height={800}
@@ -85,7 +85,7 @@ const ImageReviewDialog = ({ open, handleClose, initialReview, reviews }) => {
                                 onClick={() => handleThumbnailClick(review)}
                             >
                                 <Image
-                                    src={`${imageBaseUrl}/${review.images}`}
+                                    src={`${imageBaseUrl}${ review.images.startsWith('/') ? review.images : '/' + review.images}`}
                                     alt={`Thumbnail of review by ${review.name}`}
                                     width={100}
                                     height={100}

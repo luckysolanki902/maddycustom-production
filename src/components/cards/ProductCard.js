@@ -132,7 +132,7 @@ const ProductCard = ({ product, loading }) => {
                 className={`${styles.image} ${product?.category?.specificCategoryCode === 'fbw' ? styles.increaseBrightness : ''}`}
                 src={
                   product.images && product.images.length > 0
-                    ? `${baseImageUrl}${product.images[0]}`
+                    ? `${baseImageUrl}${product.images[0].startsWith('/') ? product.images[0] : '/' + product.images[0]}`
                     : '/images/assets/gifs/helmetloadinggif.gif'
                 }
                 alt={product.name}
@@ -160,7 +160,7 @@ const ProductCard = ({ product, loading }) => {
               loading
                 ? '/images/assets/gifs/helmetloadinggiflandscape2.gif'
                 : product.images && product.images.length > 0
-                  ? `${baseImageUrl}${product.images[0]}`
+                  ? `${baseImageUrl}${product.images[0].startsWith('/') ? product.images[0] : '/' + product.images[0]}`
                   : '/images/assets/gifs/helmetloadinggiflandscape2.gif'
             }
             alt={product.name}

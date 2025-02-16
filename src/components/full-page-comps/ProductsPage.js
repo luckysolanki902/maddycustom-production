@@ -19,6 +19,7 @@ import ContactUs from '../layouts/ContactUs';
 import FullWidthRoundCornerLandscapeCarousel from '../showcase/carousels/FullWidthRoundCornerLandscapeCarousel';
 import herosectionStyles from '@/components/page-sections/homepage/styles/herosection.module.css';
 
+
 export default function ProductsPage({ slug, variant, products, category, initialPage, totalPages, uniqueTags }) {
   // Constants
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL
@@ -31,6 +32,7 @@ export default function ProductsPage({ slug, variant, products, category, initia
   const [currentProducts, setCurrentProducts] = useState(products || []);
   const [loading, setLoading] = useState(false);
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
+  const isLargeDevice = useMediaQuery('(min-width: 1200px)');
   const [scrollToTopOnPageChange, setScrollToTopOnPageChange] = useState(true);
   const [sortSelectInTheUi, setSortSelectInTheUi] = useState(false); // Controlled by a constant
 
@@ -119,7 +121,22 @@ export default function ProductsPage({ slug, variant, products, category, initia
       <header>
         <div className={styles.headContainer}>
           <div className={styles.headingFlex}>
-            <h1 className={styles.bikeHeading}>{variant.name}
+            <h1
+              className={styles.bikeHeading}
+              style={{
+                fontSize: isLargeDevice
+                  ? variant?.name.length > 15
+                    ? '2.5rem'
+                    : variant?.name.length > 20
+                      ? '2rem'
+                      : '3.5rem'
+                  : variant?.name.length > 15
+                    ? '1.8rem'
+                    : variant?.name.length > 20
+                      ? '1.5rem'
+                      : '2.2rem',
+              }}            >
+              {variant.name}
               {variant?.name?.toLowerCase().includes('tank') && (
                 <button
                   className={styles.sizebutton}
@@ -134,7 +151,7 @@ export default function ProductsPage({ slug, variant, products, category, initia
                         : null}
                 </button>
               )}</h1>
-            {variant?.subtitles.length > 0 && variant?.subtitles[0] && (
+            {variant?.subtitles?.length > 0 && variant?.subtitles[0] && (
               variant.variantCode === 'hel' ?
                 <>
                   <h2 className={styles.helmetTagline}>&quot;Best designed helmets of India <br /> with safety of&quot;</h2>

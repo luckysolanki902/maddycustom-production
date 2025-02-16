@@ -41,7 +41,7 @@ const PurchasedProductSlider = ({ items, baseImageUrl }) => (
               }}
             >
               <Image
-                src={`${baseImageUrl}${item.product.images[0]}`}
+                src={`${baseImageUrl}${item.product.images[0]?.startsWith('/') ? item.product.images[0] : '/' + item.product.images[0]}`}
                 alt={item.name}
                 layout="fill"
                 objectFit="cover"

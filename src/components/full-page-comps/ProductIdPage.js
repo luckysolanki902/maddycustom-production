@@ -15,15 +15,14 @@ import ProductDescription from '../page-sections/product-id-page/ProductInfoTab'
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
 
 export default function ProductIdPage({ product, variant, category, description }) {
-  console.info(product.images[0])
   const [viewFullDescription, setViewFullDescription] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const userDetails = useSelector((state) => state.orderForm.userDetails);
   const { email, phoneNumber } = userDetails || {};
   const hasTracked = useRef(false);
-  const defaultLastImagesForCarousel = variant.defaultCarouselImages?.map((image) => `${imageBaseUrl}${image}`) || [];
-  const imagesForProductCarousel = product?.images.map((image) => `${imageBaseUrl}${image}`);
+  const defaultLastImagesForCarousel = variant.defaultCarouselImages?.map((image) => `${imageBaseUrl}${image.startsWith('/') ? image : '/' + image}`) || [];
+  const imagesForProductCarousel = product?.images.map((image) => `${imageBaseUrl}${image.startsWith('/') ? image : '/' + image}`);
   // Final all images (make sure default Last images are in the last)
   const allImages = [...imagesForProductCarousel, ...defaultLastImagesForCarousel];
 
@@ -33,14 +32,13 @@ export default function ProductIdPage({ product, variant, category, description 
       hasTracked.current = true;
     }
   }, [product, email, phoneNumber]);
-
   return (
     <>
       <div className={styles.container}>
 
         <div className={styles.imageGallery}>
           <ImageGallery
-            src={`${imageBaseUrl}${product?.images[0]}`}
+            src={`${imageBaseUrl}${product?.images[0]?.startsWith('/') ? product.images[0] : '/' + product.images[0]}`}
             images={allImages}
             isZoomed={isZoomed}
             alt={product.title}
@@ -93,11 +91,8 @@ export default function ProductIdPage({ product, variant, category, description 
           </div>
         }
        
-
-
-
       </div>
-      <ProductDescription imageUrl={`${imageBaseUrl}${product?.images[0]}`} productId={product._id} variantId={variant._id} selectedCategory={category}/>
+      <ProductDescription imageUrl={`${imageBaseUrl}${product?.images[0]?.startsWith('/') ? product.images[0] : '/' + product.images[0]}`} productId={product._id} variantId={variant._id} selectedCategory={category}/>
 
       {/* Showcase */}
       {/* Top bought products */}

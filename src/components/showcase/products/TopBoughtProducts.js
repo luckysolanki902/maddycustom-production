@@ -167,7 +167,7 @@ function ProductCard({ product }) {
             >
                 {product.images && product.images[0] ? (
                     <Image
-                        src={`${baseImageUrl}${product.images[0]}`}
+                        src={`${baseImageUrl}${product.images[0].startsWith('/') ? product.images[0] : '/' + product.images[0]}`}
                         style={{ boxShadow: '0px 3px 6px rgba(0,0,0,0.36)' }}
                         alt={product.name || 'product'}
                         fill

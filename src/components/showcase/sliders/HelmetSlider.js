@@ -17,7 +17,7 @@ const HelmetSlider = ({ slides }) => { // Accept slides as props
                         <Link href={`/shop/accessories/safety/graphic-helmets/helmet-store`}>
                             <Image
                                 className={styles.image}
-                                src={`${baseImageUrl}${slide.images[0]}`} // Use the first image from the product
+                                src={`${baseImageUrl}${slide.images[0].startsWith('/') ? slide.images[0] : '/' + slide.images[0]}`} // Use the first image from the product
                                 width={500}
                                 height={500}
                                 alt={slide.name}

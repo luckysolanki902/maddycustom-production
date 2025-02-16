@@ -49,7 +49,7 @@ export async function GET() {
       'g:price': `${product.price} INR`, // Ensure format: number + space + currency code
       'g:link': `https://www.maddycustom.com/shop${product.pageSlug}`,
       'g:image_link': product.images[0]
-        ? `https://d26w01jhwuuxpo.cloudfront.net${product.images[0]}`
+        ? `https://d26w01jhwuuxpo.cloudfront.net${product.images[0].startsWith('/') ? product.images[0] : '/' + product.images[0]}`
         : '',
       'g:brand': 'Maddy Custom', // Static value as per requirements
     }));
