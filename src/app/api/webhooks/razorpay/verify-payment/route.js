@@ -27,11 +27,12 @@ export const config = {
  */
 export async function POST(request) {
   // Start a MongoDB session
+  await connectToDatabase();
   const session = await mongoose.startSession();
   session.startTransaction();
 
   let internalOrderId; // We'll store it for logging & use after commit
-
+  const eventsOccured = []
   try {
     // --- 1. Verify Razorpay Signature ---
 
@@ -45,7 +46,6 @@ export async function POST(request) {
     const signature = request.headers.get('x-razorpay-signature');
     const eventId = request.headers.get('x-razorpay-event-id');
     if (!signature || !eventId) {
-      console.log('Missing signature/eventId'); // SHORT LOG
       return NextResponse.json({ error: 'Missing signature or eventId header.' }, { status: 400 });
     }
 
@@ -59,7 +59,6 @@ export async function POST(request) {
     const receivedSignatureBuffer = Buffer.from(signature, 'hex');
     const expectedSignatureBuffer = Buffer.from(expectedSignature, 'hex');
     if (receivedSignatureBuffer.length !== expectedSignatureBuffer.length) {
-      console.log('Invalid signature length');
       return NextResponse.json({ error: 'Invalid signature length.' }, { status: 400 });
     }
     const isValidSignature = crypto.timingSafeEqual(
@@ -67,7 +66,6 @@ export async function POST(request) {
       expectedSignatureBuffer
     );
     if (!isValidSignature) {
-      console.log('Signature mismatch');
       return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 });
     }
 
@@ -82,11 +80,10 @@ export async function POST(request) {
 
     // Only handle payment.captured & payment.failed
     if (!['payment.captured', 'payment.failed'].includes(event.event)) {
-      console.log('Event not relevant: ' + event.event); // SHORT LOG
       return NextResponse.json({ message: 'Event type not handled.' }, { status: 200 });
     }
 
-    await connectToDatabase();
+    
 
     const payment = event.payload.payment.entity;
     const paymentId = payment.id;
@@ -94,20 +91,27 @@ export async function POST(request) {
     internalOrderId = payment.notes?.orderId;
 
     if (!internalOrderId) {
-      console.log('No internalOrderId in payment notes');
+      eventsOccured.push('No internalOrderId in payment notes');
       return NextResponse.json({ error: 'Missing internal order ID in payment notes.' }, { status: 400 });
     }
 
     // --- 3. Find the Order ---
     const order = await Order.findById(internalOrderId).session(session);
     if (!order) {
-      console.log('Order not found: ' + internalOrderId);
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
     // --- 4. Handle Payment Updates ---
     if (order.paymentDetails.razorpayDetails.paymentId === paymentId) {
-      console.log(`Order ${internalOrderId} already has paymentId ${paymentId}`);
+      eventsOccured.push('Payment status already found to be updated. Logged at', new Date().toLocaleString('en-IN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      }));
       // We'll still attempt Shiprocket logic below, in case it wasn't created
     } else {
       if (!['allPaid', 'paidPartially'].includes(order.paymentStatus)) {
@@ -135,7 +139,6 @@ export async function POST(request) {
           );
 
           if (!updatedOrder) {
-            console.log('Order already updated concurrently');
             await session.abortTransaction();
             session.endSession();
             return NextResponse.json({ message: 'Order already updated.' }, { status: 200 });
@@ -147,11 +150,35 @@ export async function POST(request) {
             updatedOrder.paymentDetails.amountDueCod <= 0
           ) {
             updatedOrder.paymentStatus = 'allPaid';
+            eventsOccured.push(
+              `Payment status set to all paid at ${new Date().toLocaleString('en-IN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kolkata',
+              })}`
+            )
           } else if (
             updatedOrder.paymentDetails.amountPaidOnline > 0 &&
             updatedOrder.paymentDetails.amountDueCod > 0
           ) {
             updatedOrder.paymentStatus = 'paidPartially';
+            eventsOccured.push(
+              `Payment status set to partially paid at ${new Date().toLocaleString('en-IN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kolkata',
+              })}`
+            )
           }
 
           // Check coupon usage
@@ -172,7 +199,6 @@ export async function POST(request) {
                 );
                 await updatedOrder.save({ session });
               } else {
-                console.log(`Coupon ${appliedCoupon.couponCode} not found`);
               }
             }
           }
@@ -187,15 +213,36 @@ export async function POST(request) {
             },
             { session }
           );
-          console.log('Payment failed for order ' + internalOrderId);
+          eventsOccured.push(
+            `Payment status set to failed at ${new Date().toLocaleString('en-IN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true,
+              timeZone: 'Asia/Kolkata',
+            })}`
+          )
           await session.commitTransaction();
           session.endSession();
           return NextResponse.json({ message: 'Payment failed.' }, { status: 200 });
         }
       } else {
-        console.log(
-          `Order ${internalOrderId} already has paymentStatus: ${order.paymentStatus}`
-        );
+
+        eventsOccured.push(
+          `Payment status was already found as ${order.paymentStatus} at ${new Date().toLocaleString('en-IN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Kolkata',
+          })}`
+        )
       }
     }
 
@@ -212,7 +259,6 @@ export async function POST(request) {
       .session(session);
 
     if (!latestOrder) {
-      console.log('Order missing after update: ' + internalOrderId);
       await session.abortTransaction();
       session.endSession();
       return NextResponse.json({ error: 'Order not found after update.' }, { status: 404 });
@@ -222,8 +268,9 @@ export async function POST(request) {
     if (
       ['allPaid', 'paidPartially'].includes(latestOrder.paymentStatus) &&
       latestOrder.deliveryStatus === 'pending' &&
-      !latestOrder.shiprocketOrderId
+      !latestOrder.shiprocketOrderId && !latestOrder.isTestingOrder
     ) {
+      console.debug('Creating Shiprocket order for order ' + internalOrderId);
       let dimensionsAndWeight;
       try {
         dimensionsAndWeight = await getDimensionsAndWeight(latestOrder.items);
@@ -243,9 +290,8 @@ export async function POST(request) {
         order_date: new Date().toISOString(),
         billing_customer_name: firstName,
         billing_last_name: lastName || '',
-        billing_address: `${latestOrder.address.addressLine1} ${
-          latestOrder.address.addressLine2 || ''
-        }`,
+        billing_address: `${latestOrder.address.addressLine1} ${latestOrder.address.addressLine2 || ''
+          }`,
         billing_city: latestOrder.address.city,
         billing_pincode: latestOrder.address.pincode,
         billing_state: latestOrder.address.state,
@@ -282,60 +328,143 @@ export async function POST(request) {
             },
             { session }
           );
-          console.log(`Shiprocket order created for ${internalOrderId}`);
+          eventsOccured.push(
+            `Shiprocket order created at ${new Date().toLocaleString('en-IN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true,
+              timeZone: 'Asia/Kolkata',
+            })}`
+          )
         } else {
           console.error('Shiprocket error ' + internalOrderId, response);
+          eventsOccured.push(
+            `Shiprocket api error possibly due to package_box_error at ${new Date().toLocaleString('en-IN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true,
+              timeZone: 'Asia/Kolkata',
+            })}`
+          )
           await session.abortTransaction();
           session.endSession();
           return NextResponse.json({ error: 'Failed to create Shiprocket order.' }, { status: 500 });
         }
       } catch (shiprocketError) {
         console.error(`Shiprocket API call failed ${internalOrderId}`, shiprocketError);
+        eventsOccured.push(
+          `Shiprocket API call failed at ${new Date().toLocaleString('en-IN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Kolkata',
+          })}`
+        )
         await session.abortTransaction();
         session.endSession();
         return NextResponse.json({ error: 'Error in Shiprocket order creation.' }, { status: 500 });
       }
     } else {
-      console.log(
-        `Skipping Shiprocket creation: PaymentStatus=${latestOrder.paymentStatus}, ` +
-          `deliveryStatus=${latestOrder.deliveryStatus}, shiprocketOrderId=${latestOrder.shiprocketOrderId}`
-      );
+
+      let shiprocketSkppingReason = ''
+      if (latestOrder.paymentStatus !== 'allPaid' && latestOrder.paymentStatus !== 'paidPartially') {
+        shiprocketSkppingReason = 'paymentStatus not successful'
+      } else if (latestOrder.deliveryStatus !== 'pending') {
+        shiprocketSkppingReason = 'deliveryStatus not pending'
+      } else if (latestOrder.shiprocketOrderId) {
+        shiprocketSkppingReason = 'shiprocketOrderId already exists'
+      } else if (latestOrder.isTestingOrder) {
+        shiprocketSkppingReason = 'isTestingOrder'
+      }
+      eventsOccured.push(
+        `Skipping shiprocket creation due to ${shiprocketSkppingReason} at ${new Date().toLocaleString('en-IN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        })}`
+      )
     }
 
     // --- 6. Commit Transaction ---
     await session.commitTransaction();
     session.endSession();
 
-    console.log('Webhook processed OK for ' + internalOrderId);
 
     // --- 7. AFTER Transaction: Attempt to send WhatsApp message (non-blocking for main logic) ---
     // We do this outside the transaction so any AiSensy failure won't affect the order & payment.
+    let notSendingWhatsappMessageReason = ''
     try {
       // We need the user doc for phoneNumber & name
       const userDoc = await User.findById(latestOrder.user);
-      if (userDoc) {
-        await sendWhatsAppMessage({
-          user: userDoc,
-          prefUserName: latestOrder.address.receiverName || '',
-          campaignName: 'order_success_first_message_3feb', // as requested
-          orderId: latestOrder._id,
-          templateParams: [], // Pass any placeholders if needed
-          carouselCards: [],  // or pass if needed
-        });
+      if (!latestOrder.isTestingOrder) {
+
+        if (userDoc) {
+          await sendWhatsAppMessage({
+            user: userDoc,
+            prefUserName: latestOrder.address.receiverName || '',
+            campaignName: 'order_success_first_message_3feb', // as requested
+            orderId: latestOrder._id,
+            templateParams: [], // Pass any placeholders if needed
+            carouselCards: [],  // or pass if needed
+          });
+
+          eventsOccured.push(
+            `WhatsApp message sent at ${new Date().toLocaleString('en-IN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true,
+              timeZone: 'Asia/Kolkata',
+            })}`
+          )
+        } else {
+        }
       } else {
-        console.log(`User not found for order ${latestOrder._id}, skipping message.`);
+        notSendingWhatsappMessageReason = 'isTestingOrder'
       }
     } catch (msgErr) {
-      console.log(`WhatsApp message sending failed for order ${latestOrder._id}:`, msgErr);
+      console.error(`WhatsApp message sending failed for order ${latestOrder._id}:`, msgErr);
+      notSendingWhatsappMessageReason = 'some internal error'
+      eventsOccured.push(
+        `WhatsApp message sending failed due to ${notSendingWhatsappMessageReason} at ${new Date().toLocaleString('en-IN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        })}`
+      )
     }
 
-    // Return success to Razorpay
-    return NextResponse.json({ message: 'Webhook processed successfully.' }, { status: 200 });
+    // Return success to Razorpay Webhook
+    console.info(`Webhook processed successfully and sent message for orderId: ${internalOrderId}`, eventsOccured);
+    return NextResponse.json({ message: `Webhook processed successfully and sent message for orderId: ${internalOrderId}`, eventsOccured }, { status: 200 });
   } catch (error) {
     // If something broke inside the try block, revert transaction
     await session.abortTransaction();
     session.endSession();
-    console.error('Webhook error ' + error.message, error);
-    return NextResponse.json({ error: 'Internal Server Error.' }, { status: 500 });
+    console.error(`Some Internal Server Error occured for orderId: ${internalOrderId}`, error, eventsOccured);
+    return NextResponse.json({ error: `Some Internal Server Error occured for orderId: ${internalOrderId}`, eventsOccured }, { status: 500 });
   }
 }

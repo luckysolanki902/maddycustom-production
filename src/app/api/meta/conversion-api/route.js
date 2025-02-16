@@ -49,9 +49,9 @@ const createContents = (product) => {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Handles POST requests to send events to Facebook's Conversion API.
- * @param {Request} request - The incoming request object.
- * @returns {Response} - The response object.
+ * POST /api/meta/conversion-api
+ *
+ * Handles sending events to Facebook's Conversion API.
  */
 export async function POST(request) {
   const MAX_RETRIES = 3;
@@ -59,9 +59,9 @@ export async function POST(request) {
 
   try {
     const { eventName, options = {} } = await request.json();
-
     const currentTimestamp = Math.floor(Date.now() / 1000);
-    const validEvents = ['Purchase', 'AddToCart', 'ViewContent', 'InitiateCheckout']; // **Added InitiateCheckout**
+    // Validate eventName
+    const validEvents = ['Purchase', 'AddToCart', 'ViewContent', 'InitiateCheckout'];
     if (!validEvents.includes(eventName)) {
       return NextResponse.json(
         { message: 'Invalid event type.' },
@@ -69,24 +69,22 @@ export async function POST(request) {
       );
     }
 
-    // Log received event data
-
-    // Hash user data if present
+    // Prepare hashed user data
     const hashedEmails = options.emails
-      ? options.emails.map(email => hashData(email.trim().toLowerCase()))
+      ? options.emails.map((email) => hashData(email.trim().toLowerCase()))
       : [];
     const hashedPhones = options.phones
-      ? options.phones.map(phone => hashData(phone.trim()))
+      ? options.phones.map((phone) => hashData(phone.trim()))
       : [];
 
     // Prepare User Data
     const userData = new UserData()
-      .setEmails(hashedEmails) // Hashed emails
-      .setPhones(hashedPhones) // Hashed phone numbers
+      .setEmails(hashedEmails) // hashed emails
+      .setPhones(hashedPhones) // hashed phone numbers
       .setClientIpAddress(options.client_ip_address || '')
       .setClientUserAgent(options.client_user_agent || '')
-      .setFbp(options.fbp || '') // Set fbp
-      .setFbc(options.fbc || ''); // Set fbc
+      .setFbp(options.fbp || '')
+      .setFbc(options.fbc || '');
 
     // Prepare Contents
     const contents = options.contents
@@ -100,17 +98,17 @@ export async function POST(request) {
       .setOrderId(eventName === 'Purchase' ? options.orderId : null)
       .setContents(contents);
 
-    // Create Server Event
+    // Build the Server Event
     const serverEvent = new ServerEvent()
       .setEventName(eventName)
       .setEventTime(currentTimestamp)
       .setUserData(userData)
       .setCustomData(customData)
       .setEventSourceUrl(options.event_source_url || '')
-      .setEventId(options.eventID || uuidv4()) // Use eventID from client if provided
+      .setEventId(options.eventID || uuidv4())
       .setActionSource('website');
 
-    // Create Event Request
+    // Fire the event request to Facebook
     const eventRequest = new EventRequest(access_token, pixel_id).setEvents([
       serverEvent,
     ]);
@@ -119,7 +117,7 @@ export async function POST(request) {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         response = await eventRequest.execute();
-        break; // Exit loop if successful
+        break; // success, break the retry loop
       } catch (error) {
         console.error(`Attempt ${attempt} - Error sending event to Facebook:`, {
           message: error.message,
@@ -128,12 +126,10 @@ export async function POST(request) {
         if (attempt < MAX_RETRIES) {
           await delay(RETRY_DELAY * attempt);
         } else {
-          throw error; // Rethrow error after max retries
+          throw error;
         }
       }
     }
-
-    // Log Facebook API Response
     return NextResponse.json(
       { message: 'Event sent successfully', response },
       { status: 200 }

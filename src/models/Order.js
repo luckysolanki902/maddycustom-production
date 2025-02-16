@@ -57,6 +57,7 @@ const OrderSchema = new mongoose.Schema(
           required: true,
           min: 0,
         },
+
       },
     ],
 
@@ -105,6 +106,10 @@ const OrderSchema = new mongoose.Schema(
       required: true,
       min: 0,
       default: 0,
+    },
+    isTestingOrder:{
+      type: Boolean,
+      default: false
     },
     // Payment details
     paymentDetails: {
@@ -202,9 +207,23 @@ const OrderSchema = new mongoose.Schema(
     deliveryStatus: {
       type: String,
       required: true,
-      enum: ['pending', 'orderCreated', 'processing', 'shipped', 'delivered', 'cancelled'],
+      enum: [
+        'pending',
+        'orderCreated',
+        'processing',
+        'shipped',
+        'partiallyDelivered',
+        'delivered',
+        'returned',
+        'lost',
+        'cancelled'
+      ],
       default: 'pending',
       index: true, // Index for efficient querying
+    },
+    actualDeliveryStatus: {
+      type: String,
+      default: 'pending',
     },
 
     // Extra fields like bike model:
@@ -281,9 +300,10 @@ OrderSchema.pre('findOneAndUpdate', function(next) {
   next();
 });
 
-
+if (mongoose.models.Order) {
+  delete mongoose.models.Order;
+}
 // Indexes for better performance
 OrderSchema.index({ 'address.receiverName': 'text', 'address.receiverPhoneNumber': 'text' });
-OrderSchema.index({ 'items.product': 1 });
 
 module.exports = mongoose.models.Order || mongoose.model('Order', OrderSchema);
