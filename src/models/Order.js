@@ -206,9 +206,23 @@ const OrderSchema = new mongoose.Schema(
     deliveryStatus: {
       type: String,
       required: true,
-      enum: ['pending', 'orderCreated', 'processing', 'shipped', 'delivered', 'cancelled'],
+      enum: [
+        'pending',
+        'orderCreated',
+        'processing',
+        'shipped',
+        'partiallyDelivered',
+        'delivered',
+        'returned',
+        'lost',
+        'cancelled'
+      ],
       default: 'pending',
       index: true, // Index for efficient querying
+    },
+    actualDeliveryStatus: {
+      type: String,
+      default: 'pending',
     },
 
     // Extra fields like bike model:
