@@ -427,7 +427,7 @@ export async function POST(request) {
                 parameters: [
                     {
                         type: 'text',
-                        text: `${latestOrder?.address?.receiverPhoneNumber || 1}`,
+                        text: `${latestOrder._id || 'Order ID'}`,
                     },
                 ],
             },
@@ -435,7 +435,7 @@ export async function POST(request) {
           await sendWhatsAppMessage({
             user: userDoc,
             prefUserName: latestOrder.address.receiverName || '',
-            campaignName: 'orders_placed',
+            campaignName: 'order_confirmed',
             orderId: latestOrder._id,
             templateParams: [], 
             carouselCards: [], 

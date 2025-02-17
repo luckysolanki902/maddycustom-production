@@ -1,26 +1,28 @@
 "use client";
-import Image from 'next/image';
-import React, { useState, useEffect } from 'react';
-import Sidebar from '../layouts/Sidebar';
-import { Button, TextField } from '@mui/material';
-import styles from './styles/track.module.css';
+import Image from "next/image";
+import React, { useState, useEffect } from "react";
+import Sidebar from "../layouts/Sidebar";
+import { Button, TextField } from "@mui/material";
+import styles from "./styles/track.module.css";
 
 export default function TrackPage() {
-  const [orderId, setOrderId] = useState('');
+  const [orderId, setOrderId] = useState("");
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
-  // Autofill the input if ?phoneNumber=something is present in the URL.
+  // On mount, check if the URL contains a query parameter for orderId
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const phoneNumber = params.get('phoneNumber');
-    if (phoneNumber) {
-      setOrderId(phoneNumber);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const orderIdParam = params.get("orderId");
+      if (orderIdParam) {
+        setOrderId(orderIdParam);
+      }
     }
   }, []);
 
   const handleTrackOrder = async () => {
     if (!orderId) {
-      alert('Order ID is required');
+      alert("Order ID is required");
       return;
     }
 
@@ -34,8 +36,8 @@ export default function TrackPage() {
         alert(data.message); // Show error message if not redirected
       }
     } catch (error) {
-      console.error('Error tracking order:', error);
-      alert('Error tracking order');
+      console.error("Error tracking order:", error);
+      alert("Error tracking order");
     }
   };
 
@@ -62,11 +64,11 @@ export default function TrackPage() {
               onChange={(e) => setOrderId(e.target.value)}
               className={styles.textField}
               fullWidth
-              style={{ marginBottom: '4rem' }}
+              style={{ marginBottom: "4rem" }}
             />
             <Button
               variant="contained"
-              style={{ backgroundColor: 'black', color: 'white' }}
+              style={{ backgroundColor: "black", color: "white" }}
               onClick={handleTrackOrder}
               className={styles.trackButton}
             >
