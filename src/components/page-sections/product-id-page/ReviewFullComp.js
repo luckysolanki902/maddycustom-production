@@ -154,8 +154,8 @@ export default function ReviewFullComp({
   const [spring, api] = useSpring(() => ({ scroll: window.scrollY }));
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#review") {
-      const reviewElement = document.getElementById("review");
+    if (typeof window !== "undefined" && window.location.hash === "#reviews") {
+      const reviewElement = document.getElementById("reviews");
       if (reviewElement) {
         const targetY = reviewElement.offsetTop;
         // Animate scroll from current window.scrollY to targetY
@@ -192,7 +192,7 @@ export default function ReviewFullComp({
 
       {/* Write a Review Button */}
       <Box
-        id="review"
+        id="reviews"
         sx={{
           width: "100%",
           display: "flex",
