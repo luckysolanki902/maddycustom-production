@@ -256,7 +256,7 @@ export default function ReviewFullComp({
       </div>
 
       {/* Pagination (if multiple pages) */}
-      {pagination.totalPages > 1 && (
+      {/* {pagination.totalPages > 1 && (
         <Box sx={{ display: "flex", justifyContent: "center", marginTop: "1rem" }}>
           <Pagination
             count={pagination.totalPages}
@@ -265,7 +265,7 @@ export default function ReviewFullComp({
             color="primary"
           />
         </Box>
-      )}
+      )} */}
 
       {/* Review Dialog */}
       <ReviewDialog
