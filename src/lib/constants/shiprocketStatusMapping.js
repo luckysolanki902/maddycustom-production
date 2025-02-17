@@ -1,3 +1,4 @@
+// src/lib/constants/shiprocketStatusMapping.js
 export const statusMapping = {
   // Shipped / in-transit statuses
   'shipped': 'shipped',
