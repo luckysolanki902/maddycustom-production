@@ -9,6 +9,9 @@ import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shipr
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender'; // The message sending helper
 import crypto from 'crypto';
 import mongoose from 'mongoose';
+import Product from '@/models/Product';
+import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
+import SpecificCategory from '@/models/SpecificCategory';
 
 // Disable body parsing to access raw body
 export const config = {
@@ -411,17 +414,32 @@ export async function POST(request) {
     let notSendingWhatsappMessageReason = ''
     try {
       // We need the user doc for phoneNumber & name
+ 
       const userDoc = await User.findById(latestOrder.user);
       if (!latestOrder.isTestingOrder) {
 
         if (userDoc) {
+          const buttons = [
+            {
+                type: 'button',
+                sub_type: 'url',
+                index: '0',
+                parameters: [
+                    {
+                        type: 'text',
+                        text: `${latestOrder?.address?.receiverPhoneNumber || 1}`,
+                    },
+                ],
+            },
+        ];
           await sendWhatsAppMessage({
             user: userDoc,
             prefUserName: latestOrder.address.receiverName || '',
-            campaignName: 'order_success_first_message_3feb', // as requested
+            campaignName: 'orders_placed',
             orderId: latestOrder._id,
-            templateParams: [], // Pass any placeholders if needed
-            carouselCards: [],  // or pass if needed
+            templateParams: [], 
+            carouselCards: [], 
+            buttons,
           });
 
           eventsOccured.push(

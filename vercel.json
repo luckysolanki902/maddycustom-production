@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/aisensy/abandoned-cart-second-campaign",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/aisensy/review-campaign",
+      "schedule": "0 18 * * *"
     }
   ]
 }
