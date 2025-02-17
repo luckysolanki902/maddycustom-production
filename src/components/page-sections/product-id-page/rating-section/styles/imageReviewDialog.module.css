@@ -50,6 +50,8 @@
     border-radius: 4px;
     cursor: pointer;
     transition: border 0.3s;
+    width: 100px;
+    height: 100px;
 }
 /* 
 .thumbnail:hover {
