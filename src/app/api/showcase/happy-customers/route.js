@@ -10,7 +10,6 @@ export async function GET(req) {
   const homepage = searchParams.get('homepage');
 
   try {
-    // console.info('Attempting to connect to the database...');
     await connectToDatabase();
     let filter = { isActive: true }; // Base filter for active happy customers
 

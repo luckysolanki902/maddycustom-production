@@ -10,11 +10,9 @@ import Order from '@/models/Order';
 
 export async function GET(request) {
   try {
-    console.log('--- Balanced Top-Bought Products API Call Started ---');
 
     // 1) Connect to DB
     await connectToDatabase();
-    console.log('Database connected.');
 
     // 2) Read search params
     const { searchParams } = new URL(request.url);
@@ -28,9 +26,6 @@ export async function GET(request) {
       ? subCategoriesParam.split(',').map(s => s.trim())
       : [];
 
-    console.log(
-      `Params => subCategories: ${subCategories.join(', ')}, currentProductId: ${currentProductId}, skip: ${skipParam}`
-    );
 
     if (subCategories.length === 0) {
       return NextResponse.json(
@@ -69,9 +64,7 @@ export async function GET(request) {
       });
     }
 
-    console.log(
-      `Found ${scvDocs.length} SCVs for subCategories: ${subCategories.join(', ')}.`
-    );
+
 
     // We'll gather an array-of-arrays: each entry is a sorted list of products for that SCV.
     // Then we'll do a round-robin merge.
@@ -141,7 +134,6 @@ export async function GET(request) {
     // We'll do a round-robin merge of them into one big array.
 
     const merged = roundRobinMerge(scvListOfArrays);
-    console.log(`Merged round-robin array length: ${merged.length}`);
 
     // 5) skip & limit => we actually fetch PAGE_SIZE+1 to see if there's more
     const paginated = merged.slice(skipParam, skipParam + PAGE_SIZE + 1);
