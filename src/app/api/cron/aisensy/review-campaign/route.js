@@ -22,7 +22,7 @@ export async function GET(req) {
                 { deliveryStatus: 'delivered' }
             ],
         })
-            .limit(10) // Limit to 10 orders per fetch
+            .limit(50) // Limit to 10 orders per fetch
             .populate('user')           // To access user details (phoneNumber, name, etc.)
             .populate('items.product'); // So we can get product details (pageSlug, etc.)
 
