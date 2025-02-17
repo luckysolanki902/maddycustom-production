@@ -24,12 +24,18 @@ const ReviewCard = ({ rating = 4,status='approved', name = 'Maddy Singh', commen
       </div>
 
       {/* User Info */}
+      <div style={{display:'flex', justifyContent:'space-between', width: '100%', alignItems: 'center'}}>
+
       <div className={styles.userInfo}>
         {/* <Avatar className={styles.avatar} /> */}
         <Image className={styles.avatar} src={`${imageBaseUrl}/assets/icons/rounded_corner_default_avtar.png`} alt="avatar" width={50} height={50}></Image>
         <span className={styles.name}>{name}</span>
       </div>
-
+      {/* review status */}
+{status !== 'approved' && (
+  <div style={{color: status === 'rejected' ? 'red' : ''}}>{status}</div>
+)}
+      </div>
       {/* Comment Section */}
       <p className={styles.comment}>{comment}</p>
     </div>
