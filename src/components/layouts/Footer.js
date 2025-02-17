@@ -284,7 +284,6 @@ const Footer = () => {
               className={styles.subscribeInput}
               value={phoneNumber}
               onChange={(e) => {
-                console.log(e.target.value)
                 // Allow only digits
                 const numeric = e.target.value.replace(/\D/g, "");
                 setPhoneNumber(numeric);

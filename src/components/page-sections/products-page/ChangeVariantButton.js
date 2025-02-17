@@ -31,7 +31,6 @@ export default function ChangeVariantButton({ category }) {
 
   useEffect(() => {
     if (category.useLetterMapping) {
-        console.log(category.useLetterMapping || false)
       setUseMapping(true);
       setLetterMappingGroups(category.letterMappingGroups || []);
     }

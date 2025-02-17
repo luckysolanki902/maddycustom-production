@@ -1,4 +1,4 @@
-// app/api/reviews/route.js
+// /app/api/reviews/route.js
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Review from '@/models/Review';
 import { NextResponse } from 'next/server';
@@ -6,8 +6,7 @@ import User from '@/models/User';
 import mongoose from 'mongoose';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 
-// Toggle this to enable or disable dummy reviews
-const includeDummyReviewCount = true;
+const includeDummyReviewCount = true; // Toggle this to enable/disable dummy reviews
 
 export async function GET(request) {
   try {
@@ -25,6 +24,7 @@ export async function GET(request) {
     const page = parseInt(pageParam, 10) || 1;
     const limit = parseInt(limitParam, 10) || 5;
 
+    // Validate fetchReviewSource
     if (!['variant', 'product'].includes(fetchReviewSource)) {
       return NextResponse.json(
         { message: 'Invalid fetchReviewSource value' },
@@ -55,7 +55,7 @@ export async function GET(request) {
 
     // We'll gather:
     // 1) All APPROVED reviews matching baseQuery
-    // 2) The user's single review if phone is provided, any status, pinned on page=1
+    // 2) The user's single review if phone is provided (any status), pinned on page=1
     let userId = null;
     if (userPhoneNumber) {
       const user = await User.findOne({ phoneNumber: userPhoneNumber });
@@ -67,24 +67,23 @@ export async function GET(request) {
     const approvedQuery = { ...baseQuery, status: 'approved' };
     const allApproved = await Review.find(approvedQuery).sort({ createdAt: -1 });
 
+    // Attempt to find the user's review for this product/variant
     let userReview = null;
     if (userId) {
-      console.log(baseQuery, 'baseQuery');
       userReview = await Review.findOne({
         ...baseQuery,
         user: userId,
       });
-      console.log({...baseQuery, user: userId});
-      // console.log(userReview, 'userReview');
     }
 
-    // Build combined
+    // Build combined list: userReview (pinned) + approved
     let combined = [...allApproved];
     if (userReview) {
       const foundIndex = combined.findIndex((r) => r._id.equals(userReview._id));
       if (foundIndex === -1) {
+        // if not present in approved, push it
         if (page === 1) {
-          combined.unshift(userReview);
+          combined.unshift(userReview); // Pin on top if page=1
         } else {
           combined.push(userReview);
         }
@@ -108,7 +107,7 @@ export async function GET(request) {
     );
     let totalApprovedCount = await Review.countDocuments(approvedQuery);
 
-    // Optionally add dummy counts
+    // Optionally add "dummy" review counts
     if (includeDummyReviewCount && fetchReviewSource === 'variant') {
       const variantDoc = await SpecificCategoryVariant.findById(variantId);
       if (variantDoc) {

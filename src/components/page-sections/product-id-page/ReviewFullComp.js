@@ -27,16 +27,11 @@ const StyledButton = styled(Button)(({ theme }) => ({
   padding: "0.5rem 4rem",
   color: "black",
   transition: "all 0.3s ease-in-out",
-  width: "auto", // Auto width on desktop
+  width: "auto",
   "&:hover": {
     borderColor: "black",
     color: "black",
   },
-  "&:active": {
-    borderColor: "black",
-    color: "black",
-  },
-  // Responsive Styles
   [theme.breakpoints.down("md")]: {
     fontSize: "1rem",
     padding: "0.4rem 3rem",
@@ -52,14 +47,11 @@ export default function ReviewFullComp({
   variantId,
   categoryId,
   fetchReviewSource = "variant",
-  variant, // default to 'variant'
+  variant // e.g. variant name or details if needed
 }) {
+  // State for the actual reviews
   const [reviews, setReviews] = useState([]);
-  const [openReviewDialog, setOpenReviewDialog] = useState(false);
-  const userPhoneNumber = useSelector(
-    (state) => state.orderForm.userDetails.phoneNumber
-  );
-
+  // Pagination state
   const [pagination, setPagination] = useState({
     totalCount: 0,
     totalPages: 1,
@@ -67,21 +59,54 @@ export default function ReviewFullComp({
     limit: 5,
   });
 
-  // Overall rating and star distribution from the backend
+  // Overview data (overall rating, star distribution, total)
   const [averageRating, setAverageRating] = useState(0);
   const [starCounts, setStarCounts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [totalApprovedCount, setTotalApprovedCount] = useState(0);
+
+  // Other states
+  const [openReviewDialog, setOpenReviewDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // If you have variant-level dummy review counts, can store here:
-  const [variantDetails, setVariantDetails] = useState(null);
+  // Get user phone from Redux (for example)
+  const userPhoneNumber = useSelector(
+    (state) => state.orderForm.userDetails.phoneNumber
+  );
 
-  // Fetch reviews from the main reviews API
+  /**
+   * 1) Fetch Overview
+   */
+  const fetchOverview = async () => {
+    try {
+      const params = new URLSearchParams({
+        fetchReviewSource,
+        productId: productId || "",
+        variantId: variantId || "",
+      });
+      const res = await fetch(`/api/reviews/overview?${params.toString()}`);
+      const data = await res.json();
+      console.log({starCounts: data.starCounts});
+      if (res.ok) {
+        setAverageRating(data.averageRating);
+        setStarCounts(data.starCounts);
+        setTotalApprovedCount(data.totalApprovedCount);
+      } else {
+        console.error("Error fetching overview:", data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching overview:", error);
+    }
+  };
+
+  /**
+   * 2) Fetch Paginated Reviews
+   */
   const fetchReviews = async (page = 1) => {
     setLoading(true);
     setError(null);
+
     try {
-      // Build query parameters for the API
       const params = new URLSearchParams({
         fetchReviewSource,
         productId: productId || "",
@@ -90,14 +115,16 @@ export default function ReviewFullComp({
         page: page.toString(),
         limit: pagination.limit.toString(),
       });
+
       const res = await fetch(`/api/reviews?${params.toString()}`);
       const data = await res.json();
 
       if (res.ok) {
         setReviews(data.reviews);
         setPagination(data.pagination);
-        setAverageRating(data.averageRating);
-        setStarCounts(data.starCounts);
+        // The route also returns averageRating & starCounts, 
+        // but we rely on the separate overview route for final data. 
+        // (You can choose to consume it here if you prefer.)
       } else {
         setError(data.message || "Failed to fetch reviews.");
       }
@@ -109,44 +136,23 @@ export default function ReviewFullComp({
     }
   };
 
-  // If you have an endpoint for variant details
-  const fetchVariantDetails = async () => {
-    if (!variantId) return;
-    try {
-      const res = await fetch(`/api/get-variant?variantId=${variantId}`);
-      const data = await res.json();
-      if (res.ok) {
-        setVariantDetails(data);
-      } else {
-        console.error("Failed to fetch variant details:", data.error);
-      }
-    } catch (err) {
-      console.error("Error fetching variant details:", err);
-    }
+  // Combined useEffect to get both overview & reviews
+  useEffect(() => {
+    // fetch overview
+    fetchOverview();
+    // fetch reviews for page 1
+    fetchReviews(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchReviewSource, productId, variantId]);
+
+  // Handle pagination changes
+  const handlePageChange = (event, newPage) => {
+    fetchReviews(newPage);
   };
 
+  // Handlers for the review dialog
   const handleOpenReviewDialog = () => setOpenReviewDialog(true);
   const handleCloseReviewDialog = () => setOpenReviewDialog(false);
-
-  // Initial fetch or when relevant props change
-  useEffect(() => {
-    fetchReviews(pagination.currentPage);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId, variantId, fetchReviewSource]);
-
-  // Fetch variant details if needed
-  useEffect(() => {
-    fetchVariantDetails();
-  }, [variantId]);
-
-  // Handle page change from the MUI Pagination
-  const handlePageChange = (event, value) => {
-    fetchReviews(value);
-  };
-
-  // If you want to combine real totalCount + dummy from variant, for display:
-  const dummyCount = variantDetails?.tempReviewCount || 0;
-  const displayedTotalCount = pagination.totalCount + dummyCount;
 
   return (
     <div className={styles.reviewContainer}>
@@ -157,10 +163,10 @@ export default function ReviewFullComp({
         </StyledButton>
       </Box>
 
-      {/* Overall Ratings & Star Distribution */}
+      {/* Overall Ratings & Star Distribution (from /overview endpoint) */}
       <RatingsOverview
         averageRating={averageRating}
-        totalReviews={displayedTotalCount}
+        totalReviews={totalApprovedCount} // real + dummy if enabled
         starCounts={starCounts}
         variant={variant}
       />
@@ -188,11 +194,10 @@ export default function ReviewFullComp({
           productId={productId}
           variantId={variantId}
           userPhoneNumber={userPhoneNumber}
-          limit={5}
         />
       </div>
 
-      {/* Payment and shipping by label (if needed) */}
+      {/* Payment and shipping by label */}
       <Box sx={{ width: "100%", display: "flex", justifyContent: "center" }}>
         <PaymentShippingPoweredBy />
       </Box>
@@ -225,13 +230,12 @@ export default function ReviewFullComp({
             name={review.name}
             comment={review.comment}
             status={review.status}
-            // Use createdAt from MongoDB
             date={new Date(review.createdAt).toLocaleDateString()}
           />
         ))}
       </div>
 
-      {/* Example Pagination UI */}
+      {/* Pagination (if multiple pages) */}
       {pagination.totalPages > 1 && (
         <Box sx={{ display: "flex", justifyContent: "center", marginTop: "1rem" }}>
           <Pagination

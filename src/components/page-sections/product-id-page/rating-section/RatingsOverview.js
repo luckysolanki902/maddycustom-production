@@ -1,10 +1,17 @@
+"use client";
 import React from "react";
-import { Box, CircularProgress, Divider, Typography } from "@mui/material";
+import { Box, CircularProgress, Divider, Typography, Skeleton } from "@mui/material";
 import { styled, useMediaQuery } from "@mui/system";
 import StarDistribution from "./StarDistribution";
 import styles from "./styles/RatingsOverview.module.css";
 
-export default function RatingsOverview({ averageRating, totalReviews, starCounts,variant }) {
+export default function RatingsOverview({
+  averageRating = 0,
+  totalReviews = 0,
+  starCounts = [],
+  variant,
+  loading, // <-- Accept a loading prop
+}) {
   const isSmallDevice = useMediaQuery("(max-width: 600px)");
   const isMediumDevice = useMediaQuery("(max-width: 900px)");
   const progressValue = (averageRating / 5) * 100;
@@ -24,6 +31,47 @@ export default function RatingsOverview({ averageRating, totalReviews, starCount
     left: 0,
   }));
 
+  // If still loading, show skeleton placeholders
+  if (loading) {
+    return (
+      <div className={styles.ratingsOverviewContainer}>
+        {/* Left half skeleton */}
+        <div className={styles.circularSection} style={{ alignItems: "center" }}>
+          <Skeleton
+            variant="circular"
+            width={isSmallDevice ? 90 : isMediumDevice ? 120 : 180}
+            height={isSmallDevice ? 90 : isMediumDevice ? 120 : 180}
+            sx={{ marginBottom: "8px" }}
+          />
+          <Skeleton variant="text" width={120} />
+        </div>
+
+        {/* Vertical divider placeholder */}
+        <Divider
+          orientation="vertical"
+          flexItem
+          sx={{ mx: 2, visibility: "hidden" }} // hide or show as needed
+        />
+
+        {/* Right half skeleton */}
+        <div className={styles.starDistributionSection}>
+          <Box sx={{ width: "100%" }}>
+            {/* Skeleton lines for each star row */}
+            {[...Array(5)].map((_, idx) => (
+              <Skeleton
+                key={idx}
+                variant="rectangular"
+                height={isSmallDevice ? 15 : 20}
+                sx={{ my: isSmallDevice ? 1 : 2, borderRadius: "4px", width: '80%' }}
+              />
+            ))}
+          </Box>
+        </div>
+      </div>
+    );
+  }
+
+  // If NOT loading, show the actual content
   return (
     <div className={styles.ratingsOverviewContainer}>
       {/* Left (Circular Rating) */}
@@ -70,7 +118,9 @@ export default function RatingsOverview({ averageRating, totalReviews, starCount
             </Box>
           </CircularContainer>
         </Box>
-        <div className={styles.basedOnReviews}>Based on {totalReviews} reviews</div>
+        <div className={styles.basedOnReviews}>
+          Based on {totalReviews} reviews
+        </div>
       </div>
 
       {/* Center Divider */}
@@ -83,7 +133,11 @@ export default function RatingsOverview({ averageRating, totalReviews, starCount
 
       {/* Right (Star Distribution) */}
       <div className={styles.starDistributionSection}>
-        <StarDistribution starCounts={starCounts} totalReviews={totalReviews} variant={variant} />
+        <StarDistribution
+          starCounts={starCounts}
+          totalReviews={totalReviews}
+          variant={variant}
+        />
       </div>
     </div>
   );

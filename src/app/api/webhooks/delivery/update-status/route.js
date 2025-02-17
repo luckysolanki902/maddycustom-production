@@ -14,18 +14,15 @@ export const config = {
 
 export async function POST(request) {
   // Validate the security token
-  console.log("gooo");
   const receivedToken = request.headers.get('x-api-key');
   const expectedToken = process.env.SHIPROCKET_WEBHOOK_SECRET; // Set this in your environment variables
-  console.log(expectedToken);
-  console.log(receivedToken);
+
 
   if (receivedToken !== expectedToken) {
     console.error('Invalid security token');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
  
-//   console.log("one")
 
   // Start a MongoDB session for an atomic update
   
@@ -35,13 +32,10 @@ export async function POST(request) {
     session.startTransaction();
   
 
-//   console.log("two")
 
   try {
     const rawBody = await request.text();
-    console.log(rawBody);
     const payload = JSON.parse(rawBody);
-    console.log(payload);
     
     // Extract required details from payload
     const { order_id, current_status } = payload;
@@ -65,7 +59,6 @@ export async function POST(request) {
     const normalizedStatus = current_status.toLowerCase().replace(/_/g, ' ').trim();
     const mappedStatus = statusMapping[normalizedStatus];
     if (!mappedStatus) {
-      console.log(`No mapping found for status: ${current_status}`);
       return NextResponse.json({ message: 'Status not mapped. No update performed.' }, { status: 200 });
     }
     
