@@ -15,6 +15,7 @@ import ReviewCard from "./rating-section/ReviewCard";
 import PaymentShippingPoweredBy from "./rating-section/PaymentShippingPoweredBy";
 import ReviewDialog from "./rating-section/ReviewDialog";
 import { useSelector } from "react-redux";
+import { useSpring } from "@react-spring/web";
 
 // Define a reusable styled MUI Button with responsive styles
 const StyledButton = styled(Button)(({ theme }) => ({
@@ -47,7 +48,7 @@ export default function ReviewFullComp({
   variantId,
   categoryId,
   fetchReviewSource = "variant",
-  variant // e.g. variant name or details if needed
+  variant, // e.g. variant name or details if needed
 }) {
   // State for the actual reviews
   const [reviews, setReviews] = useState([]);
@@ -86,7 +87,7 @@ export default function ReviewFullComp({
       });
       const res = await fetch(`/api/reviews/overview?${params.toString()}`);
       const data = await res.json();
-      console.log({starCounts: data.starCounts});
+      console.log({ starCounts: data.starCounts });
       if (res.ok) {
         setAverageRating(data.averageRating);
         setStarCounts(data.starCounts);
@@ -122,9 +123,6 @@ export default function ReviewFullComp({
       if (res.ok) {
         setReviews(data.reviews);
         setPagination(data.pagination);
-        // The route also returns averageRating & starCounts, 
-        // but we rely on the separate overview route for final data. 
-        // (You can choose to consume it here if you prefer.)
       } else {
         setError(data.message || "Failed to fetch reviews.");
       }
@@ -138,9 +136,7 @@ export default function ReviewFullComp({
 
   // Combined useEffect to get both overview & reviews
   useEffect(() => {
-    // fetch overview
     fetchOverview();
-    // fetch reviews for page 1
     fetchReviews(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchReviewSource, productId, variantId]);
@@ -153,6 +149,29 @@ export default function ReviewFullComp({
   // Handlers for the review dialog
   const handleOpenReviewDialog = () => setOpenReviewDialog(true);
   const handleCloseReviewDialog = () => setOpenReviewDialog(false);
+
+  // React Spring: Create a spring animation for scrolling.
+  const [spring, api] = useSpring(() => ({ scroll: window.scrollY }));
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#review") {
+      const reviewElement = document.getElementById("review");
+      if (reviewElement) {
+        const targetY = reviewElement.offsetTop;
+        // Animate scroll from current window.scrollY to targetY
+        api.start({
+          from: { scroll: window.scrollY },
+          to: { scroll: targetY },
+          config: { tension: 170, friction: 26 },
+          onChange: (result) => {
+            window.scrollTo(0, result.value.scroll);
+          },
+        });
+      }
+    }
+    // We only need to run this on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className={styles.reviewContainer}>
@@ -173,6 +192,7 @@ export default function ReviewFullComp({
 
       {/* Write a Review Button */}
       <Box
+        id="review"
         sx={{
           width: "100%",
           display: "flex",
