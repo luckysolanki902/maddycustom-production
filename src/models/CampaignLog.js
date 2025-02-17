@@ -50,7 +50,7 @@ const CampaignLogSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Unique index to prevent duplicate logs for the same user, order, and campaign
-CampaignLogSchema.index({ user: 1, order: 1, campaignName: 1 }, { unique: true });
+CampaignLogSchema.index({ order: 1, campaignName: 1 }, { unique: true });
 
 module.exports = mongoose.models.CampaignLog || mongoose.model('CampaignLog', CampaignLogSchema);
 
