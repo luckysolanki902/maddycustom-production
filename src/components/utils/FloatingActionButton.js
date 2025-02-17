@@ -1,13 +1,10 @@
-"use client"
+"use client";
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useSpring, animated } from 'react-spring';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import HomeIcon from '@mui/icons-material/Home';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from './styles/floatingactionbar.module.css';
-import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import Image from 'next/image';
 import Badge from '@mui/material/Badge'; // Import MUI Badge
 
@@ -16,6 +13,10 @@ const FloatingActionBar = () => {
   const items = useSelector((state) => state.cart.items);
   const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0); // Calculate total quantity
   
+  // Check if the pathname is a product page based on the URL pattern
+  // The expected product page URL is: /shop/category/subcategory/specificategory/specificcategoryvariant/product
+
+
   const [firstItemAdded, setFirstItemAdded] = useState(false);
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
@@ -31,9 +32,13 @@ const FloatingActionBar = () => {
     config: { tension: 200, friction: 20 },
   });
 
-  if (pathname === '/viewcart') return null;
+  const pathParts = pathname.split('/').filter(Boolean);
+  if (pathParts[0] === 'shop' && pathParts.length === 6) {
+    return null;
+  }
 
-  if (totalQuantity < 1) return null
+  if (pathname === '/viewcart') return null;
+  if (totalQuantity < 1) return null;
 
   return (
     <div className={styles.container}>
