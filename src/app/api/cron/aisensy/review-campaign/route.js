@@ -8,23 +8,29 @@ import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 
 export async function GET(req) {
     try {
-        const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL
+        const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
         await connectToDatabase();
 
         // 10 days in milliseconds
         const TEN_DAYS_IN_MS = 10 * 24 * 60 * 60 * 1000;
         const cutoffDate = new Date(Date.now() - TEN_DAYS_IN_MS);
 
-        // Find orders older than 10 days where deliveryStatus is empty/null
+        // We also want to ensure orders are never before 1 Feb 2025
+        const FEB_1_2025 = new Date('2025-02-01T00:00:00Z');
+
+        // Find orders that:
+        // - Have createdAt between FEB_1_2025 and cutoffDate (i.e. older than 10 days, but no earlier than Feb 1 2025)
+        // - Have deliveryStatus 'delivered'
         const orders = await Order.find({
-            createdAt: { $lte: cutoffDate },
-            $or: [
-                { deliveryStatus: 'delivered' }
-            ],
+            createdAt: {
+                $gte: FEB_1_2025,   // No earlier than Feb 1 2025
+                $lte: cutoffDate,   // At least 10 days old
+            },
+            deliveryStatus: 'delivered',
         })
-            .limit(50) // Limit to 10 orders per fetch
-            .populate('user')           // To access user details (phoneNumber, name, etc.)
-            .populate('items.product'); // So we can get product details (pageSlug, etc.)
+        .limit(50) // Limit to 50 orders per fetch (or 10, if you want)
+        .populate('user')           // Access user details
+        .populate('items.product'); // Access product details
 
         if (!orders.length) {
             return NextResponse.json({ message: 'No orders found for review campaign.' });
@@ -45,20 +51,19 @@ export async function GET(req) {
             const productName = product.name || 'your product';
             const pageSlug = product.pageSlug || '';
 
-            // Prepare template params (adjust to match your AiSensy template placeholders)
-            // e.g., If your AiSensy template placeholders are {{1}} = userName, {{2}} = itemName
+            // Prepare your AiSensy template parameters
             const templateParams = [
-                // userName,
-                productName];
+                // userName,  // Add or remove as needed
+                productName
+            ];
 
-            // Always send the same static media file
+            // Example media attachment
             const media = {
-                url: `${baseImageUrl}/assets/marketing/aisensy-whatsapp-media/customers_matters.jpg`, // Replace this with your actual file URL
-                filename: 'customer-matters',            
+                url: `${baseImageUrl}/assets/marketing/aisensy-whatsapp-media/customers_matters.jpg`,
+                filename: 'customer-matters',
             };
 
-            // Prepare the button to direct user to the product’s review page
-            // The template in AiSensy must have a button with sub_type "url" to handle this
+            // Example button to direct user to a "reviews" anchor on your site
             const buttons = [
                 {
                     type: 'button',
@@ -73,7 +78,7 @@ export async function GET(req) {
                 },
             ];
 
-            // Send WhatsApp message
+            // Call your AiSensy utility
             const result = await sendWhatsAppMessage({
                 user: order.user,
                 campaignName: 'review_all',
@@ -83,7 +88,9 @@ export async function GET(req) {
                 buttons,
             });
 
-            if (result.success) sentCount++;
+            if (result.success) {
+                sentCount++;
+            }
         }
 
         return NextResponse.json({
