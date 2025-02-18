@@ -208,15 +208,17 @@ const OrderSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: [
-        'pending',
-        'orderCreated',
-        'processing',
-        'shipped',
-        'partiallyDelivered',
-        'delivered',
-        'returned',
-        'lost',
-        'cancelled'
+        'pending',            // Order awaiting action
+        'orderCreated',       // Order created/registered
+        'processing',         // Pre-shipping & preparation states (including pickup scheduling, packaging, etc.)
+        'shipped',            // Order dispatched from warehouse
+        'onTheWay',           // Order picked up & actively moving toward delivery
+        'partiallyDelivered', // Only part of the order delivered
+        'delivered',          // Order delivered successfully
+        'returnInitiated',    // Return process initiated/in progress (pickup, in transit back, etc.)
+        'returned',           // Return completed (item has reached its return destination)
+        'lost',               // Order lost/damaged in transit
+        'cancelled'           // Order cancelled or undeliverable
       ],
       default: 'pending',
       index: true, // Index for efficient querying
