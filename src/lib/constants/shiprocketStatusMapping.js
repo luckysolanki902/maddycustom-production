@@ -71,7 +71,7 @@ export const statusMapping = {
   "return out for delivery": "returnInitiated", // 48: Return Out For Delivery
   "return pickup exception": "returnInitiated", // 49: Return Pickup Exception
   "return undelivered": "returnInitiated",       // 50: Return Undelivered
-  "rto in-transit": "returnInitiated",          // 55: RTO In-Transit
+  "rto in transit": "returnInitiated",          // 55: RTO In Transit
 
   // Returned Group (Return process completed)
   "returned": "returned",                       // 9: Returned
@@ -108,8 +108,8 @@ export const statusMapping = {
   "issue related to the recipient": "unknown",  // 89: ISSUE_RELATED_TO_THE_RECIPIENT
   
 // Undelivered Group
-"undelivered": "undelivered",                   // 36: Undelivered
 "unfulfillable": "undelivered",                 // 11: Unfulfillable
+"undelivered": "undelivered",                   // 36: Undelivered
 
 };
 
