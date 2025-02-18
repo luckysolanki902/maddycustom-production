@@ -1,104 +1,115 @@
-// src/lib/constants/shiprocketStatusMapping.js
 export const statusMapping = {
   // Order Created Group
-  "New": "orderCreated", // 1: New
+  "new": "orderCreated", // 1: New
 
   // Processing Group (Pre-shipping / preparation & some cancellation requests)
-  "Invoiced": "processing",            // 2: Invoiced
-  "Ready To Ship": "processing",         // 3: Ready To Ship
-  "Pickup Scheduled": "processing",      // 4: Pickup Scheduled
-  "Unmapped": "processing",              // 10: Unmapped
-  "Pickup Queue": "processing",          // 12: Pickup Queue
-  "Pickup Rescheduled": "processing",    // 13: Pickup Rescheduled
-  "Cancellation Requested": "processing",// 18: Cancellation Requested
-  "Return Cancellation Requested": "processing", // 29: Return Cancellation Requested
-  "Out For Pickup": "processing",        // 34: Out For Pickup
-  "Box Packing": "processing",           // 69: Box Packing
-  "Pickup Booked": "processing",         // 70: Pickup Booked
-  "DARKSTORE SCHEDULED": "processing",   // 71: DARKSTORE SCHEDULED
-  "Allocation in Progress": "processing",// 72: Allocation in Progress
-  "FC Allocated": "processing",          // 73: FC Allocated
-  "Picklist Generated": "processing",    // 74: Picklist Generated
-  "Ready to Pack": "processing",         // 75: Ready to Pack
-  "Packed": "processing",                // 76: Packed
-  "FC MANIFEST GENERATED": "processing", // 80: FC MANIFEST GENERATED
-  "PROCESSED AT WAREHOUSE": "processing",// 81: PROCESSED AT WAREHOUSE
-  "Reached Warehouse": "processing",     // 58: Reached Warehouse
+  "invoiced": "processing",                   // 2: Invoiced
+  "ready to ship": "processing",                // 3: Ready To Ship
+  "pickup scheduled": "processing",             // 4: Pickup Scheduled
+  "unmapped": "processing",                     // 10: Unmapped
+  "pickup queue": "processing",                 // 12: Pickup Queue
+  "pickup rescheduled": "processing",           // 13: Pickup Rescheduled
+  "cancellation requested": "processing",       // 18: Cancellation Requested
+  "return cancellation requested": "processing",// 29: Return Cancellation Requested
+  "out for pickup": "processing",               // 34: Out For Pickup
+  "pickup exception": "processing",             // 35: Pickup Exception
+  "box packing": "processing",                  // 69: Box Packing
+  "pickup booked": "processing",                // 70: Pickup Booked
+  "darkstore scheduled": "processing",          // 71: DARKSTORE SCHEDULED
+  "allocation in progress": "processing",       // 72: Allocation in Progress
+  "fc allocated": "processing",                 // 73: FC Allocated
+  "picklist generated": "processing",           // 74: Picklist Generated
+  "ready to pack": "processing",                // 75: Ready to Pack
+  "packed": "processing",                       // 76: Packed
+  "fc manifest generated": "processing",        // 80: FC MANIFEST GENERATED
+  "processed at warehouse": "processing",       // 81: PROCESSED AT WAREHOUSE
+  "reached warehouse": "processing",            // 58: Reached Warehouse
 
   // Shipped Group (Initial shipping event)
-  "Shipped": "shipped",                  // 6: Shipped
+  "shipped": "shipped",                         // 6: Shipped
 
   // On The Way Group (After pickup – actively in transit toward delivery)
-  "Out for Delivery": "onTheWay",        // 19: Out for Delivery
-  "In Transit": "onTheWay",              // 20: In Transit
-  "Reached Destination Hub": "onTheWay", // 43: Reached Destination Hub
-  "Picked Up": "onTheWay",               // 51: Picked Up
-  "Delivery Delayed": "onTheWay",        // 37: Delivery Delayed
-  "Custom Cleared": "onTheWay",          // 59: Custom Cleared
-  "In Flight": "onTheWay",               // 60: In Flight
-  "Handover to Courier": "onTheWay",     // 61: Handover to Courier
-  "Booked": "onTheWay",                  // 62: Booked
-  "In Transit Overseas": "onTheWay",     // 64: In Transit Overseas
-  "Connection Aligned": "onTheWay",      // 65: Connection Aligned
-  "Reached Overseas Warehouse": "onTheWay", // 66: Reached Overseas Warehouse
-  "Custom Cleared Overseas": "onTheWay", // 67: Custom Cleared Overseas
+  "out for delivery": "onTheWay",               // 19: Out for Delivery
+  "in transit": "onTheWay",                     // 20: In Transit
+  "reached destination hub": "onTheWay",        // 43: Reached Destination Hub
+  "picked up": "onTheWay",                      // 51: Picked Up
+  "delayed": "onTheWay",               // 37: Delivery Delayed
+  "delivery delayed": "onTheWay",               // 37: Delivery Delayed
+  "custom cleared": "onTheWay",                 // 59: Custom Cleared
+  "in flight": "onTheWay",                      // 60: In Flight
+  "handover to courier": "onTheWay",            // 61: Handover to Courier
+  "booked": "onTheWay",                         // 62: Booked
+  "shipment booked": "onTheWay",                // 62: Booked
+  "in transit overseas": "onTheWay",            // 64: In Transit Overseas
+  "in transit en route": "onTheWay",            // xx: In Transit En Route
+  "in transit at destination hub": "onTheWay",  // xx: In Transit At Destination Hub
+  "connection aligned": "onTheWay",             // 65: Connection Aligned
+  "reached overseas warehouse": "onTheWay",     // 66: Reached Overseas Warehouse
+  "custom cleared overseas": "onTheWay",        // 67: Custom Cleared Overseas
 
   // Partially Delivered Group
-  "Partial Delivered": "partiallyDelivered", // 38: Partial Delivered
+  "partial delivered": "partiallyDelivered",    // 38: Partial Delivered
 
   // Delivered Group
-  "Delivered": "delivered",             // 7: Delivered
-  "Fulfilled": "delivered",             // 41: Fulfilled
-  "Self Fulfilled": "delivered",        // 52: Self Fulfilled
+  "delivered": "delivered",                     // 7: Delivered
+  "fulfilled": "delivered",                     // 41: Fulfilled
+  "self fulfilled": "delivered",                // 52: Self Fulfilled
 
   // Return Initiated Group (Return process is underway)
-  "RTO Initiated": "returnInitiated",       // 15: RTO Initiated
-  "Return Pending": "returnInitiated",      // 21: Return Pending
-  "Return Initiated": "returnInitiated",      // 22: Return Initiated
-  "Return Pickup Queued": "returnInitiated",  // 23: Return Pickup Queued
-  "Return Pickup Error": "returnInitiated",   // 24: Return Pickup Error
-  "Return In Transit": "returnInitiated",     // 25: Return In Transit
-  "Return Pickup Generated": "returnInitiated",// 28: Return Pickup Generated
-  "Return Pickup Rescheduled": "returnInitiated",// 31: Return Pickup Rescheduled
-  "Return Picked Up": "returnInitiated",      // 32: Return Picked Up
-  "RTO_OFD": "returnInitiated",             // 45: RTO_OFD
-  "RTO_NDR": "returnInitiated",             // 46: RTO_NDR
-  "Return Out For Pickup": "returnInitiated", // 47: Return Out For Pickup
-  "Return Out For Delivery": "returnInitiated",// 48: Return Out For Delivery
-  "Return Pickup Exception": "returnInitiated",// 49: Return Pickup Exception
-  "Return Undelivered": "returnInitiated",    // 50: Return Undelivered
-  "RTO In-Transit": "returnInitiated",        // 55: RTO In-Transit
+  "rto initiated": "returnInitiated",           // 15: RTO Initiated
+  "return pending": "returnInitiated",          // 21: Return Pending
+  "return initiated": "returnInitiated",        // 22: Return Initiated
+  "return pickup queued": "returnInitiated",    // 23: Return Pickup Queued
+  "return pickup error": "returnInitiated",     // 24: Return Pickup Error
+  "return in transit": "returnInitiated",       // 25: Return In Transit
+  "return pickup generated": "returnInitiated", // 28: Return Pickup Generated
+  "return pickup rescheduled": "returnInitiated",// 31: Return Pickup Rescheduled
+  "return picked up": "returnInitiated",        // 32: Return Picked Up
+  "rto ofd": "returnInitiated",                 // 45: RTO_OFD
+  "rto ndr": "returnInitiated",                 // 46: RTO_NDR
+  "return out for pickup": "returnInitiated",   // 47: Return Out For Pickup
+  "return out for delivery": "returnInitiated", // 48: Return Out For Delivery
+  "return pickup exception": "returnInitiated", // 49: Return Pickup Exception
+  "return undelivered": "returnInitiated",       // 50: Return Undelivered
+  "rto in-transit": "returnInitiated",          // 55: RTO In-Transit
 
   // Returned Group (Return process completed)
-  "Returned": "returned",               // 9: Returned
-  "RTO Delivered": "returned",          // 16: RTO Delivered
-  "RTO Acknowledged": "returned",       // 17: RTO Acknowledged
-  "Return Delivered": "returned",       // 26: Return Delivered
-  "RETURN ACKNOWLEGED": "returned",     // 68: RETURN ACKNOWLEGED
-  "REACHED_BACK_AT_SELLER_CITY": "returned", // 90: REACHED_BACK_AT_SELLER_CITY
+  "returned": "returned",                       // 9: Returned
+  "rto delivered": "returned",                  // 16: RTO Delivered
+  "rto acknowledged": "returned",               // 17: RTO Acknowledged
+  "return delivered": "returned",               // 26: Return Delivered
+  "return acknowleged": "returned",             // 68: RETURN ACKNOWLEGED
+  "reached back at seller city": "returned",    // 90: REACHED_BACK_AT_SELLER_CITY
 
   // Lost Group
-  "Lost": "lost",                       // 33: Lost
-  "Destroyed": "lost",                  // 39: Destroyed
-  "Damaged": "lost",                    // 40: Damaged
-  "Disposed Off": "lost",               // 53: Disposed Off
-  "UNTRACEABLE": "lost",                // 88: UNTRACEABLE
+  "lost": "lost",                               // 33: Lost
+  "destroyed": "lost",                          // 39: Destroyed
+  "damaged": "lost",                            // 40: Damaged
+  "disposed off": "lost",                       // 53: Disposed Off
+  "untraceable": "lost",                        // 88: UNTRACEABLE
 
   // Cancelled Group
-  "Canceled": "cancelled",              // 5: Canceled
-  "ePayment Failed": "cancelled",       // 8: ePayment Failed
-  "Unfulfillable": "cancelled",         // 11: Unfulfillable
-  "Pickup Error": "cancelled",          // 14: Pickup Error
-  "Return Cancelled": "cancelled",      // 27: Return Cancelled
-  "Return Pickup Cancelled": "cancelled", // 30: Return Pickup Cancelled
-  "Archived": "cancelled",              // 42: Archived
-  "Misrouted": "cancelled",             // 44: Misrouted
-  "Pickup Exception": "cancelled",      // 35: Pickup Exception
-  "Undelivered": "cancelled",           // 36: Undelivered
-  "Canceled before Dispatched": "cancelled", // 54: Canceled before Dispatched
-  "QC Failed": "cancelled",             // 57: QC Failed
-  "PACKED EXCEPTION": "cancelled",      // 82: PACKED EXCEPTION
-  "HANDOVER EXCEPTION": "cancelled",    // 83: HANDOVER EXCEPTION
-  "RTO_LOCK": "cancelled",              // 87: RTO_LOCK
-  "ISSUE_RELATED_TO_THE_RECIPIENT": "cancelled" // 89: ISSUE_RELATED_TO_THE_RECIPIENT
+  "canceled": "cancelled",                      // 5: Canceled
+  "cancelled": "cancelled",                      // 5: Canceled
+
+  // Unknown Group
+  "epayment failed": "unknown",                 // 8: ePayment Failed
+  "pickup error": "unknown",                    // 14: Pickup Error
+  "return cancelled": "unknown",                // 27: Return Cancelled
+  "return pickup cancelled": "unknown",         // 30: Return Pickup Cancelled
+  "archived": "unknown",                        // 42: Archived
+  "misrouted": "unknown",                       // 44: Misrouted
+  "canceled before dispatched": "unknown",      // 54: Canceled before Dispatched
+  "cancelled before dispatched": "unknown",     // 54: Canceled before Dispatched
+  "qc failed": "unknown",                       // 57: QC Failed
+  "packed exception": "unknown",                // 82: PACKED EXCEPTION
+  "handover exception": "unknown",              // 83: HANDOVER EXCEPTION
+  "rto lock": "unknown",                        // 87: RTO_LOCK
+  "issue related to the recipient": "unknown",  // 89: ISSUE_RELATED_TO_THE_RECIPIENT
+  
+// Undelivered Group
+"undelivered": "undelivered",                   // 36: Undelivered
+"unfulfillable": "undelivered",                 // 11: Unfulfillable
+
 };
+

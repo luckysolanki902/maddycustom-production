@@ -11,7 +11,7 @@ const OrderSchema = new mongoose.Schema(
       required: true,
       index: true, // Index for efficient querying
     },
-    
+
     // Computed fields
     itemsCount: {
       type: Number,
@@ -19,7 +19,7 @@ const OrderSchema = new mongoose.Schema(
       index: true, // If you need to query based on itemsCount
     },
     //test
-    
+
     itemsTotal: {
       type: Number,
       default: 0,
@@ -107,7 +107,7 @@ const OrderSchema = new mongoose.Schema(
       min: 0,
       default: 0,
     },
-    isTestingOrder:{
+    isTestingOrder: {
       type: Boolean,
       default: false
     },
@@ -218,8 +218,9 @@ const OrderSchema = new mongoose.Schema(
         'returnInitiated',    // Return process initiated/in progress (pickup, in transit back, etc.)
         'returned',           // Return completed (item has reached its return destination)
         'lost',               // Order lost/damaged in transit
-        'cancelled',          // Order cancelled or undeliverable
-        'unknown',            // Unknown 
+        'cancelled',           // Order cancelled
+        'undelivered',        // Order undelivered
+        'unknown',            // Unknown
       ],
       default: 'pending',
       index: true, // Index for efficient querying
@@ -272,26 +273,26 @@ const OrderSchema = new mongoose.Schema(
 );
 
 // Pre-save middleware to compute itemsCount and itemsTotal
-OrderSchema.pre('save', function(next) {
+OrderSchema.pre('save', function (next) {
   // Calculate itemsCount as the total quantity of all items
   this.itemsCount = this.items.reduce((count, item) => count + item.quantity, 0);
-  
+
   // Calculate itemsTotal as the sum of (priceAtPurchase * quantity) for all items
   this.itemsTotal = this.items.reduce((total, item) => total + (item.priceAtPurchase * item.quantity), 0);
-  
+
   next();
 });
 
 // Pre middleware for findOneAndUpdate to compute itemsCount and itemsTotal if items are updated
-OrderSchema.pre('findOneAndUpdate', function(next) {
+OrderSchema.pre('findOneAndUpdate', function (next) {
   const update = this.getUpdate();
-  
+
   // Check if 'items' field is being updated
   if (update.items) {
     const items = update.items;
     const itemsCount = items.reduce((count, item) => count + (item.quantity || 1), 0);
     const itemsTotal = items.reduce((total, item) => total + ((item.priceAtPurchase || 0) * (item.quantity || 1)), 0);
-    
+
     // Update the fields in the update object
     this.setUpdate({
       ...update,
@@ -299,7 +300,7 @@ OrderSchema.pre('findOneAndUpdate', function(next) {
       itemsTotal,
     });
   }
-  
+
   next();
 });
 
