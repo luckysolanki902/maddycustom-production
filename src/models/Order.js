@@ -218,7 +218,8 @@ const OrderSchema = new mongoose.Schema(
         'returnInitiated',    // Return process initiated/in progress (pickup, in transit back, etc.)
         'returned',           // Return completed (item has reached its return destination)
         'lost',               // Order lost/damaged in transit
-        'cancelled'           // Order cancelled or undeliverable
+        'cancelled',          // Order cancelled or undeliverable
+        'unknown',            // Unknown 
       ],
       default: 'pending',
       index: true, // Index for efficient querying

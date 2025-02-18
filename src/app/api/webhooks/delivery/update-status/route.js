@@ -61,15 +61,7 @@ export async function POST(request) {
 
     // Normalize the received status: lowercase, replace underscores with spaces, and trim whitespace
     const normalizedStatus = current_status.toLowerCase().replace(/_/g, ' ').trim();
-    const mappedStatus = statusMapping[normalizedStatus] || 'processing';
-    if (!mappedStatus) {
-      await session.commitTransaction();
-      session.endSession();
-      return NextResponse.json(
-        { message: 'Status not mapped. No update performed.' },
-        { status: 200 }
-      );
-    }
+    const mappedStatus = statusMapping[normalizedStatus] || 'unknown';
 
     // Update the order:
     // - Set deliveryStatus to the mapped internal status.
