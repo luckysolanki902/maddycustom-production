@@ -77,7 +77,7 @@ export async function POST(request) {
     try {
       event = JSON.parse(rawBody);
     } catch (parseError) {
-      console.error('Invalid JSON payload.', parseError);
+      console.error('shipshipship: Invalid JSON payload.', parseError);
       return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
     }
 
@@ -278,7 +278,7 @@ export async function POST(request) {
       try {
         dimensionsAndWeight = await getDimensionsAndWeight(latestOrder.items);
       } catch (dimError) {
-        console.error('Dimension error order ' + internalOrderId, dimError);
+        console.error('shipshipship: Dimension error order ' + internalOrderId, dimError);
         await session.abortTransaction();
         session.endSession();
         return NextResponse.json({ error: dimError.message }, { status: 400 });
@@ -344,7 +344,7 @@ export async function POST(request) {
             })}`
           )
         } else {
-          console.error('Shiprocket error ' + internalOrderId, response);
+          console.error('shipshipship: Shiprocket error ' + internalOrderId, response);
           eventsOccured.push(
             `Shiprocket api error possibly due to package_box_error at ${new Date().toLocaleString('en-IN', {
               year: 'numeric',
@@ -362,7 +362,7 @@ export async function POST(request) {
           return NextResponse.json({ error: 'Failed to create Shiprocket order.' }, { status: 500 });
         }
       } catch (shiprocketError) {
-        console.error(`Shiprocket API call failed ${internalOrderId}`, shiprocketError);
+        console.error(`shipshipship: Shiprocket API call failed ${internalOrderId}`, shiprocketError);
         eventsOccured.push(
           `Shiprocket API call failed at ${new Date().toLocaleString('en-IN', {
             year: 'numeric',
@@ -460,7 +460,7 @@ export async function POST(request) {
         notSendingWhatsappMessageReason = 'isTestingOrder'
       }
     } catch (msgErr) {
-      console.error(`WhatsApp message sending failed for order ${latestOrder._id}:`, msgErr);
+      console.error(`shipshipship: WhatsApp message sending failed for order ${latestOrder._id}:`, msgErr);
       notSendingWhatsappMessageReason = 'some internal error'
       eventsOccured.push(
         `WhatsApp message sending failed due to ${notSendingWhatsappMessageReason} at ${new Date().toLocaleString('en-IN', {
@@ -482,7 +482,7 @@ export async function POST(request) {
     // If something broke inside the try block, revert transaction
     await session.abortTransaction();
     session.endSession();
-    console.error(`Some Internal Server Error occured for orderId: ${internalOrderId}`, error, eventsOccured);
-    return NextResponse.json({ error: `Some Internal Server Error occured for orderId: ${internalOrderId}`, eventsOccured }, { status: 500 });
+    console.error(`shipshipship: Some Internal Server Error occured for orderId: ${internalOrderId}`, error, eventsOccured);
+    return NextResponse.json({ error: `shipshipship: Some Internal Server Error occured for orderId: ${internalOrderId}`, eventsOccured }, { status: 500 });
   }
 }

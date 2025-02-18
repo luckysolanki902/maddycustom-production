@@ -61,7 +61,7 @@ export async function POST(request) {
 
     // Normalize the received status: lowercase, replace underscores with spaces, and trim whitespace
     const normalizedStatus = current_status.toLowerCase().replace(/_/g, ' ').trim();
-    const mappedStatus = statusMapping[normalizedStatus];
+    const mappedStatus = statusMapping[normalizedStatus] || 'processing';
     if (!mappedStatus) {
       await session.commitTransaction();
       session.endSession();
