@@ -59,8 +59,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
-    // Normalize the received status: lowercase, replace underscores with spaces, and trim whitespace
-    const normalizedStatus = current_status.toLowerCase().replace(/_/g, ' ').trim();
+    // Normalize the received status: lowercase, replace dashes and underscores with spaces, and trim whitespace
+    const normalizedStatus = current_status.toLowerCase().replace(/[-_]/g, ' ').trim();
     const mappedStatus = statusMapping[normalizedStatus] || 'unknown';
 
     // Update the order:
