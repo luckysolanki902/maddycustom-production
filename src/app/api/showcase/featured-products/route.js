@@ -1,5 +1,4 @@
-// app/api/showcase/featured-full-bike-wraps/route.js
-
+// app/api/showcase/featured-products/route.js
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategory from '@/models/SpecificCategory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
@@ -9,54 +8,57 @@ import { NextResponse } from 'next/server';
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const categoryCode = searchParams.get('categoryCode');
+  // Read the new "number" parameter (default to 4 if not provided)
+  const numberParam = searchParams.get('number');
+  const sampleSize = numberParam ? parseInt(numberParam, 10) : 4;
 
   await connectToDatabase();
 
   try {
-    // Find the SpecificCategory with specificCategoryCode 'fbw'
+    // Find the category by its code
     const category = await SpecificCategory.findOne({ specificCategoryCode: categoryCode });
-
     if (!category) {
-      // console.warn("Featured Full Bike Wraps: No category found with specificCategoryCode 'fbw'.");
-      return NextResponse.json({ message: "No category found with code 'fbw'" }, { status: 404 });
+      return NextResponse.json(
+        { message: `No category found with code '${categoryCode}'` },
+        { status: 404 }
+      );
     }
 
-    // Find 4 random SpecificCategoryVariants associated with this category
+    // Get random variants (using the sampleSize from the query)
     const variants = await SpecificCategoryVariant.aggregate([
       { $match: { specificCategory: category._id } },
-      { $sample: { size: 4 } },
+      { $sample: { size: sampleSize } },
     ]);
 
-    if (!variants || variants.length === 0) {
-      // console.warn(`Featured Full Bike Wraps: No variants found for categoryId=${category._id}.`);
-    }
-
-    // Fetch products and only pass the variant ID in each product
+    // For each variant, fetch a random product design using aggregation
     const products = await Promise.all(
       variants.map(async (variant) => {
-        const product = await Product.findOne({ specificCategoryVariant: variant._id }).limit(1);
-        if (!product) {
-          // console.warn(`Featured Full Bike Wraps: No product found for variantId=${variant._id}.`);
+        const randomProduct = await Product.aggregate([
+          { $match: { specificCategoryVariant: variant._id } },
+          { $sample: { size: 1 } },
+        ]);
+
+        if (!randomProduct || randomProduct.length === 0) {
           return null;
         }
-        return { ...product.toObject(), variantId: variant._id };
+        // Append the variantId for reference in the client
+        return { ...randomProduct[0], variantId: variant._id };
       })
     );
 
-    // Filter out any null results in case a variant has no associated products
+    // Remove any null results (in case a variant has no product)
     const filteredProducts = products.filter(product => product !== null);
-
-    if (filteredProducts.length === 0) {
-      // console.warn('Featured Full Bike Wraps: No products found for the selected variants.');
-    }
 
     return NextResponse.json({
       category,
       variants,
-      products: filteredProducts
+      products: filteredProducts,
     });
   } catch (error) {
     console.error("Error fetching featured bike wraps:", error.message);
-    return NextResponse.json({ message: "Error fetching featured bike wraps" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Error fetching featured bike wraps" },
+      { status: 500 }
+    );
   }
 }

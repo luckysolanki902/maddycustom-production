@@ -117,22 +117,23 @@ export async function fetchRandomProducts(categorySlug, number) {
 }
 
 
-// Featured Full Bike Wraps
-export async function fetchFeaturedproducts(categoryCode) {
+export async function fetchFeaturedproducts(categoryCode, number = 3) {
   try {
-    const res = await fetch(`${BASE_URL}/api/showcase/featured-products?categoryCode=${categoryCode}`, {
-      cache: 'no-store',
-    });
+    const res = await fetch(
+      `${BASE_URL}/api/showcase/featured-products?categoryCode=${categoryCode}&number=${number}`,
+      { cache: 'no-store' }
+    );
     if (!res.ok) {
-      console.error(`Failed to fetch featured full bike wraps. Status: ${res.status}`);
-      throw new Error('Failed to fetch featured full bike wraps');
+      console.error(`Failed to fetch featured bike wraps. Status: ${res.status}`);
+      throw new Error('Failed to fetch featured bike wraps');
     }
     return res.json();
   } catch (error) {
-    console.error('Error fetching featured full bike wraps:', error.message);
+    console.error('Error fetching featured bike wraps:', error.message);
     throw error;
   }
 }
+
 
 // Happy Customers
 export async function fetchHappyCustomers(parentSpecificCategoryId) {
