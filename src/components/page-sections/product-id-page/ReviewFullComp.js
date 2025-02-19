@@ -84,6 +84,7 @@ export default function ReviewFullComp({
         fetchReviewSource,
         productId: productId || "",
         variantId: variantId || "",
+        categoryId: categoryId || "",
       });
       const res = await fetch(`/api/reviews/overview?${params.toString()}`);
       const data = await res.json();

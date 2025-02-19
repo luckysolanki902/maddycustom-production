@@ -74,7 +74,7 @@ export default function ProductIdPage({ product, variant, category, description 
     <div className={styles.soldByCategory}>
       <TrendingUpIcon sx={{ color: 'green', marginRight: '5px' }} />
       {soldCount !== null
-        ? `${soldCount}+ sold in last 10 days`
+        ? soldCount < 20 ? '20+' : `${soldCount}+`
         : 'Loading sold count...'}
     </div>
   );
