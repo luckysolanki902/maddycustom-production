@@ -114,7 +114,7 @@ const SpecificCategorySchema = new mongoose.Schema(
     // review fetch source
     reviewFetchSource: {
       type: String,
-      enum: ['variant', 'product'],
+      enum: ['variant', 'product', 'specCat'],
       default: 'variant',
       lowercase: true
     },

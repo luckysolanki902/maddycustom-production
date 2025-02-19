@@ -12,38 +12,49 @@ export async function GET(request) {
     await connectToDatabase();
 
     const { searchParams } = new URL(request.url);
-    const fetchReviewSource = searchParams.get('fetchReviewSource'); // 'variant' or 'product'
+    // Allowed values: 'variant', 'product', or 'specCat'
+    const fetchReviewSource = searchParams.get('fetchReviewSource');
     const productId = searchParams.get('productId');
     const variantId = searchParams.get('variantId');
+    const categoryId = searchParams.get('categoryId');
 
-    if (!['variant', 'product'].includes(fetchReviewSource)) {
+    if (!['variant', 'product', 'specCat'].includes(fetchReviewSource)) {
       return NextResponse.json(
-        { message: 'Invalid fetchReviewSource value' },
+        { message: 'Invalid fetchReviewSource value. It must be one of variant, product, or specCat.' },
         { status: 400 }
       );
     }
 
+    // Build query to fetch approved reviews based on the review source.
     const approvedQuery = { status: 'approved' };
     if (fetchReviewSource === 'variant') {
       if (!variantId) {
         return NextResponse.json(
-          { message: 'variantId is required for variant overview' },
+          { message: 'variantId is required for variant overview.' },
           { status: 400 }
         );
       }
       approvedQuery.specificCategoryVariant = new mongoose.Types.ObjectId(variantId);
+    } else if (fetchReviewSource === 'specCat') {
+      if (!categoryId) {
+        return NextResponse.json(
+          { message: 'categoryId is required for specific category (specCat) overview.' },
+          { status: 400 }
+        );
+      }
+      approvedQuery.specificCategory = new mongoose.Types.ObjectId(categoryId);
     } else {
       // 'product'
       if (!productId) {
         return NextResponse.json(
-          { message: 'productId is required for product overview' },
+          { message: 'productId is required for product overview.' },
           { status: 400 }
         );
       }
       approvedQuery.product = new mongoose.Types.ObjectId(productId);
     }
 
-    // Compute real star distribution from approved reviews
+    // Compute the real star distribution from approved reviews.
     const starAggregation = await Review.aggregate([
       { $match: approvedQuery },
       {
@@ -54,24 +65,24 @@ export async function GET(request) {
       },
     ]);
 
-    // Calculate sum of ratings and total count from actual reviews
+    // Calculate the sum of ratings and total approved review count.
     let sumRatings = starAggregation.reduce(
       (acc, curr) => acc + curr._id * curr.count,
       0
     );
     let totalApprovedCount = await Review.countDocuments(approvedQuery);
 
-    // Prepare a dummy distribution object (default empty)
+    // Prepare a dummy distribution object (default is empty).
     let dummyDistObj = {};
 
-    // Optionally add dummy stats
+    // Optionally add dummy stats only for variants.
     if (!disableFakeAddition && fetchReviewSource === 'variant') {
       const variantDoc = await SpecificCategoryVariant.findById(variantId);
       if (variantDoc) {
         const dummyCount = variantDoc.tempReviewCount || 0;
         dummyDistObj = variantDoc.tempReviewDistribution || {};
         totalApprovedCount += dummyCount;
-        // Add dummy ratings to the sum
+        // Add dummy ratings to the sum.
         Object.entries(dummyDistObj).forEach(([starStr, cnt]) => {
           const star = parseInt(starStr, 10);
           const count = parseInt(cnt, 10);
@@ -83,7 +94,7 @@ export async function GET(request) {
     const averageRating =
       totalApprovedCount > 0 ? sumRatings / totalApprovedCount : 0;
 
-    // Merge the real aggregation with dummy distribution.
+    // Merge the real aggregation with any dummy distribution.
     const finalStarCounts = [5, 4, 3, 2, 1].map((star) => {
       const realCount = starAggregation.find((doc) => doc._id === star)?.count || 0;
       const dummyCount = dummyDistObj[star] ? parseInt(dummyDistObj[star], 10) : 0;
@@ -91,7 +102,9 @@ export async function GET(request) {
     });
 
     console.log({
-      dummyCount: dummyDistObj ? Object.values(dummyDistObj).reduce((a, b) => a + parseInt(b, 10), 0) : 0,
+      dummyCount: dummyDistObj
+        ? Object.values(dummyDistObj).reduce((a, b) => a + parseInt(b, 10), 0)
+        : 0,
       dummyDist: dummyDistObj,
       totalApprovedCount,
     });
