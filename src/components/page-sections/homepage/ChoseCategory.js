@@ -87,7 +87,7 @@ const ChooseCategory = () => {
 
                 {/* Fuel Cap Wraps */}
                 <div className={styles.mainCard}>
-                    <Link href={'/shop/wraps/car-wraps/fuel-cap-wraps/rectangle-electric'} className={styles.chooseCard}>
+                    <Link href={'/shop/wraps/car-wraps/fuel-cap-wraps/rectangle-petrol'} className={styles.chooseCard}>
                         <div>
                             <Image
                                 className={styles.chooseImage}
