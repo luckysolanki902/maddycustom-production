@@ -5,7 +5,7 @@ import ProductsWrapper from '@/components/cards/ProductsWrapper';
 import Image from 'next/image';
 import styles from '@/styles/home.module.css';
 
-const FeaturedFullBikeWraps = ({ data }) => { // Accept data as props
+const FeaturedProducts = ({ data }) => { // Accept data as props
     const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
     const { category, variants, products } = data;
@@ -35,4 +35,4 @@ const FeaturedFullBikeWraps = ({ data }) => { // Accept data as props
     );
 };
 
-export default FeaturedFullBikeWraps;
+export default FeaturedProducts;

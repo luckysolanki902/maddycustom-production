@@ -1,5 +1,3 @@
-// @/app/page.js
-
 import React from 'react';
 import HeroSection from '@/components/page-sections/homepage/HeroSection';
 import styles from '@/styles/home.module.css';
@@ -10,19 +8,20 @@ import Footer from '@/components/layouts/Footer';
 import CategorySearchBox from '@/components/utils/CategorySearchBox';
 import OurUniqueProductCarousel from '@/components/showcase/carousels/OurUniqueProductCarousel';
 import FlexibleLargePoster from '@/components/showcase/posters/FlexibleLargePoster';
-import HelmetSlider from '@/components/showcase/sliders/HelmetSlider';
-import FeaturedFullBikeWraps from '@/components/page-sections/homepage/FeaturedFullBikeWraps';
 import HalfBikes from '@/components/page-sections/homepage/halfBikes';
 import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
 import Image from 'next/image';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import {
   fetchOurUniqueProducts,
-  fetchHelmetSlides,
-  fetchFeaturedFullBikeWraps,
+  fetchRandomProducts, 
   fetchHappyCustomers,
-  fetchSearchCategories
+  fetchSearchCategories,
+  fetchFeaturedproducts,
 } from '@/lib/utils/fetchutils';
+import ProductSlider from '@/components/showcase/sliders/ProductSlider';
+import FeaturedProducts from '@/components/page-sections/homepage/FeaturedProducts';
+import { Box, Typography } from '@mui/material';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -36,16 +35,16 @@ const HomePage = async () => {
   // Fetch all necessary data concurrently
   const [
     ourUniqueProductsData,
-    helmetSlidesData,
+    randomProductsData, // Now using the new generic endpoint
     featuredBikeWrapsData,
     happyCustomersData,
-    searchCategoriesData
+    searchCategoriesData,
   ] = await Promise.all([
     fetchOurUniqueProducts(),
-    fetchHelmetSlides(),
-    fetchFeaturedFullBikeWraps(),
-    fetchHappyCustomers(null), // Pass parameters if needed
-    fetchSearchCategories()
+    fetchRandomProducts('f', 10), // Pass your specific category slug here
+    fetchFeaturedproducts('f'),
+    fetchHappyCustomers(null),
+    fetchSearchCategories(),
   ]);
 
   // Destructure categories and variants from searchCategoriesData
@@ -61,10 +60,7 @@ const HomePage = async () => {
 
         {/* SearchBox */}
         <div className={styles.chooseDiv}>CHOOSE</div>
-        <CategorySearchBox
-          categories={categories}
-          variants={variants}
-        />
+        <CategorySearchBox categories={categories} variants={variants} />
 
         {/* Category cards like Helmet, Tank, Bonnet to choose from */}
         <ChooseCategory />
@@ -72,27 +68,30 @@ const HomePage = async () => {
         {/* Our Unique Products */}
         <OurUniqueProductCarousel products={ourUniqueProductsData} />
 
-        {/* Helmet Poster */}
-
-        {/* <FlexibleLargePoster 
-            imageSlugForPc='helmetposterpc.jpg' 
-            imageSlugForPhone='helmetposterphone.jpg' 
-            link='/shop/accessories/safety/graphic-helmets/helmet-store' 
-          /> */}
-
-
-        {/* Helmet Slider */}
-        <HelmetSlider slides={helmetSlidesData} />
+        {/* Random Products Slider (formerly Helmet Slider) */}
+        <Box
+          sx={{
+            textAlign: 'center',
+            mt: { xs: 4, md: 6 },
+            mb: { xs: 4, md: 6 },
+            fontSize: { xs: '1.5rem', md: '2rem' },
+            fontWeight: 600,
+            fontFamily: 'Jost',
+          }}
+        >
+          Car Tank Cap Wrap
+        </Box>
+        <ProductSlider slides={randomProductsData} />
 
         {/* Bonnet Strip Wrap Poster */}
-        <FlexibleLargePoster 
-            imageSlugForPc='bonnetstrippc.jpg' 
-            imageSlugForPhone='bonnetstripphone.jpg' 
-            link='/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps' 
-          />
+        <FlexibleLargePoster
+          imageSlugForPc='bonnetstrippc.jpg'
+          imageSlugForPhone='bonnetstripphone.jpg'
+          link='/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps'
+        />
 
-        {/* Featured Full Bike Wraps */}
-        <FeaturedFullBikeWraps data={featuredBikeWrapsData} />
+        {/* Featured Products */}
+        <FeaturedProducts data={featuredBikeWrapsData} />
 
         {/* Happy Customers */}
         <div className={styles.featuredHead}>
@@ -103,11 +102,7 @@ const HomePage = async () => {
             src={`${baseImageUrl}/assets/icons/happycustomers.png`}
           />
         </div>
-        <HappyCustomers
-          data={happyCustomersData}
-          noHeading={true}
-          noShadow={true}
-        />
+        <HappyCustomers data={happyCustomersData} noHeading={true} noShadow={true} />
 
         {/* Animated Half Bikes */}
         <HalfBikes />
@@ -117,7 +112,6 @@ const HomePage = async () => {
       </main>
     </>
   );
-
 };
 
 export default HomePage;

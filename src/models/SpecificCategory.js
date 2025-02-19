@@ -57,7 +57,7 @@ const LetterMappingGroupSchema = new mongoose.Schema({
     trim: true,
     default: '',
   },
-  
+
   thumbnailRequired: {
     type: Boolean,
     default: false,
@@ -122,7 +122,7 @@ const SpecificCategorySchema = new mongoose.Schema(
       {
         title: {
           type: String,
-          enum:['Description', 'How to Apply']
+          enum: ['Description', 'How to Apply']
         },
         fetchSource: {
           type: String,
@@ -144,6 +144,9 @@ const SpecificCategorySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports =
-  mongoose.models.SpecificCategory ||
-  mongoose.model('SpecificCategory', SpecificCategorySchema);
+if (mongoose.models.SpecificCategory) {
+  delete mongoose.models.SpecificCategory;
+}
+  module.exports =
+    mongoose.models.SpecificCategory ||
+    mongoose.model('SpecificCategory', SpecificCategorySchema);
