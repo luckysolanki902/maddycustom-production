@@ -1,8 +1,6 @@
-// components/full-page-comps/ViewCart.js
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
@@ -19,7 +17,7 @@ import Footer from '../page-sections/viewcart/Footer';
 // Dialogs and Notifications
 import ApplyCoupon from '../dialogs/ApplyCoupon';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
-import OrderForm from '../dialogs/OrderForm'; // Import OrderForm
+import OrderForm from '../dialogs/OrderForm';
 
 // Utility Functions
 import {
@@ -31,6 +29,7 @@ import {
 import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
 import { setCouponApplied } from '@/store/slices/orderFormSlice';
 import Features from '../page-sections/viewcart/Features';
+import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
 
 const ViewCart = () => {
   const dispatch = useDispatch();
@@ -127,7 +126,6 @@ const ViewCart = () => {
   const onlinePercentage = selectedPaymentMode?.configuration?.onlinePercentage;
   const codPercentage = selectedPaymentMode?.configuration?.codPercentage;
 
-
   // Handle removing a cart item
   const handleRemoveItem = (productId) => {
     dispatch(removeItem({ productId }));
@@ -135,7 +133,7 @@ const ViewCart = () => {
 
   // Updated handleBack function
   const handleBack = () => {
-    router.back(); // Go back if there’s a history
+    router.back();
   };
 
   // Handle Checkout button click
@@ -155,13 +153,12 @@ const ViewCart = () => {
     setSnackbar({
       open: true,
       message: 'Coupon applied successfully!',
-      severity: 'success', // Changed severity to 'success'
+      severity: 'success',
     });
-    dispatch(setCouponApplied({ couponCode: couponCode, discountAmount: discountAmount }));
+    dispatch(setCouponApplied({ couponCode: couponCode, discountAmount }));
   };
 
-  useEffect(() => {
-  }, [totalCostBeforeDiscount, discountAmount, totalCostAfterDiscount]);
+  // (Empty useEffect removed or left minimal if not needed)
 
   // Handle Snackbar close
   const handleSnackbarClose = () => {
@@ -180,7 +177,7 @@ const ViewCart = () => {
     setSnackbar({
       open: true,
       message: 'Coupon removed.',
-      severity: 'warning', // Changed severity to 'warning'
+      severity: 'warning',
     });
     dispatch(setCouponApplied({ couponCode: '', discountAmount: 0 }));
   };
@@ -192,17 +189,24 @@ const ViewCart = () => {
     setSelectedPaymentMode(mode);
   };
 
+  // --- Memoize props for TopBoughtProducts ---
+  const topBoughtSubCategories = useMemo(() => {
+    // Create a unique array of subCategories from cartItems
+    return [...new Set(cartItems.map((item) => item.productDetails.subCategory))];
+  }, [cartItems]);
+
+  const topBoughtCurrentProductId = useMemo(() => {
+    // Join all product IDs from cartItems into a comma-separated string
+    return cartItems.map((item) => item.productDetails._id).join(',');
+  }, [cartItems]);
+
   return (
     <div className={styles.container}>
       {/* Header */}
       <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
 
       {/* Cart Items List */}
-{ totalQuantity > 0 &&      
-      <CartList cartItems={cartItems} onRemove={handleRemoveItem} /> }
-
-
-
+      {totalQuantity > 0 && <CartList cartItems={cartItems} onRemove={handleRemoveItem} />}
 
       {/* Price Details and Payment Modes */}
       {totalQuantity > 0 && (
@@ -222,19 +226,16 @@ const ViewCart = () => {
             selectedPaymentMode={selectedPaymentMode}
             onChange={handlePaymentModeChange}
           />
-
-          {/*Features of the first item in the cart */}
-          {/* <Features
-            features={cartItems[0]?.productDetails.variantDetails.features}
-          /> */}
         </section>
       )}
 
+      {/* Top Bought Products with memoized props */}
+      <TopBoughtProducts 
+        subCategories={topBoughtSubCategories}
+        currentProductId={topBoughtCurrentProductId}
+      />
 
-
-
-
-      <HappyCustomersClient headingText='Past Orders' />
+      <HappyCustomersClient headingText='Happy Customers' />
 
       {/* Total Cost and Checkout */}
       {totalQuantity > 0 && (

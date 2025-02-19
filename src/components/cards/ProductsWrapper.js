@@ -10,13 +10,7 @@ const ProductsWrapper = ({ variant, products, category, sortBy = 'default', load
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
    
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-  // Dummy images for the carousel
-  
-  const carouselImages = [
-      "tank_carousel1.jpg",
-      "tank_carousel2.jpg",
-      "tank_carousel3.jpg",
-  ];
+
   return (
     <div className={styles.productsGrid}>
       {variant.showCase?.[0]?.available && !isSmallDevice && (
@@ -40,7 +34,6 @@ const ProductsWrapper = ({ variant, products, category, sortBy = 'default', load
 
       {category.specificCategoryCode === 'tw' && !isSmallDevice && (
           <div className={styles.HeaderCarouselMain}>
-
           <HeaderCarousel />
         </div>
       )}

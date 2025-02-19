@@ -6,12 +6,15 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const categoryCode = searchParams.get('categoryCode');
+
   await connectToDatabase();
 
   try {
     // Find the SpecificCategory with specificCategoryCode 'fbw'
-    const category = await SpecificCategory.findOne({ specificCategoryCode: 'fbw' });
+    const category = await SpecificCategory.findOne({ specificCategoryCode: categoryCode });
 
     if (!category) {
       // console.warn("Featured Full Bike Wraps: No category found with specificCategoryCode 'fbw'.");

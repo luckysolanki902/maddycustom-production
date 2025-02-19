@@ -105,27 +105,22 @@ export async function fetchOurUniqueProducts() {
   }
 }
 
-// Helmet Slides
-export async function fetchHelmetSlides() {
-  try {
-    const res = await fetch(`${BASE_URL}/api/showcase/helmet-slider`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) {
-      console.error(`Failed to fetch helmet slides. Status: ${res.status}`);
-      throw new Error('Failed to fetch helmet slides');
-    }
-    return res.json();
-  } catch (error) {
-    console.error('Error fetching helmet slides:', error.message);
-    throw error;
+// random products
+export async function fetchRandomProducts(categorySlug, number) {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/showcase/random-products?category=${categorySlug}&number=${number || 10}`,
+  );
+  if (!res.ok) {
+    throw new Error("Failed to fetch random products");
   }
+  return res.json();
 }
 
+
 // Featured Full Bike Wraps
-export async function fetchFeaturedFullBikeWraps() {
+export async function fetchFeaturedproducts(categoryCode) {
   try {
-    const res = await fetch(`${BASE_URL}/api/showcase/featured-full-bike-wraps`, {
+    const res = await fetch(`${BASE_URL}/api/showcase/featured-products?categoryCode=${categoryCode}`, {
       cache: 'no-store',
     });
     if (!res.ok) {

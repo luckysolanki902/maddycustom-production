@@ -21,7 +21,7 @@ const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
     const baseUrl =
         process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL +
         "/assets/carousels/homepage-main/timer_bg2.jpg";
-    const launchDate = new Date("2025-02-19T23:59:00");
+    const launchDate = new Date("2025-02-18T23:59:00");
     const now = new Date();
     const showTimer = now < launchDate;
     return (
@@ -37,7 +37,7 @@ const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
                 <SwiperSlide>
                     <TimerOverBg
                         imageUrl={baseUrl}
-                        endTime="2025-02-19T23:59:00"
+                        endTime="2025-08-19T23:59:00"
                         paramCount={isSmallDevice ? 3 : isBetweenSmallAndMedium ? 3 : 4}          // s, m, h, d
                         imageQuality={80}      // example quality
                         width={976}
