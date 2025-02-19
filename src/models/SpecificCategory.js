@@ -19,6 +19,57 @@ const ExtraFieldSchema = new mongoose.Schema({
   },
 });
 
+// For letter-mapping variant selection
+const LetterMappingOptionSchema = new mongoose.Schema({
+  letterCode: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 5,
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 100,
+  },
+  description: {
+    type: String,
+    trim: true,
+    maxlength: 300,
+  },
+
+  thumbnail: {
+    type: String,
+    trim: true,
+    maxlength: 300,
+  },
+});
+
+const LetterMappingGroupSchema = new mongoose.Schema({
+  groupName: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  question: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  
+  thumbnailRequired: {
+    type: Boolean,
+    default: false,
+  },
+  // If you want to allow single vs multi-select, add something like:
+  // multiple: { type: Boolean, default: false },
+  mappings: {
+    type: [LetterMappingOptionSchema],
+    default: [],
+  },
+});
+
 const SpecificCategorySchema = new mongoose.Schema(
   {
     specificCategoryCode: {
@@ -57,27 +108,38 @@ const SpecificCategorySchema = new mongoose.Schema(
       default: true,
     },
     extraFields: {
-      type: [ExtraFieldSchema], // Array of ExtraFieldSchema
+      type: [ExtraFieldSchema],
       default: [],
     },
     // review fetch source
     reviewFetchSource: {
-      type:String,
+      type: String,
       enum: ['variant', 'product'],
       default: 'variant',
-      lowercase:true
+      lowercase: true
     },
-    productInfoTabs:[
+    productInfoTabs: [
       {
         title: {
-          type: String
+          type: String,
+          enum:['Description', 'How to Apply']
         },
         fetchSource: {
           type: String,
           enum: ['Variant', 'SpecCat', 'Product']
         }
       }
-    ]
+    ],
+
+    // NEW FIELDS FOR LETTER MAPPING LOGIC
+    useLetterMapping: {
+      type: Boolean,
+      default: false,
+    },
+    letterMappingGroups: {
+      type: [LetterMappingGroupSchema],
+      default: [],
+    },
   },
   { timestamps: true }
 );
