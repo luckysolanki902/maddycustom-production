@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import styles from './styles/happycustomers.module.css';
+import { Typography } from '@mui/material';
 
 export default function HappyCustomersClient({ parentSpecificCategoryId, noShadow, noHeading, headingText = 'Happy Customers' }) {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -35,9 +36,14 @@ export default function HappyCustomersClient({ parentSpecificCategoryId, noShado
 
   return (
     <div className={`${styles.main} ${!noShadow && styles.shadow}`}>
-      <div className={styles.pastOrdersMain}>
+      {/* <div className={styles.pastOrdersMain}>
         {!noHeading && <div className={styles.pastOrdersH}>{headingText}</div>}
-      </div>
+      </div> */}
+      {!noHeading && <Typography variant="h5" sx={{
+        marginBottom: { xs: 0, md: '-1rem', lg: '-2rem' },
+      }}>
+        {headingText}
+      </Typography>}
       <div className={styles.slider}>
         {happyCustomers.map((customer, index) => (
           <div className={styles.slide} key={index}>

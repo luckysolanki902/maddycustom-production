@@ -33,6 +33,7 @@ export async function GET(req) {
         image: firstImage,
         pageSlug: variant.pageSlug,
         variantInfo: variant.variantInfo,
+        variantCode: variant.variantCode,
       };
     })
   );

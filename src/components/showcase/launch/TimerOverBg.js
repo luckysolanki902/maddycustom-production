@@ -15,7 +15,7 @@ import styles from './styles/timeroverbg.module.css';
  */
 const TimerOverBg = ({
   imageUrl,
-  endTime = '2025-02-19T23:59:00',
+  endTime = '2025-02-18T23:59:00',
   paramCount = 4,
   imageQuality = 75,
   width = 976,
