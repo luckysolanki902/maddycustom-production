@@ -215,6 +215,7 @@ export default function ReviewFullComp({
           fetchReviewSource={fetchReviewSource}
           productId={productId}
           variantId={variantId}
+          categoryId={categoryId}
           userPhoneNumber={userPhoneNumber}
         />
       </div>

@@ -14,9 +14,10 @@ export async function GET(request) {
 
     // Extract query parameters
     const { searchParams } = new URL(request.url);
-    const fetchReviewSource = searchParams.get('fetchReviewSource'); // 'variant' or 'product'
+    const fetchReviewSource = searchParams.get('fetchReviewSource'); // 'variant', 'product', or 'specCat'
     const productId = searchParams.get('productId');
     const variantId = searchParams.get('variantId');
+    const categoryId = searchParams.get('categoryId'); // for specCat reviews
     const userPhoneNumber = searchParams.get('userPhoneNumber');
     const pageParam = searchParams.get('page') || '1';
     const limitParam = searchParams.get('limit') || '5';
@@ -25,14 +26,14 @@ export async function GET(request) {
     const limit = parseInt(limitParam, 10) || 5;
 
     // Validate fetchReviewSource
-    if (!['variant', 'product'].includes(fetchReviewSource)) {
+    if (!['variant', 'product', 'specCat'].includes(fetchReviewSource)) {
       return NextResponse.json(
         { message: 'Invalid fetchReviewSource value' },
         { status: 400 }
       );
     }
 
-    // Base "approved" query
+    // Build the base query according to the review source.
     const baseQuery = {};
     if (fetchReviewSource === 'variant') {
       if (!variantId) {
@@ -42,8 +43,16 @@ export async function GET(request) {
         );
       }
       baseQuery.specificCategoryVariant = new mongoose.Types.ObjectId(variantId);
+    } else if (fetchReviewSource === 'specCat') {
+      if (!categoryId) {
+        return NextResponse.json(
+          { message: 'categoryId is required for specCat review fetching' },
+          { status: 400 }
+        );
+      }
+      baseQuery.specificCategory = new mongoose.Types.ObjectId(categoryId);
     } else {
-      // 'product'
+      // fetchReviewSource === 'product'
       if (!productId) {
         return NextResponse.json(
           { message: 'productId is required for product review fetching' },
@@ -53,9 +62,7 @@ export async function GET(request) {
       baseQuery.product = new mongoose.Types.ObjectId(productId);
     }
 
-    // We'll gather:
-    // 1) All APPROVED reviews matching baseQuery
-    // 2) The user's single review if phone is provided (any status), pinned on page=1
+    // Determine the user (if provided) for pinning their review.
     let userId = null;
     if (userPhoneNumber) {
       const user = await User.findOne({ phoneNumber: userPhoneNumber });
@@ -64,10 +71,11 @@ export async function GET(request) {
       }
     }
 
+    // Approved reviews query (only approved reviews).
     const approvedQuery = { ...baseQuery, status: 'approved' };
     const allApproved = await Review.find(approvedQuery).sort({ createdAt: -1 });
 
-    // Attempt to find the user's review for this product/variant
+    // Attempt to find the user's review (regardless of status).
     let userReview = null;
     if (userId) {
       userReview = await Review.findOne({
@@ -76,21 +84,21 @@ export async function GET(request) {
       });
     }
 
-    // Build combined list: userReview (pinned) + approved
+    // Combine the user's review with all approved reviews.
     let combined = [...allApproved];
     if (userReview) {
       const foundIndex = combined.findIndex((r) => r._id.equals(userReview._id));
       if (foundIndex === -1) {
-        // if not present in approved, push it
+        // If not present in the approved list, pin it on page 1 or append otherwise.
         if (page === 1) {
-          combined.unshift(userReview); // Pin on top if page=1
+          combined.unshift(userReview);
         } else {
           combined.push(userReview);
         }
       }
     }
 
-    // Star distribution & average rating for APPROVED docs only
+    // Star distribution & average rating are based on approved reviews only.
     const starAggregation = await Review.aggregate([
       { $match: approvedQuery },
       {
@@ -107,12 +115,13 @@ export async function GET(request) {
     );
     let totalApprovedCount = await Review.countDocuments(approvedQuery);
 
-    // Optionally add "dummy" review counts
+    // Optionally add "dummy" review counts for variants.
+    let dummyDist = {};
     if (includeDummyReviewCount && fetchReviewSource === 'variant') {
       const variantDoc = await SpecificCategoryVariant.findById(variantId);
       if (variantDoc) {
         const dummyCount = variantDoc.tempReviewCount || 0;
-        const dummyDist = variantDoc.tempReviewDistribution || {};
+        dummyDist = variantDoc.tempReviewDistribution || {};
         totalApprovedCount += dummyCount;
         Object.entries(dummyDist).forEach(([starStr, cntStr]) => {
           const star = parseInt(starStr, 10);
@@ -125,12 +134,19 @@ export async function GET(request) {
     const averageRating =
       totalApprovedCount > 0 ? sumRatings / totalApprovedCount : 0;
 
+    // Build final star counts including dummy values (if any)
     const finalStarCounts = [5, 4, 3, 2, 1].map((star) => {
-      const found = starAggregation.find((doc) => doc._id === star);
-      return { star, count: found ? found.count : 0 };
+      const realCount = starAggregation.find((doc) => doc._id === star)?.count || 0;
+      const dummyCount =
+        includeDummyReviewCount &&
+        fetchReviewSource === 'variant' &&
+        dummyDist[star]
+          ? parseInt(dummyDist[star], 10)
+          : 0;
+      return { star, count: realCount + dummyCount };
     });
 
-    // Pagination
+    // Paginate the combined review list.
     const totalReviews = combined.length;
     const totalPages = Math.ceil(totalReviews / limit);
     const skip = (page - 1) * limit;
