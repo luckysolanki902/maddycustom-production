@@ -8,9 +8,10 @@ import Image from 'next/image';
 import ImageReviewDialog from './ImageReviewDialog';
 
 export default function CustomerPhotos({
-  fetchReviewSource = 'product', // or 'variant'
+  fetchReviewSource = 'product', // 'variant', 'product', or 'specCat'
   productId,
   variantId,
+  categoryId, // new prop for specCat
   userPhoneNumber, // optional
   limit = 5,
 }) {
@@ -18,7 +19,6 @@ export default function CustomerPhotos({
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentReview, setCurrentReview] = useState(null);
 
@@ -31,11 +31,12 @@ export default function CustomerPhotos({
         fetchReviewSource,
         productId: productId || '',
         variantId: variantId || '',
+        categoryId: categoryId || '', // pass categoryId if provided
         userPhoneNumber: userPhoneNumber || '',
         page: pageNumber.toString(),
         limit: limit.toString(),
       });
-      const res = await fetch(`/api/reviews/photos?${params}`);
+      const res = await fetch(`/api/reviews/photos?${params.toString()}`);
       const data = await res.json();
 
       if (res.ok) {
@@ -55,11 +56,11 @@ export default function CustomerPhotos({
     }
   };
 
+  // Reset when any of the fetch parameters change
   useEffect(() => {
-    // reset to page=1 on prop changes
     setCurrentPage(1);
     setPhotos([]);
-  }, [productId, variantId, fetchReviewSource, userPhoneNumber]);
+  }, [productId, variantId, categoryId, fetchReviewSource, userPhoneNumber]);
 
   useEffect(() => {
     fetchPhotos(currentPage);
@@ -88,12 +89,7 @@ export default function CustomerPhotos({
       <div className={styles.container}>
         <h3 className={styles.mainHeading}>Customer Photos</h3>
         {photosWithImages.length === 0 && !loading ? (
-          <Typography
-            variant="body1"
-            color="textSecondary"
-            align="center"
-            gutterBottom
-          >
+          <Typography variant="body1" color="textSecondary" align="center" gutterBottom>
             No photos yet
           </Typography>
         ) : (
@@ -115,27 +111,6 @@ export default function CustomerPhotos({
                 />
               </div>
             ))}
-
-            {/* "Load More" dotted card if we have more */}
-            {/* {hasMore && (
-              <Box
-                onClick={loadMore}
-                sx={{
-                  width: 200,
-                  height: 200,
-                  border: '2px dotted #999',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  borderRadius: '8px',
-                }}
-              >
-                <Typography variant="body2" color="text.secondary">
-                  {loading ? 'Loading...' : 'Load More'}
-                </Typography>
-              </Box>
-            )} */}
           </div>
         )}
       </div>
@@ -148,6 +123,7 @@ export default function CustomerPhotos({
           fetchReviewSource={fetchReviewSource}
           productId={productId}
           variantId={variantId}
+          categoryId={categoryId} // pass categoryId along
           userPhoneNumber={userPhoneNumber}
         />
       )}
