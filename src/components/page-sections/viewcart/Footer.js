@@ -1,3 +1,4 @@
+// components/page-sections/viewcart/Footer.js
 'use client';
 
 import React from 'react';

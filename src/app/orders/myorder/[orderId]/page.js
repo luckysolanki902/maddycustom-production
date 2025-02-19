@@ -10,6 +10,7 @@ import { Box, Card, Typography } from '@mui/material';
 import PurchasedProductSlider from '@/components/page-sections/orderSuccess/PurchasedProductSlider';
 import OrderDetails from '@/components/page-sections/orderSuccess/OrderDetails';
 import CommunityCard from '@/components/page-sections/orderSuccess/CommunityCard';
+import Footer from '@/components/layouts/Footer';
 
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
@@ -113,7 +114,8 @@ export default async function OrderPage({ params }) {
       )} */}
 
       {/* Contact Us Section */}
-      <ContactUs />
+      {/* <ContactUs /> */}
+      <Footer />
     </Box>
   );
 }
