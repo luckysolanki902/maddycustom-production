@@ -113,6 +113,7 @@ export default function ReviewFullComp({
         fetchReviewSource,
         productId: productId || "",
         variantId: variantId || "",
+        categoryId: categoryId || "",
         userPhoneNumber: userPhoneNumber || "",
         page: page.toString(),
         limit: pagination.limit.toString(),
