@@ -87,7 +87,6 @@ export default async function ShopPage({ params }) {
             description={productDescription}
           />
         </section>
-        {/* <ContactUs /> */}
       </>
     );
   }

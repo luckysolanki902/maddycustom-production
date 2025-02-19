@@ -1,0 +1,131 @@
+.timerContainer {
+    position: relative;
+    width: 100%;
+    height: auto; /* Maintains aspect ratio based on provided width & height */
+    font-family: 'Roboto', sans-serif;
+    overflow: hidden;
+  }
+  
+  .timerBgImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  
+  /* Timer Overlay on the right side */
+  .timerOverlay {
+    position: absolute;
+    top: 50%;
+    right: 10%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+  }
+  
+  /* Each time unit block */
+  .timerUnit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;         /* Ensure text stays centered vertically */
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    
+    /* FIXED WIDTH so boxes don't shift with varying digits */
+    width: 60px;
+    text-align: center;
+  }
+  
+  /* Numeric value for days, hours, etc. */
+  .timerValue {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+  }
+  
+  /* Label for D/H/M/S */
+  .timerLabel {
+    font-size: 0.9rem;
+    color: #ccc;
+    margin-top: 0.2rem;
+  }
+  
+  /* Larger screens */
+  @media (min-width: 1224px) {
+    .timerValue {
+      font-size: 2.5rem;
+    }
+  
+    .timerOverlay {
+      right: 20%;
+    }
+  
+    .timerLabel {
+      font-size: 1.2rem;
+    }
+  
+    .timerUnit {
+      width: 60px; /* A bit wider on large screens */
+    }
+  }
+  @media (min-width: 800px) {
+    .timerValue {
+      font-size: 2rem;
+    }
+  
+    .timerOverlay {
+      right: 20%;
+    }
+  
+    .timerLabel {
+      font-size: 0.9rem;
+    }
+  
+    .timerUnit {
+      width: 45px; /* A bit wider on large screens */
+    }
+  }
+  
+  /* Medium screens */
+  @media (max-width: 768px) {
+    .timerValue {
+      font-size: 1.5rem;
+    }
+  
+    .timerOverlay {
+      right: 15%;
+    }
+  
+    .timerLabel {
+      font-size: 0.8rem;
+    }
+  
+    .timerUnit {
+      width: 40px; /* Slightly narrower on medium screens */
+    }
+  }
+  
+  /* Small screens */
+  @media (max-width: 500px) {
+    .timerOverlay {
+      right: 10%;
+      gap: 0.5rem;
+    }
+  
+    .timerValue {
+      font-size: 0.9rem;
+    }
+  
+    .timerLabel {
+      font-size: 0.6rem;
+    }
+  
+    .timerUnit {
+      width: 25px; /* Even narrower for small screens */
+    }
+  }
+  

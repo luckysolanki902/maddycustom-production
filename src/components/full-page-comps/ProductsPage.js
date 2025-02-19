@@ -18,6 +18,7 @@ import { PaginationStyles } from '@/styles/PaginationStyles';
 import ContactUs from '../layouts/ContactUs';
 import FullWidthRoundCornerLandscapeCarousel from '../showcase/carousels/FullWidthRoundCornerLandscapeCarousel';
 import herosectionStyles from '@/components/page-sections/homepage/styles/herosection.module.css';
+import Footer from '../layouts/Footer';
 
 
 export default function ProductsPage({ slug, variant, products, category, initialPage, totalPages, uniqueTags }) {
@@ -243,7 +244,8 @@ export default function ProductsPage({ slug, variant, products, category, initia
       </PaginationStyles>
 
       <ScrollToTop />
-      <ContactUs />
+      {/* <ContactUs /> */}
+      <Footer />
     </div>
   );
 }

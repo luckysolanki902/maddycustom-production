@@ -3,6 +3,7 @@ import styles from './tnc.module.css'
 import ContactUs from '@/components/layouts/ContactUs'
 import Sidebar from '@/components/layouts/Sidebar'
 import { createMetadata } from '@/lib/metadata/create-metadata';
+import Footer from '@/components/layouts/Footer';
 
 
 export async function generateMetadata() {
@@ -30,7 +31,8 @@ const index = () => {
                     </section>
                     <h2 className={styles.hashtag}>#OWN UNIQUENESS</h2>
                 </div>
-                <ContactUs />
+                {/* <ContactUs /> */}
+                <Footer />
             </div>
         </div>
     )
