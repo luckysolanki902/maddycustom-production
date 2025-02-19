@@ -85,6 +85,22 @@ const ChooseCategory = () => {
                     <div className={styles.name}>Bonnet Wraps</div>
                 </div>
 
+                {/* Fuel Cap Wraps */}
+                <div className={styles.mainCard}>
+                    <Link href={'http://localhost:3000/shop/wraps/car-wraps/fuel-cap-wraps/rectangle-electric'} className={styles.chooseCard}>
+                        <div>
+                            <Image
+                                className={styles.chooseImage}
+                                src={`${baseurl}/assets/category-cards/fuel_cap_wrap.jpg`}
+                                alt='Fuel Cap Wraps'
+                                width={3000}
+                                height={3000}
+                            />
+                        </div>
+                    </Link>
+                    <div className={styles.name}>Fuel Cap Wraps</div>
+                </div>
+
                 {/* More Products */}
                 <div className={styles.mainCard}>
                     <div className={styles.chooseCard} id={styles.pcid}>

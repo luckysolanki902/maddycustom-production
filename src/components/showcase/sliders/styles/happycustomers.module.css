@@ -12,6 +12,7 @@
 .slider {
     display: flex;
     padding: 4rem;
+    padding-left: 1rem;
     overflow-x: auto;
     gap: 4rem;
     width: 100%;
