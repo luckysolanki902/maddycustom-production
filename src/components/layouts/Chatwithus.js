@@ -1,12 +1,12 @@
 import React from 'react';
 import styles from './styles/chatwithus.module.css';
 import Image from 'next/image';
-import { contactFbq } from '@/utils/FacebookPixel'; // Adjust the import path as needed
+// import { contactFbq } from '@/utils/FacebookPixel'; // Adjust the import path as needed
 import Link from 'next/link';
 
 const Chatwithus = () => {
   const handleChatClick = async () => {
-    await contactFbq(); // Call the contact function
+    // await contactFbq(); // Call the contact function
   };
 
   return (
