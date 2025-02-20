@@ -91,7 +91,7 @@ const ChooseCategory = () => {
                         <div>
                             <Image
                                 className={styles.chooseImage}
-                                src={`${baseurl}/assets/category-cards/fuel_cap_wrap.jpg`}
+                                src={`${baseurl}/assets/category-cards/fuel_cap_wrap1.png`}
                                 alt='Fuel Cap Wraps'
                                 width={3000}
                                 height={3000}

@@ -16,8 +16,12 @@ import {
 } from '../../store/slices/cartSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useMediaQuery } from '@mui/material';
 
 export default function AddToCartButton({ product, isBlackButton = false, isLarge = false }) {
+  const isSmallDevice = useMediaQuery('(max-width: 1000px)');
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
@@ -25,6 +29,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
 
   // State to track last action (for animation)
   const [lastAction, setLastAction] = useState(null);
+  const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   // React Spring animation for quantity display
   const props = useSpring({
@@ -101,41 +106,51 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   return (
     <div className={mainClasses}>
       {/* Add to Cart Section */}
-      <div className={styles.addToCartSection}>
-        {cartItem ? (
-          <div className={styles.quantityContainer}>
-            <button onClick={handleDecrement} className={styles.decrement}>
-              <RemoveIcon fontSize="small" />
-            </button>
-            <animated.div
-              style={{
-                transform: props.scale.to((s) => `scale(${s})`),
-                color: props.color,
-                opacity: props.opacity,
-              }}
-              className={styles.quantity}
-            >
-              {cartItem.quantity}
-            </animated.div>
-            <button onClick={handleIncrement} className={styles.increment}>
-              <AddIcon fontSize="small" />
-            </button>
-          </div>
-        ) : (
-          <div onClick={handleAdd} className={styles.addToCartButton}>
-            <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
-            Add To Cart
-          </div>
-        )}
-      </div>
+      <div className={styles.subContainer}>
 
-      {/* Order Now / Go to Cart Section */}
-      <div className={`${styles.orderNowSection} ${styles.halfWidth}`}>
-        <div onClick={handleOrderNow} className={styles.orderNowButton}>
-         {cartItem ? <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} /> : <BoltOutlinedIcon fontSize="medium" className={styles.boltIcon} />}
-          {orderButtonText}
+        <div className={styles.addToCartSection}>
+          {cartItem ? (
+            <div className={styles.quantityContainer}>
+              <button onClick={handleDecrement} className={styles.decrement}>
+                <RemoveIcon fontSize="small" />
+              </button>
+              <animated.div
+                style={{
+                  transform: props.scale.to((s) => `scale(${s})`),
+                  color: props.color,
+                  opacity: props.opacity,
+                }}
+                className={styles.quantity}
+              >
+                {cartItem.quantity}
+              </animated.div>
+              <button onClick={handleIncrement} className={styles.increment}>
+                <AddIcon fontSize="small" />
+              </button>
+            </div>
+          ) : (
+            <div onClick={handleAdd} className={styles.addToCartButton}>
+              <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
+              Add To Cart
+            </div>
+          )}
         </div>
+
+        {/* Order Now / Go to Cart Section */}
+        <div className={`${styles.orderNowSection} ${styles.halfWidth}`}>
+          <div onClick={handleOrderNow} className={styles.orderNowButton}>
+            {cartItem ? <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} /> : <BoltOutlinedIcon fontSize="medium" className={styles.boltIcon} />}
+            {orderButtonText}
+          </div>
+        </div>
+
       </div>
+      {!isSmallDevice &&
+        <div className={styles.chatwithusMain}>
+          <Link href={'https://wa.me/8112673988'} >
+            <Image className={styles.chatwithus} src={`${imageBaseUrl}/assets/icons/chatwithus.png`} width={1400} height={400} alt='chat with us'></Image>
+          </Link>
+        </div>}
     </div>
   );
 }

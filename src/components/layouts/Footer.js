@@ -382,9 +382,9 @@ const Footer = () => {
         </div>
       </div>
 
-      <div className={styles.footerBottom}>
+      {/* <div className={styles.footerBottom}>
         <p>©MaddyCustom since 2021. All Rights Reserved</p>
-      </div>
+      </div> */}
     </footer>
   );
 };
