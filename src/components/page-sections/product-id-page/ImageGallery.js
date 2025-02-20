@@ -230,6 +230,7 @@ export default function ImageGallery({ images, alt }) {
                 slidesPerView={1}
                 speed={300}
                 className={styles.fullMainSwiper}
+                
               >
                 {images.map((url, index) => (
                   <SwiperSlide key={`f-main-${index}`}>
