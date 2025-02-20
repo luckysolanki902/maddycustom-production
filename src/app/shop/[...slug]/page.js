@@ -12,6 +12,7 @@ import ContactUs from '@/components/layouts/ContactUs';
 
 // 1) IMPORT YOUR ProductInfoTab MONGOOSE MODEL:
 import ProductInfoTab from '@/models/ProductInfoTab';
+import connectToDatabase from '@/lib/middleware/connectToDb';
 
 // HELPER to fetch the product info tabs from DB
 async function getProductInfoTabs(specificCategory, product, variant) {
@@ -40,6 +41,7 @@ async function getProductInfoTabs(specificCategory, product, variant) {
         return null;
       }
       console.log(query)
+      await connectToDatabase();
 
       const doc = await ProductInfoTab.findOne(query).lean();
       if (!doc) {
