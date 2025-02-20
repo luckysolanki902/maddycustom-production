@@ -23,7 +23,7 @@ async function getProductInfoTabs(specificCategory, product, variant) {
   ) {
     return [];
   }
-
+  await connectToDatabase();
   // For each tab config in the category, we’ll fetch the matching ProductInfoTab document:
   const tabsData = await Promise.all(
     specificCategory.productInfoTabs.map(async (tabObj) => {
@@ -41,7 +41,7 @@ async function getProductInfoTabs(specificCategory, product, variant) {
         return null;
       }
       console.log(query)
-      await connectToDatabase();
+      
 
       const doc = await ProductInfoTab.findOne(query).lean();
       if (!doc) {
