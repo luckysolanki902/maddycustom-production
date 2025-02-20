@@ -39,11 +39,14 @@ async function getProductInfoTabs(specificCategory, product, variant) {
         // If we cannot match a resource, or something’s missing, skip.
         return null;
       }
+      console.log(query)
 
       const doc = await ProductInfoTab.findOne(query).lean();
       if (!doc) {
         return null;
       }
+
+      console.log("doc",doc)
 
       // Return the data we need for rendering.
       return {
