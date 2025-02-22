@@ -34,15 +34,28 @@
     filter: drop-shadow(0px 4px 7px rgba(0, 0, 0, 0.5));
 }
 
-@media (min-width:800px) {
-    .featuredHead img {
-        width: 25%;
+.doubleGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns */
+    gap: 2rem; /* gap between items */
+    margin: 2rem; /* margin around the grid */
+    margin-top: 5rem;
+    margin-bottom: 6rem;
+  }
+  
+  .doubleGrid img {
+    width: 100%;
+    height: auto;
+  }
+  
+  @media (max-width: 600px) {
+    .doubleGrid {
+      grid-template-columns: 1fr; /* 1 column per row on smaller screens */
+      margin: 1rem;
+      gap: 3rem;
+      margin-bottom: 3rem;
     }
-
-    .featuredHead {
-        /* margin-top: -4rem; */
-    }
-    
+  
 .bigPoster{
     margin-top: 5rem;
     margin-bottom: 5rem;
