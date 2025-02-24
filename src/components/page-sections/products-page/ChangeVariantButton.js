@@ -61,7 +61,7 @@ export default function ChangeVariantButton({ category }) {
 
   // Auto-popup if more than 2 variants and user hasn't seen it, only if NOT using letter mapping
   useEffect(() => {
-    if (!useMapping && variants.length > 2 && !hasSeenVariantPopup) {
+    if ( variants.length > 2 && !hasSeenVariantPopup) {
       const timer = setTimeout(() => {
         setShowPopup(true);
         dispatch(

@@ -9,6 +9,11 @@ const ProductSchema = new mongoose.Schema(
       maxlength: 200,
       index: true,
     },
+    brand: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Brand',
+      required: false,
+    },
     images: [
       {
         type: String,
@@ -74,7 +79,7 @@ const ProductSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    designTemplate:{
+    designTemplate: {
       designCode: {
         type: String,
         required: true,
