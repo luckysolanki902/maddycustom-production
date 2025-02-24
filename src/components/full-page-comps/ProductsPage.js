@@ -14,7 +14,7 @@ import Sidebar from '../layouts/Sidebar';
 import ChangeVariantButton from '../page-sections/products-page/ChangeVariantButton';
 import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
 import debounce from 'lodash.debounce';
-import { PaginationStyles } from '@/styles/PaginationStyles';
+import { PaginationStyles, PaginationStylesForPhone } from '@/styles/PaginationStyles';
 import ContactUs from '../layouts/ContactUs';
 import FullWidthRoundCornerLandscapeCarousel from '../showcase/carousels/FullWidthRoundCornerLandscapeCarousel';
 import herosectionStyles from '@/components/page-sections/homepage/styles/herosection.module.css';
@@ -233,15 +233,31 @@ export default function ProductsPage({ slug, variant, products, category, initia
         loading={loading}
       />
 
-      <PaginationStyles>
-        <Pagination
-          count={totalPageCount}
-          page={currentPage}
-          onChange={handlePageChange}
-          color="primary"
-          disabled={loading}
-        />
-      </PaginationStyles>
+      {isSmallDevice ?
+        <PaginationStylesForPhone>
+          <Pagination
+            count={totalPageCount}
+            page={currentPage}
+            onChange={handlePageChange}
+            color="primary"
+            disabled={loading}
+            siblingCount={1}    // Number of pages to show on each side of the current page
+            boundaryCount={1}   // Number of pages to always show at the beginning and end
+          />
+        </PaginationStylesForPhone>
+        :
+        <PaginationStyles>
+          <Pagination
+            count={totalPageCount}
+            page={currentPage}
+            onChange={handlePageChange}
+            color="primary"
+            disabled={loading}
+            siblingCount={1}    // Number of pages to show on each side of the current page
+            boundaryCount={1}   // Number of pages to always show at the beginning and end
+          />
+        </PaginationStyles>
+      }
 
       <ScrollToTop />
       {/* <ContactUs /> */}
