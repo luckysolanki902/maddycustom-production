@@ -16,10 +16,12 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
+import { useRouter } from "next/navigation";
 
 const Footer = () => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isMobile = useMediaQuery("(max-width:600px)");
+  const router = useRouter()
 
   // Subscription state
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -155,11 +157,11 @@ const Footer = () => {
           <li>
             <Link href={"/about-us"}>About Us</Link>
           </li>
-   
+
           <li>
             <Link href={"/termsandconditions"}>Terms And Conditions</Link>
           </li>
-   
+
           <li>
             <Link href={"/orders/track"}>Track Your Order</Link>
           </li>
@@ -208,18 +210,18 @@ const Footer = () => {
     <div className={styles.desktopColumn}>
       <h3>Useful Links</h3>
       <ul className={styles.usefulLinks}>
-    
+
         <li>
           <Link href={"/about-us"}>About Us</Link>
         </li>
-  
+
         <li>
           <Link href={"/termsandconditions"}>Terms And Conditions</Link>
         </li>
-  
+
         <li>
-            <Link href={"/orders/track"}>Track Your Order</Link>
-          </li>
+          <Link href={"/orders/track"}>Track Your Order</Link>
+        </li>
       </ul>
     </div>
   );
@@ -231,6 +233,7 @@ const Footer = () => {
         <div className={`${styles.brandSection} ${styles.desktopColumn}`}>
           <div className={styles.logoContainer}>
             <Image
+              onClick={() => router.push('/')}
               className={styles.logoImg}
               src={`${baseImageUrl}/assets/logos/maddy_custom3_main_logo.png`}
               alt="maddylogo"
@@ -307,7 +310,7 @@ const Footer = () => {
         </div>
 
         {/* Categories (Column 2) */}
-        {isMobile && <Link style={{display:'flex', alignItems:'flex-start', gap:'0.5rem'}} href="">
+        {isMobile && <Link style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }} href="">
           <LocationOnIcon
             sx={{
               color: "white",
@@ -316,7 +319,7 @@ const Footer = () => {
             }}
           />
           <span>
-         {`   VIP Rd, Kasimpur Patri, Tiwaripur, Lucknow, UP (226005) `}
+            {`   VIP Rd, Kasimpur Patri, Tiwaripur, Lucknow, UP (226005) `}
           </span>
         </Link>}
         {isMobile ? mobileAccordionForCategories : desktopCategories}

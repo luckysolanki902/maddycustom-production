@@ -42,13 +42,11 @@ const ProductSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['Wraps', 'Accessories'],
       required: true,
       index: true,
     },
     subCategory: {
       type: String,
-      enum: ['Bike Wraps', 'Car Wraps', 'Safety'],
       required: true,
       index: true,
     },
@@ -82,11 +80,11 @@ const ProductSchema = new mongoose.Schema(
     designTemplate: {
       designCode: {
         type: String,
-        required: true,
+        required: false,
       },
       imageUrl: {
         type: String,
-        required: true,
+        required: false,
       }
     },
     reviews: [

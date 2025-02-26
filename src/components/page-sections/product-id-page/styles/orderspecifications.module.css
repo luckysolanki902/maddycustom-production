@@ -1,13 +1,12 @@
 .main {
     display: flex;
-    /* margin: auto; */
-    /* max-width: 700px; */
     font-family: Jost;
     width: 100%;
     justify-content: space-evenly;
+    align-items: flex-start;
 }
 
-.justContStart{
+.justContStart {
     justify-content: flex-start;
     gap: 4rem;
 }
@@ -15,41 +14,45 @@
 .item {
     display: flex;
     flex-direction: column;
-    font-size: 0.9rem;
-    justify-content: center;
     align-items: center;
-    word-wrap: break-word;
+    justify-content: start;
+    text-align: center;
     gap: 0.9rem;
 }
 
-.word{
-    word-wrap: break-word;
+.item img {
+    width: 4.5rem;
+    height: auto;
+}
+
+.word {
     max-width: 6rem;
     text-align: center;
     line-height: 1rem;
+    min-height: 2.5rem; /* Adjust this to ensure text areas are uniform */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.item img {
-    width: 5.5rem;
-    height: auto;
 
-}
-
+/* Media Queries for Responsiveness */
 @media (width < 1100px) {
     .item img {
-        width: 5rem;   
+        width: 4rem;   
     }
 }
+
 @media (width < 1000px) {
     .justContStart {
         justify-content: space-around;
     }
 }
+
 @media (width < 600px) {
     .item img {
-        width: 4rem;   
+        width: 3.5rem;   
     }
-    .justContStart{
-    gap: 2rem;
-
+    .justContStart {
+        gap: 2rem;
     }
 }

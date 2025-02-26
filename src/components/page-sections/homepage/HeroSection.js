@@ -3,14 +3,18 @@ import FullWidthRoundCornerLandscapeCarousel from '@/components/showcase/carouse
 // import Searchbox from '@/components/Searchbox';
 import Image from 'next/image';
 import styles from './styles/herosection.module.css';
+import { useRouter } from 'next/navigation';
 
 export default function HeroSection() {
     const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL
+    const router = useRouter()
     return (
         <>
             <div className={styles.logoDiv}>
                 <Image
                     className={styles.logoImg}
+                    onClick={() => router.push('/')}
+                    style={{ cursor: 'pointer' }}
                     // src={`${baseUrl}/assets/logos/maddycustom-old-full-logo-horizontal.png`}
                     src={`${baseUrl}/assets/logos/maddy_custom3_main_logo.png`}
                     alt='maddylogo'

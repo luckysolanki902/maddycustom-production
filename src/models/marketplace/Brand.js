@@ -6,7 +6,6 @@ const brandSchema = new mongoose.Schema({
         required: true,
         unique: true,
     },
-    
     description: {
         type: String,
     },
@@ -17,6 +16,9 @@ const brandSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    pickupAddress:{
+        type: String
+    }
     
 }, {timestamps: true})
 
