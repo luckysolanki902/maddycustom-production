@@ -21,6 +21,7 @@ export default function ImageReviewDialog({
   fetchReviewSource = 'product',
   productId,
   variantId,
+  categoryId,
   userPhoneNumber,
 }) {
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -40,6 +41,7 @@ export default function ImageReviewDialog({
         fetchReviewSource,
         productId: productId || '',
         variantId: variantId || '',
+        categoryId: categoryId || '',
         userPhoneNumber: userPhoneNumber || '',
         page: pageNum.toString(),
         limit: '5', // or any limit you want for scroller

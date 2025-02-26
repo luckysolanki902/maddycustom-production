@@ -95,13 +95,13 @@ const SpecificCategorySchema = new mongoose.Schema(
     },
     subCategory: {
       type: String,
-      enum: ['Bike Wraps', 'Car Wraps', 'Safety'],
+      // e.g. Bike Wraps, Car Wraps, Safety, Minimal Personalization
       required: true,
       index: true,
     },
     category: {
       type: String,
-      enum: ['Wraps', 'Accessories'],
+      // e.g. 'Wraps', 'Accessories'
     },
     available: {
       type: Boolean,

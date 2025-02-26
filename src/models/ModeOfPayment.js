@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 /**
  * ModeOfPayment Schema
  * Represents different modes of payment.
- * Currently: online, fifty
+ * Currently: online, fifty, thirty
  */
 const ModeOfPaymentSchema = new mongoose.Schema(
   {

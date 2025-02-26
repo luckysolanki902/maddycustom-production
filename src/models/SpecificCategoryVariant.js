@@ -94,7 +94,7 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
     }],
     designTemplateFolderPath: {
       type: String,
-      required: true,
+      required: false,
       index: true,
     },
     imageFolderPath: {

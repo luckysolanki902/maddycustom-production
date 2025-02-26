@@ -113,6 +113,7 @@ const Sidebar = (props) => {
                         overflow: 'hidden',
                         paddingLeft: '0rem',
                     }}
+                    onClick={() => router.push('/')}
                 >
                     <Image
                         height={1000}
