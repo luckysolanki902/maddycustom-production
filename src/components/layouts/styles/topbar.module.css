@@ -114,6 +114,11 @@
   overflow: hidden;
   text-wrap: nowrap;
   animation: typing 1s steps(20) infinite alternate-reverse;
+  transition: animation 0.3s ease;
+}
+
+.noAnimation {
+  animation: none;
 }
 
 @keyframes typing {
@@ -121,6 +126,7 @@
     width: 0ch;
   }
 }
+
 
 /* Cart Icon */
 .cartContainer {

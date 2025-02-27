@@ -58,15 +58,16 @@ const Topbar = () => {
 
       {/* Middle - Search Bar */}
       <div className={styles.searchBox}>
-        <Search className={styles.searchIcon} />
-        <input
-          type="text"
-          placeholder="Search on MaddyCustom"
-          className={styles.searchInput}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+  <Search className={styles.searchIcon} />
+  <input
+    type="text"
+    placeholder="Search on MaddyCustom"
+    className={`${styles.searchInput} ${search ? styles.noAnimation : ""}`}
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+  />
+</div>
+
 
       {/* Right Side - Cart Icon with Badge */}
       <div
