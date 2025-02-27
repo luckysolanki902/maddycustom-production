@@ -42,7 +42,7 @@ const Sidebar = (props) => {
         setState({ ...state, [anchor]: open });
     };
 
-    if (isDesktop) return null; // Hide sidebar on screens smaller than 768px
+    if (isDesktop) return null; // Hide sidebar on screens smaller than 1000px
 
     return (
         <>
