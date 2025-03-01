@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 
 const OrderSchema = new mongoose.Schema(
   {
+
     // Reference to User
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -29,6 +30,19 @@ const OrderSchema = new mongoose.Schema(
     // Array of order items
     items: [
       {
+        // Indicates if the order is in-house or from the marketplace
+        itemSource: {
+          type: String,
+          required: true,
+          enum: ['inhouse', 'marketplace'],
+          index: true, // Index for efficient querying
+        },
+        brand: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Brand',
+          required: false,
+          index: true,
+        },
         // Reference to Product
         product: {
           type: mongoose.Schema.Types.ObjectId,
