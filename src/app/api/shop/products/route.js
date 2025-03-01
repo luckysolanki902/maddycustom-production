@@ -1,10 +1,11 @@
-// pages/api/shop/products/route.js
-
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Product from '@/models/Product';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import SpecificCategory from '@/models/SpecificCategory';
+import Option from '@/models/Option';
 import { NextResponse } from 'next/server';
+import Inventory from '@/models/Inventory';
+
 
 export async function POST(request) {
   try {
@@ -25,7 +26,6 @@ export async function POST(request) {
       const variant = await SpecificCategoryVariant.findById(product.specificCategoryVariant).lean().exec();
 
       if (!variant) {
-        // console.warn(`No SpecificCategoryVariant found for product: ${product.name}`);
         return NextResponse.json({ message: 'Variant Not Found' }, { status: 404 });
       }
 
@@ -33,13 +33,18 @@ export async function POST(request) {
       const specificCategory = await SpecificCategory.findById(variant.specificCategory).lean().exec();
 
       if (!specificCategory) {
-        // console.warn(`No SpecificCategory found for variant: ${variant.name}`);
         return NextResponse.json({ message: 'Specific Category Not Found' }, { status: 404 });
       }
 
-      // **For 'product' type, return only the single product data without pagination, sorting, or tag filtering**
+      // Fetch all available options for the product, including inventory available stock
+      const options = await Option.find({ product: product._id })
+        .populate('inventoryData')
+        .lean()
+        .exec();
+
+      // Return the product data along with its options
       return NextResponse.json(
-        { type: 'product', product, variant, specificCategory },
+        { type: 'product', product, variant, specificCategory, options },
         { status: 200 }
       );
     }
@@ -52,13 +57,12 @@ export async function POST(request) {
       const specificCategory = await SpecificCategory.findById(variant.specificCategory).lean().exec();
 
       if (!specificCategory) {
-        // console.warn(`No SpecificCategory found for variant: ${variant.name}`);
         return NextResponse.json({ message: 'Specific Category Not Found' }, { status: 404 });
       }
 
       // **For 'variant' type, apply tag prioritization and sorting**
       const pipeline = [
-        { $match: { specificCategoryVariant: variant._id, available: true } }, // Added available: true
+        { $match: { specificCategoryVariant: variant._id, available: true } },
       ];
 
       if (tagFilter) {
@@ -86,7 +90,6 @@ export async function POST(request) {
         });
       }
 
-      // Define the sorting stage based on sortBy
       const sortStage = {};
       if (sortBy === 'priceLowToHigh') {
         sortStage.price = 1;
@@ -100,22 +103,19 @@ export async function POST(request) {
         sortStage.displayOrder = 1;
       }
 
-      // First sort by isTagMatched, then by the selected sort option
       pipeline.push({
         $sort: {
-          isTagMatched: -1, // Tag matched first
+          isTagMatched: -1,
           ...sortStage,
         }
       });
 
-      // Count total items
       const countPipeline = [...pipeline, { $count: "totalItems" }];
       const countResult = await Product.aggregate(countPipeline).exec();
       const totalItems = countResult.length > 0 ? countResult[0].totalItems : 0;
       const totalPages = Math.ceil(totalItems / limit);
       const currentPage = totalPages > 0 ? Math.min(page, totalPages) : 1;
 
-      // Apply pagination only if there are items
       if (totalItems > 0) {
         pipeline.push(
           { $skip: (currentPage - 1) * limit },
@@ -123,19 +123,17 @@ export async function POST(request) {
         );
       }
 
-      // Exclude temporary fields
       pipeline.push({
         $project: {
-          isTagMatched: 0, // Exclude the temporary field
+          isTagMatched: 0,
           __v: 0,
         }
       });
 
       const products = await Product.aggregate(pipeline).exec();
 
-      // Aggregation pipeline to get unique tags across all available products in the variant
       const uniqueTagsPipeline = [
-        { $match: { specificCategoryVariant: variant._id, available: true } }, // Added available: true
+        { $match: { specificCategoryVariant: variant._id, available: true } },
         { $unwind: "$mainTags" },
         { $group: { _id: null, uniqueTags: { $addToSet: { $toLower: "$mainTags" } } } },
         { $project: { _id: 0, uniqueTags: 1 } }
@@ -153,14 +151,13 @@ export async function POST(request) {
           totalItems, 
           totalPages, 
           currentPage,
-          uniqueTags, // Added uniqueTags
+          uniqueTags,
         },
         { status: 200 }
       );
     }
 
     // Neither variant nor product found, return 404
-    // console.warn(`No SpecificCategoryVariant or Product found for slug: ${fullSlug}`);
     return NextResponse.json({ message: 'Not Found' }, { status: 404 });
 
   } catch (error) {

@@ -1,31 +1,24 @@
 // /models/Product.js
+
 const mongoose = require('mongoose');
+
+function toTitleCase(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 const ProductSchema = new mongoose.Schema(
   {
-    productSource: {
-      type: String,
-      required: false,
-      enum: ['inhouse', 'marketplace'],
-      index: true,
-      default: 'inhouse',
-    },
-    brand: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Brand',
-      required: false,
-      index: true,
-    },
     name: {
       type: String,
       required: true,
       maxlength: 200,
       index: true,
-    },
-    brand: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Brand',
-      required: false,
+      set: toTitleCase,
     },
     images: [
       {
@@ -55,11 +48,13 @@ const ProductSchema = new mongoose.Schema(
     },
     category: {
       type: String,
+      enum: ['Wraps', 'Accessories'],
       required: true,
       index: true,
     },
     subCategory: {
       type: String,
+      enum: ['Bike Wraps', 'Car Wraps', 'Safety'],
       required: true,
       index: true,
     },
@@ -84,70 +79,56 @@ const ProductSchema = new mongoose.Schema(
       min: 1,
       index: true,
     },
+    //options available for the product
+    optionsAvailable: {
+      type: Boolean,
+      default: false,
+    },
     sku: {
       type: String,
       unique: true,
-      required: true,
+      required: false,
       index: true,
     },
     designTemplate: {
       designCode: {
         type: String,
-        required: false,
+        required: true,
       },
       imageUrl: {
         type: String,
-        required: false,
+        required: true,
       }
     },
-    reviews: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Review',
-      },
-    ],
+
     displayOrder: {
       type: Number,
       index: true,
     },
-    ratings: {
-      averageRating: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 5,
-      },
-      numberOfRatings: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-    },
+
     available: {
       type: Boolean,
       default: true,
     },
+    productSource: {
+      type: String,
+      required: true,
+      enum: ['inhouse', 'marketplace'],
+      index: true,
+    },
+    brand: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Brand',
+      required: false,
+      index: true,
+    },
+    inventoryData: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Inventory',
+    },
   },
   { timestamps: true }
 );
-
-ProductSchema.index(
-  {
-    title: 'text',
-    searchKeywords: 'text',
-    mainTags: 'text',
-    description: 'text',
-  },
-  {
-    weights: {
-      title: 5,
-      mainTags: 3,
-      description: 1,
-    },
-    name: 'TextIndex',
-  }
-);
-
 
 
 module.exports = mongoose.models.Product || mongoose.model('Product', ProductSchema);

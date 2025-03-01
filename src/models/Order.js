@@ -50,6 +50,11 @@ const OrderSchema = new mongoose.Schema(
           required: true,
           index: true,
         },
+      option: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Option',
+          required: false,
+        },
         name: {
           type: String,
           required: true
