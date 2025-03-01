@@ -331,6 +331,8 @@ const OrderForm = ({
           phoneNumber: orderForm.userDetails.phoneNumber,
           items: cartItems.map((item) => ({
             product: item.productId,
+            itemSource: item.productDetails.source || 'inhouse',
+            brand: item.productDetails.brand,
             name: `${item.productDetails.name} ${
               item.productDetails.category?.name?.endsWith('s')
                 ? item.productDetails.category?.name.slice(0, -1)

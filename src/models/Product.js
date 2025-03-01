@@ -3,6 +3,19 @@ const mongoose = require('mongoose');
 
 const ProductSchema = new mongoose.Schema(
   {
+    productSource: {
+      type: String,
+      required: false,
+      enum: ['inhouse', 'marketplace'],
+      index: true,
+      default: 'inhouse',
+    },
+    brand: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Brand',
+      required: false,
+      index: true,
+    },
     name: {
       type: String,
       required: true,
