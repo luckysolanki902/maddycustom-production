@@ -1,7 +1,7 @@
 "use client";
 
+import React, { useState, useEffect, useRef, memo } from "react";
 import styles from "./styles/productid.module.css";
-import { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import OrderSpecifications from "../page-sections/product-id-page/OrderSpecifications";
 import PriceAndChat from "../page-sections/product-id-page/PriceAndChat";
@@ -17,27 +17,57 @@ import Footer from "../layouts/Footer";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
+// Memoize components that do not need to update on option change
+const MemoizedImageGallery = memo(ImageGallery);
+const MemoizedOrderSpecifications = memo(OrderSpecifications);
+const MemoizedPriceAndChat = memo(PriceAndChat);
+const MemoizedProductDescription = memo(ProductDescription);
+const MemoizedTopBoughtProducts = memo(TopBoughtProducts);
+const MemoizedReviewFullComp = memo(ReviewFullComp);
+const MemoizedAddToCartButtonWithOrder = memo(AddToCartButtonWithOrder);
+
 export default function ProductIdPage({
   product,
   variant,
   category,
   description,
   productInfoTabs = [],
+  options = [] // Options are expected to come with image data and optionDetails (e.g., color)
 }) {
+  // -- ADD OUR COLOR MAP HERE --
+  const colorMap = {
+    red: "#ff0066",
+    blue: "#66ccff",
+    green: "#99ff99",
+    yellow: "#fff68f",
+    orange: "#ffb347",
+    pink: "#ff99cc",
+    purple: "#cdb3e6",
+    black: "#555555",
+    white: "#ffffff",
+    gray: "#cccccc"
+  };
+
   const [isZoomed, setIsZoomed] = useState(false);
   const [soldCount, setSoldCount] = useState(null);
+  const [selectedOption, setSelectedOption] = useState(null);
   const userDetails = useSelector((state) => state.orderForm.userDetails);
   const { email, phoneNumber } = userDetails || {};
   const hasTracked = useRef(false);
 
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
-  // --- MERGE IMAGES FROM PRODUCT AND DESCRIPTION TAB ---
-  // Product images as stored in the product document.
-  const productImages = product.images || [];
+  // Auto-select the first option if any exist
+  useEffect(() => {
+    if (options && options.length > 0 && !selectedOption) {
+      setSelectedOption(options[0]);
+    }
+  }, [options, selectedOption]);
 
-  // Extract images from the "Description" product info tab content.
+  // --- MERGE IMAGES FROM DESCRIPTION TAB ---
+  const productImages = product.images || [];
   let descriptionImages = [];
+
   productInfoTabs.forEach((tab) => {
     if (
       tab.title &&
@@ -52,23 +82,31 @@ export default function ProductIdPage({
           block.data.file &&
           block.data.file.url
         ) {
-          descriptionImages.push(block.data.file.url.replace('https://d26w01jhwuuxpo.cloudfront.net', ''));
+          descriptionImages.push(
+            block.data.file.url.replace(
+              "https://d26w01jhwuuxpo.cloudfront.net",
+              ""
+            )
+          );
         }
       });
     }
   });
-  console.log(descriptionImages);
+  console.log("Description images:", descriptionImages);
 
-  // Merge images: product images, images extracted from "Description" tab,
-  // and any extra appendedImages (if provided).
-  const mergedImages = [
-    ...productImages,
-    ...descriptionImages,
-  ];
+  // Determine which images to show:
+  // - If the product has options, use the images from the selected option (if any)
+  // - Otherwise, use product images merged with description images
+  const mergedImages =
+    options && options.length > 0
+      ? (selectedOption?.images && selectedOption.images.length > 0
+          ? selectedOption.images
+          : descriptionImages)
+      : [...productImages, ...descriptionImages];
 
-  console.log({mergedImages});
+  console.log({ mergedImages });
 
-  // Prepend the Cloudfront base URL if necessary.
+  // Prepend the Cloudfront base URL if necessary
   const allImages = mergedImages.map((img) =>
     img.startsWith("http") || img.startsWith("/")
       ? `${imageBaseUrl}${img.startsWith("/") ? img : "/" + img}`
@@ -122,7 +160,7 @@ export default function ProductIdPage({
     <div style={{ paddingBottom: "6rem" }}>
       <div className={styles.container}>
         <div className={styles.imageGallery}>
-          <ImageGallery
+          <MemoizedImageGallery
             src={allImages?.[0] || `${imageBaseUrl}/default-placeholder.jpg`}
             images={allImages}
             isZoomed={isZoomed}
@@ -147,7 +185,7 @@ export default function ProductIdPage({
               )}
             </div>
 
-            <PriceAndChat
+            <MemoizedPriceAndChat
               price={
                 variant?.availableBrands?.length > 0
                   ? variant.availableBrands[0].brandBasePrice + product.price
@@ -156,22 +194,66 @@ export default function ProductIdPage({
             />
 
             <div className={styles.orderSpecificationsContainer}>
-              <OrderSpecifications
+              <MemoizedOrderSpecifications
                 features={variant.features}
                 justContStart={true}
               />
             </div>
 
+            {/* Render color options if available */}
+            {options &&
+              options.some(
+                (opt) =>
+                  opt.optionDetails &&
+                  opt.optionDetails.color &&
+                  opt.optionDetails.color.trim()
+              ) && (
+                <div style={{ margin: "1rem 0" }}>
+                  <div style={{ marginBottom: "0.5rem" }}>More colors</div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    {options
+                      .filter(
+                        (opt) =>
+                          opt.optionDetails &&
+                          opt.optionDetails.color &&
+                          opt.optionDetails.color.trim()
+                      )
+                      .map((opt) => (
+                        <div
+                          key={opt._id}
+                          onClick={() => setSelectedOption(opt)}
+                          style={{
+                            width: "2rem",
+                            height: "2rem",
+                            borderRadius: "50%",
+                            border:
+                              selectedOption && selectedOption._id === opt._id
+                                ? "2px solid black"
+                                : "none",
+                            backgroundColor:
+                              colorMap[
+                                opt.optionDetails.color.toLowerCase()
+                              ] ||
+                              opt.optionDetails.color.toLowerCase(),
+                            cursor: "pointer"
+                          }}
+                        />
+                      ))}
+                  </div>
+                </div>
+              )}
+
             <div className={styles.buttonDiv}>
-              <AddToCartButtonWithOrder
+              <MemoizedAddToCartButtonWithOrder
                 product={{
                   ...product,
+                  selectedOption: selectedOption || null,
                   variantDetails: variant,
                   category: category,
                   price:
                     variant?.availableBrands?.length > 0
                       ? variant.availableBrands[0].brandBasePrice + product.price
-                      : product.price,
+                      : product.price
                 }}
                 isLarge={true}
               />
@@ -184,17 +266,17 @@ export default function ProductIdPage({
       </div>
 
       {/* Pass your SSR “productInfoTabs” into ProductDescription */}
-      <ProductDescription
+      <MemoizedProductDescription
         productInfoTabs={productInfoTabs}
-        showProductImageFirst={false} // set to true if you want a leading product image from the description tab
+        showProductImageFirst={false}
       />
 
       {/* Showcase of top products, reviews, etc. */}
-      <TopBoughtProducts
+      <MemoizedTopBoughtProducts
         subCategories={[category?.subCategory]}
         excludeProductIds={[product?._id]}
       />
-      <ReviewFullComp
+      <MemoizedReviewFullComp
         productId={product._id}
         variantId={variant._id}
         categoryId={category._id}

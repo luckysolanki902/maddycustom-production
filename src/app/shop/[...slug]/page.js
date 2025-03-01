@@ -1,5 +1,3 @@
-// app/shop/[...slug]/page.js
-
 import React from 'react';
 import ProductsPage from '@/components/full-page-comps/ProductsPage';
 import ProductIdPage from '@/components/full-page-comps/ProductIdPage';
@@ -24,11 +22,9 @@ async function getProductInfoTabs(specificCategory, product, variant) {
     return [];
   }
   await connectToDatabase();
-  // For each tab config in the category, we’ll fetch the matching ProductInfoTab document:
   const tabsData = await Promise.all(
     specificCategory.productInfoTabs.map(async (tabObj) => {
       const { title, fetchSource } = tabObj;
-
       const query = { title }; // e.g. { title: 'Description' or 'How to Apply' }
       if (fetchSource === 'Product' && product) {
         query.product = product._id;
@@ -37,20 +33,12 @@ async function getProductInfoTabs(specificCategory, product, variant) {
       } else if (fetchSource === 'SpecCat') {
         query.specificCategory = specificCategory._id;
       } else {
-        // If we cannot match a resource, or something’s missing, skip.
         return null;
       }
-      // console.log(query)
-      
-
       const doc = await ProductInfoTab.findOne(query).lean();
       if (!doc) {
         return null;
       }
-
-      // console.log("doc",doc)
-
-      // Return the data we need for rendering.
       return {
         title: doc.title,
         content: doc.content, // EditorJS data
@@ -58,21 +46,16 @@ async function getProductInfoTabs(specificCategory, product, variant) {
       };
     })
   );
-
-  return tabsData.filter(Boolean); // remove nulls
+  return tabsData.filter(Boolean);
 }
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
   const canonicalUrl = `https://www.maddycustom.com/shop/${slug.join('/')}`;
-
-  // Fetch product data for SEO fields
   const productData = await fetchProducts(slug, 1, ITEMS_PER_PAGE);
-
   if (productData.type === 'not-found') {
     return {};
   }
-
   return createMetadata({
     canonical: canonicalUrl,
     title:
@@ -81,10 +64,12 @@ export async function generateMetadata({ params }) {
         : productData?.variant?.title,
     description:
       productData.type === 'product'
-        ? productData.variant.productDescription
-            .replace(/{uniqueName}/g, productData.product?.name)
-            .replace(/{fullBikename}/g, productData.variant?.name)
-        : productData.variant?.description,
+        ? (productData?.variant?.productDescription
+            ? productData.variant.productDescription
+                .replace(/{uniqueName}/g, productData.product?.name)
+                .replace(/{fullBikename}/g, productData.variant?.name)
+            : productData.variant?.description || '')
+        : productData.variant?.description || '',
   });
 }
 
@@ -92,8 +77,6 @@ export default async function ShopPage({ params }) {
   const { slug } = await params;
   const initialPage = 1;
   const limit = ITEMS_PER_PAGE;
-
-  // Use your existing fetch utility
   const data = await fetchProducts(slug, initialPage, limit);
 
   if (data.type === 'not-found') {
@@ -117,14 +100,11 @@ export default async function ShopPage({ params }) {
 
   // If it’s an actual single “product detail” page => show ProductIdPage
   if (data.type === 'product') {
-    const { product, variant, specificCategory } = data;
-
-    // Generate JSON-LD structured data
+    const { product, variant, specificCategory, options } = data;
     const canonicalUrl = `https://www.maddycustom.com/shop/${slug.join('/')}`;
     const jsonLd = generateProductSchema({
       product: { ...product, url: canonicalUrl },
     });
-
     // 2) FETCH the product info tabs from DB (SSR)
     const productInfoTabs = await getProductInfoTabs(specificCategory, product, variant);
 
@@ -157,6 +137,8 @@ export default async function ShopPage({ params }) {
           productInfoTabs={productInfoTabs}
           // Pass the appended images array for the gallery:
           appendedImages={appendedImages}
+          // Pass the available options with inventory data:
+          options={options}
         />
       </>
     );
