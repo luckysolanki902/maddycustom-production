@@ -54,9 +54,11 @@ export default function ProductsPage({ slug, variant, products, category, initia
           sortBy: sort,
         }),
       });
+      console.log("res",res)
 
       if (res.ok) {
         const data = await res.json();
+        console.log(data)
         if (data.type === 'variant') {
           setCurrentProducts(data.products);
           setTotalPageCount(data.totalPages);
