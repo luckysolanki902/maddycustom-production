@@ -20,7 +20,7 @@ const CartItem = ({ item, onRemove }) => {
   return (
     <div
       style={{ cursor: 'pointer' }}
-      onClick={() => router.push(`shop/${item.productDetails.pageSlug}`)}
+      onClick={() => router.push(`shop/${item.productDetails?.pageSlug}`)}
       key={item.productId}
       className={styles.cartItem}
     >
@@ -38,26 +38,25 @@ const CartItem = ({ item, onRemove }) => {
         width={538}
         height={341.5}
         src={
-          item.productDetails.images && item.productDetails.images.length > 0
+          item?.productDetails?.images && item.productDetails?.images?.length > 0
             ? `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${item.productDetails.images[0].startsWith('/') ? item.productDetails.images[0] : '/' + item.productDetails.images[0]}`
             : '/images/assets/gifs/helmetloadinggiflandscape2.gif'
         }
         alt={item.productDetails.name}
         className={styles.productImage}
-        unoptimized={item.productDetails.images && item.productDetails.images.length > 0 ? false : true}
       />
 
       <div className={styles.productDetails}>
         <div className={styles.categoryName}>
-          {item.productDetails.category?.name.length < 20 ?
+          {item?.productDetails?.category?.name?.length < 20 ?
             item.productDetails.category?.name?.endsWith('s')
-              ? item.productDetails.category.name.slice(0, -1)
+              ? item?.productDetails?.category?.name?.slice(0, -1)
               : item.productDetails.category.name :
-            (item.productDetails.category.name.slice(0, 20) + '...' )}
+            (item?.productDetails?.category?.name?.slice(0, 20) + '...' )}
 
         </div>
         <div className={styles.productName}>
-          {item.productDetails.name.length < 20 ? item.productDetails.name : (item.productDetails.name.slice(0, 20) + '...')}
+          {item?.productDetails?.name?.length < 20 ? item?.productDetails?.name : (item?.productDetails?.name.slice(0, 20) + '...')}
         </div>
         <div className={styles.productPrice}>
           ₹{(item.productDetails.price * item.quantity).toFixed(0)}/-

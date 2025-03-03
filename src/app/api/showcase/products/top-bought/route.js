@@ -10,39 +10,39 @@ export async function GET(request) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
-    const subCategoriesParam = searchParams.get('subCategories') || ''; 
+
+    const subCategoriesParam = searchParams.get('subCategories') || '';
     const currentProductId = searchParams.get('currentProductId') || '';
     const skipParam = parseInt(searchParams.get('skip') || '0', 10);
     const PAGE_SIZE = 10;
 
-    // Step 1: Build the exclusion list
+    // 1) Build the exclusion list
     let excludeProductIds = [];
     // Optionally push currentProductId if it's a valid ID
     if (mongoose.isValidObjectId(currentProductId)) {
       excludeProductIds.push(currentProductId);
     }
 
+    // Additional exclude IDs from the query
     const excludeProductIdsParam = searchParams.get('excludeProductIds') || '';
     if (excludeProductIdsParam.trim()) {
       const additionalExclusions = excludeProductIdsParam
         .split(',')
-        .map(s => s.trim())
+        .map((s) => s.trim())
         .filter(Boolean);
-      // Validate each ID and convert to ObjectId
-      additionalExclusions.forEach(id => {
+      additionalExclusions.forEach((id) => {
         if (mongoose.isValidObjectId(id)) {
           excludeProductIds.push(id);
         }
       });
     }
+    // Convert each ID to a real ObjectId
+    excludeProductIds = excludeProductIds.map((id) => new mongoose.Types.ObjectId(id));
 
-    // Finally convert each ID to a real ObjectId instance
-    excludeProductIds = excludeProductIds.map(id => new mongoose.Types.ObjectId(id));
-
-    // Step 2: Parse subCategories
+    // 2) Parse subCategories
     const subCategories = subCategoriesParam
       .split(',')
-      .map(s => s.trim())
+      .map((s) => s.trim())
       .filter(Boolean);
 
     if (subCategories.length === 0) {
@@ -52,58 +52,64 @@ export async function GET(request) {
       );
     }
 
-    // 3) Find all specific categories (spec cats) for these subCategories
+    // 3) Find specific categories (SC) for these subCategories
     const scDocs = await SpecificCategory.find({
       subCategory: { $in: subCategories },
       available: true,
-    }).select('_id name');
+    }).select('_id name specificCategoryCode');
 
     if (!scDocs || scDocs.length === 0) {
       return NextResponse.json({
         products: [],
-        message: `No specific categories found for subCategories: ${subCategories.join(', ')}`
+        message: `No specific categories found for subCategories: ${subCategories.join(', ')}`,
       });
     }
-    const scIds = scDocs.map(doc => doc._id);
 
-    // 4) Find all Specific Category Variants (SCVs) for these spec cats
+    // Build a quick lookup for SC
+    const scDocsMap = {};
+    scDocs.forEach((sc) => {
+      scDocsMap[sc._id.toString()] = sc;
+    });
+
+    // 4) Find all SC Variants for these SC IDs
+    const scIds = scDocs.map((doc) => doc._id);
     const scvDocs = await SpecificCategoryVariant.find({
       specificCategory: { $in: scIds },
       available: true,
     })
-      .select('_id name specificCategory')
-      .populate('specificCategory', 'name');
+      .select('_id name available availableBrands specificCategory')
+      .lean();
 
     if (!scvDocs || scvDocs.length === 0) {
       return NextResponse.json({
         products: [],
-        message: `No specific category variants found for subCategories: ${subCategories.join(', ')}`
+        message: `No specific category variants found for subCategories: ${subCategories.join(', ')}`,
       });
     }
 
-    // Group SCVs by their parent specific category
+    // Group SCVs by their parent SC
     const scvBySpecCat = {};
-    scvDocs.forEach(scv => {
-      const catId = scv.specificCategory._id.toString();
+    scvDocs.forEach((scv) => {
+      const catId = scv.specificCategory.toString();
       if (!scvBySpecCat[catId]) scvBySpecCat[catId] = [];
       scvBySpecCat[catId].push(scv);
     });
 
-    // Create a map for SCV details
+    // Also create a quick map for SCV
     const scvMap = {};
-    scvDocs.forEach(scv => {
+    scvDocs.forEach((scv) => {
       scvMap[scv._id.toString()] = scv;
     });
 
-    // Helper: get sorted products for a given spec cat
+    // Helper: get sorted products for a given SC
     async function getSortedProductsForSpecCat(specCat) {
       const catId = specCat._id.toString();
       const scvs = scvBySpecCat[catId] || [];
       if (scvs.length === 0) return [];
 
-      const scvIds = scvs.map(v => v._id);
+      const scvIds = scvs.map((v) => v._id);
 
-      // 1) Find all products in these variants that are available and not excluded
+      // (1) Find all products in these variants that are available & not excluded
       const productsQuery = await Product.find({
         specificCategoryVariant: { $in: scvIds },
         available: true,
@@ -112,8 +118,8 @@ export async function GET(request) {
 
       if (!productsQuery || productsQuery.length === 0) return [];
 
-      // 2) Compute totalBought via Order aggregation
-      const pIds = productsQuery.map(p => p._id);
+      // (2) Compute totalBought via Order aggregation
+      const pIds = productsQuery.map((p) => p._id);
       const aggregationResults = await Order.aggregate([
         { $match: { 'items.product': { $in: pIds } } },
         { $unwind: '$items' },
@@ -127,19 +133,34 @@ export async function GET(request) {
       ]);
 
       const boughtMap = {};
-      aggregationResults.forEach(item => {
+      aggregationResults.forEach((item) => {
         boughtMap[item._id.toString()] = item.totalBought;
       });
 
-      // 3) Attach totalBought and other fields
-      const productsWithCount = productsQuery.map(prod => ({
-        ...prod,
-        totalBought: boughtMap[prod._id.toString()] || 0,
-        specificCategoryName: specCat.name,
-        specificCategoryVariantName: scvMap[prod.specificCategoryVariant.toString()]?.name || '',
-      }));
+      // (3) Attach totalBought & enrich with category + variant details
+      const productsWithCount = productsQuery.map((prod) => {
+        const scv = scvMap[prod.specificCategoryVariant.toString()];
+        return {
+          ...prod,
+          totalBought: boughtMap[prod._id.toString()] || 0,
 
-      // 4) Sort by totalBought desc, then name asc
+          // Attach a `category` object, so it resembles your main ProductCard usage:
+          category: {
+            // Because you do product.category.specificCategoryCode etc. in your code
+            specificCategoryCode: specCat.specificCategoryCode,
+            name: specCat.name,
+          },
+
+          // Attach a `variantDetails` object
+          variantDetails: {
+            available: scv?.available ?? false,
+            availableBrands: scv?.availableBrands ?? [],
+            name: scv?.name ?? '',
+          },
+        };
+      });
+
+      // (4) Sort by totalBought desc, then name asc
       productsWithCount.sort((a, b) => {
         if (b.totalBought !== a.totalBought) {
           return b.totalBought - a.totalBought;
@@ -150,20 +171,20 @@ export async function GET(request) {
       return productsWithCount;
     }
 
-    // 5) Merge all spec cat arrays in round-robin
-    const specCatProductsArrays = await Promise.all(
-      scDocs.map(sc => getSortedProductsForSpecCat(sc))
-    );
+    // 5) For each SC, get the sorted products array
+    const specCatProductsArrays = await Promise.all(scDocs.map((sc) => getSortedProductsForSpecCat(sc)));
+
+    // 6) Merge them in a round-robin style
     const merged = roundRobinMerge(specCatProductsArrays);
 
-    // 6) Apply pagination (PAGE_SIZE+1 to check hasMore)
+    // 7) Apply pagination (PAGE_SIZE+1 to detect hasMore)
     const paginated = merged.slice(skipParam, skipParam + PAGE_SIZE + 1);
     const hasMore = paginated.length > PAGE_SIZE;
     const finalProducts = hasMore ? paginated.slice(0, PAGE_SIZE) : paginated;
 
     return NextResponse.json({
       products: finalProducts,
-      totalFound: finalProducts.length,
+      totalFound: merged.length,
       hasMore,
     });
   } catch (err) {
@@ -176,9 +197,8 @@ export async function GET(request) {
 }
 
 /**
- * Helper: roundRobinMerge
- * Merge an array of arrays in a round-robin manner.
- * E.g., [[p1,p2],[q1,q2,q3],[r1]] => [p1,q1,r1,p2,q2,q3].
+ * roundRobinMerge – merges an array of arrays in a round-robin manner
+ * e.g. [[p1,p2],[q1,q2,q3],[r1]] => [p1,q1,r1,p2,q2,q3]
  */
 function roundRobinMerge(arrOfArrs) {
   const merged = [];
