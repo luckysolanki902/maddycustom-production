@@ -1,4 +1,4 @@
-// src/components/common-utils/AddToCartButton.js
+// src/components/utils/AddToCartButton.js
 'use client';
 
 import React, { useEffect, useState } from 'react';
