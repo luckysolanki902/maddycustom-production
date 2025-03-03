@@ -22,7 +22,7 @@ export async function GET(req) {
       createdAt: { $gte: FEB_1_2025, $lte: cutoffDate },
       deliveryStatus: 'delivered',
     })
-      .limit(50)
+      .limit(20)
       .populate('user')
       .populate('items.product')
       .exec();
