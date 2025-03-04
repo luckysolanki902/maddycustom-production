@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef, memo } from "react";
+import Image from "next/image";
 import styles from "./styles/productid.module.css";
-import { useSelector, useDispatch } from "react-redux"; // CHANGE: import useDispatch
-import { removeItem } from "@/store/slices/cartSlice"; // CHANGE: import removeItem to clear previous selection
+import { useSelector, useDispatch } from "react-redux";
+import { removeItem } from "@/store/slices/cartSlice";
 import OrderSpecifications from "../page-sections/product-id-page/OrderSpecifications";
 import PriceAndChat from "../page-sections/product-id-page/PriceAndChat";
 import HappyCustomersClient from "../showcase/sliders/HappyCustomerClient";
@@ -53,12 +54,17 @@ export default function ProductIdPage({
   const [isZoomed, setIsZoomed] = useState(false);
   const [soldCount, setSoldCount] = useState(null);
   const [selectedOption, setSelectedOption] = useState(null);
+  // New state for mobile: toggle showing more colors dropdown
+  const [showMoreColors, setShowMoreColors] = useState(false);
   const userDetails = useSelector((state) => state.orderForm.userDetails);
   const { email, phoneNumber } = userDetails || {};
   const hasTracked = useRef(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
-  // CHANGE: Get dispatch and cart items from redux
+  // Cloudfront URL for the "1+ more images" icon
+  const moreImagesIconUrl = `${imageBaseUrl}/assets/icons/more-images-icon.jpg`;
+
+  // Get dispatch and cart items from redux
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
 
@@ -131,21 +137,7 @@ export default function ProductIdPage({
       : `${imageBaseUrl}/${img}`
   );
 
-  // Determine stock status based on selected option or product inventory data
-  // const optionInventory =
-  //   selectedOption && selectedOption.inventoryData
-  //     ? selectedOption.inventoryData.availableQuantity
-  //     : null;
-  // const productInventory = product.inventoryData
-  //   ? product.inventoryData.availableQuantity
-  //   : null;
-  // const isOutOfStock =
-  //   optionInventory !== null
-  //     ? optionInventory === 0
-  //     : productInventory !== null
-  //     ? productInventory === 0
-  //     : false;
-  // CHANGE: Correcting out-of-stock logic to treat missing inventory data as out of stock
+  // Determine inventory availability
   const optionInventory =
     selectedOption &&
     selectedOption.inventoryData &&
@@ -157,14 +149,14 @@ export default function ProductIdPage({
     typeof product.inventoryData.availableQuantity === "number"
       ? product.inventoryData.availableQuantity
       : null;
+
   const isOutOfStock =
     optionInventory !== null
       ? optionInventory <= 0
       : productInventory !== null
       ? productInventory <= 0
-      : true; // If no inventory data, assume out of stock
+      : false; // If no inventory data, assume out of stock
 
-    // {console.log(isOutOfStock, optionInventory, productInventory)}
   // --- FIRE THE viewContent PIXEL ONCE ---
   useEffect(() => {
     if (!hasTracked.current) {
@@ -207,6 +199,8 @@ export default function ProductIdPage({
     "(min-width: 1000px) and (max-width: 1399px)"
   );
   const isGreaterThan1400 = useMediaQuery("(min-width: 1400px)");
+  // Mobile devices media query (adjust the max-width as needed)
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   return (
     <div style={{ paddingBottom: "6rem" }}>
@@ -257,7 +251,7 @@ export default function ProductIdPage({
               />
             </div>
 
-            {/* Render color options only if available and in stock */}
+            {/* Render color options */}
             {options &&
               options.some(
                 (opt) =>
@@ -267,45 +261,143 @@ export default function ProductIdPage({
                   opt.inventoryData &&
                   opt.inventoryData.availableQuantity > 0
               ) && (
-                <div style={{ margin: "1rem 0" }}>
-                  <div style={{ marginBottom: "0.5rem" }}>
-                    More colors
-                  </div>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    {options
-                      .filter(
-                        (opt) =>
-                          opt.optionDetails &&
-                          opt.optionDetails.color &&
-                          opt.optionDetails.color.trim() &&
-                          opt.inventoryData &&
-                          opt.inventoryData.availableQuantity > 0
-                      )
-                      .map((opt) => (
+                isMobile ? (
+                  <>
+                    {/* Always show the "1+ more images" icon */}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "row",
+                      }}>
+                    <div
+                      style={{
+                        margin: "1rem 0",
+                        cursor: "pointer",
+                        width: "2rem",
+                        height: "2rem",
+                        position: "relative",
+                      }}
+                      onClick={() => setShowMoreColors((prev) => !prev)}
+                    >
+                    
+                      <Image
+                        src={moreImagesIconUrl}
+                        alt="More colors"
+                        layout="fill"
+                        objectFit="cover"
+                      />
+                      
+                    </div>
+                    <div> <p> {  }    more images</p></div>
+                    </div>
+                    
+                   
+                    {/* Collapsible dropdown for more colors */}
+                    {showMoreColors && (
+                      <div
+                        style={{
+                          margin: "1rem 0",
+                          border: "1px solid #ccc",
+                          padding: "0.5rem",
+                          borderRadius: "4px",
+                          background: "#fff"
+                        }}
+                      >
                         <div
-                          key={opt._id}
-                          // CHANGE: use handleColorChange instead of setSelectedOption directly
-                          onClick={() => handleColorChange(opt)}
                           style={{
-                            width: "2rem",
-                            height: "2rem",
-                            borderRadius: "50%",
-                            border:
-                              selectedOption &&
-                              selectedOption._id === opt._id
-                                ? "2px solid black"
-                                : "none",
-                            backgroundColor:
-                              colorMap[
-                                opt.optionDetails.color.toLowerCase()
-                              ] ||
-                              opt.optionDetails.color.toLowerCase(),
-                            cursor: "pointer"
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: "0.5rem"
                           }}
-                        />
-                      ))}
+                        >
+                          <span>More colors</span>
+                          {/* Cross icon to collapse dropdown */}
+                          <span
+                            style={{
+                              cursor: "pointer",
+                              fontWeight: "bold",
+                              fontSize: "1.2rem"
+                            }}
+                            onClick={() => setShowMoreColors(false)}
+                          >
+                            &times;
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          {options
+                            .filter(
+                              (opt) =>
+                                opt.optionDetails &&
+                                opt.optionDetails.color &&
+                                opt.optionDetails.color.trim() &&
+                                opt.inventoryData &&
+                                opt.inventoryData.availableQuantity > 0
+                            )
+                            .map((opt) => (
+                              <div
+                                key={opt._id}
+                                onClick={() => handleColorChange(opt)}
+                                style={{
+                                  width: "2rem",
+                                  height: "2rem",
+                                  borderRadius: "50%",
+                                  border:
+                                    selectedOption &&
+                                    selectedOption._id === opt._id
+                                      ? "2px solid black"
+                                      : "none",
+                                  backgroundColor:
+                                    colorMap[
+                                      opt.optionDetails.color.toLowerCase()
+                                    ] ||
+                                    opt.optionDetails.color.toLowerCase(),
+                                  cursor: "pointer"
+                                }}
+                              />
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ margin: "1rem 0" }}>
+                    <div style={{ marginBottom: "0.5rem" }}>More colors</div>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      {options
+                        .filter(
+                          (opt) =>
+                            opt.optionDetails &&
+                            opt.optionDetails.color &&
+                            opt.optionDetails.color.trim() &&
+                            opt.inventoryData &&
+                            opt.inventoryData.availableQuantity > 0
+                        )
+                        .map((opt) => (
+                          <div
+                            key={opt._id}
+                            onClick={() => handleColorChange(opt)}
+                            style={{
+                              width: "2rem",
+                              height: "2rem",
+                              borderRadius: "50%",
+                              border:
+                                selectedOption &&
+                                selectedOption._id === opt._id
+                                  ? "2px solid black"
+                                  : "none",
+                              backgroundColor:
+                                colorMap[
+                                  opt.optionDetails.color.toLowerCase()
+                                ] ||
+                                opt.optionDetails.color.toLowerCase(),
+                              cursor: "pointer"
+                            }}
+                          />
+                        ))}
+                    </div>
                   </div>
-                </div>
+                )
               )}
 
             {/* Render Add to Cart Button only if in stock */}
