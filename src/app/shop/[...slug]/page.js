@@ -78,7 +78,7 @@ export default async function ShopPage({ params }) {
   const initialPage = 1;
   const limit = ITEMS_PER_PAGE;
   const data = await fetchProducts(slug, initialPage, limit);
-
+ console.log('data', data);
   if (data.type === 'not-found') {
     notFound();
   }
@@ -100,7 +100,7 @@ export default async function ShopPage({ params }) {
 
   // If it’s an actual single “product detail” page => show ProductIdPage
   if (data.type === 'product') {
-    const { product, variant, specificCategory, options } = data;
+    const { product, variant, specificCategory} = data;
     const canonicalUrl = `https://www.maddycustom.com/shop/${slug.join('/')}`;
     const jsonLd = generateProductSchema({
       product: { ...product, url: canonicalUrl },
@@ -138,7 +138,7 @@ export default async function ShopPage({ params }) {
           // Pass the appended images array for the gallery:
           appendedImages={appendedImages}
           // Pass the available options with inventory data:
-          options={options}
+          // options={options}
         />
       </>
     );

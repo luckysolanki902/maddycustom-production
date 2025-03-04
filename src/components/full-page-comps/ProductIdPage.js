@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef, memo } from "react";
 import styles from "./styles/productid.module.css";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux"; // CHANGE: import useDispatch
+import { removeItem } from "@/store/slices/cartSlice"; // CHANGE: import removeItem to clear previous selection
 import OrderSpecifications from "../page-sections/product-id-page/OrderSpecifications";
 import PriceAndChat from "../page-sections/product-id-page/PriceAndChat";
 import HappyCustomersClient from "../showcase/sliders/HappyCustomerClient";
@@ -32,9 +33,9 @@ export default function ProductIdPage({
   category,
   description,
   productInfoTabs = [],
-  options = [] // Options are expected to come with image data and optionDetails (e.g., color)
+  // Options are expected to come with image data, optionDetails, and inventoryData
 }) {
-  // -- ADD OUR COLOR MAP HERE --
+  // -- Color map for color options --
   const colorMap = {
     red: "#ff0066",
     blue: "#66ccff",
@@ -48,19 +49,42 @@ export default function ProductIdPage({
     gray: "#cccccc"
   };
 
+  const options = product.options || [];
   const [isZoomed, setIsZoomed] = useState(false);
   const [soldCount, setSoldCount] = useState(null);
   const [selectedOption, setSelectedOption] = useState(null);
   const userDetails = useSelector((state) => state.orderForm.userDetails);
   const { email, phoneNumber } = userDetails || {};
   const hasTracked = useRef(false);
-
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
-  // Auto-select the first option if any exist
+  // CHANGE: Get dispatch and cart items from redux
+  const dispatch = useDispatch();
+  const cartItems = useSelector((state) => state.cart.items);
+
+  // Function to handle color option selection
+  const handleColorChange = (opt) => {
+    // If the product is already in the cart, remove it so that only one color is active
+    if (cartItems.find((item) => item.productId === product._id)) {
+      dispatch(removeItem({ productId: product._id }));
+    }
+    setSelectedOption(opt);
+  };
+
+  // Auto-select the first available option (that has inventory) if none is selected
   useEffect(() => {
     if (options && options.length > 0 && !selectedOption) {
-      setSelectedOption(options[0]);
+      const availableOptions = options.filter(
+        (opt) =>
+          opt.optionDetails &&
+          opt.optionDetails.color &&
+          opt.optionDetails.color.trim() &&
+          opt.inventoryData &&
+          opt.inventoryData.availableQuantity > 0
+      );
+      if (availableOptions.length > 0) {
+        setSelectedOption(availableOptions[0]);
+      }
     }
   }, [options, selectedOption]);
 
@@ -92,19 +116,13 @@ export default function ProductIdPage({
       });
     }
   });
-  console.log("Description images:", descriptionImages);
 
   // Determine which images to show:
-  // - If the product has options, use the images from the selected option (if any)
-  // - Otherwise, use product images merged with description images
+  // If a selected option exists with images, show its first image; otherwise, show product & description images.
   const mergedImages =
-    options && options.length > 0
-      ? (selectedOption?.images && selectedOption.images.length > 0
-          ? selectedOption.images
-          : descriptionImages)
+    selectedOption && selectedOption.images && selectedOption.images.length > 0
+      ? [selectedOption.images[0]]
       : [...productImages, ...descriptionImages];
-
-  console.log({ mergedImages });
 
   // Prepend the Cloudfront base URL if necessary
   const allImages = mergedImages.map((img) =>
@@ -113,6 +131,40 @@ export default function ProductIdPage({
       : `${imageBaseUrl}/${img}`
   );
 
+  // Determine stock status based on selected option or product inventory data
+  // const optionInventory =
+  //   selectedOption && selectedOption.inventoryData
+  //     ? selectedOption.inventoryData.availableQuantity
+  //     : null;
+  // const productInventory = product.inventoryData
+  //   ? product.inventoryData.availableQuantity
+  //   : null;
+  // const isOutOfStock =
+  //   optionInventory !== null
+  //     ? optionInventory === 0
+  //     : productInventory !== null
+  //     ? productInventory === 0
+  //     : false;
+  // CHANGE: Correcting out-of-stock logic to treat missing inventory data as out of stock
+  const optionInventory =
+    selectedOption &&
+    selectedOption.inventoryData &&
+    typeof selectedOption.inventoryData.availableQuantity === "number"
+      ? selectedOption.inventoryData.availableQuantity
+      : null;
+  const productInventory =
+    product.inventoryData &&
+    typeof product.inventoryData.availableQuantity === "number"
+      ? product.inventoryData.availableQuantity
+      : null;
+  const isOutOfStock =
+    optionInventory !== null
+      ? optionInventory <= 0
+      : productInventory !== null
+      ? productInventory <= 0
+      : true; // If no inventory data, assume out of stock
+
+    // {console.log(isOutOfStock, optionInventory, productInventory)}
   // --- FIRE THE viewContent PIXEL ONCE ---
   useEffect(() => {
     if (!hasTracked.current) {
@@ -159,9 +211,14 @@ export default function ProductIdPage({
   return (
     <div style={{ paddingBottom: "6rem" }}>
       <div className={styles.container}>
-        <div className={styles.imageGallery}>
+        <div
+          className={styles.imageGallery}
+          style={isOutOfStock ? { filter: "grayscale(100%)" } : {}}
+        >
           <MemoizedImageGallery
-            src={allImages?.[0] || `${imageBaseUrl}/default-placeholder.jpg`}
+            src={
+              allImages?.[0] || `${imageBaseUrl}/default-placeholder.jpg`
+            }
             images={allImages}
             isZoomed={isZoomed}
             alt={product.title}
@@ -200,34 +257,42 @@ export default function ProductIdPage({
               />
             </div>
 
-            {/* Render color options if available */}
+            {/* Render color options only if available and in stock */}
             {options &&
               options.some(
                 (opt) =>
                   opt.optionDetails &&
                   opt.optionDetails.color &&
-                  opt.optionDetails.color.trim()
+                  opt.optionDetails.color.trim() &&
+                  opt.inventoryData &&
+                  opt.inventoryData.availableQuantity > 0
               ) && (
                 <div style={{ margin: "1rem 0" }}>
-                  <div style={{ marginBottom: "0.5rem" }}>More colors</div>
+                  <div style={{ marginBottom: "0.5rem" }}>
+                    More colors
+                  </div>
                   <div style={{ display: "flex", gap: "0.5rem" }}>
                     {options
                       .filter(
                         (opt) =>
                           opt.optionDetails &&
                           opt.optionDetails.color &&
-                          opt.optionDetails.color.trim()
+                          opt.optionDetails.color.trim() &&
+                          opt.inventoryData &&
+                          opt.inventoryData.availableQuantity > 0
                       )
                       .map((opt) => (
                         <div
                           key={opt._id}
-                          onClick={() => setSelectedOption(opt)}
+                          // CHANGE: use handleColorChange instead of setSelectedOption directly
+                          onClick={() => handleColorChange(opt)}
                           style={{
                             width: "2rem",
                             height: "2rem",
                             borderRadius: "50%",
                             border:
-                              selectedOption && selectedOption._id === opt._id
+                              selectedOption &&
+                              selectedOption._id === opt._id
                                 ? "2px solid black"
                                 : "none",
                             backgroundColor:
@@ -243,21 +308,30 @@ export default function ProductIdPage({
                 </div>
               )}
 
-            <div className={styles.buttonDiv}>
-              <MemoizedAddToCartButtonWithOrder
-                product={{
-                  ...product,
-                  selectedOption: selectedOption || null,
-                  variantDetails: variant,
-                  category: category,
-                  price:
-                    variant?.availableBrands?.length > 0
-                      ? variant.availableBrands[0].brandBasePrice + product.price
-                      : product.price
-                }}
-                isLarge={true}
-              />
-            </div>
+            {/* Render Add to Cart Button only if in stock */}
+            {!isOutOfStock && (
+              <div className={styles.buttonDiv}>
+                <MemoizedAddToCartButtonWithOrder
+                  product={{
+                    ...product,
+                    selectedOption: selectedOption || null,
+                    variantDetails: variant,
+                    category: category,
+                    price:
+                      variant?.availableBrands?.length > 0
+                        ? variant.availableBrands[0].brandBasePrice +
+                          product.price
+                        : product.price
+                  }}
+                  isLarge={true}
+                />
+              </div>
+            )}
+            {isOutOfStock && (
+              <div style={{ color: "red", marginTop: "1rem" }}>
+                Out of Stock
+              </div>
+            )}
 
             {isGreaterThan1400 && soldByCategoryEl}
             {isLessThan1000 && soldByCategoryEl}
@@ -265,7 +339,7 @@ export default function ProductIdPage({
         )}
       </div>
 
-      {/* Pass your SSR “productInfoTabs” into ProductDescription */}
+      {/* Product description & additional details */}
       <MemoizedProductDescription
         productInfoTabs={productInfoTabs}
         showProductImageFirst={false}
