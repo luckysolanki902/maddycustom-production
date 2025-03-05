@@ -179,6 +179,7 @@ import Image from 'next/image';
 import { useMediaQuery } from '@mui/material';
 
 export default function AddToCartButton({ product, isBlackButton = false, isLarge = false }) {
+  console.log(product,"product Id page");
   const isSmallDevice = useMediaQuery('(max-width: 1000px)');
   const dispatch = useDispatch();
   const router = useRouter();
@@ -223,6 +224,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       maxAllowed = Math.min(availableQuantity, Math.floor(0.1 * reorderLevel));
     }
   }
+  console.log(inventoryData, isLimited, maxAllowed);
   const currentQuantity = cartItem ? cartItem.quantity : 0;
 
   const handleAdd = async (e) => {

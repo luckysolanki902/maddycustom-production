@@ -470,7 +470,7 @@ const ProductCard = ({ product, loading }) => {
               <AddToCartButton
                 product={{
                   ...product,
-                  selectedOption:product.options?[product.options[0]]:null,
+                  selectedOption:product.options?product.options[0]:null,
                   price:
                     product.variantDetails?.availableBrands?.length > 0
                       ? product.variantDetails.availableBrands[0].brandBasePrice + product.price
