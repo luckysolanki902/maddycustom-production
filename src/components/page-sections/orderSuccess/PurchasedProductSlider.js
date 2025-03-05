@@ -4,7 +4,8 @@ import { Box, Card, CardMedia, CardContent, Typography } from '@mui/material';
 import Link from 'next/link';
 
 const PurchasedProductSlider = ({ items, baseImageUrl }) => {
-  console.log(items)
+  console.log(items,"boom")
+
   return (
   <Box sx={{padding:'1rem'}}>
     <Typography variant="h5" gutterBottom>
@@ -24,7 +25,10 @@ const PurchasedProductSlider = ({ items, baseImageUrl }) => {
         },
       }}
     >
-      {items.map((item) => (
+      {items.map((item) => {
+        const imageSRC=item.option?item.option?.images[0]:item.product?.images[0]
+        
+        return(
         <Box
           key={item.product._id}
           sx={{
@@ -43,7 +47,7 @@ const PurchasedProductSlider = ({ items, baseImageUrl }) => {
               }}
             >
               <Image
-                src={`${baseImageUrl}${item.product.images[0]?.startsWith('/') ? item.product.images[0] : '/' + item.product.images[0]}`}
+                src={`${baseImageUrl}${imageSRC?.startsWith('/') ? imageSRC : '/' + imageSRC}`}
                 alt={item.name}
                 layout="fill"
                 objectFit="cover"
@@ -67,7 +71,7 @@ const PurchasedProductSlider = ({ items, baseImageUrl }) => {
             </CardContent>
           </Card>
         </Box>
-      ))}
+      )})}
     </Box>
   </Box>
 );

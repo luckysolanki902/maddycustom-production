@@ -162,7 +162,7 @@ export default function ProductIdPage({
       ? optionInventory <= 0
       : productInventory !== null
       ? productInventory <= 0
-      : true; // If no inventory data, assume out of stock
+      : false; // If no inventory data, assume out of stock
 
     // {console.log(isOutOfStock, optionInventory, productInventory)}
   // --- FIRE THE viewContent PIXEL ONCE ---

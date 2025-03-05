@@ -194,7 +194,8 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
 
   // --- INVENTORY / STOCK MANAGEMENT ---
   // Determine the inventory data source: product inventoryData takes precedence, else selectedOption inventoryData.
-  const inventoryData = product?.inventoryData || (product?.selectedOption && product?.selectedOption[0]?.inventoryData) || null;
+  const inventoryData = product.inventoryData || (product.selectedOption && product.selectedOption?.inventoryData) || null;
+  console.log(inventoryData)
   console.log(product.selectedOption);
   let maxAllowed = Infinity;
   let isLimited = false;
@@ -311,7 +312,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       disabled={isLimited && (currentQuantity + 1) > maxAllowed}
     >
       <span>
-        Add to cart{isLimited ? ' limited stocks' : ''}
+        Add to cart
       </span>
     </button>
   );
