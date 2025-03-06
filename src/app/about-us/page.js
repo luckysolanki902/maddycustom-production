@@ -1,9 +1,7 @@
 import React from 'react';
 import styles from '@/styles/about.module.css';
 import ContactUs from '@/components/layouts/ContactUs';
-import Sidebar from '@/components/layouts/Sidebar';
 import { createMetadata } from '@/lib/metadata/create-metadata';
-import Footer from '@/components/layouts/Footer';
 
 export async function generateMetadata() {
     return createMetadata({
@@ -16,7 +14,6 @@ export async function generateMetadata() {
 const AboutPage = () => {
   return (
     <div>
-      <Sidebar />
       <div className={styles.mainC}>
         <h1 className={styles.mainH}>About Us</h1>
         <section className={styles.sec}>
@@ -42,7 +39,6 @@ const AboutPage = () => {
         <h2 className={styles.hashtag}>#OWN UNIQUENESS</h2>
       </div>
       {/* <ContactUs /> */}
-      <Footer />
     </div>
   );
 };

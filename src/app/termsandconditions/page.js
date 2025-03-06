@@ -1,9 +1,7 @@
 import React from 'react'
 import styles from './tnc.module.css'
 import ContactUs from '@/components/layouts/ContactUs'
-import Sidebar from '@/components/layouts/Sidebar'
 import { createMetadata } from '@/lib/metadata/create-metadata';
-import Footer from '@/components/layouts/Footer';
 
 
 export async function generateMetadata() {
@@ -17,7 +15,6 @@ export async function generateMetadata() {
 const index = () => {
     return (
         <div>
-            <Sidebar />
             <div style={{ minHeight: '100vh', display: "flex", flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div className={styles.mainC}>
                     <h1 className={styles.mainH}>Replacement Policy</h1>
@@ -32,7 +29,6 @@ const index = () => {
                     <h2 className={styles.hashtag}>#OWN UNIQUENESS</h2>
                 </div>
                 {/* <ContactUs /> */}
-                <Footer />
             </div>
         </div>
     )

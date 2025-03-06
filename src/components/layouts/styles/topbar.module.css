@@ -13,40 +13,41 @@
     top: 0;
     left: 0;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-  
-  /* Left Section */
-  .leftSection {
+}
+
+/* Left Section */
+.leftSection {
     display: flex;
     align-items: center;
     gap: 20px;
-  }
-  
-  /* Hamburger icon: show on mobile, hide on desktop */
-  .hamburgerIcon {
-    display: none; /* hidden on desktop, we show it on mobile */
-  }
-  
-  /* Logo */
-  .logo {
+}
+
+/* Hamburger icon: show on mobile, hide on desktop */
+.hamburgerIcon {
+    display: none;
+    /* hidden on desktop, we show it on mobile */
+}
+
+/* Logo */
+.logo {
     display: flex;
     align-items: center;
-  }
-  
-  .logoImg {
+}
+
+.logoImg {
     height: 50px;
     width: auto;
     cursor: pointer;
-  }
-  
-  /* Desktop Navigation Links */
-  .navLinks {
+}
+
+/* Desktop Navigation Links */
+.navLinks {
     display: flex;
     gap: 20px;
     margin-left: 50px;
-  }
-  
-  .navItem {
+}
+
+.navItem {
     font-size: 16px;
     text-decoration: none;
     color: white;
@@ -54,43 +55,45 @@
     position: relative;
     transition: all 0.3s ease-in-out;
     font-weight: 300;
-  }
-  
-  /* Hover Effect - Animated Underline */
-  .navItem::after {
+}
+
+/* Hover Effect - Animated Underline */
+.navItem::after {
     content: "";
     position: absolute;
     left: 50%;
     bottom: -3px;
     width: 0;
-    height: 3px;
-    background-color: white;
+    height: 2px;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.597);
     transition: all 0.3s ease-in-out;
     transform: translateX(-50%);
-  }
-  
-  .navItem:hover::after {
+}
+
+.navItem:hover::after {
     width: 100%;
-  }
-  
-  /* Active Link - Bold & Static Underline */
-  .navItem.active {
+}
+
+/* Active Link - Bold & Static Underline */
+.navItem.active {
     font-weight: 650;
-  }
-  
-  .navItem.active::after {
+}
+
+.navItem.active::after {
     content: "";
     position: absolute;
     left: 50%;
     bottom: -3px;
     width: 100%;
-    height: 3px;
+    height: 2px;
+    border-radius: 10px;
     background-color: white;
     transform: translateX(-50%);
-  }
-  
-  /* Desktop Search Box */
-  .searchBox {
+}
+
+/* Desktop Search Box */
+.searchBox {
     display: flex;
     align-items: center;
     background-color: white;
@@ -98,14 +101,14 @@
     padding: 6px 12px;
     width: 350px;
     height: 35px;
-  }
-  
-  .searchIcon {
+}
+
+.searchIcon {
     color: #555;
     font-size: 20px;
-  }
-  
-  .searchInput {
+}
+
+.searchInput {
     border: none;
     outline: none;
     font-size: 15px;
@@ -113,62 +116,72 @@
     width: 100%;
     color: #333;
     background: transparent;
-  }
-  
-  /* Right Section Icons */
-  .rightIcons {
+}
+
+/* Right Section Icons */
+.rightIcons {
     display: flex;
     align-items: center;
     gap: 15px;
-  }
-  
-  /* Cart Icon */
-  .cartContainer {
+}
+
+/* Cart Icon */
+.cartContainer {
     position: relative;
     cursor: pointer;
-  }
-  
-  .cartIcon {
+}
+
+.cartIcon {
     font-size: 30px;
     color: #fff;
-  }
-  
-  .MuiBadge-badge {
+}
+
+.MuiBadge-badge {
     background-color: #ff5722;
     color: white;
     font-weight: bold;
     top: -10px;
     right: -10px;
-  }
-  
-  /* Mobile search icon: hidden on desktop */
-  .mobileSearchIcon {
+}
+
+/* Mobile search icon: hidden on desktop */
+.mobileSearchIcon {
     display: none;
     font-size: 25px;
     color: #fff;
     cursor: pointer;
-  }
-  
-  /* Responsive Styles */
-  
-  /* Show hamburger & mobile search icon on smaller screens, hide big nav & search box */
-  @media (max-width: 1000px) {
+}
+
+/* Responsive Styles */
+
+/* Show hamburger & mobile search icon on smaller screens, hide big nav & search box */
+@media (max-width: 1000px) {
     .hamburgerIcon {
-      display: block; /* Show the hamburger on mobile */
+        display: block;
+        /* Show the hamburger on mobile */
     }
-  
+
     .navLinks {
-      display: none; /* Hide the desktop nav links on mobile */
+        display: none;
+        /* Hide the desktop nav links on mobile */
     }
-  
+
     .searchBox {
-      display: none; /* Hide the large search input on mobile */
+        display: none;
+        /* Hide the large search input on mobile */
     }
-  
+
     .mobileSearchIcon {
-      display: block; /* Show mobile search icon */
+        display: block;
+        /* Show mobile search icon */
     }
-  
+
     /* You can also reduce font sizes if desired */
-  }
-  
+}
+
+@media (min-width: 1000px) {
+    .mobileSearchIcon {
+        display: none !important;
+    }
+
+}
