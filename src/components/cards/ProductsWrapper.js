@@ -6,13 +6,13 @@ import HeaderCarousel from '../showcase/carousels/HeaderCarousel'; // Verify thi
 import styles from './styles/productswrapper.module.css';
 import { useMediaQuery } from '@mui/material';
 
-const ProductsWrapper = ({ variant, products, category, sortBy = 'default', loading }) => {
+const ProductsWrapper = ({ variant, products, category, sortBy = 'default', loading, showLayout2 }) => {
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
    
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   return (
-    <div className={styles.productsGrid}>
+    <div className={showLayout2 ? styles.productsGrid2 : styles.productsGrid}>
       {variant.showCase?.[0]?.available && !isSmallDevice && (
         <div
           aria-label="Product Video"

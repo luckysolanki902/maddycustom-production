@@ -90,7 +90,7 @@ const ProductCard = ({ product, loading }) => {
           navigateToProductPage();
         }
       }}
-      style={{ cursor: isZoomed ? 'default' : 'pointer' }} // Change cursor based on zoom state
+      style={{ cursor: isZoomed ? 'default' : 'pointer', backgroundColor: 'white' }} // Change cursor based on zoom state
     >
       {isSmallDevice && !isZoomed && (
         <div

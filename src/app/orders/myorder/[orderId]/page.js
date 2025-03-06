@@ -1,6 +1,5 @@
 import React from 'react';
 import Image from 'next/image';
-import Sidebar from '@/components/layouts/Sidebar';
 import ContactUs from '@/components/layouts/ContactUs';
 import CopyButton from '@/components/page-sections/orderSuccess/CopyButton';
 import styles from '@/styles/order.module.css';
@@ -10,7 +9,6 @@ import { Box, Card, Typography } from '@mui/material';
 import PurchasedProductSlider from '@/components/page-sections/orderSuccess/PurchasedProductSlider';
 import OrderDetails from '@/components/page-sections/orderSuccess/OrderDetails';
 import CommunityCard from '@/components/page-sections/orderSuccess/CommunityCard';
-import Footer from '@/components/layouts/Footer';
 
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
@@ -59,7 +57,6 @@ export default async function OrderPage({ params }) {
       {/* Header Section */}
       <Box className={styles.header}>
         <div style={{ backgroundColor: 'black' }}>
-          <Sidebar color="white" />
           <div
             style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
             className={styles.orderpngdiv}
@@ -115,7 +112,6 @@ export default async function OrderPage({ params }) {
 
       {/* Contact Us Section */}
       {/* <ContactUs /> */}
-      <Footer />
     </Box>
   );
 }
