@@ -1,23 +1,19 @@
-// components/cards/ProductsWrapper.js
 "use client";
 import React from 'react';
 import ProductCard from './ProductCard';
-import HeaderCarousel from '../showcase/carousels/HeaderCarousel'; // Verify this path
+import HeaderCarousel from '../showcase/carousels/HeaderCarousel';
 import styles from './styles/productswrapper.module.css';
 import { useMediaQuery } from '@mui/material';
 
 const ProductsWrapper = ({ variant, products, category, sortBy = 'default', loading }) => {
+  console.log("Products on the page list",products)
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
-   
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   return (
     <div className={styles.productsGrid}>
       {variant.showCase?.[0]?.available && !isSmallDevice && (
-        <div
-          aria-label="Product Video"
-          className={styles.videoCard}
-        >
+        <div aria-label="Product Video" className={styles.videoCard}>
           <iframe
             width="100%"
             height="100%"
@@ -33,16 +29,24 @@ const ProductsWrapper = ({ variant, products, category, sortBy = 'default', load
       )}
 
       {category.specificCategoryCode === 'tw' && !isSmallDevice && (
-          <div className={styles.HeaderCarouselMain}>
+        <div className={styles.HeaderCarouselMain}>
           <HeaderCarousel />
         </div>
       )}
 
-      {products.map((product, index) => {
+      {products.map((product) => {
+        // Ensure options is always defined
+        const updatedProduct = {
+          ...product,
+          variantDetails: variant,
+          category,
+          options: product.options || []
+        };
+
         return (
           <ProductCard
             key={product._id}
-            product={{ ...product, variantDetails: variant, category }}
+            product={updatedProduct}
             loading={loading}
           />
         );

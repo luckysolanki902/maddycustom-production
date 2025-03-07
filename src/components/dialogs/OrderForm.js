@@ -331,6 +331,9 @@ const OrderForm = ({
           phoneNumber: orderForm.userDetails.phoneNumber,
           items: cartItems.map((item) => ({
             product: item.productId,
+            itemSource: item.productDetails.source || 'inhouse',
+            brand: item.productDetails.brand || null,
+            option: item.productDetails.selectedOption?._id || null,
             name: `${item.productDetails.name} ${
               item.productDetails.category?.name?.endsWith('s')
                 ? item.productDetails.category?.name.slice(0, -1)
@@ -338,7 +341,7 @@ const OrderForm = ({
             }`,
             quantity: item.quantity,
             priceAtPurchase: item.productDetails.price,
-            sku: item.productDetails.sku,
+            sku: item.productDetails.selectedOption?item.productDetails.selectedOption.sku:item.productDetails.sku,
           })),
           paymentModeId: paymentModeConfig._id,
           address: {
