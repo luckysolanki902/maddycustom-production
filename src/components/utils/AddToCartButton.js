@@ -29,13 +29,13 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   // React Spring animation for quantity
   const props = useSpring({
     // Animate scale and color based on lastAction
-    scale: lastAction === 'increment' || lastAction === 'decrement' ? 0.9 : 1,
-    color:
-      lastAction === 'increment'
-        ? '#28a745' // Green
-        : lastAction === 'decrement'
-          ? '#dc3545' // Red
-          : isBlackButton ? '#fff' : '#000',
+    scale: lastAction === 'increment' || lastAction === 'decrement' ? 1.1 : 1,
+    color: '#fff',
+      // lastAction === 'increment'
+      //   ? '#28a745' // Green
+      //   : lastAction === 'decrement'
+      //     ? '#dc3545' // Red
+      //     : isBlackButton ? '#fff' : '#fff',
     opacity: cartItem ? 1 : 0,
     config: {
       tension: 300,
@@ -148,16 +148,17 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
           onClick={handleIncrement} 
           className={styles.increment}
           disabled={isLimited && currentQuantity >= maxAllowed}
-          title={isLimited && currentQuantity >= maxAllowed ? "Limited stocks" : ""}
+          
+          title={isLimited && currentQuantity >= maxAllowed ? "" : ""}
         >
           <AddIcon fontSize='1rem'/>
         </button>
         {/* Optionally display a "limited stocks" message if at max */}
-        {isLimited && currentQuantity >= maxAllowed && 
+        {/* {isLimited && currentQuantity >= maxAllowed && 
           <span style={{ fontSize: '0.8rem', color: '#dc3545', marginLeft: '0.5rem' }}>
             limited stocks
           </span>
-        }
+        } */}
       </div>
     );
   }
@@ -173,7 +174,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   return (
     <button 
       onClick={handleAdd} 
-      className={addToCartClasses} 
+      className={addToCartClasses} style={{outline: 'none', border:'none'}} 
       disabled={isLimited && (currentQuantity + 1) > maxAllowed}
     >
       <span>

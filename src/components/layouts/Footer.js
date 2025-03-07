@@ -227,7 +227,7 @@ const Footer = () => {
   );
 
   return (
-    <footer className={styles.footer}>
+    <footer className={styles.footer} id='homecontactdiv'>
       <div className={styles.footerGrid}>
         {/* Brand & Subscribe (Column 1) */}
         <div className={`${styles.brandSection} ${styles.desktopColumn}`}>

@@ -18,6 +18,7 @@ const styles = {
   container: {
     textAlign: 'center',
     marginTop: '50px',
+    height: '100vh',
   },
   heading: {
     fontSize: '2rem',

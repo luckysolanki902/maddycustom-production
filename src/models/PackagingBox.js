@@ -29,6 +29,10 @@ const PackagingBoxSchema = new mongoose.Schema({
     type: Number,
     required: true, // Maximum number of items the box can hold
   },
+  compatibleTags:{
+    type: [String],
+    required: true
+  }
 });
 
 module.exports = mongoose.models.PackagingBox || mongoose.model('PackagingBox', PackagingBoxSchema);

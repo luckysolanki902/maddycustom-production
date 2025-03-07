@@ -6,16 +6,14 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Skeleton from '@mui/material/Skeleton';
 import Fade from '@mui/material/Fade';
-import Image from 'next/image';
 import { styled } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
-
-// Import the AddToCartButton
 import AddToCartButton from '@/components/utils/AddToCartButton';
+import Image from 'next/image';
 
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
-// Styled container to hide scrollbar
+// Styled container to hide scrollbar.
 const ScrollContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   overflowX: 'auto',
@@ -26,12 +24,6 @@ const ScrollContainer = styled(Box)(({ theme }) => ({
   scrollbarWidth: 'none',
 }));
 
-/**
- * TopBoughtProducts
- * @param {string[]} subCategories - sub-categories to fetch from
- * @param {string} currentProductId - ID of current product to exclude
- * @param {string[]} excludeProductIds - Additional product IDs to exclude
- */
 export const TopBoughtProducts = ({
   subCategories = [],
   currentProductId = '',
@@ -43,34 +35,20 @@ export const TopBoughtProducts = ({
   const [hasMore, setHasMore] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-
-  // Combine the exclude IDs once (including currentProductId, if needed).
   const mergedExcludes = useRef([]);
 
-  // FETCH once on mount (instead of on every re-render)
   useEffect(() => {
     const initialExcludesSet = new Set(excludeProductIds.filter(Boolean));
     if (currentProductId) {
       initialExcludesSet.add(currentProductId);
     }
     mergedExcludes.current = [...initialExcludesSet];
-
-    // Reset skip and products
     setSkip(0);
     setProducts([]);
     setHasMore(false);
     setInitialLoading(true);
-
-    // Fire the fetch with skip=0
     fetchProducts(0, [...initialExcludesSet]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
-  /**
-   * We do an empty dependency so it only runs once.
-   * This ensures the component doesn't re-fetch
-   * every time you add an item to cart (unless you truly need
-   * subCategories to be dynamic).
-   */
+  }, []);
 
   const fetchProducts = useCallback(
     async (newSkip, excludes) => {
@@ -80,20 +58,17 @@ export const TopBoughtProducts = ({
         } else {
           setLoadingMore(true);
         }
-
         const { data } = await axios.get('/api/showcase/products/top-bought', {
           params: {
-            subCategories: subCategories.join(','), // or pass a stable value if needed
-            currentProductId: '', // Already included in excludes
+            subCategories: subCategories.join(','),
+            currentProductId,
             skip: newSkip,
             excludeProductIds: excludes.join(','),
           },
         });
-
         const { products: fetched, hasMore: more } = data || {};
         if (newSkip === 0) {
           setProducts(fetched);
-          // add them to the excludes
           mergedExcludes.current.push(...fetched.map((p) => p._id));
         } else {
           setProducts((prev) => [...prev, ...fetched]);
@@ -110,7 +85,7 @@ export const TopBoughtProducts = ({
         }
       }
     },
-    [subCategories]
+    [subCategories, currentProductId, excludeProductIds]
   );
 
   const handleLoadMore = () => {
@@ -124,7 +99,6 @@ export const TopBoughtProducts = ({
       <Typography variant="h5" sx={{ mb: 2 }}>
         Customers also bought
       </Typography>
-
       {initialLoading ? (
         <ScrollContainer>
           {Array.from(new Array(PAGE_SIZE)).map((_, index) => (
@@ -137,7 +111,6 @@ export const TopBoughtProducts = ({
             {products.map((prod) => (
               <ProductCard key={prod._id} product={prod} />
             ))}
-
             {loadingMore
               ? Array.from(new Array(PAGE_SIZE)).map((_, index) => (
                   <ProductCardSkeleton key={`skeleton-${index}`} />
@@ -150,14 +123,43 @@ export const TopBoughtProducts = ({
   );
 };
 
-// Individual Product Card
+// Helper: decide which image to show based on product options.
+const getDisplayImage = (product) => {
+  // 1. If product has options with images, try to pick one with available inventory.
+  if (product.options && product.options.length > 0) {
+    for (const option of product.options) {
+      if (option.images && option.images.length > 0) {
+        if (option.inventoryData && option.inventoryData.availableQuantity > 0) {
+          return { imageUrl: option.images[0], outOfStock: false };
+        }
+      }
+    }
+    // 2. Fallback: use first option image (mark as out-of-stock).
+    for (const option of product.options) {
+      if (option.images && option.images.length > 0) {
+        return { imageUrl: option.images[0], outOfStock: true };
+      }
+    }
+  }
+  // 3. Otherwise, use product.images (and check product inventory if available).
+  if (product.images && product.images[0]) {
+    if (product.inventoryData && product.inventoryData.availableQuantity <= 0) {
+      return { imageUrl: product.images[0], outOfStock: true };
+    }
+    return { imageUrl: product.images[0], outOfStock: false };
+  }
+  // 4. Final fallback placeholder.
+  return { imageUrl: '/images/assets/gifs/helmetloadinggif.gif', outOfStock: true };
+};
+
 function ProductCard({ product }) {
   const router = useRouter();
   const productUrl = `/shop/${product.pageSlug || ''}`;
-
   const goToProductPage = () => {
     router.push(productUrl);
   };
+
+  const { imageUrl, outOfStock } = getDisplayImage(product);
 
   return (
     <Box
@@ -177,7 +179,6 @@ function ProductCard({ product }) {
       }}
       onClick={goToProductPage}
     >
-      {/* Image */}
       <Box
         sx={{
           position: 'relative',
@@ -186,23 +187,29 @@ function ProductCard({ product }) {
           aspectRatio: '1.617523',
         }}
       >
-        {product.images && product.images[0] ? (
+        {imageUrl ? (
           <Image
-            src={`${baseImageUrl}${
-              product.images[0].startsWith('/')
-                ? product.images[0]
-                : '/' + product.images[0]
-            }`}
-            style={{ boxShadow: '0px 3px 6px rgba(0,0,0,0.36)' }}
+          width={500}
+          height={500}
+            src={
+              imageUrl.startsWith('/')
+                ? `${baseImageUrl}${imageUrl}`
+                : `${baseImageUrl}/${imageUrl}`
+            }
             alt={product.name || 'product'}
-            fill
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              boxShadow: '0px 3px 6px rgba(0,0,0,0.36)',
+              filter: outOfStock ? 'grayscale(100%)' : 'none',
+              aspectRatio:'1.617',
+            }}
           />
         ) : (
           <Box sx={{ width: '100%', height: '100%', bgcolor: '#f0f0f0' }} />
         )}
       </Box>
-
-      {/* Info / Price / AddToCart */}
       <Box sx={{ flexGrow: 1, mx: 1 }}>
         <Typography
           variant="subtitle1"
@@ -219,30 +226,18 @@ function ProductCard({ product }) {
             {product.category.name}
           </Typography>
         )}
-
-        {/* Price */}
         <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-          <Typography
-            variant="body2"
-            sx={{ color: 'rgba(0, 0, 0, 0.5)', fontSize: '1.4rem', mr: 0.5 }}
-          >
+          <Typography variant="body2" sx={{ color: 'rgba(0, 0, 0, 0.5)', fontSize: '1.4rem', mr: 0.5 }}>
             ₹
           </Typography>
           <Typography variant="body1" sx={{ color: 'rgba(0, 0, 0, 0.5)', fontWeight: '600' }}>
             {product.price}
           </Typography>
         </Box>
-
-        {/* Replace the old order.png with AddToCartButton */}
-        {/* 
-            We pass `product` so AddToCartButton can store 
-            productDetails for the cart. 
-        */}
         <Box
           sx={{ mt: 1 }}
           onClick={(e) => {
-            e.stopPropagation(); 
-            // so clicking the button doesn’t open product page
+            e.stopPropagation();
           }}
         >
           <AddToCartButton product={product} />
@@ -252,7 +247,6 @@ function ProductCard({ product }) {
   );
 }
 
-// "Load More" card
 function LoadMoreCard({ onClick, loading }) {
   return (
     <Box
@@ -283,7 +277,6 @@ function LoadMoreCard({ onClick, loading }) {
   );
 }
 
-// Skeleton card while loading
 function ProductCardSkeleton() {
   return (
     <Box

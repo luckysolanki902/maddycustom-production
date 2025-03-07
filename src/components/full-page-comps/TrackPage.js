@@ -43,7 +43,6 @@ export default function TrackPage() {
 
   return (
     <>
-      <Sidebar />
       <div className={styles.main}>
         <div className={styles.max}>
           {/* Logo */}

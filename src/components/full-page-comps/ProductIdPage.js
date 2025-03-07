@@ -221,6 +221,8 @@ export default function ProductIdPage({
             isZoomed={isZoomed}
             alt={product.title}
             setIsZoomed={setIsZoomed}
+            restrictWidth={product.category.toLowerCase() !== 'wraps'}
+            
           />
           {isBetween1000And1400 && soldByCategoryEl}
         </div>
@@ -240,24 +242,8 @@ export default function ProductIdPage({
               )}
             </div>
 
-            <MemoizedPriceAndChat
-              price={
-                variant?.availableBrands?.length > 0
-                  ? variant.availableBrands[0].brandBasePrice + product.price
-                  : product.price
-              }
-            />
-
-           { !isMobile &&( <div className={styles.orderSpecificationsContainer}>
-              <MemoizedOrderSpecifications
-                features={variant.features}
-                justContStart={true}
-              />
-            </div>)}
-            
-
-            {/* Render color options */}
-            {options &&
+              {/* Render color options */}
+              {options &&
               options.some(
                 (opt) =>
                   opt.optionDetails &&
@@ -417,6 +403,24 @@ export default function ProductIdPage({
                 justContStart={true}
               />
             </div>)}
+
+            <MemoizedPriceAndChat
+              price={
+                variant?.availableBrands?.length > 0
+                  ? variant.availableBrands[0].brandBasePrice + product.price
+                  : product.price
+              }
+            />
+
+           { !isMobile &&( <div className={styles.orderSpecificationsContainer}>
+              <MemoizedOrderSpecifications
+                features={variant.features}
+                justContStart={true}
+              />
+            </div>)}
+            
+
+          
 
             {/* Render Add to Cart Button only if in stock */}
             {!isOutOfStock && (
