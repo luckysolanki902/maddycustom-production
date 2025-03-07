@@ -37,7 +37,7 @@ export default function ProductsPage({ slug, variant, products, category, initia
   const [sortSelectInTheUi, setSortSelectInTheUi] = useState(false); // Controlled by a constant
 
   // Layout1 or layout2
-  const [showLayout2, setShowLayout2] = useState(true);
+  const [showLayout2, setShowLayout2] = useState(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL
   useEffect(() => {
     // if products[0].images[0]'s image is  square or portrait that is it's width <= height, then show layout2. but image is a relative url from cloudront starting from /
@@ -78,9 +78,11 @@ export default function ProductsPage({ slug, variant, products, category, initia
           sortBy: sort,
         }),
       });
+      console.log("res",res)
 
       if (res.ok) {
         const data = await res.json();
+        console.log(data)
         if (data.type === 'variant') {
           setCurrentProducts(data.products);
           setTotalPageCount(data.totalPages);

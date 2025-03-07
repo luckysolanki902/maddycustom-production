@@ -17,6 +17,24 @@ const CartItem = ({ item, onRemove }) => {
     }
   };
 
+  // Determine the image source: use option image if available, else product image
+  const imageSrc =
+    item.productDetails.selectedOption &&
+      item.productDetails.selectedOption.images &&
+      item.productDetails.selectedOption.images.length > 0
+      ? `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${item.productDetails.selectedOption.images[0].startsWith('/')
+        ? item.productDetails.selectedOption.images[0]
+        : '/' + item.productDetails.selectedOption.images[0]
+      }`
+      : item.productDetails.images &&
+        item.productDetails.images.length > 0
+        ? `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${item.productDetails.images[0].startsWith('/')
+          ? item.productDetails.images[0]
+          : '/' + item.productDetails.images[0]
+        }`
+        : '/images/assets/gifs/helmetloadinggiflandscape2.gif';
+
+
   return (
     <div
       style={{ cursor: 'pointer' }}
@@ -37,14 +55,11 @@ const CartItem = ({ item, onRemove }) => {
       <Image
         width={538}
         height={341.5}
-        src={
-          item?.productDetails?.images && item.productDetails?.images?.length > 0
-            ? `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${item.productDetails.images[0].startsWith('/') ? item.productDetails.images[0] : '/' + item.productDetails.images[0]}`
-            : '/images/assets/gifs/helmetloadinggiflandscape2.gif'
-        }
+        src={imageSrc}
         alt={item.productDetails.name}
         className={styles.productImage}
       />
+
 
       <div className={styles.productDetails}>
         <div className={styles.categoryName}>
@@ -52,7 +67,7 @@ const CartItem = ({ item, onRemove }) => {
             item.productDetails.category?.name?.endsWith('s')
               ? item?.productDetails?.category?.name?.slice(0, -1)
               : item.productDetails.category.name :
-            (item?.productDetails?.category?.name?.slice(0, 20) + '...' )}
+            (item.productDetails.category.name.slice(0, 20) + '...')}
 
         </div>
         <div className={styles.productName}>

@@ -1,6 +1,4 @@
-// components/ProductCard.js
 'use client';
-
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import styles from './styles/productcard.module.css';
@@ -9,12 +7,49 @@ import { useMediaQuery } from '@mui/material';
 import { useSpring, animated } from '@react-spring/web';
 import { useRouter } from 'next/navigation';
 import AddToCartButton from '../utils/AddToCartButton';
+import {Typography} from '@mui/material';
+// Helper function to decide which image to show and whether it's out of stock.
+const getDisplayImage = (product) => {
+  // 1. Check if product has its own images.
+  if (product.images && product.images.length > 0) {
+    if (product.inventoryData && product.inventoryData.availableQuantity === 0) {
+      return { imageUrl: product.images[0], outOfStock: true };
+    }
+    return { imageUrl: product.images[0], outOfStock: false };
+  }
+  // 2. Otherwise, check through options.
+  if (product.options && product.options.length > 0) {
+    // Try to find an option with images and available stock.
+    for (const option of product.options) {
+      if (option.images && option.images.length > 0) {
+        if (option.inventoryData) {
+          if (option.inventoryData.availableQuantity > 0) {
+            return { imageUrl: option.images[0], outOfStock: false };
+          }
+        } else {
+          // No inventory ref, so assume it's available.
+          return { imageUrl: option.images[0], outOfStock: false };
+        }
+      }
+    }
+    // If none of the options have available stock but at least one has images, return the first option's image as out of stock.
+    for (const option of product.options) {
+      if (option.images && option.images.length > 0) {
+        return { imageUrl: option.images[0], outOfStock: true };
+      }
+    }
+  }
+  // 3. Fallback placeholder
+  return { imageUrl: '/images/assets/gifs/helmetloadinggif.gif', outOfStock: true };
+};
 
-const ProductCard = ({ product, loading }) => {
+const ProductCard = ({ product, loading, showLayout2 }) => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const [isZoomed, setIsZoomed] = useState(false);
   const router = useRouter();
+
+  console.log(product);
 
   // Define the animation properties using React Spring
   const animationProps = useSpring({
@@ -22,7 +57,7 @@ const ProductCard = ({ product, loading }) => {
     config: { tension: 300, friction: 20 },
   });
 
-  // Define the overlay properties when zoomed
+  // Overlay properties when zoomed
   const overlayProps = useSpring({
     opacity: isZoomed ? 1 : 0,
     pointerEvents: isZoomed ? 'auto' : 'none',
@@ -37,13 +72,11 @@ const ProductCard = ({ product, loading }) => {
     setIsZoomed(false);
   };
 
-  // Handle Back Button Behavior
+  // Handle Back Button Behavior for zoomed image
   const handlePopState = useCallback(
     (event) => {
       if (isZoomed) {
-        // Prevent the default back navigation
         event.preventDefault();
-        // Zoom out the image
         setIsZoomed(false);
       }
     },
@@ -52,34 +85,28 @@ const ProductCard = ({ product, loading }) => {
 
   useEffect(() => {
     if (isZoomed) {
-      // Push a new state to the history when zoomed in
       window.history.pushState({ zoomed: true }, '');
-
-      // Add the popstate event listener
       window.addEventListener('popstate', handlePopState);
     } else {
-      // If not zoomed, ensure we don't have extra history entries
       if (window.history.state && window.history.state.zoomed) {
         window.history.back();
       }
-
-      // Remove the popstate event listener
       window.removeEventListener('popstate', handlePopState);
     }
-
-    // Cleanup function
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
   }, [isZoomed, handlePopState]);
 
-  // Handle navigation to the product page
+  // Handle navigation to product page
   const navigateToProductPage = () => {
     if (product.variantDetails.available) {
       router.push(`/shop/${product.pageSlug}`);
     }
-    return;
   };
+
+  // Determine which image to display using our helper function.
+  const { imageUrl, outOfStock } = getDisplayImage(product);
 
   return (
     <div
@@ -92,20 +119,18 @@ const ProductCard = ({ product, loading }) => {
       }}
       style={{ cursor: isZoomed ? 'default' : 'pointer', backgroundColor: 'white' }} // Change cursor based on zoom state
     >
-      {isSmallDevice && !isZoomed && (
+      {/* {isSmallDevice && !isZoomed && (
         <div
           className={styles.taptozoom}
           onClick={(e) => {
-            e.stopPropagation(); // Prevent the click from bubbling up to the main card
+            e.stopPropagation();
             handleImageClick();
           }}
         >
-          <ZoomOutMapIcon
-            style={{ marginRight: '1rem', fontSize: '1.1rem', color: 'gray' }}
-          />
+          <ZoomOutMapIcon style={{ marginRight: '1rem', fontSize: '1.1rem', color: 'gray' }} />
           <span>Tap to Zoom</span>
         </div>
-      )}
+      )} */}
 
       {/* Overlay for zoomed image */}
       <animated.div
@@ -128,12 +153,11 @@ const ProductCard = ({ product, loading }) => {
           <div style={{ position: 'relative', cursor: 'zoom-out' }}>
             <animated.div style={animationProps}>
               <Image
-                unoptimized={product.images && product.images.length > 0 ? false : true}
-                className={`${styles.image} ${product?.category?.specificCategoryCode === 'fbw' ? styles.increaseBrightness : ''}`}
+                unoptimized={false}
                 src={
-                  product.images && product.images.length > 0
-                    ? `${baseImageUrl}${product.images[0].startsWith('/') ? product.images[0] : '/' + product.images[0]}`
-                    : '/images/assets/gifs/helmetloadinggif.gif'
+                  imageUrl.startsWith('/')
+                    ? `${baseImageUrl}${imageUrl}`
+                    : `${baseImageUrl}/${imageUrl}`
                 }
                 alt={product.name}
                 width={1076}
@@ -141,26 +165,40 @@ const ProductCard = ({ product, loading }) => {
                 loading="lazy"
                 title={product.title}
                 aria-describedby={product.description}
+                style={outOfStock ? { filter: 'grayscale(100%)' } : {}}
               />
+              {outOfStock && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                    color: 'white',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '4px',
+                  }}
+                >
+                  Item Out of Stock
+                </div>
+              )}
             </animated.div>
           </div>
         )}
       </animated.div>
 
-      {/* Regular Image with Animation */}
+      {/* Regular image with animation */}
       {!isZoomed && (
-        <animated.div
-          className={`${styles.image} ${product?.category?.specificCategoryCode === 'fbw' ? styles.increaseBrightness : ''}`}
-          style={animationProps}
-        >
+        <animated.div style={animationProps}>
           <Image
-            className={`${styles.image} ${product?.category?.specificCategoryCode === 'fbw' ? styles.increaseBrightness : ''}`}
-            unoptimized={loading ? true : product.images && product.images.length > 0 ? false : true}
+            className={styles.image}
+            unoptimized={loading ? true : false}
             src={
               loading
                 ? '/images/assets/gifs/helmetloadinggiflandscape2.gif'
-                : product.images && product.images.length > 0
-                  ? `${baseImageUrl}${product.images[0].startsWith('/') ? product.images[0] : '/' + product.images[0]}`
+                : imageUrl
+                  ? (imageUrl.startsWith('/') ? `${baseImageUrl}${imageUrl}` : `${baseImageUrl}/${imageUrl}`)
                   : '/images/assets/gifs/helmetloadinggiflandscape2.gif'
             }
             alt={product.name}
@@ -169,7 +207,15 @@ const ProductCard = ({ product, loading }) => {
             loading="lazy"
             title={product.title}
             aria-describedby={product.description}
+            style={outOfStock ? { filter: 'grayscale(100%)' } : {}}
           />
+          {outOfStock && (
+            <div className={styles.outOfStockOverlay}>
+              <Typography variant="body2" color="error">
+                Item Out of Stock
+              </Typography>
+            </div>
+          )}
         </animated.div>
       )}
 
@@ -178,23 +224,14 @@ const ProductCard = ({ product, loading }) => {
           <div className={styles.prodDescRow1} style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div className={styles.productName}>{product.name}</div>
           </div>
-          {product.variantDetails.available && <div className={styles.addToCart} >
-            <AddToCartButton
-              product={{
-                ...product,
-                price:
-                  product.variantDetails?.availableBrands?.length > 0
-                    ? product.variantDetails.availableBrands[0].brandBasePrice + product.price
-                    : product.price,
-              }}
-            />
-          </div>}
+
         </div>
         <div className={styles.prodDescRow2}>
           <div className={styles.productCardSubtitles}>
             {product.variantDetails.cardCaptions?.map((caption, index) => (
               <React.Fragment key={index}>
-                <span>{caption}</span> <br />
+                <span>{caption}</span>
+                <br />
               </React.Fragment>
             ))}
           </div>
@@ -211,15 +248,12 @@ const ProductCard = ({ product, loading }) => {
           <div className={styles.offer5}>
             <div className={styles.offer5Line1}>
               <span>5%</span>
-              <span style={{marginLeft:'0.4rem'}}>off</span>
+              <span style={{ marginLeft: '0.4rem' }}>off</span>
             </div>
-            {/* <div className={styles.offer5Line2}>on every order</div>
-            <div className={styles.offer5Line3}>Valid till 30/11/24</div> */}
           </div>
         </div>
-
         <div className={styles.prodDescLastRow}>
-          <Image
+          {/* <Image
             width={500}
             height={250}
             src={
@@ -227,10 +261,26 @@ const ProductCard = ({ product, loading }) => {
             }
             alt=""
             priority
-          />
+          /> */}
+
+
+          {/* addtocartbutton */}
+
+          {product.variantDetails.available && !outOfStock && (
+            <div className={styles.addToCart}>
+              <AddToCartButton
+                product={{
+                  ...product,
+                  price:
+                    product.variantDetails?.availableBrands?.length > 0
+                      ? product.variantDetails.availableBrands[0].brandBasePrice + product.price
+                      : product.price,
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
-
     </div>
   );
 };

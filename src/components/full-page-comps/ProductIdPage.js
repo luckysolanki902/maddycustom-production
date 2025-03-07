@@ -1,8 +1,10 @@
 "use client";
 
+import React, { useState, useEffect, useRef, memo } from "react";
+import Image from "next/image";
 import styles from "./styles/productid.module.css";
-import { useState, useEffect, useRef } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { removeItem } from "@/store/slices/cartSlice";
 import OrderSpecifications from "../page-sections/product-id-page/OrderSpecifications";
 import PriceAndChat from "../page-sections/product-id-page/PriceAndChat";
 import HappyCustomersClient from "../showcase/sliders/HappyCustomerClient";
@@ -17,27 +19,85 @@ import Footer from "../layouts/Footer";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
+// Memoize components that do not need to update on option change
+const MemoizedImageGallery = memo(ImageGallery);
+const MemoizedOrderSpecifications = memo(OrderSpecifications);
+const MemoizedPriceAndChat = memo(PriceAndChat);
+const MemoizedProductDescription = memo(ProductDescription);
+const MemoizedTopBoughtProducts = memo(TopBoughtProducts);
+const MemoizedReviewFullComp = memo(ReviewFullComp);
+const MemoizedAddToCartButtonWithOrder = memo(AddToCartButtonWithOrder);
+
 export default function ProductIdPage({
   product,
   variant,
   category,
   description,
   productInfoTabs = [],
+  // Options are expected to come with image data, optionDetails, and inventoryData
 }) {
+  // -- Color map for color options --
+  const colorMap = {
+    red: "#ff0066",
+    blue: "#66ccff",
+    green: "#99ff99",
+    yellow: "#fff68f",
+    orange: "#ffb347",
+    pink: "#ff99cc",
+    purple: "#cdb3e6",
+    black: "#555555",
+    white: "#ffffff",
+    gray: "#cccccc"
+  };
+
+  const options = product.options || [];
   const [isZoomed, setIsZoomed] = useState(false);
   const [soldCount, setSoldCount] = useState(null);
+  const [selectedOption, setSelectedOption] = useState(null);
+  // New state for mobile: toggle showing more colors dropdown
+  const [showMoreColors, setShowMoreColors] = useState(false);
   const userDetails = useSelector((state) => state.orderForm.userDetails);
   const { email, phoneNumber } = userDetails || {};
   const hasTracked = useRef(false);
-
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
-  // --- MERGE IMAGES FROM PRODUCT AND DESCRIPTION TAB ---
-  // Product images as stored in the product document.
-  const productImages = product.images || [];
+  // Cloudfront URL for the "1+ more images" icon
+  const moreImagesIconUrl = `${imageBaseUrl}/assets/icons/more-images-icon.jpg`;
 
-  // Extract images from the "Description" product info tab content.
+  // Get dispatch and cart items from redux
+  const dispatch = useDispatch();
+  const cartItems = useSelector((state) => state.cart.items);
+
+  // Function to handle color option selection
+  const handleColorChange = (opt) => {
+    // If the product is already in the cart, remove it so that only one color is active
+    if (cartItems.find((item) => item.productId === product._id)) {
+      dispatch(removeItem({ productId: product._id }));
+    }
+    setSelectedOption(opt);
+  };
+
+  // Auto-select the first available option (that has inventory) if none is selected
+  useEffect(() => {
+    if (options && options.length > 0 && !selectedOption) {
+      const availableOptions = options.filter(
+        (opt) =>
+          opt.optionDetails &&
+          opt.optionDetails.color &&
+          opt.optionDetails.color.trim() &&
+          opt.inventoryData &&
+          opt.inventoryData.availableQuantity > 0
+      );
+      if (availableOptions.length > 0) {
+        setSelectedOption(availableOptions[0]);
+      }
+    }
+  }, [options, selectedOption]);
+
+  // --- MERGE IMAGES FROM DESCRIPTION TAB ---
+  const productImages = product.images || [];
   let descriptionImages = [];
+
   productInfoTabs.forEach((tab) => {
     if (
       tab.title &&
@@ -52,28 +112,50 @@ export default function ProductIdPage({
           block.data.file &&
           block.data.file.url
         ) {
-          descriptionImages.push(block.data.file.url.replace('https://d26w01jhwuuxpo.cloudfront.net', ''));
+          descriptionImages.push(
+            block.data.file.url.replace(
+              "https://d26w01jhwuuxpo.cloudfront.net",
+              ""
+            )
+          );
         }
       });
     }
   });
-  console.log(descriptionImages);
 
-  // Merge images: product images, images extracted from "Description" tab,
-  // and any extra appendedImages (if provided).
-  const mergedImages = [
-    ...productImages,
-    ...descriptionImages,
-  ];
+  // Determine which images to show:
+  // If a selected option exists with images, show its first image; otherwise, show product & description images.
+  const mergedImages =
+    selectedOption && selectedOption.images && selectedOption.images.length > 0
+      ? [selectedOption.images[0]]
+      : [...productImages, ...descriptionImages];
 
-  console.log({mergedImages});
-
-  // Prepend the Cloudfront base URL if necessary.
+  // Prepend the Cloudfront base URL if necessary
   const allImages = mergedImages.map((img) =>
     img.startsWith("http") || img.startsWith("/")
       ? `${imageBaseUrl}${img.startsWith("/") ? img : "/" + img}`
       : `${imageBaseUrl}/${img}`
   );
+
+  // Determine inventory availability
+  const optionInventory =
+    selectedOption &&
+    selectedOption.inventoryData &&
+    typeof selectedOption.inventoryData.availableQuantity === "number"
+      ? selectedOption.inventoryData.availableQuantity
+      : null;
+  const productInventory =
+    product.inventoryData &&
+    typeof product.inventoryData.availableQuantity === "number"
+      ? product.inventoryData.availableQuantity
+      : null;
+
+  const isOutOfStock =
+    optionInventory !== null
+      ? optionInventory <= 0
+      : productInventory !== null
+      ? productInventory <= 0
+      : false; // If no inventory data, assume out of stock
 
   // --- FIRE THE viewContent PIXEL ONCE ---
   useEffect(() => {
@@ -117,17 +199,26 @@ export default function ProductIdPage({
     "(min-width: 1000px) and (max-width: 1399px)"
   );
   const isGreaterThan1400 = useMediaQuery("(min-width: 1400px)");
+  // Mobile devices media query (adjust the max-width as needed)
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   return (
     <div style={{ paddingBottom: "6rem" }}>
       <div className={styles.container}>
-        <div className={styles.imageGallery}>
-          <ImageGallery
-            src={allImages?.[0] || `${imageBaseUrl}/default-placeholder.jpg`}
+        <div
+          className={styles.imageGallery}
+          style={isOutOfStock ? { filter: "grayscale(100%)" } : {}}
+        >
+          <MemoizedImageGallery
+            src={
+              allImages?.[0] || `${imageBaseUrl}/default-placeholder.jpg`
+            }
             images={allImages}
             isZoomed={isZoomed}
             alt={product.title}
             setIsZoomed={setIsZoomed}
+            restrictWidth={product.category.toLowerCase() === 'accessories'}
+            
           />
           {isBetween1000And1400 && soldByCategoryEl}
         </div>
@@ -147,7 +238,7 @@ export default function ProductIdPage({
               )}
             </div>
 
-            <PriceAndChat
+            <MemoizedPriceAndChat
               price={
                 variant?.availableBrands?.length > 0
                   ? variant.availableBrands[0].brandBasePrice + product.price
@@ -156,26 +247,185 @@ export default function ProductIdPage({
             />
 
             <div className={styles.orderSpecificationsContainer}>
-              <OrderSpecifications
+              <MemoizedOrderSpecifications
                 features={variant.features}
                 justContStart={true}
               />
             </div>
 
-            <div className={styles.buttonDiv}>
-              <AddToCartButtonWithOrder
-                product={{
-                  ...product,
-                  variantDetails: variant,
-                  category: category,
-                  price:
-                    variant?.availableBrands?.length > 0
-                      ? variant.availableBrands[0].brandBasePrice + product.price
-                      : product.price,
-                }}
-                isLarge={true}
-              />
-            </div>
+            {/* Render color options */}
+            {options &&
+              options.some(
+                (opt) =>
+                  opt.optionDetails &&
+                  opt.optionDetails.color &&
+                  opt.optionDetails.color.trim() &&
+                  opt.inventoryData &&
+                  opt.inventoryData.availableQuantity > 0
+              ) && (
+                isMobile ? (
+                  <>
+                    {/* Always show the "1+ more images" icon */}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "row",
+                      }}>
+                    <div
+                      style={{
+                        margin: "1rem 0",
+                        cursor: "pointer",
+                        width: "2rem",
+                        height: "2rem",
+                        position: "relative",
+                      }}
+                      onClick={() => setShowMoreColors((prev) => !prev)}
+                    >
+                    
+                      <Image
+                        src={moreImagesIconUrl}
+                        alt="More colors"
+                        layout="fill"
+                        objectFit="cover"
+                      />
+                      
+                    </div>
+                    <div> <p> {  }    more images</p></div>
+                    </div>
+                    
+                   
+                    {/* Collapsible dropdown for more colors */}
+                    {showMoreColors && (
+                      <div
+                        style={{
+                          margin: "1rem 0",
+                          border: "1px solid #ccc",
+                          padding: "0.5rem",
+                          borderRadius: "4px",
+                          background: "#fff"
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: "0.5rem"
+                          }}
+                        >
+                          <span>More colors</span>
+                          {/* Cross icon to collapse dropdown */}
+                          <span
+                            style={{
+                              cursor: "pointer",
+                              fontWeight: "bold",
+                              fontSize: "1.2rem"
+                            }}
+                            onClick={() => setShowMoreColors(false)}
+                          >
+                            &times;
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          {options
+                            .filter(
+                              (opt) =>
+                                opt.optionDetails &&
+                                opt.optionDetails.color &&
+                                opt.optionDetails.color.trim() &&
+                                opt.inventoryData &&
+                                opt.inventoryData.availableQuantity > 0
+                            )
+                            .map((opt) => (
+                              <div
+                                key={opt._id}
+                                onClick={() => handleColorChange(opt)}
+                                style={{
+                                  width: "2rem",
+                                  height: "2rem",
+                                  borderRadius: "50%",
+                                  border:
+                                    selectedOption &&
+                                    selectedOption._id === opt._id
+                                      ? "2px solid black"
+                                      : "none",
+                                  backgroundColor:
+                                    colorMap[
+                                      opt.optionDetails.color.toLowerCase()
+                                    ] ||
+                                    opt.optionDetails.color.toLowerCase(),
+                                  cursor: "pointer"
+                                }}
+                              />
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ margin: "1rem 0" }}>
+                    <div style={{ marginBottom: "0.5rem" }}>More colors</div>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      {options
+                        .filter(
+                          (opt) =>
+                            opt.optionDetails &&
+                            opt.optionDetails.color &&
+                            opt.optionDetails.color.trim() &&
+                            opt.inventoryData &&
+                            opt.inventoryData.availableQuantity > 0
+                        )
+                        .map((opt) => (
+                          <div
+                            key={opt._id}
+                            onClick={() => handleColorChange(opt)}
+                            style={{
+                              width: "2rem",
+                              height: "2rem",
+                              borderRadius: "50%",
+                              border:
+                                selectedOption &&
+                                selectedOption._id === opt._id
+                                  ? "2px solid black"
+                                  : "none",
+                              backgroundColor:
+                                colorMap[
+                                  opt.optionDetails.color.toLowerCase()
+                                ] ||
+                                opt.optionDetails.color.toLowerCase(),
+                              cursor: "pointer"
+                            }}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                )
+              )}
+
+            {/* Render Add to Cart Button only if in stock */}
+            {!isOutOfStock && (
+              <div className={styles.buttonDiv}>
+                <MemoizedAddToCartButtonWithOrder
+                  product={{
+                    ...product,
+                    selectedOption: selectedOption || null,
+                    variantDetails: variant,
+                    category: category,
+                    price:
+                      variant?.availableBrands?.length > 0
+                        ? variant.availableBrands[0].brandBasePrice +
+                          product.price
+                        : product.price
+                  }}
+                  isLarge={true}
+                />
+              </div>
+            )}
+            {isOutOfStock && (
+              <div style={{ color: "red", marginTop: "1rem" }}>
+                Out of Stock
+              </div>
+            )}
 
             {isGreaterThan1400 && soldByCategoryEl}
             {isLessThan1000 && soldByCategoryEl}
@@ -183,18 +433,18 @@ export default function ProductIdPage({
         )}
       </div>
 
-      {/* Pass your SSR “productInfoTabs” into ProductDescription */}
-      <ProductDescription
+      {/* Product description & additional details */}
+      <MemoizedProductDescription
         productInfoTabs={productInfoTabs}
-        showProductImageFirst={false} // set to true if you want a leading product image from the description tab
+        showProductImageFirst={false}
       />
 
       {/* Showcase of top products, reviews, etc. */}
-      <TopBoughtProducts
+      <MemoizedTopBoughtProducts
         subCategories={[category?.subCategory]}
         excludeProductIds={[product?._id]}
       />
-      <ReviewFullComp
+      <MemoizedReviewFullComp
         productId={product._id}
         variantId={variant._id}
         categoryId={category._id}
