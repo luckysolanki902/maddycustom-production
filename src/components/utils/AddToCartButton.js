@@ -18,7 +18,6 @@ import {
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
 
 export default function AddToCartButton({ product, isBlackButton = false, isLarge = false }) {
-  console.log("add to cart ", product);
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
   const cartItem = cartItems.find((item) => item.productId === product._id);
@@ -51,14 +50,11 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
 
   useEffect(() => {
     // No additional logic needed here as useSpring tracks cartItem changes.
-    // console.log("HIIIIIIIIIIIIIIIIIIIII")
   }, [cartItem]);
 
   // --- INVENTORY / STOCK MANAGEMENT ---
   // Determine the inventory data source: product inventoryData takes precedence, else selectedOption inventoryData.
   const inventoryData = product.inventoryData || (product.selectedOption && product.selectedOption?.inventoryData) || null;
-  console.log(inventoryData)
-  console.log(product.selectedOption);
   let maxAllowed = Infinity;
   let isLimited = false;
   if (inventoryData) {
@@ -118,7 +114,6 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       dispatch(decrementQuantity({ productId: product._id }));
     }
   };
-  console.log(isLimited, currentQuantity, maxAllowed);
 
   // Construct the main container's className for the in-cart quantity control.
   const mainClasses = [

@@ -16,11 +16,13 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const Footer = () => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isMobile = useMediaQuery("(max-width:600px)");
+  const pathname = usePathname();
+
   const router = useRouter()
 
   // Subscription state
@@ -225,171 +227,176 @@ const Footer = () => {
       </ul>
     </div>
   );
+  console.log(pathname);
+  if (pathname === '/viewcart') {
+    return null;
+  }
+  else {
+    return (
+      <footer className={styles.footer} id='homecontactdiv'>
+        <div className={styles.footerGrid}>
+          {/* Brand & Subscribe (Column 1) */}
+          <div className={`${styles.brandSection} ${styles.desktopColumn}`}>
+            <div className={styles.logoContainer}>
+              <Image
+                onClick={() => router.push('/')}
+                className={styles.logoImg}
+                src={`${baseImageUrl}/assets/logos/maddy_custom3_main_logo.png`}
+                alt="maddylogo"
+                title="maddylogo"
+                width={150}
+                height={70}
+                priority={true}
 
-  return (
-    <footer className={styles.footer} id='homecontactdiv'>
-      <div className={styles.footerGrid}>
-        {/* Brand & Subscribe (Column 1) */}
-        <div className={`${styles.brandSection} ${styles.desktopColumn}`}>
-          <div className={styles.logoContainer}>
-            <Image
-              onClick={() => router.push('/')}
-              className={styles.logoImg}
-              src={`${baseImageUrl}/assets/logos/maddy_custom3_main_logo.png`}
-              alt="maddylogo"
-              title="maddylogo"
-              width={150}
-              height={70}
-              priority={true}
-
-            />
-            <div className={styles.contactIcons}>
-              <Link href="https://wa.me/8112673988">
-                <Image
-                  width={25}
-                  height={25}
-                  alt="icon"
-                  src={`${baseImageUrl}/assets/icons/whatsappwhite.png`}
-                  priority={true}
-                  style={{ verticalAlign: "middle", marginRight: "10px" }}
-                />
-              </Link>
-              <Link href="mailto:contact.maddycustoms@gmail.com">
-                <Image
-                  width={25}
-                  height={25}
-                  alt="icon"
-                  src={`${baseImageUrl}/assets/icons/mail.png`}
-                  priority={true}
-                  style={{ verticalAlign: "middle", marginRight: "10px" }}
-                />
-              </Link>
-              <Link href="https://instagram.com/maddycustom?igshid=NGVhN2U2NjQ0Yg==">
-                <Image
-                  width={25}
-                  height={25}
-                  alt="icon"
-                  src={`${baseImageUrl}/assets/icons/instagram.png`}
-                  priority={true}
-                  style={{ verticalAlign: "middle", marginRight: "10px" }}
-                />
-              </Link>
+              />
+              <div className={styles.contactIcons}>
+                <Link href="https://wa.me/8112673988">
+                  <Image
+                    width={25}
+                    height={25}
+                    alt="icon"
+                    src={`${baseImageUrl}/assets/icons/whatsappwhite.png`}
+                    priority={true}
+                    style={{ verticalAlign: "middle", marginRight: "10px" }}
+                  />
+                </Link>
+                <Link href="mailto:contact.maddycustoms@gmail.com">
+                  <Image
+                    width={25}
+                    height={25}
+                    alt="icon"
+                    src={`${baseImageUrl}/assets/icons/mail.png`}
+                    priority={true}
+                    style={{ verticalAlign: "middle", marginRight: "10px" }}
+                  />
+                </Link>
+                <Link href="https://instagram.com/maddycustom?igshid=NGVhN2U2NjQ0Yg==">
+                  <Image
+                    width={25}
+                    height={25}
+                    alt="icon"
+                    src={`${baseImageUrl}/assets/icons/instagram.png`}
+                    priority={true}
+                    style={{ verticalAlign: "middle", marginRight: "10px" }}
+                  />
+                </Link>
+              </div>
             </div>
-          </div>
-          <p className={styles.tagline}>
-            {/* Timelessly inspired, {isMobile ? <br /> : ""} endlessly enhanced, we customize rides for you */}
-            Drive what defines you!
-          </p>
-          <form className={styles.subscribe} onSubmit={handleSubscribe}>
-            <input
-              type="tel"
-              placeholder="Enter your 10-digit mobile number"
-              className={styles.subscribeInput}
-              value={phoneNumber}
-              onChange={(e) => {
-                // Allow only digits
-                const numeric = e.target.value.replace(/\D/g, "");
-                setPhoneNumber(numeric);
-              }}
-              maxLength={10}
-              required
-            />
-            <button
-              type="submit"
-              className={styles.subscribeButton}
-              disabled={loading}
-            >
-              {loading ? "Submitting..." : "SUBSCRIBE"}
-            </button>
-          </form>
-          {subscriptionMessage && (
-            <p style={{ marginTop: "0.5rem", color: "#fff", fontSize: "0.9rem" }}>
-              {subscriptionMessage}
+            <p className={styles.tagline}>
+              {/* Timelessly inspired, {isMobile ? <br /> : ""} endlessly enhanced, we customize rides for you */}
+              Drive what defines you!
             </p>
-          )}
+            <form className={styles.subscribe} onSubmit={handleSubscribe}>
+              <input
+                type="tel"
+                placeholder="Enter your 10-digit mobile number"
+                className={styles.subscribeInput}
+                value={phoneNumber}
+                onChange={(e) => {
+                  // Allow only digits
+                  const numeric = e.target.value.replace(/\D/g, "");
+                  setPhoneNumber(numeric);
+                }}
+                maxLength={10}
+                required
+              />
+              <button
+                type="submit"
+                className={styles.subscribeButton}
+                disabled={loading}
+              >
+                {loading ? "Submitting..." : "SUBSCRIBE"}
+              </button>
+            </form>
+            {subscriptionMessage && (
+              <p style={{ marginTop: "0.5rem", color: "#fff", fontSize: "0.9rem" }}>
+                {subscriptionMessage}
+              </p>
+            )}
+          </div>
+
+          {/* Categories (Column 2) */}
+          {isMobile && <Link style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }} href="">
+            <LocationOnIcon
+              sx={{
+                color: "white",
+                fontSize: "25px",
+                verticalAlign: "middle",
+              }}
+            />
+            <span>
+              {`   VIP Rd, Kasimpur Patri, Tiwaripur, Lucknow, UP (226005) `}
+            </span>
+          </Link>}
+          {isMobile ? mobileAccordionForCategories : desktopCategories}
+
+          {/* Useful Links (Column 3) */}
+          {isMobile ? mobileAccordionForLinks : desktopLinks}
+
+          {/* Contact (Column 4, hidden on mobile via CSS) */}
+          <div className={`${styles.contactSection} ${styles.desktopColumn}`}>
+            <h3>Contact</h3>
+            <ul className={styles.contactList}>
+              <li>
+                <Link href="mailto:contact.maddycustoms@gmail.com">
+                  <Image
+                    width={25}
+                    height={25}
+                    alt="icon"
+                    src={`${baseImageUrl}/assets/icons/mail.png`}
+                    priority={true}
+                  />
+                  <span>contact.maddycustoms@gmail.com</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="https://instagram.com/maddycustom?igshid=NGVhN2U2NjQ0Yg==">
+                  <Image
+                    width={25}
+                    height={25}
+                    alt="icon"
+                    src={`${baseImageUrl}/assets/icons/instagram.png`}
+                    priority={true}
+                  />
+                  <span>@maddycustom</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="https://wa.me/8112673988">
+                  <Image
+                    width={25}
+                    height={25}
+                    alt="icon"
+                    src={`${baseImageUrl}/assets/icons/whatsappwhite.png`}
+                    priority={true}
+                  />
+                  <span>8112673988</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="">
+                  <LocationOnIcon
+                    sx={{
+                      color: "white",
+                      fontSize: "25px",
+                      verticalAlign: "middle",
+                    }}
+                  />
+                  <span>
+                    VIP Rd, Kasimpur Patri, Tiwaripur, Lucknow, UP 226005
+                  </span>
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
 
-        {/* Categories (Column 2) */}
-        {isMobile && <Link style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }} href="">
-          <LocationOnIcon
-            sx={{
-              color: "white",
-              fontSize: "25px",
-              verticalAlign: "middle",
-            }}
-          />
-          <span>
-            {`   VIP Rd, Kasimpur Patri, Tiwaripur, Lucknow, UP (226005) `}
-          </span>
-        </Link>}
-        {isMobile ? mobileAccordionForCategories : desktopCategories}
-
-        {/* Useful Links (Column 3) */}
-        {isMobile ? mobileAccordionForLinks : desktopLinks}
-
-        {/* Contact (Column 4, hidden on mobile via CSS) */}
-        <div className={`${styles.contactSection} ${styles.desktopColumn}`}>
-          <h3>Contact</h3>
-          <ul className={styles.contactList}>
-            <li>
-              <Link href="mailto:contact.maddycustoms@gmail.com">
-                <Image
-                  width={25}
-                  height={25}
-                  alt="icon"
-                  src={`${baseImageUrl}/assets/icons/mail.png`}
-                  priority={true}
-                />
-                <span>contact.maddycustoms@gmail.com</span>
-              </Link>
-            </li>
-            <li>
-              <Link href="https://instagram.com/maddycustom?igshid=NGVhN2U2NjQ0Yg==">
-                <Image
-                  width={25}
-                  height={25}
-                  alt="icon"
-                  src={`${baseImageUrl}/assets/icons/instagram.png`}
-                  priority={true}
-                />
-                <span>@maddycustom</span>
-              </Link>
-            </li>
-            <li>
-              <Link href="https://wa.me/8112673988">
-                <Image
-                  width={25}
-                  height={25}
-                  alt="icon"
-                  src={`${baseImageUrl}/assets/icons/whatsappwhite.png`}
-                  priority={true}
-                />
-                <span>8112673988</span>
-              </Link>
-            </li>
-            <li>
-              <Link href="">
-                <LocationOnIcon
-                  sx={{
-                    color: "white",
-                    fontSize: "25px",
-                    verticalAlign: "middle",
-                  }}
-                />
-                <span>
-                  VIP Rd, Kasimpur Patri, Tiwaripur, Lucknow, UP 226005
-                </span>
-              </Link>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      {/* <div className={styles.footerBottom}>
+        {/* <div className={styles.footerBottom}>
         <p>©MaddyCustom since 2021. All Rights Reserved</p>
       </div> */}
-    </footer>
-  );
+      </footer>
+    );
+  }
 };
 
 export default Footer;

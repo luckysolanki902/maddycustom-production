@@ -101,14 +101,6 @@ export async function GET(request) {
       return { star, count: realCount + dummyCount };
     });
 
-    console.log({
-      dummyCount: dummyDistObj
-        ? Object.values(dummyDistObj).reduce((a, b) => a + parseInt(b, 10), 0)
-        : 0,
-      dummyDist: dummyDistObj,
-      totalApprovedCount,
-    });
-    console.log({ averageRating, starCounts: finalStarCounts });
 
     return NextResponse.json(
       {

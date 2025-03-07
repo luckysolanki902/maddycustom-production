@@ -48,7 +48,6 @@ export async function POST(request) {
 
     // Get packaging dimensions and weight
     const dimensionsAndWeight = await getDimensionsAndWeight(orderItems);
-console.log(dimensionsAndWeight);
     return NextResponse.json(
       { success: true, dimensionsAndWeight },
       { status: 200 }
