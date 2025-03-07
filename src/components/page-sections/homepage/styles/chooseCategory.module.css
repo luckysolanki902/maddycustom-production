@@ -1,107 +1,90 @@
-/* styles/chooseBike.module.css */
-
 .chooseContainer {
     display: grid;
-    gap: 6rem;
-    margin: 10rem 3rem 6rem 3rem;
-    grid-template-columns: repeat(4, 1fr);
-    /* Show 3 images per row on larger screens */
+    gap: 2rem;
+    margin: 1rem;
+    /* Ensure at least 3 columns on all screens */
+    grid-template-columns: repeat(3, 1fr);
+    align-items: center;
+    justify-content: center;
+}
+
+/* For medium screens */
+@media (min-width: 480px) {
+    .chooseContainer {
+        grid-template-columns: repeat(4, 1fr);
+        margin: 1.5rem;
+    }
+}
+
+/* For tablet screens */
+@media (min-width: 768px) {
+    .chooseContainer {
+        grid-template-columns: repeat(5, 1fr);
+        margin: 2rem;
+    }
+}
+
+/* For larger screens/PC */
+@media (min-width: 1200px) {
+    .chooseContainer {
+        grid-template-columns: repeat(6, 1fr);
+        margin: 4.5rem;
+
+    }
+}
+
+.mainCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
 }
 
 .chooseCard {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    /* border: 1px solid #ccc; */
-    border-radius: 3rem;
+    display: block;
+    width: 100%;
+    border-radius: 1.5rem;
     overflow: hidden;
-    /* padding: 1rem; */
-    box-shadow: -7px -7px 7px #A3D5E0, 3px 7px 7px #A3D5E0;
-    transition: all 0.3s ease-out;
+    box-shadow: -3px -4px 4px #a3d5e0, 3px 4px 4px #a3d5e0;
+    transition: box-shadow 0.3s ease-out;
+    text-decoration: none;
 }
 
-.mainCard{
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
 
-.chooseCard:hover {
-    box-shadow: -9px -9px 10px #A3D5E0, 5px 9px 9px #A3D5E0;
+/* Square image container using aspect-ratio */
+.imageWrapper {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    position: relative;
+    overflow: hidden;
 }
 
 .chooseImage {
-    width: 100%;
-    /* Ensure the image takes the full width of its container */
-    height: auto;
     object-fit: cover;
-    scale: 1.1;
-    /* Maintain aspect ratio */
-    transition: all 0.3s ease-out;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.3s ease-out;
 }
 
 .chooseImage:hover {
-    scale: 1.05;
+    transform: scale(1.05);
 }
 
-.name{
-margin-top: 2rem;
-font-size: 1.3rem;
-text-align: center;
+/* The name container ensures text labels are aligned at the top */
+.name {
+    margin-top: 0.5rem;
+    font-size: 1.1rem;
+    text-align: center;
+    min-height: 2.5rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
 }
 
-@media (width<=768px) {
-    .chooseContainer {
-        grid-template-columns: repeat(2, 1fr);
-        margin: 4rem 3rem 4rem 2rem;
-        /* Show 2 images per row on mobile devices */
+/* Adjustments for very small screens if needed */
+@media (max-width: 450px) {
+    .name {
+        font-size: 0.9rem;
+        min-height: 2rem;
     }
-
-    .chooseCard {
-        border-radius: 1.8rem;
-        overflow: hidden;
-        /* padding: 1rem; */
-        box-shadow: -4px -4px 4px #A3D5E0, 1px 4px 4px #A3D5E0;
-        transition: all 0.3s ease-out;
-    }
-
-
-    .chooseContainer {
-        display: grid;
-        gap: 3rem;
-    }
-    .name{
-        margin-top: 1.4rem;
-        font-size: 1rem;
-        text-align: center;
-        }
-
-        .chooseCard:hover {
-            box-shadow: -5px -5px 5px #A3D5E0, 2px 5px 5px #A3D5E0;
-        }
-}
-
-@media (min-width: 768px) and (max-width: 1200px) {
-    .chooseContainer {
-        grid-template-columns: repeat(2, 1fr);
-        /* Show 2 images per row on mobile devices */
-    }
-
-    .chooseCard {
-        border-radius: 3rem;
-        overflow: hidden;
-        /* padding: 1rem; */
-        box-shadow: -4px -4px 4px #A3D5E0, 1px 4px 4px #A3D5E0;
-        transition: all 0.3s ease-out;
-    }
-
-
-    .chooseContainer {
-        display: grid;
-        gap: 6rem;
-        margin: 8rem 5rem;
-    }
-
 }

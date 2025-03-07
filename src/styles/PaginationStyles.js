@@ -15,15 +15,15 @@ export const PaginationStyles = styled('div')({
     borderRadius: '50%',
     transition: 'background-color 0.3s, color 0.3s',
     '&:hover': {
-      backgroundColor: 'black',
+      backgroundColor: 'rgba(66, 66, 66, 0.9)',
       color: 'white',
     },
     '&.Mui-selected': {
-      backgroundColor: 'black',
+      backgroundColor: '#424242',
       color: 'white',
     },
     '&.Mui-selected:hover': {
-      backgroundColor: 'black',
+      backgroundColor: '#424242',
       color: 'white',
     },
   },
@@ -58,15 +58,15 @@ export const PaginationStylesForPhone = styled('div')({
     borderRadius: '50%',
     transition: 'background-color 0.3s, color 0.3s',
     '&:hover': {
-      backgroundColor: 'black',
+      backgroundColor: 'rgba(66, 66, 66, 0.9)',
       color: 'white',
     },
     '&.Mui-selected': {
-      backgroundColor: 'black',
+      backgroundColor: '#424242',
       color: 'white',
     },
     '&.Mui-selected:hover': {
-      backgroundColor: 'black',
+      backgroundColor: '#424242',
       color: 'white',
     },
   },
