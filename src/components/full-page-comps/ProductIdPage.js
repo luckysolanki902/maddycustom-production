@@ -36,6 +36,7 @@ export default function ProductIdPage({
   productInfoTabs = [],
   // Options are expected to come with image data, optionDetails, and inventoryData
 }) {
+
   // -- Color map for color options --
   const colorMap = {
     red: "#ff0066",
@@ -47,7 +48,9 @@ export default function ProductIdPage({
     purple: "#cdb3e6",
     black: "#555555",
     white: "#ffffff",
-    gray: "#cccccc"
+    gray: "#cccccc",
+    chrome:"#d9d9d9",
+    candyred:"#b44b08",
   };
 
   const options = product.options || [];
@@ -70,6 +73,7 @@ export default function ProductIdPage({
 
   // Function to handle color option selection
   const handleColorChange = (opt) => {
+
     // If the product is already in the cart, remove it so that only one color is active
     if (cartItems.find((item) => item.productId === product._id)) {
       dispatch(removeItem({ productId: product._id }));
@@ -244,12 +248,13 @@ export default function ProductIdPage({
               }
             />
 
-            <div className={styles.orderSpecificationsContainer}>
+           { !isMobile &&( <div className={styles.orderSpecificationsContainer}>
               <MemoizedOrderSpecifications
                 features={variant.features}
                 justContStart={true}
               />
-            </div>
+            </div>)}
+            
 
             {/* Render color options */}
             {options &&
@@ -268,6 +273,8 @@ export default function ProductIdPage({
                       style={{
                         display: "flex",
                         flexDirection: "row",
+                        alignItems: "center",
+                        gap: "0.5rem"
                       }}>
                     <div
                       style={{
@@ -276,6 +283,7 @@ export default function ProductIdPage({
                         width: "2rem",
                         height: "2rem",
                         position: "relative",
+                        textTransform:"uppercase"
                       }}
                       onClick={() => setShowMoreColors((prev) => !prev)}
                     >
@@ -288,7 +296,7 @@ export default function ProductIdPage({
                       />
                       
                     </div>
-                    <div> <p> {  }    more images</p></div>
+                    <div> <p style={{fontSize:"0.7rem"}}> MORE COLORS</p></div>
                     </div>
                     
                    
@@ -297,9 +305,9 @@ export default function ProductIdPage({
                       <div
                         style={{
                           margin: "1rem 0",
-                          border: "1px solid #ccc",
+                          borderTop: "1px solid #000",
                           padding: "0.5rem",
-                          borderRadius: "4px",
+                      
                           background: "#fff"
                         }}
                       >
@@ -311,7 +319,7 @@ export default function ProductIdPage({
                             marginBottom: "0.5rem"
                           }}
                         >
-                          <span>More colors</span>
+                          <span style={{fontSize:"0.9rem"}}>MORE COLORS</span>
                           {/* Cross icon to collapse dropdown */}
                           <span
                             style={{
@@ -395,10 +403,20 @@ export default function ProductIdPage({
                             }}
                           />
                         ))}
+                        
                     </div>
+                    
                   </div>
                 )
-              )}
+              
+              )
+              }
+              {isMobile && (   <div className={styles.orderSpecificationsContainer}>
+              <MemoizedOrderSpecifications
+                features={variant.features}
+                justContStart={true}
+              />
+            </div>)}
 
             {/* Render Add to Cart Button only if in stock */}
             {!isOutOfStock && (
