@@ -1,3 +1,6 @@
+
+
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -21,15 +24,16 @@ import Image from 'next/image';
 import { useMediaQuery } from '@mui/material';
 
 export default function AddToCartButton({ product, isBlackButton = false, isLarge = false }) {
+  console.log(product,"product Id page");
   const isSmallDevice = useMediaQuery('(max-width: 1000px)');
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
   const cartItem = cartItems.find((item) => item.productId === product._id);
+  const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   // State to track last action (for animation)
   const [lastAction, setLastAction] = useState(null);
-  const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   // React Spring animation for quantity display
   const props = useSpring({
@@ -50,8 +54,32 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     },
   });
 
+  // --- INVENTORY / STOCK MANAGEMENT ---
+  // Use product.inventoryData if available; otherwise, if there's a selectedOption, use its inventoryData.
+  const inventoryData =
+    product.inventoryData ||
+    (product.selectedOption && product.selectedOption.inventoryData) ||
+    null;
+  let maxAllowed = Infinity;
+  let isLimited = false;
+  if (inventoryData) {
+    
+    const { availableQuantity, reorderLevel } = inventoryData;
+    maxAllowed=Math.floor(availableQuantity/2);
+    isLimited=true
+    if (availableQuantity < reorderLevel) {
+      isLimited = true;
+      maxAllowed = Math.min(availableQuantity, Math.floor(0.1 * reorderLevel));
+    }
+  }
+  console.log(inventoryData, isLimited, maxAllowed);
+  const currentQuantity = cartItem ? cartItem.quantity : 0;
+
   const handleAdd = async (e) => {
     e.stopPropagation();
+    // If in limited mode and adding one would exceed allowed, do nothing.
+    if (isLimited && (currentQuantity + 1) > maxAllowed) return;
+
     setLastAction('increment');
     dispatch(addItem({ productId: product._id, productDetails: product }));
 
@@ -65,6 +93,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
 
   const handleIncrement = async (e) => {
     e.stopPropagation();
+    // If in limited mode and current quantity is at max, do nothing.
+    if (isLimited && currentQuantity >= maxAllowed) return;
+
     setLastAction('increment');
     dispatch(incrementQuantity({ productId: product._id }));
 
@@ -107,7 +138,6 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     <div className={mainClasses}>
       {/* Add to Cart Section */}
       <div className={styles.subContainer}>
-
         <div className={styles.addToCartSection}>
           {cartItem ? (
             <div className={styles.quantityContainer}>
@@ -124,12 +154,28 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
               >
                 {cartItem.quantity}
               </animated.div>
-              <button onClick={handleIncrement} className={styles.increment}>
+              <button 
+                onClick={handleIncrement} 
+                className={styles.increment}
+                disabled={isLimited && currentQuantity >= maxAllowed}
+                title={isLimited && currentQuantity >= maxAllowed ? "" : ""}
+              >
                 <AddIcon fontSize="small" />
               </button>
+              {/* {isLimited && currentQuantity >= maxAllowed && (
+                <span style={{ fontSize: '0.8rem', color: '#dc3545', marginLeft: '0.5rem' }}>
+                  limited stocks
+                </span>
+              )} */}
             </div>
           ) : (
-            <div onClick={handleAdd} className={styles.addToCartButton}>
+            <div 
+              onClick={handleAdd} 
+              className={styles.addToCartButton}
+              // Disable if in limited mode and adding one exceeds allowed (i.e. when maxAllowed is 0)
+              style={isLimited && (currentQuantity + 1) > maxAllowed ? { opacity: 0.5, pointerEvents: 'none' } : {}}
+              title={isLimited && (currentQuantity + 1) > maxAllowed ? "" : ""}
+            >
               <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
               Add To Cart
             </div>
@@ -139,18 +185,28 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
         {/* Order Now / Go to Cart Section */}
         <div className={`${styles.orderNowSection} ${styles.halfWidth}`}>
           <div onClick={handleOrderNow} className={styles.orderNowButton}>
-            {cartItem ? <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} /> : <BoltOutlinedIcon fontSize="medium" className={styles.boltIcon} />}
+            {cartItem ? (
+              <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
+            ) : (
+              <BoltOutlinedIcon fontSize="medium" className={styles.boltIcon} />
+            )}
             {orderButtonText}
           </div>
         </div>
-
       </div>
-      {!isSmallDevice &&
+      {!isSmallDevice && (
         <div className={styles.chatwithusMain}>
-          <Link href={'https://wa.me/8112673988'} >
-            <Image className={styles.chatwithus} src={`${imageBaseUrl}/assets/icons/chatwithus.png`} width={1400} height={400} alt='chat with us'></Image>
+          <Link href={'https://wa.me/8112673988'}>
+            <Image
+              className={styles.chatwithus}
+              src={`${imageBaseUrl}/assets/icons/chatwithus.png`}
+              width={1400}
+              height={400}
+              alt="chat with us"
+            />
           </Link>
-        </div>}
+        </div>
+      )}
     </div>
   );
 }

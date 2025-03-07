@@ -5,6 +5,7 @@ import ChooseCategory from '@/components/page-sections/homepage/ChoseCategory';
 import Sidebar from '@/components/layouts/Sidebar';
 import ContactUs from '@/components/layouts/ContactUs';
 import Footer from '@/components/layouts/Footer';
+import Topbar from'@/components/layouts/Topbar';
 import CategorySearchBox from '@/components/utils/CategorySearchBox';
 import OurUniqueProductCarousel from '@/components/showcase/carousels/OurUniqueProductCarousel';
 import FlexibleLargePoster from '@/components/showcase/posters/FlexibleLargePoster';
@@ -53,6 +54,7 @@ const HomePage = async () => {
   return (
     <>
       <Sidebar />
+      <Topbar />
 
       <main>
         {/* Logo and Main Carousel */}

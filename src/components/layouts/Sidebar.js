@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import {
     Box,
     SwipeableDrawer,
@@ -25,60 +26,23 @@ import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import Image from 'next/image';
 
-
-const drawerWidth = 300;
-
-// Inline Styles
-const contactBoxStyle = {
-    borderTop: '1px solid #ccc',
-    padding: '10px',
-    display: 'flex',
-    justifyContent: 'space-around',
-    borderRadius: '0 0 12px 12px',
-    backgroundColor: '#fff',
-    overflow: 'hidden',
-    width: '100%',
-};
-
-const iconStyle = {
-    fontSize: 25,
-    color: 'rgb(62, 62, 62)',
-    cursor: 'pointer',
-    overflow: 'hidden',
-};
-
-const linkStyle = {
-    textDecoration: 'none',
-    color: 'inherit',
-    display: 'flex',
-    alignItems: 'center',
-    overflow: 'hidden',
-    width: '100%',
-};
-
 const Sidebar = (props) => {
     const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-
     const router = useRouter();
-    const [state, setState] = useState({
-        left: false,
-    });
+    const [state, setState] = useState({ left: false });
 
-    // Determine if a link is active based on current route
-    const isActive = (href) => router.asPath === href;
+    // Media query to check if screen width is >= 1000px
+    const isDesktop = useMediaQuery('(min-width:1000px)');
 
     // Toggle drawer open/close state
     const toggleDrawer = (anchor, open) => (event) => {
-        if (
-            event &&
-            event.type === 'keydown' &&
-            (event.key === 'Tab' || event.key === 'Shift')
-        ) {
+        if (event?.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
             return;
         }
         setState({ ...state, [anchor]: open });
     };
 
+    if (isDesktop) return null; // Hide sidebar on screens smaller than 1000px
     // Render the list inside the drawer
     const renderList = (anchor) => (
         <Box
@@ -207,7 +171,6 @@ const Sidebar = (props) => {
 
     return (
         <>
-            {/* Menu Button */}
             <Button
                 onClick={toggleDrawer('left', true)}
                 startIcon={
@@ -220,19 +183,52 @@ const Sidebar = (props) => {
                         }}
                     />
                 }
-            >
-                {/* You can add button text here if needed */}
-            </Button>
-
-            {/* Swipeable Drawer */}
+            />
             <SwipeableDrawer
                 anchor="left"
                 open={state['left']}
                 onClose={toggleDrawer('left', false)}
                 onOpen={toggleDrawer('left', true)}
-                sx={{ overflow: 'hidden', position: 'relative' }}
             >
-                {renderList('left')}
+                <Box sx={{ width: 300 }}>
+                    {/* Sidebar Content */}
+                    <Box sx={{ padding: '0.5rem' }}>
+                        {/* Logo */}
+                        <Box sx={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-start' }}>
+                            <Image
+                                height={1000}
+                                width={1000}
+                                src={`${baseUrl}/assets/logos/maddy_custom3_main_logo.png`}
+                                alt="Maddy Logo"
+                                title="Maddy Logo"
+                                style={{ width: '55%', height: 'auto' }}
+                            />
+                        </Box>
+                        {/* Navigation Links */}
+                        <List>
+                            {[
+                                { text: 'Home', href: '/' },
+                                { text: 'Contact Us', href: '/#homecontactdiv' },
+                                { text: 'Search Categories', href: '/#searchcategories' },
+                                { text: 'Track Your Order', href: '/orders/track' },
+                            ].map((item, index) => (
+                                <ListItem key={item.text} disablePadding>
+                                    <Link href={item.href} passHref style={{ textDecoration: 'none', color: 'inherit', width: '100%' }}>
+                                        <ListItemButton>
+                                            <ListItemIcon>
+                                                {index === 0 ? <HomeRoundedIcon /> : 
+                                                 index === 1 ? <PhoneIcon /> : 
+                                                 index === 2 ? <SearchIcon /> : 
+                                                 <LocalShippingIcon />}
+                                            </ListItemIcon>
+                                            <ListItemText primary={item.text} />
+                                        </ListItemButton>
+                                    </Link>
+                                </ListItem>
+                            ))}
+                        </List>
+                    </Box>
+                </Box>
             </SwipeableDrawer>
         </>
     );
