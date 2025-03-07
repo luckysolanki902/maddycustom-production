@@ -1,5 +1,3 @@
-/* components/common-utils/styles/addtocartbutton.module.css */
-
 .main {
   display: flex;
   justify-content: space-between;
@@ -16,16 +14,13 @@
   height: 2.2rem;
   position: relative;
   overflow: hidden;
-  width: 100%;
-  min-width: 150px;
+  width: 130px;
+  min-width: 130px;
   transition: all 0.3s ease;
   /* Smooth transition for style changes */
   font-family: Jost, sans-serif;
   margin-top: 0.5rem;
-
 }
-
-
 
 /* New class for black button */
 .blackButton {
@@ -90,7 +85,6 @@
   /* background-color: #424242; */
 }
 
-
 .blackButton .decrement,
 .blackButton .increment {
   color: white;
@@ -110,14 +104,16 @@
   color: white;
 }
 
-@media (max-width: 400px){
-  .addToCart{
+@media (max-width: 400px) {
+  .addToCart {
     font-size: 0.9rem;
     min-width: 130px;
+    width: 130px;
   }
-  .main{
+  
+  .main {
     padding: 0.5rem 0;
-    /* width: 130px; */
+    width: 110px;
     min-width: 110px;
   }
 }

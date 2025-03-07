@@ -95,7 +95,7 @@ export async function GET(req) {
 
       const result = await sendWhatsAppMessage({
         user: { _id: userId, name: userName, phoneNumber },
-        campaignName: 'abandoned-cart-second-campaign',
+        campaignName: 'abandonedcart2nd',
         orderId,
         templateParams: [userName || 'Friend'],
         carouselCards,
