@@ -275,6 +275,7 @@ export default function ProductsPage({ slug, variant, products, category, initia
             </PaginationStylesForPhone>
             :
             <PaginationStyles>
+              
               <Pagination
                 count={totalPageCount}
                 page={currentPage}
