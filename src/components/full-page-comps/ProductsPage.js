@@ -18,7 +18,6 @@ import { PaginationStyles, PaginationStylesForPhone } from '@/styles/PaginationS
 import ContactUs from '../layouts/ContactUs';
 import FullWidthRoundCornerLandscapeCarousel from '../showcase/carousels/FullWidthRoundCornerLandscapeCarousel';
 import herosectionStyles from '@/components/page-sections/homepage/styles/herosection.module.css';
-import Footer from '../layouts/Footer';
 
 
 export default function ProductsPage({ slug, variant, products, category, initialPage, totalPages, uniqueTags }) {
@@ -36,6 +35,31 @@ export default function ProductsPage({ slug, variant, products, category, initia
   const isLargeDevice = useMediaQuery('(min-width: 1200px)');
   const [scrollToTopOnPageChange, setScrollToTopOnPageChange] = useState(true);
   const [sortSelectInTheUi, setSortSelectInTheUi] = useState(false); // Controlled by a constant
+
+  // Layout1 or layout2
+  const [showLayout2, setShowLayout2] = useState(false);
+  const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL
+  useEffect(() => {
+    // if products[0].images[0]'s image is  square or portrait that is it's width <= height, then show layout2. but image is a relative url from cloudront starting from /
+    const firstProduct = products[0];
+    // const firstImage = `${imageBaseUrl}${firstProduct.images[0]}`;
+    // const img = new window.Image();
+    // img.src = firstImage;
+    // img.onload = () => {
+    //   const { width, height } = img;
+    //   setShowLayout2(width <= height);
+    //   console.log(`Width: ${width}, Height: ${height}`);
+    // };
+
+    if (firstProduct.category.toLowerCase() !== 'wraps') {
+      setShowLayout2(true);
+    }
+
+  }, [products, imageBaseUrl]);
+
+
+
+
 
   // Use uniqueTags passed from props
   const allTags = uniqueTags;
@@ -119,151 +143,160 @@ export default function ProductsPage({ slug, variant, products, category, initia
   }, [currentPage, scrollToTopOnPageChange]);
 
   return (
-    <div>
-      <Sidebar />
-      <header>
-        <div className={styles.headContainer}>
-          <div className={styles.headingFlex}>
-            <h1
-              className={styles.bikeHeading}
-              style={{
-                fontSize: isLargeDevice
-                  ? variant?.name.length > 15
-                    ? '2.5rem'
-                    : variant?.name.length > 20
-                      ? '2rem'
-                      : '3.5rem'
-                  : variant?.name.length > 15
-                    ? '1.8rem'
-                    : variant?.name.length > 20
-                      ? '1.5rem'
-                      : '2.2rem',
-              }}            >
-              {variant.name}
-              {variant?.name?.toLowerCase().includes('tank') && (
-                <button
-                  className={styles.sizebutton}
-                  style={{ backgroundColor: "#d6fcff" }}
-                >
-                  {variant?.name === "Slim Tank Wraps"
-                    ? "6.8 cm wide"
-                    : variant?.name === "Medium Tank Wraps"
-                      ? "7 cm wide"
-                      : variant?.name === "Wide Tank Wraps"
-                        ? "19.05 cm wide"
-                        : null}
-                </button>
-              )}</h1>
-            {variant?.subtitles?.length > 0 && variant?.subtitles[0] && (
-              variant.variantCode === 'hel' ?
-                <>
-                  <h2 className={styles.helmetTagline}>&quot;Best designed helmets of India <br /> with safety of&quot;</h2>
-                  <Image
-                    className={styles.studds}
-                    src={`${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${variant?.availableBrands[0]?.brandLogo}`}
-                    width={1103 / 5}
-                    height={394 / 5}
-                    alt={'studds'}
-                  />
-                </>
-                :
-                <h2 className={styles.belowMainHeading}>{variant?.subtitles[0]}</h2>
-            )}
-          </div>
-        </div>
-      </header>
+    <>
+      <div style={{ backgroundColor: showLayout2 ? '#F1F3F6' : 'white' }}>
+        <div style={{ maxWidth: showLayout2 ? '1200px' : '100%', margin: 'auto' }}>
+          <header>
+            <div className={styles.headContainer}>
+              <div className={styles.headingFlex}>
+                <h1
+                  className={styles.bikeHeading}
+                  style={{
+                    fontSize: isLargeDevice
+                      ? variant?.name.length > 15
+                        ? '2.5rem'
+                        : variant?.name.length > 20
+                          ? '2rem'
+                          : '3.5rem'
+                      : variant?.name.length > 15
+                        ? '1.8rem'
+                        : variant?.name.length > 20
+                          ? '1.5rem'
+                          : '2.2rem',
+                  }}            >
+                  {variant.name}
+                  {variant?.name?.toLowerCase().includes('tank') && (
+                    <button
+                      className={styles.sizebutton}
+                      style={{ backgroundColor: "#d6fcff" }}
+                    >
+                      {variant?.name === "Slim Tank Wraps"
+                        ? "6.8 cm wide"
+                        : variant?.name === "Medium Tank Wraps"
+                          ? "7 cm wide"
+                          : variant?.name === "Wide Tank Wraps"
+                            ? "19.05 cm wide"
+                            : null}
+                    </button>
+                  )}</h1>
+                {variant?.subtitles?.length > 0 && variant?.subtitles[0] && (
+                  variant.variantCode === 'hel' ?
+                    <>
+                      <h2 className={styles.helmetTagline}>&quot;Best designed helmets of India <br /> with safety of&quot;</h2>
+                      <Image
+                        className={styles.studds}
+                        src={`${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${variant?.availableBrands[0]?.brandLogo}`}
+                        width={1103 / 5}
+                        height={394 / 5}
+                        alt={'studds'}
+                      />
+                    </>
+                    :
+                    <h2 className={styles.belowMainHeading}>{variant?.subtitles[0]}</h2>
+                )}
+              </div>
+            </div>
+          </header>
 
-      {/* Video Embed for Small Devices */}
-      {variant.showCase?.[0]?.available && isSmallDevice && (
-        <div
-          className={style.videoCard}
-          aria-label="Product Video"
-        >
-          <iframe
-            width="100%"
-            height="100%"
-            src="https://www.youtube.com/embed/MOX9WDmSkCA?autoplay=1&mute=1&loop=1&playlist=MOX9WDmSkCA&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&disablekb=1"
-            title="Product Video"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-            style={{ pointerEvents: 'none' }}
-          ></iframe>
-          <h1>Maddy Custom</h1>
-        </div>
-      )}
+          {/* Video Embed for Small Devices */}
+          {variant.showCase?.[0]?.available && isSmallDevice && (
+            <div
+              className={style.videoCard}
+              aria-label="Product Video"
+            >
+              <iframe
+                width="100%"
+                height="100%"
+                src="https://www.youtube.com/embed/MOX9WDmSkCA?autoplay=1&mute=1&loop=1&playlist=MOX9WDmSkCA&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&disablekb=1"
+                title="Product Video"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                style={{ pointerEvents: 'none' }}
+              ></iframe>
+              <h1>Maddy Custom</h1>
+            </div>
+          )}
 
-      {/* Video Embed for Small Devices */}
-      {category.specificCategoryCode === 'tw' && isSmallDevice &&
-        <div className={herosectionStyles.carouseldiv}>
-          <FullWidthRoundCornerLandscapeCarousel images={[
-            `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel1.jpg`,
-            `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel2.jpg`,
-            `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel3.jpg`,
-          ]} />
-        </div>
-      }
+          {/* Video Embed for Small Devices */}
+          {category.specificCategoryCode === 'tw' && isSmallDevice &&
+            <div className={herosectionStyles.carouseldiv}>
+              <FullWidthRoundCornerLandscapeCarousel images={[
+                `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel1.jpg`,
+                `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel2.jpg`,
+                `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel3.jpg`,
+              ]} />
+            </div>
+          }
 
-      {/* Pass uniqueTags to Tags component */}
-      <Tags setTagFilter={setTagFilter} tags={allTags} />
+          {/* Pass uniqueTags to Tags component */}
+          <Tags setTagFilter={setTagFilter} tags={allTags} />
 
-      {sortSelectInTheUi && (
-        <FormControl variant="outlined" className={styles.sortSelect}>
-          <InputLabel id="sort-select-label">Sort By</InputLabel>
-          <Select
-            labelId="sort-select-label"
-            id="sort-select"
-            value={sortBy}
-            onChange={handleSortChange}
-            label="Sort By"
-          >
-            <MenuItem value="default">Default</MenuItem>
-            <MenuItem value="priceLowToHigh">Price: Low to High</MenuItem>
-            <MenuItem value="priceHighToLow">Price: High to Low</MenuItem>
-            <MenuItem value="latestFirst">Latest First</MenuItem>
-            <MenuItem value="oldestFirst">Oldest First</MenuItem>
-          </Select>
-        </FormControl>
-      )}
+          {sortSelectInTheUi && (
+            <FormControl variant="outlined" className={styles.sortSelect}>
+              <InputLabel id="sort-select-label">Sort By</InputLabel>
+              <Select
+                labelId="sort-select-label"
+                id="sort-select"
+                value={sortBy}
+                onChange={handleSortChange}
+                label="Sort By"
+              >
+                <MenuItem value="default">Default</MenuItem>
+                <MenuItem value="priceLowToHigh">Price: Low to High</MenuItem>
+                <MenuItem value="priceHighToLow">Price: High to Low</MenuItem>
+                <MenuItem value="latestFirst">Latest First</MenuItem>
+                <MenuItem value="oldestFirst">Oldest First</MenuItem>
+              </Select>
+            </FormControl>
+          )}
 
-      <ChangeVariantButton category={category} />
+          <ChangeVariantButton category={category} />
 
-      <ProductsWrapper
-        variant={variant}
-        products={currentProducts}
-        category={category}
-        sortBy={sortBy}
-        loading={loading}
-      />
-
-      {isSmallDevice ?
-        <PaginationStylesForPhone>
-          <Pagination
-            count={totalPageCount}
-            page={currentPage}
-            onChange={handlePageChange}
-            color="primary"
-            disabled={loading}
-            siblingCount={1}    // Number of pages to show on each side of the current page
-            boundaryCount={1}   // Number of pages to always show at the beginning and end
+          <ProductsWrapper
+            showLayout2={showLayout2}
+            variant={variant}
+            products={currentProducts}
+            category={category}
+            sortBy={sortBy}
+            loading={loading}
           />
-        </PaginationStylesForPhone>
-        :
-        <PaginationStyles>
-          <Pagination
-            count={totalPageCount}
-            page={currentPage}
-            onChange={handlePageChange}
-            color="primary"
-            disabled={loading}
-            siblingCount={1}    // Number of pages to show on each side of the current page
-            boundaryCount={1}   // Number of pages to always show at the beginning and end
-          />
-        </PaginationStyles>
-      }
 
-      <ScrollToTop />
-      {/* <ContactUs /> */}
-      <Footer />
-    </div>
+          {isSmallDevice ?
+            <PaginationStylesForPhone>
+              <Pagination
+                count={totalPageCount}
+                page={currentPage}
+                onChange={handlePageChange}
+                color="primary"
+                disabled={loading}
+                siblingCount={1}    // Number of pages to show on each side of the current page
+                boundaryCount={1}   // Number of pages to always show at the beginning and end
+              />
+            </PaginationStylesForPhone>
+            :
+            <PaginationStyles>
+              <Pagination
+                count={totalPageCount}
+                page={currentPage}
+                onChange={handlePageChange}
+                color="primary"
+                disabled={loading}
+                siblingCount={1}    // Number of pages to show on each side of the current page
+                boundaryCount={1}   // Number of pages to always show at the beginning and end
+              />
+            </PaginationStyles>
+          }
+
+          <ScrollToTop />
+          {/* <ContactUs /> */}
+
+        </div>
+      </div>
+      <style jsx global>{`
+        body {
+          background-color: #F1F3F6;
+        }
+      `}</style>
+    </>
   );
 }

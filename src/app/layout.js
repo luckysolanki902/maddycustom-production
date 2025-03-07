@@ -4,7 +4,7 @@ import '@/styles/globals.css';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { generateWebsiteSchema, generateOrganizationSchema } from '@/lib/metadata/json-lds';
 import ReduxProvider from '@/components/layouts/ReduxProvider';
-import FloatingActionBar from '@/components/utils/FloatingActionButton';
+// import FloatingActionBar from '@/components/utils/FloatingActionButton';
 import TopLoadingBar from '@/components/utils/TopLoadingBar';
 import AnalyticsHead from '@/components/layouts/AnalyticsHead';
 import UTMCapture from '@/components/analytics/UTMCapture';
@@ -16,6 +16,10 @@ import LoginDialog from '@/components/dialogs/LoginDialog';
 import TimeTracker from '@/components/utils/userBehavior/TimeTracker';
 import PathnameTracker from '@/components/utils/userBehavior/PathnameTracker';
 import ScrollChecker from '@/components/utils/userBehavior/ScrollChecker';
+import Topbar from '@/components/layouts/Topbar';
+import Sidebar from '@/components/layouts/Sidebar';
+import SearchCategoryDialog from '@/components/dialogs/SearchCategoryDialog';
+import Footer from '@/components/layouts/Footer';
 
 // Configure Krona One with its only available weight
 const kronaOne = Krona_One({
@@ -67,10 +71,15 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <ReduxProvider>
-          <TopLoadingBar />
           <UTMCapture />
+          <TopLoadingBar />
+          <Topbar />
+          <Sidebar />
+          <SearchCategoryDialog />
+
           {children}
-          <FloatingActionBar />
+          {/* <FloatingActionBar /> */}
+          <Footer/>
           <TimeTracker />
           <LoginDialog />
           <PathnameTracker />

@@ -10,7 +10,7 @@ export default function HeroSection() {
     const router = useRouter()
     return (
         <>
-            <div className={styles.logoDiv}>
+            {/* <div className={styles.logoDiv}>
                 <Image
                     className={styles.logoImg}
                     onClick={() => router.push('/')}
@@ -23,8 +23,8 @@ export default function HeroSection() {
                     height={406}
                     priority={true}
                 />
-            </div>
-            <div id='searchyourbikeinput'>
+            </div> */}
+            <div id='searchyourbikeinput' style={{paddingTop: '2rem'}}>
                 <div className={styles.carouseldiv}>
                     <FullWidthRoundCornerLandscapeCarousel images={[
                         // `${baseUrl}/assets/carousels/homepage-main/new_year_24_carousel.png`,

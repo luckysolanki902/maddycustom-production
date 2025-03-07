@@ -1,12 +1,6 @@
-// src/store/index.js
+'use client';
 
-import { configureStore } from '@reduxjs/toolkit';
-import { combineReducers } from 'redux';
-import cartReducer from './slices/cartSlice';
-import orderFormReducer from './slices/orderFormSlice';
-import utmReducer from './slices/utmSlice';
-import variantPreferenceReducer from './slices/variantPreferenceSlice';
-import userBehaviorSlice from './slices/userBehaviorSlice';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import {
   persistStore,
   persistReducer,
@@ -17,20 +11,29 @@ import {
   PURGE,
   REGISTER,
 } from 'redux-persist';
-import storage from 'redux-persist/lib/storage'; // Uses localStorage
+import storage from 'redux-persist/lib/storage';
+
+import cartReducer from './slices/cartSlice';
+import orderFormReducer from './slices/orderFormSlice';
+import utmReducer from './slices/utmSlice';
+import variantPreferenceReducer from './slices/variantPreferenceSlice';
+import userBehaviorSlice from './slices/userBehaviorSlice';
+import uiReducer from './slices/uiSlice';
 
 const rootReducer = combineReducers({
   cart: cartReducer,
   orderForm: orderFormReducer,
   utm: utmReducer,
-  variantPreference: variantPreferenceReducer, 
+  variantPreference: variantPreferenceReducer,
   userBehavior: userBehaviorSlice,
+  ui: uiReducer,
 });
 
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['cart', 'orderForm', 'utm', 'variantPreference', 'userBehavior'], // Persist the new slice
+  // Do not include the UI slice here
+  whitelist: ['cart', 'orderForm', 'utm', 'variantPreference', 'userBehavior'],
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

@@ -2,10 +2,6 @@ import React from 'react';
 import HeroSection from '@/components/page-sections/homepage/HeroSection';
 import styles from '@/styles/home.module.css';
 import ChooseCategory from '@/components/page-sections/homepage/ChoseCategory';
-import Sidebar from '@/components/layouts/Sidebar';
-import ContactUs from '@/components/layouts/ContactUs';
-import Footer from '@/components/layouts/Footer';
-import Topbar from'@/components/layouts/Topbar';
 import CategorySearchBox from '@/components/utils/CategorySearchBox';
 import OurUniqueProductCarousel from '@/components/showcase/carousels/OurUniqueProductCarousel';
 import FlexibleLargePoster from '@/components/showcase/posters/FlexibleLargePoster';
@@ -15,7 +11,7 @@ import Image from 'next/image';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import {
   fetchOurUniqueProducts,
-  fetchRandomProducts, 
+  fetchRandomProducts,
   fetchHappyCustomers,
   fetchSearchCategories,
   fetchFeaturedproducts,
@@ -23,6 +19,7 @@ import {
 import ProductSlider from '@/components/showcase/sliders/ProductSlider';
 import FeaturedProducts from '@/components/page-sections/homepage/FeaturedProducts';
 import { Box, Typography } from '@mui/material';
+import KeychainImageGrid from '@/components/page-sections/homepage/KeychainImageGrid';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -53,8 +50,6 @@ const HomePage = async () => {
 
   return (
     <>
-      <Sidebar />
-      <Topbar />
 
       <main>
         {/* Logo and Main Carousel */}
@@ -66,6 +61,8 @@ const HomePage = async () => {
 
         {/* Category cards like Helmet, Tank, Bonnet to choose from */}
         <ChooseCategory />
+
+        <KeychainImageGrid />
 
         {/* Our Unique Products */}
         <OurUniqueProductCarousel products={ourUniqueProductsData} />
@@ -114,8 +111,6 @@ const HomePage = async () => {
         {/* Animated Half Bikes */}
         <HalfBikes />
 
-        <Footer />
-        {/* <ContactUs /> */}
       </main>
     </>
   );

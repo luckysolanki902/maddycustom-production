@@ -5,13 +5,13 @@ import HeaderCarousel from '../showcase/carousels/HeaderCarousel';
 import styles from './styles/productswrapper.module.css';
 import { useMediaQuery } from '@mui/material';
 
-const ProductsWrapper = ({ variant, products, category, sortBy = 'default', loading }) => {
+const ProductsWrapper = ({ variant, products, category, sortBy = 'default', loading, showLayout2 }) => {
   console.log("Products on the page list",products)
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   return (
-    <div className={styles.productsGrid}>
+    <div className={showLayout2 ? styles.productsGrid2 : styles.productsGrid}>
       {variant.showCase?.[0]?.available && !isSmallDevice && (
         <div aria-label="Product Video" className={styles.videoCard}>
           <iframe
@@ -48,6 +48,7 @@ const ProductsWrapper = ({ variant, products, category, sortBy = 'default', load
             key={product._id}
             product={updatedProduct}
             loading={loading}
+            showLayout2={showLayout2}
           />
         );
       })}
