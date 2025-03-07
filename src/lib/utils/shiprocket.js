@@ -80,23 +80,11 @@ export async function trackShiprocketOrder(orderId) {
   }
 }
 
-
-/**
- * A small helper to extract a "tag" from an item’s product or variant.
- * Adjust this based on how you store your tags. 
- * For example, if you always keep one main tag in `product.mainTags[0]`, use that.
- */
-function getItemTag(item) {
-  const productTags = item?.product?.mainTags || [];
-  return productTags[0] || 'default-tag'; // fallback if no tags
-}
-
-
 /**
  * Get packaging details from a variant or fallback to product-level packaging
  * 
- * @param {Object} item The cart item
- * @returns {Object} {boxId, productWeight, freebies}
+ * @param {Object} item The cart item (with `product` property)
+ * @returns {Object} { box, productWeight, hasFreebie, freebieWeight, itemName }
  */
 async function getPackagingDetailsForItem(item) {
   // 1) If variant packaging is present:
@@ -110,7 +98,7 @@ async function getPackagingDetailsForItem(item) {
       // Found packaging details on variant
       const hasFreebie = variant.freebies?.available === true;
       return {
-        box: variant.packagingDetails.boxId,
+        box: variant.packagingDetails.boxId, // entire box doc
         productWeight: variant.packagingDetails.productWeight || 0,
         hasFreebie,
         freebieWeight: hasFreebie ? variant.freebies.weight || 0 : 0,
@@ -142,261 +130,198 @@ async function getPackagingDetailsForItem(item) {
   throw new Error(`No packaging details found for item: ${item?._id}`);
 }
 
-
 /**
- * Performs the packing logic for a *single tag group* of items with the given boxes.
- *
- * Returns { length, breadth, height, weight, freebieWeight, boxesUsed, boxesUsedNames, boxDetails }
+ * Packs items into as many boxes of a single box type as needed.
+ * 
+ * @param {Object} options
+ * @param {Array} options.itemsForThisBox - Array of items that all share the same box doc
+ * @param {Object} options.boxDoc         - The single PackagingBox document
+ * 
+ * @returns {Object} { length, breadth, height, weight, freebieWeight, boxesUsed, boxDetails }
  */
-function packItemsForTag({ itemsForTag, boxesForTag }) {
-  // Sort boxes by volume descending
-  const getVolume = (box) => {
-    const { length, breadth, height } = box.dimensions;
-    return length * breadth * height;
-  };
-  boxesForTag.sort((a, b) => getVolume(b) - getVolume(a));
+function packItemsInSingleBoxType({ itemsForThisBox, boxDoc }) {
+  // We'll open multiple boxes of this type if needed
+  const { length, breadth, height } = boxDoc.dimensions;
+  const capacity = boxDoc.capacity;
+  const boxWeight = boxDoc.weight;
 
-  // Build lookup from boxId => boxIdx
-  const boxIdToIndex = {};
-  boxesForTag.forEach((box, idx) => {
-    boxIdToIndex[box._id.toString()] = idx;
-  });
-
-  // Convert items to "item entries"
-  // itemsForTag is already guaranteed to be for a single tag,
-  // so we just track minBoxIdx from the item’s box details.
-  const itemEntries = [];
-
-  for (const entry of itemsForTag) {
-    const { quantity, packagingData } = entry;
-    const { box, productWeight, hasFreebie, freebieWeight, itemName } = packagingData;
-
-    if (!box) {
-      throw new Error(`Box details missing for itemName=${itemName}.`);
-    }
-    const minBoxIdx = boxIdToIndex[box._id.toString()];
-
-    itemEntries.push({
-      itemName,
-      quantity,
-      productWeight,
-      hasFreebie,
-      freebieWeight,
-      minBoxIdx
-    });
-  }
-
-  // Group item entries by minBoxIdx
-  const groupedByMinBoxIdx = {};
-  for (const e of itemEntries) {
-    if (!groupedByMinBoxIdx[e.minBoxIdx]) {
-      groupedByMinBoxIdx[e.minBoxIdx] = [];
-    }
-    groupedByMinBoxIdx[e.minBoxIdx].push(e);
-  }
-
-  // Sort group keys so largest dimension first
-  const sortedKeys = Object.keys(groupedByMinBoxIdx)
-    .map((n) => parseInt(n, 10))
-    .sort((a, b) => a - b);
-
-  // We maintain an array of "open boxes"
+  // Each "open box" is an object tracking how many items we can still fit, plus packing info
   const openBoxes = [];
-  const createNewBox = (boxIdx) => ({
-    boxIdx,
-    leftoverCapacity: boxesForTag[boxIdx].capacity,
+  const createNewBox = () => ({
+    leftoverCapacity: capacity,
     totalProductWeight: 0,
     freebieWeights: [],
     packedItems: []
   });
 
-  let freebieAssigned = false; // track if we allow only ONE freebie total for this entire group
+  // Optionally, we only assign one freebie across all boxes of this type:
+  let freebieAssigned = false;
 
-  // Allocation
-  for (const minBoxIdx of sortedKeys) {
-    const currentGroup = groupedByMinBoxIdx[minBoxIdx];
-    for (const entry of currentGroup) {
-      let remainingQty = entry.quantity;
+  // For each item, fill existing boxes or open a new one
+  for (const entry of itemsForThisBox) {
+    let remainingQty = entry.quantity;
 
-      while (remainingQty > 0) {
-        // find an open box that is big enough => boxIdx <= minBoxIdx && leftoverCapacity>0
-        let suitable = openBoxes.find(
-          (ob) => ob.boxIdx <= minBoxIdx && ob.leftoverCapacity > 0
-        );
-        if (!suitable) {
-          // open a new one
-          suitable = createNewBox(minBoxIdx);
-          openBoxes.push(suitable);
-        }
-
-        const canFit = Math.min(suitable.leftoverCapacity, remainingQty);
-        suitable.leftoverCapacity -= canFit;
-        suitable.totalProductWeight += entry.productWeight * canFit;
-
-        if (entry.hasFreebie && !freebieAssigned) {
-          if (entry.freebieWeight > 0) {
-            suitable.freebieWeights.push(entry.freebieWeight);
-            freebieAssigned = true; 
-          }
-        }
-
-        suitable.packedItems.push({
-          itemName: entry.itemName,
-          variantBoxName: boxesForTag[minBoxIdx].name,
-          quantity: canFit,
-        });
-
-        remainingQty -= canFit;
+    while (remainingQty > 0) {
+      // find an open box that has leftover capacity
+      let suitableBox = openBoxes.find((ob) => ob.leftoverCapacity > 0);
+      if (!suitableBox) {
+        // create a new box
+        suitableBox = createNewBox();
+        openBoxes.push(suitableBox);
       }
-    }
-  }
 
-  // Summarize results
-  const boxUsageMap = {};
-  for (let i = 0; i < boxesForTag.length; i++) {
-    boxUsageMap[i] = [];
-  }
-  for (const ob of openBoxes) {
-    boxUsageMap[ob.boxIdx].push(ob);
-  }
+      // how many of this item can we fit?
+      const canFit = Math.min(suitableBox.leftoverCapacity, remainingQty);
+      suitableBox.leftoverCapacity -= canFit;
+      suitableBox.totalProductWeight += entry.productWeight * canFit;
 
-  let totalWrapWeight = 0;
-  let totalBoxWeight = 0;
-  let totalFreebieWeight = 0;
-  let totalLength = 0;
-  let totalBreadth = 0;
-  let totalHeight = 0;
-
-  const boxDetails = [];
-
-  Object.keys(boxUsageMap).forEach((idxStr) => {
-    const idx = parseInt(idxStr, 10);
-    const usedBoxes = boxUsageMap[idx];
-    if (!usedBoxes.length) return;
-
-    const boxInfo = boxesForTag[idx];
-    const count = usedBoxes.length;
-
-    totalLength += boxInfo.dimensions.length * count;
-    totalBreadth += boxInfo.dimensions.breadth * count;
-    totalHeight += boxInfo.dimensions.height * count;
-    totalBoxWeight += boxInfo.weight * count;
-
-    usedBoxes.forEach((ub) => {
-      totalWrapWeight += ub.totalProductWeight;
-      if (ub.freebieWeights.length > 0) {
-        totalFreebieWeight += ub.freebieWeights[0];
+      // freebies
+      if (entry.hasFreebie && !freebieAssigned) {
+        if (entry.freebieWeight > 0) {
+          suitableBox.freebieWeights.push(entry.freebieWeight);
+          freebieAssigned = true;
+        }
       }
-      boxDetails.push({
-        boxName: boxInfo.name,
-        leftoverCapacity: ub.leftoverCapacity,
-        productWeightInBox: ub.totalProductWeight,
-        freebiesInBox: ub.freebieWeights,
-        packedItems: ub.packedItems,
+
+      // record packed items
+      suitableBox.packedItems.push({
+        itemName: entry.itemName,
+        quantity: canFit
       });
-    });
-  });
 
-  const finalWeight = totalWrapWeight + totalBoxWeight + totalFreebieWeight;
-
-  const usedBoxNames = [];
-  Object.keys(boxUsageMap).forEach((idxStr) => {
-    const idx = parseInt(idxStr, 10);
-    if (boxUsageMap[idx].length) {
-      usedBoxNames.push(boxesForTag[idx].name);
+      remainingQty -= canFit;
     }
+  }
+
+  // Summarize the results
+  const boxesUsed = openBoxes.length;
+  const totalBoxWeight = boxWeight * boxesUsed; // sum of all box (carton) weights
+
+  let totalProductWeight = 0;
+  let totalFreebieWeight = 0;
+
+  // Build a detailed breakdown
+  const boxDetails = openBoxes.map((ob, idx) => {
+    totalProductWeight += ob.totalProductWeight;
+    if (ob.freebieWeights.length) {
+      totalFreebieWeight += ob.freebieWeights.reduce((a, b) => a + b, 0);
+    }
+    return {
+      boxIndex: idx + 1,
+      leftoverCapacity: ob.leftoverCapacity,
+      productWeightInBox: ob.totalProductWeight,
+      freebiesInBox: ob.freebieWeights,
+      packedItems: ob.packedItems
+    };
   });
 
+  const finalWeight = totalProductWeight + totalBoxWeight + totalFreebieWeight;
+
+  // Return the dimension of a single box multiplied by how many we used
+  // We'll figure out the overall dimension logic later in the aggregator.
   return {
-    length: totalLength,
-    breadth: totalBreadth,
-    height: totalHeight,
-    weight: +finalWeight.toFixed(3),
-    freebieWeight: totalFreebieWeight,
-    boxesUsed: openBoxes.length,
-    boxesUsedNames: usedBoxNames,
-    boxDetails
+    singleBoxDimensions: { length, breadth, height },
+    boxesUsed,
+    totalWeight: +finalWeight.toFixed(3),
+    totalFreebieWeight,
+    boxDetails,
+    boxName: boxDoc.name
   };
 }
 
-
 /**
- * Calculates total dimensions and weight for an array of items that might
- * belong to different "tag" groups. We separate them by tag, pack them
- * individually, and then either combine or store separate results.
+ * Calculates total dimensions and weight by grouping items by their box ID,
+ * then combining them into an "imaginary" single dimension.
+ * 
+ * The final dimension is computed as:
+ *   length = max length among all box types used
+ *   breadth = max breadth among all box types used
+ *   height = sum of (height × boxesUsed) for all box types
  *
  * @param {Array} items - The list of cart items. Each item must have {product, quantity}.
- * @returns {Object} - Summaries per tag group and optional total summary.
+ * @returns {Object} - Summaries per boxId and a grandTotal for everything.
  */
 export const getDimensionsAndWeight = async (items) => {
   try {
-    // 1) Group items by their tag
-    const groups = {}; 
-    for (const item of items) {
-      const currentTag = getItemTag(item);
-      if (!groups[currentTag]) {
-        groups[currentTag] = [];
-      }
-      groups[currentTag].push(item);
-    }
-
-    // 2) For each item, gather packaging details (variant or product).
-    //    We'll store the result in an object so we only do the DB lookups once.
-    //    Example structure: {
-    //        itemId -> { box, productWeight, hasFreebie, freebieWeight, itemName }
-    //    }
+    // 1) For each item, gather packaging details (variant or product).
+    // We'll store them in a map to avoid repeated DB lookups.
     const packagingMap = {};
     for (const item of items) {
       packagingMap[item._id] = await getPackagingDetailsForItem(item);
     }
 
-    // 3) For each tag group, filter boxes that have "compatibleTags" containing this tag
-    //    Then run the packing logic.
-    const resultsPerTag = {};
-    const allBoxes = await PackagingBox.find(); // or you might have them in memory
-    let overallLength = 0, overallBreadth = 0, overallHeight = 0;
-    let overallWeight = 0, overallFreebieWeight = 0, overallBoxesUsed = 0;
-
-    for (const tag of Object.keys(groups)) {
-      // which boxes can handle this tag?
-      const boxesForTag = allBoxes.filter((b) => b.compatibleTags.includes(tag));
-
-      if (!boxesForTag.length) {
-        throw new Error(`No boxes found for tag='${tag}'. Consider adding boxes in DB.`);
+    // 2) Group items by boxId
+    const groups = {};
+    for (const item of items) {
+      const pkg = packagingMap[item._id];
+      const boxId = pkg.box?._id.toString();
+      if (!groups[boxId]) {
+        groups[boxId] = {
+          boxDoc: pkg.box,
+          items: []
+        };
       }
+      groups[boxId].items.push({
+        quantity: item.quantity,
+        productWeight: pkg.productWeight,
+        hasFreebie: pkg.hasFreebie,
+        freebieWeight: pkg.freebieWeight,
+        itemName: pkg.itemName
+      });
+    }
 
-      const itemsForTag = groups[tag].map((itm) => ({
-        quantity: itm.quantity,
-        packagingData: packagingMap[itm._id] // from DB
-      }));
+    // 3) For each boxId group, perform the packing
+    const resultsPerBoxId = {};
 
-      // pack them
-      const result = packItemsForTag({ itemsForTag, boxesForTag });
-      resultsPerTag[tag] = result;
+    // We'll track the final dimension with this approach:
+    let maxLength = 0;
+    let maxBreadth = 0;
+    let totalHeight = 0;
 
-      // Optionally accumulate overall totals across all tags
-      overallLength += result.length;
-      overallBreadth += result.breadth;
-      overallHeight += result.height;
-      overallWeight += result.weight;
-      overallFreebieWeight += result.freebieWeight; // or you might handle freebies differently
+    let overallWeight = 0;
+    let overallFreebieWeight = 0;
+    let overallBoxesUsed = 0;
+
+    for (const boxId of Object.keys(groups)) {
+      const { boxDoc, items: groupItems } = groups[boxId];
+
+      const result = packItemsInSingleBoxType({
+        itemsForThisBox: groupItems,
+        boxDoc
+      });
+
+      // Save result
+      resultsPerBoxId[boxId] = result;
+
+      // Update dimension aggregator
+      const { length, breadth, height } = result.singleBoxDimensions;
+      if (length > maxLength) maxLength = length;
+      if (breadth > maxBreadth) maxBreadth = breadth;
+      // we sum (height * boxesUsed) to get "stacked" height
+      totalHeight += height * result.boxesUsed;
+
+      // Weight aggregator
+      overallWeight += result.totalWeight;
+      overallFreebieWeight += result.totalFreebieWeight;
       overallBoxesUsed += result.boxesUsed;
     }
 
-    // 4) Return results. 
-    // You can either return them as separate group results
-    // or also return one "grand total" summary. 
+    // 4) Summarize final "imaginary box" dimension
+    // if you want to see the final dimension as one big "stack" of everything:
+    const grandTotal = {
+      length: maxLength,
+      breadth: maxBreadth,
+      height: totalHeight,
+      weight: +overallWeight.toFixed(3),
+      freebieWeight: +overallFreebieWeight.toFixed(3),
+      boxesUsed: overallBoxesUsed
+    };
+
+    // 5) Return the final response
     return {
       success: true,
-      perTag: resultsPerTag,
-      grandTotal: {
-        length: overallLength,
-        breadth: overallBreadth,
-        height: overallHeight,
-        weight: +overallWeight.toFixed(3),
-        freebieWeight: overallFreebieWeight,
-        boxesUsed: overallBoxesUsed,
-      }
+      perBoxId: resultsPerBoxId,
+      grandTotal
     };
   } catch (error) {
     console.error('Error calculating dimensions and weight:', error.message);

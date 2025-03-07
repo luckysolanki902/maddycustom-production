@@ -102,7 +102,7 @@ export async function GET(req) {
       // Call the AiSensy sender
       const result = await sendWhatsAppMessage({
         user: userObj,
-        campaignName: 'review_all',
+        campaignName: 'reviews_new',
         orderId: order._id,
         templateParams,
         prefUserName: userObj.name,
