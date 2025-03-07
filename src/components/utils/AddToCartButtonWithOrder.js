@@ -218,7 +218,10 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   let maxAllowed = Infinity;
   let isLimited = false;
   if (inventoryData) {
+    
     const { availableQuantity, reorderLevel } = inventoryData;
+    maxAllowed=Math.floor(availableQuantity/2);
+    isLimited=true
     if (availableQuantity < reorderLevel) {
       isLimited = true;
       maxAllowed = Math.min(availableQuantity, Math.floor(0.1 * reorderLevel));
@@ -310,15 +313,15 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
                 onClick={handleIncrement} 
                 className={styles.increment}
                 disabled={isLimited && currentQuantity >= maxAllowed}
-                title={isLimited && currentQuantity >= maxAllowed ? "Limited stocks" : ""}
+                title={isLimited && currentQuantity >= maxAllowed ? "" : ""}
               >
                 <AddIcon fontSize="small" />
               </button>
-              {isLimited && currentQuantity >= maxAllowed && (
+              {/* {isLimited && currentQuantity >= maxAllowed && (
                 <span style={{ fontSize: '0.8rem', color: '#dc3545', marginLeft: '0.5rem' }}>
                   limited stocks
                 </span>
-              )}
+              )} */}
             </div>
           ) : (
             <div 
@@ -326,10 +329,10 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
               className={styles.addToCartButton}
               // Disable if in limited mode and adding one exceeds allowed (i.e. when maxAllowed is 0)
               style={isLimited && (currentQuantity + 1) > maxAllowed ? { opacity: 0.5, pointerEvents: 'none' } : {}}
-              title={isLimited && (currentQuantity + 1) > maxAllowed ? "Limited stocks" : ""}
+              title={isLimited && (currentQuantity + 1) > maxAllowed ? "" : ""}
             >
               <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
-              Add To Cart{isLimited ? ' (limited stocks)' : ''}
+              Add To Cart
             </div>
           )}
         </div>

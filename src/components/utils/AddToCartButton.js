@@ -200,7 +200,10 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   let maxAllowed = Infinity;
   let isLimited = false;
   if (inventoryData) {
+    
     const { availableQuantity, reorderLevel } = inventoryData;
+    maxAllowed=Math.floor(availableQuantity/2);
+    isLimited=true
     // If available quantity is less than the reorder level, we limit the addition.
     if (availableQuantity < reorderLevel) {
       isLimited = true;

@@ -130,5 +130,13 @@ const ProductSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Pre-save hook to ensure pageSlug starts with a "/"
+ProductSchema.pre('save', function(next) {
+  if (this.pageSlug && !this.pageSlug.startsWith('/')) {
+    this.pageSlug = '/' + this.pageSlug;
+  }
+  next();
+});
+
 
 module.exports = mongoose.models.Product || mongoose.model('Product', ProductSchema);
