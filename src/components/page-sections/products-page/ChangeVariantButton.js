@@ -110,7 +110,6 @@ export default function ChangeVariantButton({ category }) {
     }
 
     // Find the variant with the corresponding variant code (finalCode)
-    console.log(variants)
     const matchedVariant = variants.find(
       (variant) => variant.variantCode.toLowerCase() === finalCode.toLowerCase()
     );

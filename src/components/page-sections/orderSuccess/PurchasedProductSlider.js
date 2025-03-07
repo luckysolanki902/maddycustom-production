@@ -4,7 +4,6 @@ import { Box, Card, CardMedia, CardContent, Typography } from '@mui/material';
 import Link from 'next/link';
 
 const PurchasedProductSlider = ({ items, baseImageUrl }) => {
-  console.log(items,"boom")
 
   return (
   <Box sx={{padding:'1rem'}}>

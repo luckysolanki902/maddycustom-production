@@ -88,7 +88,6 @@ export default function ReviewFullComp({
       });
       const res = await fetch(`/api/reviews/overview?${params.toString()}`);
       const data = await res.json();
-      console.log({ starCounts: data.starCounts });
       if (res.ok) {
         setAverageRating(data.averageRating);
         setStarCounts(data.starCounts);

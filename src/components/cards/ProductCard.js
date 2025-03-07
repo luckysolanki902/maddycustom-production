@@ -49,7 +49,6 @@ const ProductCard = ({ product, loading, showLayout2 }) => {
   const [isZoomed, setIsZoomed] = useState(false);
   const router = useRouter();
 
-  console.log(product);
 
   // Define the animation properties using React Spring
   const animationProps = useSpring({

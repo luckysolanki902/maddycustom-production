@@ -78,7 +78,6 @@ export default async function ShopPage({ params }) {
   const initialPage = 1;
   const limit = ITEMS_PER_PAGE;
   const data = await fetchProducts(slug, initialPage, limit);
- console.log('data', data);
   if (data.type === 'not-found') {
     notFound();
   }

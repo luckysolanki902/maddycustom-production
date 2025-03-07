@@ -6,7 +6,6 @@ import styles from './styles/productswrapper.module.css';
 import { useMediaQuery } from '@mui/material';
 
 const ProductsWrapper = ({ variant, products, category, sortBy = 'default', loading, showLayout2 }) => {
-  console.log("Products on the page list",products)
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
