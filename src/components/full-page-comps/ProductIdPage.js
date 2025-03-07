@@ -217,7 +217,7 @@ export default function ProductIdPage({
             isZoomed={isZoomed}
             alt={product.title}
             setIsZoomed={setIsZoomed}
-            restrictWidth={product.category.toLowerCase() === 'accessories'}
+            restrictWidth={product.category.toLowerCase() !== 'wraps'}
             
           />
           {isBetween1000And1400 && soldByCategoryEl}

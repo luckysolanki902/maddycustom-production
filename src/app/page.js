@@ -11,7 +11,7 @@ import Image from 'next/image';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import {
   fetchOurUniqueProducts,
-  fetchRandomProducts, 
+  fetchRandomProducts,
   fetchHappyCustomers,
   fetchSearchCategories,
   fetchFeaturedproducts,
@@ -19,6 +19,7 @@ import {
 import ProductSlider from '@/components/showcase/sliders/ProductSlider';
 import FeaturedProducts from '@/components/page-sections/homepage/FeaturedProducts';
 import { Box, Typography } from '@mui/material';
+import KeychainImageGrid from '@/components/page-sections/homepage/KeychainImageGrid';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -60,6 +61,8 @@ const HomePage = async () => {
 
         {/* Category cards like Helmet, Tank, Bonnet to choose from */}
         <ChooseCategory />
+
+        <KeychainImageGrid />
 
         {/* Our Unique Products */}
         <OurUniqueProductCarousel products={ourUniqueProductsData} />
