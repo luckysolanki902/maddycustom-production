@@ -4,13 +4,15 @@ import Link from 'next/link';
 
 const NotFoundPage = () => {
   return (
-    <div style={styles.container}>
-      <h1 style={styles.heading}>Page Not Found</h1>
-      <p style={styles.paragraph}>The page you were looking for could not be found. Please return to the home page or enter correct url</p>
-      <Link href="/" className='errorbutton'>
-        Go to Home
-      </Link>
-    </div>
+    <>
+      <div style={styles.container}>
+        <h1 style={styles.heading}>Page Not Found</h1>
+        <p style={styles.paragraph}>The page you were looking for could not be found. Please return to the home page or enter correct url</p>
+        <Link href="/" className='errorbutton'>
+          Go to Home
+        </Link>
+      </div>
+    </>
   );
 };
 
@@ -18,6 +20,7 @@ const styles = {
   container: {
     textAlign: 'center',
     marginTop: '50px',
+    height: '100vh',
   },
   heading: {
     fontSize: '2rem',
@@ -41,7 +44,7 @@ const styles = {
     ':hover': {
       backgroundColor: '#333',
       color: '#fff',
-      scale:'0.95'
+      scale: '0.95'
     },
   },
 };

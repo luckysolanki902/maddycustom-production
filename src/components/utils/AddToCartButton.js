@@ -26,13 +26,13 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   // React Spring animation for quantity
   const props = useSpring({
     // Animate scale and color based on lastAction
-    scale: lastAction === 'increment' || lastAction === 'decrement' ? 0.9 : 1,
-    color:
-      lastAction === 'increment'
-        ? '#28a745' // Green
-        : lastAction === 'decrement'
-          ? '#dc3545' // Red
-          : isBlackButton ? '#fff' : '#000',
+    scale: lastAction === 'increment' || lastAction === 'decrement' ? 1.1 : 1,
+    color: '#fff',
+      // lastAction === 'increment'
+      //   ? '#28a745' // Green
+      //   : lastAction === 'decrement'
+      //     ? '#dc3545' // Red
+      //     : isBlackButton ? '#fff' : '#fff',
     opacity: cartItem ? 1 : 0,
     config: {
       tension: 300,
@@ -132,7 +132,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   ].join(' ').trim();
 
   return (
-    <button onClick={handleAdd} className={addToCartClasses}>
+    <button onClick={handleAdd} className={addToCartClasses} style={{outline: 'none', border:'none'}}>
       <span>Add to cart</span>
     </button>
   );

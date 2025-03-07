@@ -25,7 +25,7 @@ import "swiper/css";
  *    * Mobile: main image top, horizontal thumbs bottom
  *  - Preserves aspect ratio, etc.
  */
-export default function ImageGallery({ images, alt }) {
+export default function ImageGallery({ images, alt, restrictWidth }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullView, setIsFullView] = useState(false);
 
@@ -125,7 +125,7 @@ export default function ImageGallery({ images, alt }) {
           >
             {images.map((url, index) => (
               <SwiperSlide key={`main-${index}`}>
-                <div className={styles.mainImageContainer}>
+                <div className={styles.mainImageContainer} style={{maxWidth: restrictWidth? '600px': '100%'}}>
                   <Image
                     src={url}
                     alt={`${alt}-${index}`}
@@ -135,7 +135,7 @@ export default function ImageGallery({ images, alt }) {
                     className={styles.mainImage}
                     onClick={() => handleOpenFullView(index)}
                     priority={index === 0}
-                    style={{ maxWidth: "100%", height: "auto" }}
+                    style={{  height: "auto", maxWidth:'100%'  }}
                   />
                 </div>
               </SwiperSlide>

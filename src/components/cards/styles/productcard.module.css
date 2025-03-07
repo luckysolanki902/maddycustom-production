@@ -94,12 +94,15 @@
   text-transform: capitalize;
   display: flex;
   flex-direction: column;
+
 }
 
 .prodDescLastRow {
   /* display: none; */
-  margin-top: -0.3rem;
-  margin-left: -1rem;
+  margin-top: 0.8rem;
+  display: flex;
+  justify-content: flex-start;
+  margin-right: 0.5rem;
 }
 
 .prodDescLastRow img {
