@@ -306,22 +306,16 @@ export const getDimensionsAndWeight = async (items) => {
       overallBoxesUsed += result.boxesUsed;
     }
 
-    // 4) Summarize final "imaginary box" dimension
-    // if you want to see the final dimension as one big "stack" of everything:
-    const grandTotal = {
+    // 4) Return the final response
+    return {
+      success: true,
+      perBoxId: resultsPerBoxId,
       length: maxLength,
       breadth: maxBreadth,
       height: totalHeight,
       weight: +overallWeight.toFixed(3),
       freebieWeight: +overallFreebieWeight.toFixed(3),
       boxesUsed: overallBoxesUsed
-    };
-
-    // 5) Return the final response
-    return {
-      success: true,
-      perBoxId: resultsPerBoxId,
-      grandTotal
     };
   } catch (error) {
     console.error('Error calculating dimensions and weight:', error.message);
