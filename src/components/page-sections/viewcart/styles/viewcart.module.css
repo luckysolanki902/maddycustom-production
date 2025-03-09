@@ -4,6 +4,13 @@
   padding: 1.2rem;
   margin: 0;
   padding-bottom: 15rem;
+  
+}
+
+/* productprice color update */
+.productPrice{
+  color: rgb(128, 128, 128);
+  /* padding-right:10px ; */
 }
 
 .header {
