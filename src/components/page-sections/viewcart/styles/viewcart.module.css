@@ -11,6 +11,7 @@
 .productPrice{
   color: rgb(128, 128, 128);
   /* padding-right:10px ; */
+  margin-bottom: 60px;
 }
 
 .header {
