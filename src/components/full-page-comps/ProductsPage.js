@@ -174,6 +174,7 @@ export default function ProductsPage({
           {variant?.showCase?.[0]?.available && isSmallDevice && (
             <div className={style.videoCard} aria-label="Product Video">
               <iframe
+              loading='eager'
                 width="100%"
                 height="100%"
                 src="https://www.youtube.com/embed/MOX9WDmSkCA?autoplay=1&mute=1&loop=1&playlist=MOX9WDmSkCA&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&disablekb=1"

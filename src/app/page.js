@@ -28,22 +28,25 @@ export async function generateMetadata() {
   });
 }
 
+const [
+  ourUniqueProductsData,
+  randomProductsData, // Now using the new generic endpoint
+  featuredBikeWrapsData,
+  happyCustomersData,
+  searchCategoriesData,
+] = await Promise.all([
+  fetchOurUniqueProducts(),
+  fetchRandomProducts('f', 10), // Pass your specific category slug here
+  fetchFeaturedproducts('f'),
+  fetchHappyCustomers(null),
+  fetchSearchCategories(),
+  console.log('done everything luckily')
+]);
+
 const HomePage = async () => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   // Fetch all necessary data concurrently
-  const [
-    ourUniqueProductsData,
-    randomProductsData, // Now using the new generic endpoint
-    featuredBikeWrapsData,
-    happyCustomersData,
-    searchCategoriesData,
-  ] = await Promise.all([
-    fetchOurUniqueProducts(),
-    fetchRandomProducts('f', 10), // Pass your specific category slug here
-    fetchFeaturedproducts('f'),
-    fetchHappyCustomers(null),
-    fetchSearchCategories(),
-  ]);
+
 
   // Destructure categories and variants from searchCategoriesData
   const { categories, variants } = searchCategoriesData;
