@@ -69,20 +69,6 @@ const HomePage = async () => {
         {/* Our Unique Products */}
         <OurUniqueProductCarousel products={ourUniqueProductsData} />
 
-        {/* Random Products Slider (formerly Helmet Slider) */}
-        {/* <Box
-          sx={{
-            textAlign: 'center',
-            mt: { xs: 4, md: 6 },
-            mb: { xs: 4, md: 6 },
-            fontSize: { xs: '1.5rem', md: '2rem' },
-            fontWeight: 600,
-            fontFamily: 'Jost',
-          }}
-        >
-          Car Tank Cap Wrap
-        </Box> */}
-
         <div className={styles.doubleGrid}>
           <Image src={`${baseImageUrl}/assets/posters/first-brand-surprise-banner.png`} alt='doublegrid' width={1000} height={500}></Image>
           <Image src={`${baseImageUrl}/assets/posters/tank-cap-wrap-banner.png`} alt='doublegrid' width={1000} height={500}></Image>
