@@ -40,7 +40,6 @@ const [
   fetchFeaturedproducts('f'),
   fetchHappyCustomers(null),
   fetchSearchCategories(),
-  console.log('done everything luckily')
 ]);
 
 const HomePage = async () => {
@@ -101,9 +100,8 @@ const HomePage = async () => {
         <FeaturedProducts data={featuredBikeWrapsData} />
 
         {/* Happy Customers */}
-        <div className={styles.featuredHead}>
+        <div className={styles.featuredHead} style={{marginBottom:'-2rem', marginTop:'1rem'}}>
           <Image
-            layout='responsive'
             width={940}
             height={256}
             alt='heading - featured products'

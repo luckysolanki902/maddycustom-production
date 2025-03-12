@@ -21,9 +21,15 @@
 
 
 .featuredHead img {
-    width: 50%;
+    width: 30%;
     height: auto;
     margin: 20px 0;
+}
+
+@media (width < 600px) {
+    .featuredHead img{
+        width: 50%;
+    }
 }
 
 .bigPoster{
@@ -69,7 +75,7 @@
 }
 
 .featuredHead2 img {
-    width: 50%;
+    width: 30%;
     height: auto;
     margin-bottom: 1rem;
     margin-top: -3rem;

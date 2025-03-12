@@ -6,6 +6,7 @@ import SpecificCategory from '@/models/SpecificCategory';
 import Option from '@/models/Option';
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
+import inventory from '@/models/Inventory';
 
 export const config = {
   api: {
