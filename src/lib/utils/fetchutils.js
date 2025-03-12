@@ -4,7 +4,10 @@ import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
-// Unified fetchProducts function handling both 'product' and 'variant' types
+/**
+ * Fetch products based on slug, pagination, filtering, and sorting.
+ * Uses Next.js revalidation to cache responses for 60 seconds.
+ */
 export async function fetchProducts(slug, page = 1, limit = ITEMS_PER_PAGE, tagFilter = null, sortBy = 'default') {
   const apiUrl = `${BASE_URL}/api/shop/products`;
   const fullSlug = Array.isArray(slug) ? slug.join('/') : slug;
@@ -14,7 +17,7 @@ export async function fetchProducts(slug, page = 1, limit = ITEMS_PER_PAGE, tagF
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug: fullSlug, page, limit, tagFilter, sortBy }),
-      cache: 'force-cache',
+      // Use revalidation to balance cache storage and data freshness
       next: { revalidate: 60 },
     });
 
@@ -32,7 +35,10 @@ export async function fetchProducts(slug, page = 1, limit = ITEMS_PER_PAGE, tagF
   }
 }
 
-// Fetch details for a single product
+/**
+ * Fetch details for a single product.
+ * Data is revalidated every 60 seconds.
+ */
 export async function fetchProductDetails(slug) {
   const apiUrl = `${BASE_URL}/api/shop/product-details`;
   const fullSlug = Array.isArray(slug) ? slug.join('/') : slug;
@@ -42,7 +48,6 @@ export async function fetchProductDetails(slug) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug: fullSlug }),
-      cache: 'force-cache',
       next: { revalidate: 60 },
     });
 
@@ -60,7 +65,10 @@ export async function fetchProductDetails(slug) {
   }
 }
 
-// MyOrder Page
+/**
+ * Fetch an order by ID.
+ * Response is cached and revalidated every 60 seconds.
+ */
 export async function fetchOrder(orderId) {
   const apiUrl = `${BASE_URL}/api/order/${orderId}`;
 
@@ -68,7 +76,6 @@ export async function fetchOrder(orderId) {
     const res = await fetch(apiUrl, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
-      cache: 'force-cache',
       next: { revalidate: 60 },
     });
 
@@ -86,13 +93,13 @@ export async function fetchOrder(orderId) {
   }
 }
 
-// Homepage Fetch Utilities
-
-// Our Unique Products
+/**
+ * Fetch our unique products for the homepage.
+ * Uses a 60-second revalidation strategy.
+ */
 export async function fetchOurUniqueProducts() {
   try {
     const res = await fetch(`${BASE_URL}/api/showcase/our-unique-products`, {
-      cache: 'force-cache',
       next: { revalidate: 60 },
     });
     if (!res.ok) {
@@ -106,12 +113,14 @@ export async function fetchOurUniqueProducts() {
   }
 }
 
-// Random Products
+/**
+ * Fetch random products from a specific category.
+ * Revalidates the cached response every 60 seconds.
+ */
 export async function fetchRandomProducts(categorySlug, number) {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/showcase/random-products?category=${categorySlug}&number=${number || 10}`,
+    `${BASE_URL}/api/showcase/random-products?category=${categorySlug}&number=${number || 10}`,
     {
-      cache: 'force-cache',
       next: { revalidate: 60 },
     }
   );
@@ -121,28 +130,35 @@ export async function fetchRandomProducts(categorySlug, number) {
   return await res.json();
 }
 
-// Featured Products
+/**
+ * Fetch featured products based on a category code.
+ * Data is cached and revalidated every 60 seconds.
+ */
 export async function fetchFeaturedproducts(categoryCode, number = 3) {
   try {
     const res = await fetch(
       `${BASE_URL}/api/showcase/featured-products?categoryCode=${categoryCode}&number=${number}`,
       {
-        cache: 'force-cache',
         next: { revalidate: 60 },
       }
     );
     if (!res.ok) {
-      console.error(`Failed to fetch featured bike wraps. Status: ${res.status}`);
-      throw new Error('Failed to fetch featured bike wraps');
+      console.error(`Failed to fetch featured products. Status: ${res.status}`);
+      throw new Error('Failed to fetch featured products');
     }
     return await res.json();
   } catch (error) {
-    console.error('Error fetching featured bike wraps:', error.message);
+    console.error('Error fetching featured products:', error.message);
     throw error;
   }
 }
 
-// Happy Customers
+/**
+ * Fetch happy customers.
+ * If a parent-specific category ID is provided, it is appended as a query parameter;
+ * otherwise, it fetches customers for the homepage.
+ * The response is revalidated every 60 seconds.
+ */
 export async function fetchHappyCustomers(parentSpecificCategoryId) {
   let url = `${BASE_URL}/api/showcase/happy-customers`;
   if (parentSpecificCategoryId) {
@@ -152,7 +168,6 @@ export async function fetchHappyCustomers(parentSpecificCategoryId) {
   }
   try {
     const res = await fetch(url, {
-      cache: 'force-cache',
       next: { revalidate: 60 },
     });
     if (!res.ok) {
@@ -166,11 +181,14 @@ export async function fetchHappyCustomers(parentSpecificCategoryId) {
   }
 }
 
-// Search Categories (for CategorySearchBox)
+/**
+ * Fetch search categories for the CategorySearchBox.
+ * This function uses both the Next.js revalidate option (60 seconds) and
+ * custom cache control headers for additional caching hints.
+ */
 export async function fetchSearchCategories() {
   try {
     const res = await fetch(`${BASE_URL}/api/search/search-categories`, {
-      cache: 'force-cache',
       next: { revalidate: 60 },
       headers: {
         'Cache-Control': 'public, max-age=60, immutable',
