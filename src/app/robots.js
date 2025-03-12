@@ -9,7 +9,7 @@ export default function robots() {
             '/order/myorders/',
             '/error',
             '/not-found',
-            'bike/'
+            '/bike/'
           ],
         },
       ],

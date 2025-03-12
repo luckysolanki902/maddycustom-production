@@ -1,3 +1,4 @@
+// app/shop/[...slug]/page.js
 import React from 'react';
 import ProductsPage from '@/components/full-page-comps/ProductsPage';
 import ProductIdPage from '@/components/full-page-comps/ProductIdPage';
@@ -6,13 +7,9 @@ import { createMetadata } from '@/lib/metadata/create-metadata';
 import { generateProductSchema } from '@/lib/metadata/json-lds';
 import { notFound } from 'next/navigation';
 import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
-import ContactUs from '@/components/layouts/ContactUs';
-
-// 1) IMPORT YOUR ProductInfoTab MONGOOSE MODEL:
 import ProductInfoTab from '@/models/ProductInfoTab';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 
-// HELPER to fetch the product info tabs from DB
 async function getProductInfoTabs(specificCategory, product, variant) {
   if (
     !specificCategory ||
@@ -25,7 +22,7 @@ async function getProductInfoTabs(specificCategory, product, variant) {
   const tabsData = await Promise.all(
     specificCategory.productInfoTabs.map(async (tabObj) => {
       const { title, fetchSource } = tabObj;
-      const query = { title }; // e.g. { title: 'Description' or 'How to Apply' }
+      const query = { title }; // e.g. { title: 'Description' }
       if (fetchSource === 'Product' && product) {
         query.product = product._id;
       } else if (fetchSource === 'Variant' && variant) {
@@ -64,11 +61,13 @@ export async function generateMetadata({ params }) {
         : productData?.variant?.title,
     description:
       productData.type === 'product'
-        ? (productData?.variant?.productDescription
-            ? productData.variant.productDescription
-                .replace(/{uniqueName}/g, productData.product?.name)
-                .replace(/{fullBikename}/g, productData.variant?.name)
-            : productData.variant?.description || '')
+        ? (
+            productData?.variant?.productDescription
+              ? productData.variant.productDescription
+                  .replace(/{uniqueName}/g, productData.product?.name)
+                  .replace(/{fullBikename}/g, productData.variant?.name)
+              : productData.variant?.description || ''
+          )
         : productData.variant?.description || '',
   });
 }
@@ -78,6 +77,7 @@ export default async function ShopPage({ params }) {
   const initialPage = 1;
   const limit = ITEMS_PER_PAGE;
   const data = await fetchProducts(slug, initialPage, limit);
+
   if (data.type === 'not-found') {
     notFound();
   }
@@ -99,22 +99,23 @@ export default async function ShopPage({ params }) {
 
   // If it’s an actual single “product detail” page => show ProductIdPage
   if (data.type === 'product') {
-    const { product, variant, specificCategory} = data;
+    const { product, variant, specificCategory } = data;
     const canonicalUrl = `https://www.maddycustom.com/shop/${slug.join('/')}`;
     const jsonLd = generateProductSchema({
       product: { ...product, url: canonicalUrl },
     });
-    // 2) FETCH the product info tabs from DB (SSR)
+
+    // Fetch the product info tabs from DB (SSR)
     const productInfoTabs = await getProductInfoTabs(specificCategory, product, variant);
 
-    // 3) MERGE “Description” images into product images
+    // Merge “Description” images into product images
     let appendedImages = [...(product.images || [])];
     const descriptionTab = productInfoTabs.find((t) => t.title === 'Description');
     if (descriptionTab && Array.isArray(descriptionTab.images)) {
       appendedImages = appendedImages.concat(descriptionTab.images);
     }
 
-    // 4) Build a productDescription if you still want it:
+    // Build a productDescription if needed
     const productDescription = variant?.productDescription
       ? variant.productDescription
           .replace(/{uniqueName}/g, product.name)
@@ -132,14 +133,13 @@ export default async function ShopPage({ params }) {
           variant={variant}
           category={specificCategory}
           description={productDescription}
-          // Pass SSR-fetched tabs:
           productInfoTabs={productInfoTabs}
-          // Pass the appended images array for the gallery:
           appendedImages={appendedImages}
-          // Pass the available options with inventory data:
-          // options={options}
         />
       </>
     );
   }
+
+  // Fallback
+  notFound();
 }
