@@ -14,21 +14,21 @@ export async function fetchProducts(slug, page = 1, limit = ITEMS_PER_PAGE, tagF
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug: fullSlug, page, limit, tagFilter, sortBy }),
-      cache: 'no-cache',
+      cache: 'force-cache',
+      next: { revalidate: 60 },
     });
 
     if (res.status === 404) {
-      return { type: 'not-found' }; // Indicate not found without redirect
+      return { type: 'not-found' };
     } else if (!res.ok) {
       console.error(`Failed to fetch products. Status: ${res.status}`);
       throw new Error(`Failed to fetch data. Status: ${res.status}`);
     }
 
-    const data = await res.json();
-    return data;
+    return await res.json();
   } catch (error) {
     console.error('Error fetching products:', error.message);
-    throw error; // Next.js will handle redirection to /error
+    throw error;
   }
 }
 
@@ -42,7 +42,8 @@ export async function fetchProductDetails(slug) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug: fullSlug }),
-      cache: 'no-cache',
+      cache: 'force-cache',
+      next: { revalidate: 60 },
     });
 
     if (res.status === 404) {
@@ -52,11 +53,10 @@ export async function fetchProductDetails(slug) {
       throw new Error(`Failed to fetch product details. Status: ${res.status}`);
     }
 
-    const data = await res.json();
-    return data;
+    return await res.json();
   } catch (error) {
     console.error('Error fetching product details:', error.message);
-    throw error; // Next.js will handle redirection to /error
+    throw error;
   }
 }
 
@@ -68,21 +68,21 @@ export async function fetchOrder(orderId) {
     const res = await fetch(apiUrl, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
-      cache: 'no-cache',
+      cache: 'force-cache',
+      next: { revalidate: 60 },
     });
 
     if (res.status === 404) {
-      return { type: 'not-found' }; // Indicate not found without redirect
+      return { type: 'not-found' };
     } else if (!res.ok) {
       console.error(`Failed to fetch order. Status: ${res.status}`);
       throw new Error(`Failed to fetch order. Status: ${res.status}`);
     }
 
-    const data = await res.json();
-    return data;
+    return await res.json();
   } catch (error) {
     console.error('Error fetching order:', error.message);
-    throw error; // Next.js will handle redirection to /error
+    throw error;
   }
 }
 
@@ -92,48 +92,55 @@ export async function fetchOrder(orderId) {
 export async function fetchOurUniqueProducts() {
   try {
     const res = await fetch(`${BASE_URL}/api/showcase/our-unique-products`, {
-      cache: 'no-store', // Adjust caching as needed
+      cache: 'force-cache',
+      next: { revalidate: 60 },
     });
     if (!res.ok) {
       console.error(`Failed to fetch our unique products. Status: ${res.status}`);
       throw new Error('Failed to fetch our unique products');
     }
-    return res.json();
+    return await res.json();
   } catch (error) {
     console.error('Error fetching our unique products:', error.message);
     throw error;
   }
 }
 
-// random products
+// Random Products
 export async function fetchRandomProducts(categorySlug, number) {
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/showcase/random-products?category=${categorySlug}&number=${number || 10}`,
+    {
+      cache: 'force-cache',
+      next: { revalidate: 60 },
+    }
   );
   if (!res.ok) {
     throw new Error("Failed to fetch random products");
   }
-  return res.json();
+  return await res.json();
 }
 
-
+// Featured Products
 export async function fetchFeaturedproducts(categoryCode, number = 3) {
   try {
     const res = await fetch(
       `${BASE_URL}/api/showcase/featured-products?categoryCode=${categoryCode}&number=${number}`,
-      { cache: 'no-store' }
+      {
+        cache: 'force-cache',
+        next: { revalidate: 60 },
+      }
     );
     if (!res.ok) {
       console.error(`Failed to fetch featured bike wraps. Status: ${res.status}`);
       throw new Error('Failed to fetch featured bike wraps');
     }
-    return res.json();
+    return await res.json();
   } catch (error) {
     console.error('Error fetching featured bike wraps:', error.message);
     throw error;
   }
 }
-
 
 // Happy Customers
 export async function fetchHappyCustomers(parentSpecificCategoryId) {
@@ -145,13 +152,14 @@ export async function fetchHappyCustomers(parentSpecificCategoryId) {
   }
   try {
     const res = await fetch(url, {
-      cache: 'no-store',
+      cache: 'force-cache',
+      next: { revalidate: 60 },
     });
     if (!res.ok) {
       console.error(`Failed to fetch happy customers. Status: ${res.status}`);
       throw new Error('Failed to fetch happy customers');
     }
-    return res.json();
+    return await res.json();
   } catch (error) {
     console.error('Error fetching happy customers:', error.message);
     throw error;
@@ -162,13 +170,17 @@ export async function fetchHappyCustomers(parentSpecificCategoryId) {
 export async function fetchSearchCategories() {
   try {
     const res = await fetch(`${BASE_URL}/api/search/search-categories`, {
-      cache: 'no-store',
+      cache: 'force-cache',
+      next: { revalidate: 60 },
+      headers: {
+        'Cache-Control': 'public, max-age=60, immutable',
+      },
     });
     if (!res.ok) {
       console.error(`Failed to fetch search categories. Status: ${res.status}`);
       throw new Error('Failed to fetch search categories');
     }
-    return res.json();
+    return await res.json();
   } catch (error) {
     console.error('Error fetching search categories:', error.message);
     throw error;
