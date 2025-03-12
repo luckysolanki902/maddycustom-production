@@ -17,7 +17,7 @@ if (!cached) {
 // Use a very small pool size to avoid too many connections per Lambda
 const options = {
   bufferCommands: false,
-  maxPoolSize: 1,
+  maxPoolSize: 2,
   minPoolSize: 0,
   serverSelectionTimeoutMS: 5000,   // Fail fast if no server is found
   socketTimeoutMS: 30000,          // Socket idle timeout
