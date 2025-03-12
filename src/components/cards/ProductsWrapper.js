@@ -5,13 +5,14 @@ import HeaderCarousel from '../showcase/carousels/HeaderCarousel';
 import styles from './styles/productswrapper.module.css';
 import { useMediaQuery } from '@mui/material';
 
-const ProductsWrapper = ({ variant, products, category, sortBy = 'default', loading, showLayout2 }) => {
+const ProductsWrapper = ({ variant, products, category, isLoading, showLayout2 }) => {
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   return (
     <div className={showLayout2 ? styles.productsGrid2 : styles.productsGrid}>
-      {variant.showCase?.[0]?.available && !isSmallDevice && (
+      {/* Video on large devices */}
+      {variant?.showCase?.[0]?.available && !isSmallDevice && (
         <div aria-label="Product Video" className={styles.videoCard}>
           <iframe
             width="100%"
@@ -22,31 +23,30 @@ const ProductsWrapper = ({ variant, products, category, sortBy = 'default', load
             allow="autoplay; encrypted-media"
             allowFullScreen
             style={{ pointerEvents: 'none' }}
-          ></iframe>
+          />
           <h1>Maddy Custom</h1>
         </div>
       )}
 
-      {category.specificCategoryCode === 'tw' && !isSmallDevice && (
+      {category?.specificCategoryCode === 'tw' && !isSmallDevice && (
         <div className={styles.HeaderCarouselMain}>
           <HeaderCarousel />
         </div>
       )}
 
       {products.map((product) => {
-        // Ensure options is always defined
         const updatedProduct = {
           ...product,
           variantDetails: variant,
           category,
-          options: product.options || []
+          options: product.options || [],
         };
 
         return (
           <ProductCard
             key={product._id}
             product={updatedProduct}
-            loading={loading}
+            isLoading={isLoading}
             showLayout2={showLayout2}
           />
         );

@@ -92,7 +92,7 @@ export async function fetchOrder(orderId) {
 export async function fetchOurUniqueProducts() {
   try {
     const res = await fetch(`${BASE_URL}/api/showcase/our-unique-products`, {
-      cache: 'no-store', // Adjust caching as needed
+      cache: 'force-cache',
     });
     if (!res.ok) {
       console.error(`Failed to fetch our unique products. Status: ${res.status}`);
@@ -108,7 +108,9 @@ export async function fetchOurUniqueProducts() {
 // random products
 export async function fetchRandomProducts(categorySlug, number) {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/showcase/random-products?category=${categorySlug}&number=${number || 10}`,
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/showcase/random-products?category=${categorySlug}&number=${number || 10}`, {
+    cache: 'force-cache',
+  }
   );
   if (!res.ok) {
     throw new Error("Failed to fetch random products");
@@ -121,7 +123,9 @@ export async function fetchFeaturedproducts(categoryCode, number = 3) {
   try {
     const res = await fetch(
       `${BASE_URL}/api/showcase/featured-products?categoryCode=${categoryCode}&number=${number}`,
-      { cache: 'no-store' }
+      {
+        cache: 'force-cache',
+      }
     );
     if (!res.ok) {
       console.error(`Failed to fetch featured bike wraps. Status: ${res.status}`);
@@ -145,7 +149,7 @@ export async function fetchHappyCustomers(parentSpecificCategoryId) {
   }
   try {
     const res = await fetch(url, {
-      cache: 'no-store',
+      cache: 'force-cache', 
     });
     if (!res.ok) {
       console.error(`Failed to fetch happy customers. Status: ${res.status}`);
@@ -162,7 +166,10 @@ export async function fetchHappyCustomers(parentSpecificCategoryId) {
 export async function fetchSearchCategories() {
   try {
     const res = await fetch(`${BASE_URL}/api/search/search-categories`, {
-      cache: 'no-store',
+      cache: 'force-cache',
+      headers: {
+        'Cache-Control': 'public, max-age=60, immutable',
+      },
     });
     if (!res.ok) {
       console.error(`Failed to fetch search categories. Status: ${res.status}`);

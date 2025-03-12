@@ -100,6 +100,7 @@ const HomePage = async () => {
         {/* Happy Customers */}
         <div className={styles.featuredHead}>
           <Image
+            layout='responsive'
             width={940}
             height={256}
             alt='heading - featured products'
