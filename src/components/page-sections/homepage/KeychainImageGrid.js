@@ -3,11 +3,13 @@ import React from 'react'
 import styles from './styles/keychainimagegrid.module.css'
 import Image from 'next/image'
 import { useMediaQuery } from '@mui/material'
+import { useRouter } from 'next/navigation'
 
 const KeychainImageGrid = () => {
   // Sample data array; replace src with your actual image paths
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
+  const router = useRouter()
   const keychainData = [
     {
       src: '/assets/posters/keychain1.png',
@@ -27,7 +29,7 @@ const KeychainImageGrid = () => {
     <div className={styles.gridContainer}>
       {isSmallDevice ? (
         keychainData.slice(0, 2).map((item, index) => (
-          <div key={index} className={styles.card}>
+          <div onClick={()=>router.push('/shop/accessories/minimal-personalization/keychains/realistic-functional-keychains')} key={index} className={styles.card}>
             <div className={styles.imageWrapper}>
               <Image
                 src={`${imageBaseUrl}${item.src}`}
@@ -41,7 +43,7 @@ const KeychainImageGrid = () => {
         ))
       ) : (
         keychainData.map((item, index) => (
-          <div key={index} className={styles.card}>
+          <div onClick={()=>router.push('/shop/accessories/minimal-personalization/keychains/realistic-functional-keychains')} key={index} className={styles.card}>
             <div className={styles.imageWrapper}>
               <Image
                 src={`${imageBaseUrl}${item.src}`}
