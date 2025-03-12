@@ -76,7 +76,7 @@ export default function ChooseCategory() {
              * Make it an <input> so it can truly focus/click,
              * but we keep it visually “transparent”.
              */}
-            <input
+            <div
               type="text"
               spellCheck="false"
             //   onClick={handleFocus}

@@ -9,6 +9,8 @@ import TopLoadingBar from '@/components/utils/TopLoadingBar';
 import AnalyticsHead from '@/components/layouts/AnalyticsHead';
 import UTMCapture from '@/components/analytics/UTMCapture';
 
+
+
 // Google Fonts
 import { Krona_One, Jost, Montserrat } from 'next/font/google';
 import dynamic from 'next/dynamic';
@@ -57,6 +59,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${kronaOne.className} ${jost.className} ${montserrat.className}`}>
       <head>
+        <link rel="preconnect" href="https://www.youtube.com" />
         <AnalyticsHead />
 
         {/* JSON-LD Structured Data */}
@@ -79,7 +82,7 @@ export default function RootLayout({ children }) {
 
           {children}
           {/* <FloatingActionBar /> */}
-          <Footer/>
+          <Footer />
           <TimeTracker />
           <LoginDialog />
           <PathnameTracker />
