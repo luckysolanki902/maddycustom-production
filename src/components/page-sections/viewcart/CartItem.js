@@ -73,11 +73,15 @@ const CartItem = ({ item, onRemove }) => {
         <div className={styles.productName}>
           {item?.productDetails?.name?.length < 20 ? item?.productDetails?.name : (item?.productDetails?.name.slice(0, 20) + '...')}
         </div>
-        <div className={styles.productPrice}>
+        
+         <AddToCartButton product={item.productDetails} />
+        
+      </div>
+
+     <div className={styles.productPrice}>
           ₹{(item.productDetails.price * item.quantity).toFixed(0)}/-
         </div>
-      </div>
-      <AddToCartButton product={item.productDetails} />
+
     </div>
   );
 };
