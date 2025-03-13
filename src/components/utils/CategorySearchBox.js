@@ -32,7 +32,7 @@ export default function ChooseCategory() {
   };
 
   return (
-    <div className={searchStyles.unexpandedWhite}>
+    <div className={searchStyles.unexpandedWhite} >
       <div className={searchStyles.searchBoxContainer} >
         <div className={searchStyles.searchBoxSubContainer} onClick={handleFocus}>
           <span className={searchStyles.searchIcon}>
@@ -49,7 +49,7 @@ export default function ChooseCategory() {
           <div
             className={searchStyles.inputContainer}
             style={{
-              positiopseran: 'relative',
+              position: 'relative',
               width: '100%',
               height: '100%',
               display: 'flex',
