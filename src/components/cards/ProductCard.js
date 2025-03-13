@@ -112,7 +112,7 @@ const ProductCard = ({ product, isLoading, showLayout2 }) => {
       }}
     >
       {/* Tap to Zoom overlay for small device */}
-      {isSmallDevice && !isZoomed && (
+      {/* {isSmallDevice && !isZoomed && (
         <div
           className={styles.taptozoom}
           onClick={handleImageClick}
@@ -120,7 +120,7 @@ const ProductCard = ({ product, isLoading, showLayout2 }) => {
           <ZoomOutMapIcon style={{ marginRight: '1rem', fontSize: '1.1rem', color: 'gray' }} />
           <span>Tap to Zoom</span>
         </div>
-      )}
+      )} */}
 
       {/* Zoom Overlay */}
       <animated.div

@@ -46,7 +46,6 @@ const HomePage = async () => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   // Fetch all necessary data concurrently
 
-
   // Destructure categories and variants from searchCategoriesData
   const { categories, variants } = searchCategoriesData;
 

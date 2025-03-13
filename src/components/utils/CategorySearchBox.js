@@ -15,10 +15,10 @@ export default function ChooseCategory() {
 
   // Hard-code or omit if you want no placeholders:
   const typewriterStrings = [
-    'Helmets',
     'Tank Wraps',
-    'Bonnet Strips',
-    'Customize Bike!',
+    'Bonnet Wraps',
+    'Window Pillar Wraps',
+    'Keychains',
   ];
 
   // On focus => open the dialog
