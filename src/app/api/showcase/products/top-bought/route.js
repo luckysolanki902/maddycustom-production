@@ -6,6 +6,7 @@ import Product from '@/models/Product';
 import Order from '@/models/Order';
 import Option from '@/models/Option';
 import mongoose from 'mongoose';
+import inventory from '@/models/Inventory';
 
 export async function GET(request) {
   try {
