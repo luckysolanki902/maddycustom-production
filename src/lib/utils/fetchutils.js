@@ -100,7 +100,7 @@ export async function fetchOrder(orderId) {
 export async function fetchOurUniqueProducts() {
   try {
     const res = await fetch(`${BASE_URL}/api/showcase/our-unique-products`, {
-      next: { revalidate: 60 },
+      next: { revalidate: 3600 },
     });
     if (!res.ok) {
       console.error(`Failed to fetch our unique products. Status: ${res.status}`);
@@ -121,7 +121,7 @@ export async function fetchRandomProducts(categorySlug, number) {
   const res = await fetch(
     `${BASE_URL}/api/showcase/random-products?category=${categorySlug}&number=${number || 10}`,
     {
-      next: { revalidate: 60 },
+      next: { revalidate: 3600 },
     }
   );
   if (!res.ok) {
@@ -139,7 +139,7 @@ export async function fetchFeaturedproducts(categoryCode, number = 3) {
     const res = await fetch(
       `${BASE_URL}/api/showcase/featured-products?categoryCode=${categoryCode}&number=${number}`,
       {
-        next: { revalidate: 60 },
+        next: { revalidate: 3600 },
       }
     );
     if (!res.ok) {
@@ -168,7 +168,7 @@ export async function fetchHappyCustomers(parentSpecificCategoryId) {
   }
   try {
     const res = await fetch(url, {
-      next: { revalidate: 60 },
+      next: { revalidate: 3060 },
     });
     if (!res.ok) {
       console.error(`Failed to fetch happy customers. Status: ${res.status}`);
@@ -189,7 +189,7 @@ export async function fetchHappyCustomers(parentSpecificCategoryId) {
 export async function fetchSearchCategories() {
   try {
     const res = await fetch(`${BASE_URL}/api/search/search-categories`, {
-      next: { revalidate: 60 },
+      next: { revalidate: 300 },
       headers: {
         'Cache-Control': 'public, max-age=60, immutable',
       },

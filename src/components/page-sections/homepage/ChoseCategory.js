@@ -113,8 +113,27 @@ const ChooseCategory = () => {
         <div className={styles.name}>Fuel Cap Wraps</div>
       </div>
 
-      {/* More Products */}
+      {/* Car freshner */}
       <div className={styles.mainCard}>
+        <Link
+          href={'/shop/accessories/car-care/car-air-freshners/hanging-bottle-car-fresheners'}
+          className={styles.chooseCard}
+        >
+          <div className={styles.imageWrapper}>
+            <Image
+              className={styles.chooseImage}
+              src={`${baseurl}/assets/category-cards/caf.png`}
+              alt="Car Freshner"
+              fill
+              sizes="(max-width: 320px) 33vw, (max-width: 768px) 25vw, 16vw"
+            />
+          </div>
+        </Link>
+        <div className={styles.name}>Fuel Cap Wraps</div>
+      </div>
+
+      {/* More Products */}
+      {/* <div className={styles.mainCard}>
         <div className={`${styles.chooseCard} ${styles.noLink}`} id={styles.pcid}>
           <div className={styles.imageWrapper}>
             <Image
@@ -127,7 +146,7 @@ const ChooseCategory = () => {
           </div>
         </div>
         <div className={styles.name}>More Products</div>
-      </div>
+      </div> */}
     </div>
   );
 };
