@@ -34,9 +34,8 @@ export default function ProductIdPage({
   category,
   description,
   productInfoTabs = [],
-  // Options are expected to come with image data, optionDetails, and inventoryData
+  // Options are expected to come with image data, optionDetails, inventoryData, and optionally thumbnail
 }) {
-
   // -- Color map for color options --
   const colorMap = {
     red: "#ff0066",
@@ -49,32 +48,48 @@ export default function ProductIdPage({
     black: "#555555",
     white: "#ffffff",
     gray: "#cccccc",
-    chrome:"#d9d9d9",
-    candyred:"#b44b08",
+    chrome: "#d9d9d9",
+    candyred: "#b44b08",
   };
 
   const options = product.options || [];
   const [isZoomed, setIsZoomed] = useState(false);
   const [soldCount, setSoldCount] = useState(null);
   const [selectedOption, setSelectedOption] = useState(null);
-  // New state for mobile: toggle showing more colors dropdown
+  // New state for mobile: toggle showing more options dropdown
   const [showMoreColors, setShowMoreColors] = useState(false);
   const userDetails = useSelector((state) => state.orderForm.userDetails);
   const { email, phoneNumber } = userDetails || {};
   const hasTracked = useRef(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
-  // Cloudfront URL for the "1+ more images" icon
+  // Cloudfront URL for the icon (used when thumbnail is not provided)
   const moreImagesIconUrl = `${imageBaseUrl}/assets/icons/more-images-icon.jpg`;
 
   // Get dispatch and cart items from redux
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
 
-  // Function to handle color option selection
-  const handleColorChange = (opt) => {
+  // Compute the option label from the first valid option’s key (pluralized)
+  let optionLabel = "Options";
+  if (options && options.length > 0) {
+    const validOption = options.find(
+      (opt) =>
+        opt.optionDetails &&
+        Object.keys(opt.optionDetails).length > 0 &&
+        opt.inventoryData &&
+        opt.inventoryData.availableQuantity > 0
+    );
+    if (validOption) {
+      const firstKey = Object.keys(validOption.optionDetails)[0];
+      optionLabel = 'More ' +
+        firstKey.charAt(0).toUpperCase() + firstKey.slice(1) + "s";
+    }
+  }
 
-    // If the product is already in the cart, remove it so that only one color is active
+  // Function to handle option selection
+  const handleColorChange = (opt) => {
+    // If the product is already in the cart, remove it so that only one option is active
     if (cartItems.find((item) => item.productId === product._id)) {
       dispatch(removeItem({ productId: product._id }));
     }
@@ -87,8 +102,7 @@ export default function ProductIdPage({
       const availableOptions = options.filter(
         (opt) =>
           opt.optionDetails &&
-          opt.optionDetails.color &&
-          opt.optionDetails.color.trim() &&
+          Object.keys(opt.optionDetails).length > 0 &&
           opt.inventoryData &&
           opt.inventoryData.availableQuantity > 0
       );
@@ -206,6 +220,41 @@ export default function ProductIdPage({
   // Mobile devices media query (adjust the max-width as needed)
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  // Function to compute the style for each option circle
+  const getOptionStyle = (opt) => {
+    const style = {
+      width: "2.5rem",
+      height: "2.5rem",
+      borderRadius: "50%",
+      border:
+        selectedOption && selectedOption._id === opt._id
+          ? "2px solid black"
+          : "none",
+      cursor: "pointer",
+    };
+
+    if (opt.thumbnail) {
+      // If thumbnail exists, use it regardless of option type
+      style.backgroundImage = `url(${imageBaseUrl}/${opt.thumbnail})`;
+      style.backgroundSize = "cover";
+      style.backgroundPosition = "center";
+    } else {
+      // Fallback: use the option detail value (prefer "color" if available, else first value)
+      const optionValue =
+        opt.optionDetails && opt.optionDetails.color
+          ? opt.optionDetails.color
+          : opt.optionDetails
+          ? Object.values(opt.optionDetails)[0]
+          : null;
+      if (optionValue) {
+        style.backgroundColor =
+          colorMap[optionValue.toLowerCase()] ||
+          optionValue.toLowerCase();
+      }
+    }
+    return style;
+  };
+
   return (
     <div style={{ paddingBottom: "6rem" }}>
       <div className={styles.container}>
@@ -221,8 +270,7 @@ export default function ProductIdPage({
             isZoomed={isZoomed}
             alt={product.title}
             setIsZoomed={setIsZoomed}
-            restrictWidth={product.category.toLowerCase() !== 'wraps'}
-            
+            restrictWidth={product.category.toLowerCase() !== "wraps"}
           />
           {isBetween1000And1400 && soldByCategoryEl}
         </div>
@@ -242,167 +290,136 @@ export default function ProductIdPage({
               )}
             </div>
 
-              {/* Render color options */}
-              {options &&
+            {/* Render option circles */}
+            {options &&
               options.some(
                 (opt) =>
                   opt.optionDetails &&
-                  opt.optionDetails.color &&
-                  opt.optionDetails.color.trim() &&
+                  Object.keys(opt.optionDetails).length > 0 &&
                   opt.inventoryData &&
                   opt.inventoryData.availableQuantity > 0
-              ) && (
-                isMobile ? (
-                  <>
-                    {/* Always show the "1+ more images" icon */}
+              ) &&
+              (isMobile ? (
+                <>
+                  {/* Clickable container (icon and label) to toggle options dropdown */}
+                  <div
+                    onClick={() => setShowMoreColors((prev) => !prev)}
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      cursor: "pointer",
+                      margin: "1rem 0",
+                    }}
+                  >
                     <div
                       style={{
-                        display: "flex",
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: "0.5rem"
-                      }}>
-                    <div
-                      style={{
-                        margin: "1rem 0",
-                        cursor: "pointer",
                         width: "2rem",
                         height: "2rem",
                         position: "relative",
-                        textTransform:"uppercase"
                       }}
-                      onClick={() => setShowMoreColors((prev) => !prev)}
                     >
-                    
                       <Image
                         src={moreImagesIconUrl}
-                        alt="More colors"
+                        alt={optionLabel}
                         layout="fill"
                         objectFit="cover"
                       />
-                      
                     </div>
-                    <div> <p style={{fontSize:"0.7rem"}}> MORE COLORS</p></div>
+                    <div>
+                      <p style={{ fontSize: "0.7rem" }}>
+                        {optionLabel.toUpperCase()}
+                      </p>
                     </div>
-                    
-                   
-                    {/* Collapsible dropdown for more colors */}
-                    {showMoreColors && (
+                  </div>
+
+                  {/* Collapsible dropdown for options */}
+                  {showMoreColors && (
+                    <div
+                      style={{
+                        margin: "1rem 0",
+                        borderTop: "1px solid #000",
+                        padding: "0.5rem",
+                        background: "#fff",
+                      }}
+                    >
                       <div
+                        onClick={() => setShowMoreColors(false)}
                         style={{
-                          margin: "1rem 0",
-                          borderTop: "1px solid #000",
-                          padding: "0.5rem",
-                      
-                          background: "#fff"
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "0.5rem",
+                          cursor: "pointer",
                         }}
                       >
-                        <div
+                        <span style={{ fontSize: "0.9rem" }}>
+                          {optionLabel.toUpperCase()}
+                        </span>
+                        <span
                           style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: "0.5rem"
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                            fontSize: "1.2rem",
                           }}
                         >
-                          <span style={{fontSize:"0.9rem"}}>MORE COLORS</span>
-                          {/* Cross icon to collapse dropdown */}
-                          <span
-                            style={{
-                              cursor: "pointer",
-                              fontWeight: "bold",
-                              fontSize: "1.2rem"
-                            }}
-                            onClick={() => setShowMoreColors(false)}
-                          >
-                            &times;
-                          </span>
-                        </div>
-                        <div style={{ display: "flex", gap: "0.5rem" }}>
-                          {options
-                            .filter(
-                              (opt) =>
-                                opt.optionDetails &&
-                                opt.optionDetails.color &&
-                                opt.optionDetails.color.trim() &&
-                                opt.inventoryData &&
-                                opt.inventoryData.availableQuantity > 0
-                            )
-                            .map((opt) => (
-                              <div
-                                key={opt._id}
-                                onClick={() => handleColorChange(opt)}
-                                style={{
-                                  width: "2rem",
-                                  height: "2rem",
-                                  borderRadius: "50%",
-                                  border:
-                                    selectedOption &&
-                                    selectedOption._id === opt._id
-                                      ? "2px solid black"
-                                      : "none",
-                                  backgroundColor:
-                                    colorMap[
-                                      opt.optionDetails.color.toLowerCase()
-                                    ] ||
-                                    opt.optionDetails.color.toLowerCase(),
-                                  cursor: "pointer"
-                                }}
-                              />
-                            ))}
-                        </div>
+                          &times;
+                        </span>
                       </div>
-                    )}
-                  </>
-                ) : (
-                  <div style={{ margin: "1rem 0" }}>
-                    <div style={{ marginBottom: "0.5rem" }}>More colors</div>
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      {options
-                        .filter(
-                          (opt) =>
-                            opt.optionDetails &&
-                            opt.optionDetails.color &&
-                            opt.optionDetails.color.trim() &&
-                            opt.inventoryData &&
-                            opt.inventoryData.availableQuantity > 0
-                        )
-                        .map((opt) => (
-                          <div
-                            key={opt._id}
-                            onClick={() => handleColorChange(opt)}
-                            style={{
-                              width: "2rem",
-                              height: "2rem",
-                              borderRadius: "50%",
-                              border:
-                                selectedOption &&
-                                selectedOption._id === opt._id
-                                  ? "2px solid black"
-                                  : "none",
-                              backgroundColor:
-                                colorMap[
-                                  opt.optionDetails.color.toLowerCase()
-                                ] ||
-                                opt.optionDetails.color.toLowerCase(),
-                              cursor: "pointer"
-                            }}
-                          />
-                        ))}
-                        
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        {options
+                          .filter(
+                            (opt) =>
+                              opt.optionDetails &&
+                              Object.keys(opt.optionDetails).length > 0 &&
+                              opt.inventoryData &&
+                              opt.inventoryData.availableQuantity > 0
+                          )
+                          .map((opt) => (
+                            <div
+                              key={opt._id}
+                              onClick={() => handleColorChange(opt)}
+                              style={getOptionStyle(opt)}
+                            />
+                          ))}
+                      </div>
                     </div>
-                    
+                  )}
+                </>
+              ) : (
+                <div style={{ margin: "1rem 0" }}>
+                  <div style={{ marginBottom: "0.5rem" }}>
+                    {optionLabel}
                   </div>
-                )
-              
-              )
-              }
-              {isMobile && (   <div className={styles.orderSpecificationsContainer}>
-              <MemoizedOrderSpecifications
-                features={variant.features}
-                justContStart={true}
-              />
-            </div>)}
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    {options
+                      .filter(
+                        (opt) =>
+                          opt.optionDetails &&
+                          Object.keys(opt.optionDetails).length > 0 &&
+                          opt.inventoryData &&
+                          opt.inventoryData.availableQuantity > 0
+                      )
+                      .map((opt) => (
+                        <div
+                          key={opt._id}
+                          onClick={() => handleColorChange(opt)}
+                          style={getOptionStyle(opt)}
+                        />
+                      ))}
+                  </div>
+                </div>
+              ))}
+
+            {isMobile && (
+              <div className={styles.orderSpecificationsContainer}>
+                <MemoizedOrderSpecifications
+                  features={variant.features}
+                  justContStart={true}
+                />
+              </div>
+            )}
 
             <MemoizedPriceAndChat
               price={
@@ -412,15 +429,14 @@ export default function ProductIdPage({
               }
             />
 
-           { !isMobile &&( <div className={styles.orderSpecificationsContainer}>
-              <MemoizedOrderSpecifications
-                features={variant.features}
-                justContStart={true}
-              />
-            </div>)}
-            
-
-          
+            {!isMobile && (
+              <div className={styles.orderSpecificationsContainer}>
+                <MemoizedOrderSpecifications
+                  features={variant.features}
+                  justContStart={true}
+                />
+              </div>
+            )}
 
             {/* Render Add to Cart Button only if in stock */}
             {!isOutOfStock && (
@@ -435,7 +451,7 @@ export default function ProductIdPage({
                       variant?.availableBrands?.length > 0
                         ? variant.availableBrands[0].brandBasePrice +
                           product.price
-                        : product.price
+                        : product.price,
                   }}
                   isLarge={true}
                 />
