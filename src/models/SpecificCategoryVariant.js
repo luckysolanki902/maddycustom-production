@@ -191,7 +191,11 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
         type: Number,
         // required: true,
       },
-    }
+    },
+    popupDetails: {
+      type: [String],
+      required: false,
+    },
   },
   { timestamps: true }
 );

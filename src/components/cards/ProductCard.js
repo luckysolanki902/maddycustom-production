@@ -28,7 +28,7 @@ function getDisplayImage(product) {
   return { imageUrl: null, outOfStock: true };
 }
 
-const ProductCard = ({ product, isLoading, showLayout2 }) => {
+const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false }) => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const [isZoomed, setIsZoomed] = useState(false);
@@ -232,7 +232,7 @@ const ProductCard = ({ product, isLoading, showLayout2 }) => {
 
         <div className={styles.prodDescLastRow}>
           {/* Condition: If variant is available and not out of stock => show AddToCart */}
-          {product.variantDetails?.available && !outOfStock && (
+          {product.variantDetails?.available && !outOfStock && !hideCartButton && (
             <div className={styles.addToCart}>
               <AddToCartButton
                 product={{

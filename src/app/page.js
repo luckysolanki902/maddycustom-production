@@ -83,8 +83,8 @@ const HomePage = async () => {
               link: "/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps",
             },
             {
-              pcImage: "hb-cf-pc.jpg",
-              phoneImage: "hb-cf-phone.jpg",
+              pcImage: "caf_pc.png",
+              phoneImage: "caf_phone.png",
               link: "/shop/accessories/car-care/car-air-freshners/hanging-bottle-car-fresheners",
             },
           ]}

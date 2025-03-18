@@ -29,6 +29,7 @@ const FeaturedProducts = ({ data }) => { // Accept data as props
                 variant={variant}
                 category={category}
                 tagFilter={null}
+                hideCartButton={true}
                 sortBy="default"
             />
         </div>

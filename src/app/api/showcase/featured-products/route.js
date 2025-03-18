@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const categoryCode = searchParams.get('categoryCode');
-  // Read the new "number" parameter (default to 4 if not provided)
+  // Read the "number" parameter (default to 4 if not provided)
   const numberParam = searchParams.get('number');
   const sampleSize = numberParam ? parseInt(numberParam, 10) : 4;
 
@@ -30,14 +30,13 @@ export async function GET(request) {
       { $sample: { size: sampleSize } },
     ]);
 
-    // For each variant, fetch a random product design using aggregation
-    const products = await Promise.all(
+    // For each variant, fetch one random product using aggregation
+    const initialProducts = await Promise.all(
       variants.map(async (variant) => {
         const randomProduct = await Product.aggregate([
           { $match: { specificCategoryVariant: variant._id } },
           { $sample: { size: 1 } },
         ]);
-
         if (!randomProduct || randomProduct.length === 0) {
           return null;
         }
@@ -46,8 +45,53 @@ export async function GET(request) {
       })
     );
 
-    // Remove any null results (in case a variant has no product)
-    const filteredProducts = products.filter(product => product !== null);
+    // Filter out any variants that didn't return a product
+    let filteredProducts = initialProducts.filter(product => product !== null);
+
+    // If we have fewer products than requested, do a round-robin fetch for extra products.
+    if (filteredProducts.length < sampleSize) {
+      // Maintain a map to track which product IDs have already been fetched for each variant
+      const fetchedProductsMap = {};
+      filteredProducts.forEach(product => {
+        const vid = product.variantId.toString();
+        if (!fetchedProductsMap[vid]) {
+          fetchedProductsMap[vid] = [product._id];
+        } else {
+          fetchedProductsMap[vid].push(product._id);
+        }
+      });
+
+      // Continue fetching additional products in a round-robin fashion until we reach sampleSize or no new products are available
+      let additionalFetched = true;
+      while (filteredProducts.length < sampleSize && additionalFetched) {
+        additionalFetched = false;
+        for (const variant of variants) {
+          if (filteredProducts.length >= sampleSize) break;
+          const vid = variant._id;
+          const alreadyFetched = fetchedProductsMap[vid.toString()] || [];
+          // Fetch one extra product for the variant, excluding those already fetched
+          const newProductResult = await Product.aggregate([
+            { 
+              $match: { 
+                specificCategoryVariant: vid, 
+                _id: { $nin: alreadyFetched }
+              }
+            },
+            { $sample: { size: 1 } }
+          ]);
+          if (newProductResult && newProductResult.length > 0) {
+            const newProduct = { ...newProductResult[0], variantId: vid };
+            filteredProducts.push(newProduct);
+            if (!fetchedProductsMap[vid.toString()]) {
+              fetchedProductsMap[vid.toString()] = [];
+            }
+            fetchedProductsMap[vid.toString()].push(newProduct._id);
+            additionalFetched = true;
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       category,
       variants,
