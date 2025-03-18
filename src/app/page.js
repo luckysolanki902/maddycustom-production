@@ -37,7 +37,7 @@ const [
 ] = await Promise.all([
   fetchOurUniqueProducts(),
   fetchRandomProducts('f', 10), // Pass your specific category slug here
-  fetchFeaturedproducts('f'),
+  fetchFeaturedproducts('caf'),
   fetchHappyCustomers(null),
   fetchSearchCategories(),
 ]);
@@ -76,9 +76,18 @@ const HomePage = async () => {
 
         {/* Bonnet Strip Wrap Poster */}
         <FlexibleLargePoster
-          imageSlugForPc='bonnetstrippc.jpg'
-          imageSlugForPhone='bonnetstripphone.jpg'
-          link='/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps'
+          items={[
+            {
+              pcImage: "bonnetstrippc.jpg",
+              phoneImage: "bonnetstripphone.jpg",
+              link: "/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps",
+            },
+            {
+              pcImage: "hb-cf-pc.jpg",
+              phoneImage: "hb-cf-phone.jpg",
+              link: "/shop/accessories/car-care/car-air-freshners/hanging-bottle-car-fresheners",
+            },
+          ]}
         />
 
         {/* Featured Products */}

@@ -19,7 +19,6 @@ export default function ProductDescription({
   imageUrl = "",
   showProductImageFirst = false,
 }) {
-  // console.log(productInfoTabs);
   // Track which tab is active
   const [tabIndex, setTabIndex] = useState(0);
 

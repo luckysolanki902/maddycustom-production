@@ -41,10 +41,10 @@ export default function ProductsPage({
 
   // Decide layout only once
   useEffect(() => {
-    if (category && category.category.toLowerCase() !== 'wraps') {
+    if (variant && variant.listLayout === '2') {
       setShowLayout2(true);
     }
-  }, [category]);
+  }, [variant]);
 
 
   // Only fetch if user changes page, tag, or sort from the initial

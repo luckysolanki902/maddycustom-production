@@ -227,7 +227,6 @@ const Footer = () => {
       </ul>
     </div>
   );
-  console.log(pathname);
   if (pathname === '/viewcart') {
     return null;
   }
