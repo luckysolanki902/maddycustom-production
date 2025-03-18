@@ -14,6 +14,8 @@ import { PaginationStyles, PaginationStylesForPhone } from '@/styles/PaginationS
 import FullWidthRoundCornerLandscapeCarousel from '../showcase/carousels/FullWidthRoundCornerLandscapeCarousel';
 import herosectionStyles from '@/components/page-sections/homepage/styles/herosection.module.css';
 
+import VariantDialog from '../dialogs/VariantDialog';
+
 export default function ProductsPage({
   slug,
   variant,
@@ -32,6 +34,10 @@ export default function ProductsPage({
   const [totalPageCount, setTotalPageCount] = useState(totalPages || 1);
   const [currentProducts, setCurrentProducts] = useState(initialProducts || []);
   const [isLoading, setIsLoading] = useState(false);
+
+  // const testVariant = {
+  //   popupDetails: ['https://deq64r0ss2hgl.cloudfront.net/images/products_gallery_images/premium-keychain-70207109188199.jpg'], // using a placeholder image
+  // };
 
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const isLargeDevice = useMediaQuery('(min-width: 1200px)');
@@ -87,6 +93,7 @@ export default function ProductsPage({
   // On Tag or Sort change => go to page 1
   useEffect(() => {
     // Avoid re-fetch if user hasn’t changed anything from defaults
+   
     const hasFiltersChanged = !!tagFilter || sortBy !== 'default';
     if (hasFiltersChanged) {
       fetchPageData(1, tagFilter, sortBy);
@@ -186,6 +193,20 @@ export default function ProductsPage({
               <h1>Maddy Custom</h1>
             </div>
           )}
+           <div>
+      {/* Your product page content */}
+      
+     
+      {variant.popupDetails && variant.popupDetails.length > 0 && (
+         <VariantDialog imageUrl={`${baseImageUrl}${variant.popupDetails[0] || ''}`} />
+        // <VariantDialog imageUrl={variant.popupDetails[0]} />
+      )}
+      {console.log(`${baseImageUrl}${variant.popupDetails[0] || ''}`, variant.popupDetails)}
+
+   
+      {/* <VariantDialog imageUrl={testVariant.popupDetails[0]} /> */}
+
+    </div>
 
           {/* If category is "tank wraps" and user is on a small device => show carousel */}
           {category?.specificCategoryCode === 'tw' && isSmallDevice && (
