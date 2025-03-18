@@ -1,3 +1,4 @@
+// src/app/api/cron/aisensy/abandoned-cart-first/route.js
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
@@ -61,47 +62,26 @@ export async function GET(req) {
     for (const order of abandonedOrders) {
       const { userId, userName, phoneNumber, orderId, firstItem } = order;
 
-      // Build carouselCards if a product image is available from the first item
-      let carouselCards = [];
-
+      // Build media object instead of carouselCards
+      let media = null;
       if (firstItem && firstItem.product) {
         const product = await Product.findById(firstItem.product).lean();
         if (product && product.images && product.images.length > 0) {
-          carouselCards.push({
-            card_index: 0,
-            components: [
-              {
-                type: "HEADER",
-                parameters: [
-                  {
-                    type: "image",
-                    image: {
-                      link: product.images[0].startsWith('/')
-                        ? `${imageBaseUrl}${product.images[0]}`
-                        : `${imageBaseUrl}/${product.images[0]}`
-                    }
-                  }
-                ]
-              },
-              {
-                type: "BUTTON",
-                sub_type: "URL",
-                index: 0,
-                parameters: [
-                  { type: "text", text: "#SAMPLE-CLICK-TRACKING#" }
-                ]
-              }
-            ]
-          });
+          media = {
+            url: product.images[0].startsWith('/')
+              ? `${imageBaseUrl}${product.images[0]}`
+              : `${imageBaseUrl}/${product.images[0]}`,
+            filename: 'product-image'
+          };
         }
       }
 
       const result = await sendWhatsAppMessage({
         user: { _id: userId, name: userName, phoneNumber },
-        campaignName: 'abandoned-cart-first-campaign',
+        campaignName: 'abandonedcart_rem1',
         orderId,
         templateParams: [userName || 'Friend'],
-        carouselCards,
+        media,
       });
 
       if (result.success) sentCount++;
