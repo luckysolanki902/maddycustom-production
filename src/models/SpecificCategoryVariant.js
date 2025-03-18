@@ -12,6 +12,11 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       index: true,
       unique: true,
     },
+    listLayout:{
+      type: String,
+      default:'1',
+      required: false,
+    },
     thumbnail: {
       type: String,
       required: false

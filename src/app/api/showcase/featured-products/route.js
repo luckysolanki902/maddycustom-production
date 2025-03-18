@@ -48,7 +48,6 @@ export async function GET(request) {
 
     // Remove any null results (in case a variant has no product)
     const filteredProducts = products.filter(product => product !== null);
-
     return NextResponse.json({
       category,
       variants,

@@ -227,6 +227,7 @@ export default function ProductIdPage({
   const getOptionStyle = (opt) => {
     const style = {
       width: "2.5rem",
+      width: "2.5rem",
       height: "2.5rem",
       borderRadius: "50%",
       border:
