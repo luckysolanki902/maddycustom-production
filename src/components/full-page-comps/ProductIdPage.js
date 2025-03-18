@@ -82,8 +82,11 @@ export default function ProductIdPage({
     );
     if (validOption) {
       const firstKey = Object.keys(validOption.optionDetails)[0];
-      optionLabel = 'More ' +
-        firstKey.charAt(0).toUpperCase() + firstKey.slice(1) + "s";
+      optionLabel =
+        "More " +
+        firstKey.charAt(0).toUpperCase() +
+        firstKey.slice(1) +
+        "s";
     }
   }
 
@@ -248,11 +251,24 @@ export default function ProductIdPage({
           : null;
       if (optionValue) {
         style.backgroundColor =
-          colorMap[optionValue.toLowerCase()] ||
-          optionValue.toLowerCase();
+          colorMap[optionValue.toLowerCase()] || optionValue.toLowerCase();
       }
     }
     return style;
+  };
+
+  // Helper: Show the prepended selected option if available
+  const getDisplayedTitle = () => {
+    if (!selectedOption || !selectedOption.optionDetails) {
+      return product.title;
+    }
+    // We'll take the first entry from `optionDetails`. In your use case, 
+    // you might want a specific key, e.g. "flavor", "color", etc.
+    const detailValue = Object.values(selectedOption.optionDetails)[0];
+    if (!detailValue) {
+      return product.title;
+    }
+    return `${detailValue} ${product.title}`;
   };
 
   return (
@@ -279,7 +295,8 @@ export default function ProductIdPage({
         {!isZoomed && (
           <div className={styles.productDetails}>
             <div className={styles.details}>
-              <h1 className={styles.title}>{product.title}</h1>
+              {/* Here we prepend the selected option’s value to the product name */}
+              <h1 className={styles.title}>{getDisplayedTitle()}</h1>
               {variant?.cardCaptions?.[0] && (
                 <p
                   style={{ marginTop: "-0.5rem", marginLeft: "0.3rem" }}
@@ -389,9 +406,7 @@ export default function ProductIdPage({
                 </>
               ) : (
                 <div style={{ margin: "1rem 0" }}>
-                  <div style={{ marginBottom: "0.5rem" }}>
-                    {optionLabel}
-                  </div>
+                  <div style={{ marginBottom: "0.5rem" }}>{optionLabel}</div>
                   <div style={{ display: "flex", gap: "0.5rem" }}>
                     {options
                       .filter(
