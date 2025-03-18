@@ -48,11 +48,13 @@ export async function POST(request) {
         return NextResponse.json({ message: 'Specific Category Not Found' }, { status: 404 });
       }
 
-      // Fetch all options for the product
+      // Fetch all options for the product and sort them by inventoryData.availableQuantity (highest first)
       const options = await Option.find({ product: product._id })
         .populate('inventoryData')
         .lean()
         .exec();
+      
+      options && options.sort((a, b) => (b.inventoryData?.availableQuantity || 0) - (a.inventoryData?.availableQuantity || 0));
       product.options = options;
 
       return NextResponse.json(
@@ -143,7 +145,7 @@ export async function POST(request) {
         pipeline.push({ $skip: (currentPage - 1) * limit }, { $limit: limit });
       }
 
-      // Lookup options for each product
+      // Lookup options for each product and sort them by inventoryData.availableQuantity (highest first)
       pipeline.push({
         $lookup: {
           from: "options",
@@ -159,6 +161,7 @@ export async function POST(request) {
               },
             },
             { $unwind: { path: "$inventoryData", preserveNullAndEmptyArrays: true } },
+            { $sort: { "inventoryData.availableQuantity": -1 } }
           ],
           as: "options",
         },

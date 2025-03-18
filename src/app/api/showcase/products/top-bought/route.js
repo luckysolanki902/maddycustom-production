@@ -150,11 +150,17 @@ export async function GET(request) {
       const optionsDocs = await Option.find({ product: { $in: pIds } })
         .populate('inventoryData')
         .lean();
+      
+      // Group options per product
       const optionsMap = {};
       optionsDocs.forEach((opt) => {
         const key = opt.product.toString();
         if (!optionsMap[key]) optionsMap[key] = [];
         optionsMap[key].push(opt);
+      });
+      // Sort each options array in descending order of inventoryData.availableQuantity.
+      Object.keys(optionsMap).forEach((key) => {
+        optionsMap[key].sort((a, b) => (b.inventoryData?.availableQuantity || 0) - (a.inventoryData?.availableQuantity || 0));
       });
 
       // (3) Compute totalBought via Order aggregation.
