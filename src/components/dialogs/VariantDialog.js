@@ -1,66 +1,89 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { Dialog, DialogContent, IconButton } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import React, { useEffect } from "react";
+import Image from "next/image";
+import { Dialog, DialogContent, IconButton, Box } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 
-const VariantDialog = ({ imageUrl, width = 400, height = 400 }) => {
-  // Automatically open the dialog when the component mounts.
-  const [open, setOpen] = useState(true);
+export default function VariantDialog({ open, onClose, imageUrl }) {
+  useEffect(() => {
+    // Handle the browser's Back button
+    const handlePopState = (event) => {
+      if (open) {
+        // We only intercept the Back button when the dialog is open
+        onClose();
 
-  const handleClose = () => {
-    setOpen(false);
-  };
+        // Immediately push a fresh state so the user doesn't leave the current page
+        // (preventing an actual navigation away).
+        window.history.pushState(null, "", window.location.href);
+      }
+    };
+
+    if (open) {
+      // Push a dummy state when the dialog opens
+      window.history.pushState(null, "", window.location.href);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+
+    // Clean up our event listener
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [open, onClose]);
 
   return (
     <Dialog
       open={open}
-      onClose={handleClose}
-      // Disable MUI's maxWidth so the dialog sizes exactly to the image.
-      maxWidth={false}
-      // Remove padding/margin, box shadow, etc. to avoid white space.
+      onClose={onClose}
+      fullScreen
       PaperProps={{
         sx: {
-          p: 0,
-          m: 0,
+          backgroundColor: "transparent",
+          boxShadow: "none",
           borderRadius: 0,
-          boxShadow: 'none',
-          overflow: 'hidden',
-          position: 'relative',
         },
       }}
     >
-      {/* Close icon in the top-right corner, over the image */}
-      <IconButton
-        aria-label="close"
-        onClick={handleClose}
+      <DialogContent
         sx={{
-          position: 'absolute',
-          right: 8,
-          top: 8,
-          backgroundColor: 'rgba(255,255,255,0.7)',
-          zIndex: 1,
+          p: 0,
+          m: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          position: "relative",
         }}
       >
-        <CloseIcon />
-      </IconButton>
-
-      <DialogContent sx={{ p: 0, m: 0 }}>
-        {/* 
-          Provide explicit width and height to avoid layout shift.
-          The "display: block" style removes default inline spacing. 
-        */}
-        <Image
-          src={imageUrl}
-          alt="Popup image"
-          width={width}
-          height={height}
-          style={{ display: 'block' }}
-        />
+        <Box sx={{ position: "relative" }}>
+          <IconButton
+            aria-label="close"
+            onClick={onClose}
+            sx={{
+              position: "absolute",
+              right: 0,
+              top: 0,
+              zIndex: 1,
+              color: "#fff",
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+          <Image
+            src={imageUrl}
+            alt="Popup image"
+            width={800}
+            height={800}
+            style={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              width: "auto",
+              height: "auto",
+            }}
+          />
+        </Box>
       </DialogContent>
     </Dialog>
   );
-};
-
-export default VariantDialog;
+}
