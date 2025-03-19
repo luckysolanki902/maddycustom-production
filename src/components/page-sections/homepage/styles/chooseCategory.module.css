@@ -2,45 +2,50 @@
     display: grid;
     gap: 2rem;
     margin: 1rem;
-    /* Ensure at least 3 columns on all screens */
+    /* At least 3 columns at all times */
     grid-template-columns: repeat(3, 1fr);
-    align-items: center;
+  
+    /* IMPORTANT: Align items at the top of the grid area,
+       ensuring the top edges line up across a row */
+    align-items: start;
     justify-content: center;
-}
-
-/* For medium screens */
-@media (min-width: 480px) {
+  }
+  
+  /* For medium screens */
+  @media (min-width: 480px) {
     .chooseContainer {
-        grid-template-columns: repeat(4, 1fr);
-        margin: 1.5rem;
+      grid-template-columns: repeat(4, 1fr);
+      margin: 1.5rem;
     }
-}
-
-/* For tablet screens */
-@media (min-width: 768px) {
+  }
+  
+  /* For tablet screens */
+  @media (min-width: 768px) {
     .chooseContainer {
-        grid-template-columns: repeat(5, 1fr);
-        margin: 2rem;
+      grid-template-columns: repeat(5, 1fr);
+      margin: 2rem;
     }
-}
-
-/* For larger screens/PC */
-@media (min-width: 1200px) {
+  }
+  
+  /* For larger (PC) screens */
+  @media (min-width: 1200px) {
     .chooseContainer {
-        grid-template-columns: repeat(6, 1fr);
-        margin: 4.5rem;
-
+      grid-template-columns: repeat(6, 1fr);
+      margin: 4.5rem;
     }
-}
-
-.mainCard {
+  }
+  
+  /* Each card acts like a vertical stack: image + text. */
+  .mainCard {
     display: flex;
     flex-direction: column;
+    /* No vertical centering: we let it stretch from the top */
     align-items: center;
     justify-content: flex-start;
-}
-
-.chooseCard {
+  }
+  
+  /* Card styling */
+  .chooseCard {
     display: block;
     width: 100%;
     border-radius: 1.5rem;
@@ -48,43 +53,48 @@
     box-shadow: -3px -4px 4px #a3d5e0, 3px 4px 4px #a3d5e0;
     transition: box-shadow 0.3s ease-out;
     text-decoration: none;
-}
-
-
-/* Square image container using aspect-ratio */
-.imageWrapper {
+  }
+  
+  /* Ensure the image area always has the same size/shape */
+  .imageWrapper {
     width: 100%;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 1 / 1; /* a square; ensures consistent height across all cards */
     position: relative;
     overflow: hidden;
-}
-
-.chooseImage {
+  }
+  
+  .chooseImage {
     object-fit: cover;
     width: 100%;
     height: 100%;
     transition: transform 0.3s ease-out;
-}
-
-.chooseImage:hover {
+  }
+  
+  .chooseImage:hover {
     transform: scale(1.05);
-}
-
-/* The name container ensures text labels are aligned at the top */
-.name {
+  }
+  
+  /* The text area is given a min-height to ensure that
+     one- or two-line names all start from the same top line. */
+  .name {
     margin-top: 0.5rem;
     font-size: 1.1rem;
     text-align: center;
-    min-height: 2.5rem;
+  
+    /* Adjust this to accommodate likely line-breaks.
+       This example is enough for two lines plus a bit of breathing space. */
+    min-height: 3rem;
+  
     display: flex;
-    align-items: flex-start;
+    align-items: flex-start; /* text lines up from the top */
     justify-content: center;
-}
-
-/* Adjustments for very small screens if needed */
-@media (max-width: 450px) {
+  }
+  
+  /* Adjust for very small screens if needed */
+  @media (max-width: 450px) {
     .name {
-        font-size: 0.9rem;
-        min-height: 2rem;
+      font-size: 0.9rem;
+      min-height: 2.2rem; /* maybe shrink the min height a bit */
     }
-}
+  }
+  
