@@ -129,7 +129,7 @@ const ChooseCategory = () => {
             />
           </div>
         </Link>
-        <div className={styles.name}>Fuel Cap Wraps</div>
+        <div className={styles.name}>Car Freshners</div>
       </div>
 
       {/* More Products */}
