@@ -28,35 +28,36 @@ export async function generateMetadata() {
   });
 }
 
+const [
+  ourUniqueProductsData,
+  randomProductsData, // Now using the new generic endpoint
+  featuredBikeWrapsData,
+  happyCustomersData,
+  searchCategoriesData,
+] = await Promise.all([
+  fetchOurUniqueProducts(),
+  fetchRandomProducts('f', 10), // Pass your specific category slug here
+  fetchFeaturedproducts('caf'),
+  fetchHappyCustomers(null),
+  fetchSearchCategories(),
+]);
+
 const HomePage = async () => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   // Fetch all necessary data concurrently
-  const [
-    ourUniqueProductsData,
-    randomProductsData, // Now using the new generic endpoint
-    featuredBikeWrapsData,
-    happyCustomersData,
-    searchCategoriesData,
-  ] = await Promise.all([
-    fetchOurUniqueProducts(),
-    fetchRandomProducts('f', 10), // Pass your specific category slug here
-    fetchFeaturedproducts('caf'),
-    fetchHappyCustomers(null),
-    fetchSearchCategories(),
-  ]);
 
   // Destructure categories and variants from searchCategoriesData
   const { categories, variants } = searchCategoriesData;
 
   return (
     <>
+
       <main>
-      
         {/* Logo and Main Carousel */}
         <HeroSection />
 
         {/* SearchBox */}
-        <div className={styles.chooseDiv}>CHOOSE</div> 
+        <div className={styles.chooseDiv}>CHOOSE</div>
         <CategorySearchBox categories={categories} variants={variants} />
 
         {/* Category cards like Helmet, Tank, Bonnet to choose from */}
@@ -67,20 +68,6 @@ const HomePage = async () => {
         {/* Our Unique Products */}
         <OurUniqueProductCarousel products={ourUniqueProductsData} />
 
-        {/* Random Products Slider (formerly Helmet Slider) */}
-        {/* <Box
-          sx={{
-            textAlign: 'center',
-            mt: { xs: 4, md: 6 },
-            mb: { xs: 4, md: 6 },
-            fontSize: { xs: '1.5rem', md: '2rem' },
-            fontWeight: 600,
-            fontFamily: 'Jost',
-          }}
-        >
-          Car Tank Cap Wrap
-        </Box> */}
-
         <div className={styles.doubleGrid}>
           <Image src={`${baseImageUrl}/assets/posters/first-brand-surprise-banner.png`} alt='doublegrid' width={1000} height={500}></Image>
           <Image src={`${baseImageUrl}/assets/posters/tank-cap-wrap-banner.png`} alt='doublegrid' width={1000} height={500}></Image>
@@ -89,16 +76,25 @@ const HomePage = async () => {
 
         {/* Bonnet Strip Wrap Poster */}
         <FlexibleLargePoster
-          imageSlugForPc='bonnetstrippc.jpg'
-          imageSlugForPhone='bonnetstripphone.jpg'
-          link='/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps'
+          items={[
+            {
+              pcImage: "bonnetstrippc.jpg",
+              phoneImage: "bonnetstripphone.jpg",
+              link: "/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps",
+            },
+            {
+              pcImage: "caf_pc.png",
+              phoneImage: "caf_phone.png",
+              link: "/shop/accessories/car-care/car-air-freshners/hanging-bottle-car-fresheners",
+            },
+          ]}
         />
 
         {/* Featured Products */}
         <FeaturedProducts data={featuredBikeWrapsData} />
 
         {/* Happy Customers */}
-        <div className={styles.featuredHead}>
+        <div className={styles.featuredHead} style={{marginBottom:'-2rem', marginTop:'1rem'}}>
           <Image
             width={940}
             height={256}
