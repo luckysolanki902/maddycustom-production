@@ -159,27 +159,25 @@
 @media (max-width: 1000px) {
     .hamburgerIcon {
         display: block; /* Show the hamburger on mobile */
-        
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
     }
 
     .navLinks {
-        display: none;
-        /* Hide the desktop nav links on mobile */
+        display: none; /* Hide the desktop nav links on mobile */
+       
     }
 
     .searchBox {
-        display: none;
-        /* Hide the large search input on mobile */
+        display: none;/* Hide the large search input on mobile */
+        
     }
     .topbar{
     justify-content: center;
     }
-    .hamburgerIcon {
-        position: absolute;
-        left: 10px;
-        top: 50%;
-        transform: translateY(-50%); /* vertically center in the bar */
-      }
+    
       .rightIcons {
         position: absolute;
         right: 30px;
@@ -192,13 +190,13 @@
       }
 
     .mobileSearchIcon {
-        display: block;
-        /* Show mobile search icon */
+        display: block; /* Show mobile search icon */
+       
     }
-.logoImg{
+    .logoImg{
    margin: 0 auto;
-}
-    /* You can also reduce font sizes if desired */
+    }
+
 }
 
 @media (min-width: 1000px) {
