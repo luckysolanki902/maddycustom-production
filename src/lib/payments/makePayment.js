@@ -3,7 +3,7 @@
 export const makePayment = async ({ customerName, customerMobile, orderId, razorpayOrder }) => {
   const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-  const logoUrl = `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/logos/maddy-custom-old-circular-logo.png`;
+  const logoUrl = `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/logos/maddy3logodark_rect.png`;
 
   if (!razorpayKey || !baseUrl || !logoUrl) {
     console.error('Environment variables are not correctly defined.');
