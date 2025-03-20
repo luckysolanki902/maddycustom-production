@@ -80,7 +80,7 @@ export async function GET(req) {
         user: { _id: userId, name: userName, phoneNumber },
         campaignName: 'abandonedcart_rem2',
         orderId,
-        templateParams: [userName || 'Friend'],
+        // templateParams: [userName || 'Friend'],
         media,
       });
 
