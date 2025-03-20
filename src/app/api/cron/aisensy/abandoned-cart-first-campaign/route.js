@@ -12,7 +12,7 @@ export async function GET(req) {
     // Define Time Window: 30 mins < order age < 60 mins
     const now = new Date();
     const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000);
-    const sixtyMinsAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    const sixtyMinsAgo = new Date(now.getTime() - 60 * 60 * 10000);
     const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
     const pipeline = [
@@ -80,7 +80,7 @@ export async function GET(req) {
         user: { _id: userId, name: userName, phoneNumber },
         campaignName: 'abandonedcart_rem1',
         orderId,
-        templateParams: [userName || 'Friend'],
+        // templateParams: [userName || 'Friend'],
         media,
       });
 
