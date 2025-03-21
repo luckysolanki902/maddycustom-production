@@ -1,5 +1,5 @@
 .topbar {
-    background-color: #424242;
+    background-color: #fff;
     color: white;
     padding: 12px 24px;
     display: flex;
@@ -12,20 +12,20 @@
     width: 100%;
     top: 0;
     left: 0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 4px  rgba(0, 0, 0, 0.25);
+  
 }
 
 /* Left Section */
 .leftSection {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 10px;
 }
 
 /* Hamburger icon: show on mobile, hide on desktop */
 .hamburgerIcon {
-    display: none;
-    /* hidden on desktop, we show it on mobile */
+    display: none; /* hidden on desktop, we show it on mobile */
 }
 
 /* Logo */
@@ -38,6 +38,7 @@
     height: 50px;
     width: auto;
     cursor: pointer;
+    /* margin-left: 40px; */
 }
 
 /* Desktop Navigation Links */
@@ -48,9 +49,9 @@
 }
 
 .navItem {
-    font-size: 16px;
+    font-size: 17px;
     text-decoration: none;
-    color: white;
+    color: #424242;
     padding: 8px 12px;
     position: relative;
     transition: all 0.3s ease-in-out;
@@ -62,11 +63,11 @@
     content: "";
     position: absolute;
     left: 50%;
-    bottom: -3px;
+    bottom: 4px;
     width: 0;
     height: 2px;
     border-radius: 10px;
-    background-color: rgba(255, 255, 255, 0.597);
+    background-color:#424242;
     transition: all 0.3s ease-in-out;
     transform: translateX(-50%);
 }
@@ -84,11 +85,11 @@
     content: "";
     position: absolute;
     left: 50%;
-    bottom: -3px;
+    bottom: 7px;
     width: 100%;
     height: 2px;
     border-radius: 10px;
-    background-color: white;
+    background-color: #424242;
     transform: translateX(-50%);
 }
 
@@ -98,13 +99,14 @@
     align-items: center;
     background-color: white;
     border-radius: 8px;
+    border: 2px solid #424242;
     padding: 6px 12px;
     width: 350px;
     height: 35px;
 }
 
 .searchIcon {
-    color: #555;
+    color: #424242;
     font-size: 20px;
 }
 
@@ -132,8 +134,8 @@
 }
 
 .cartIcon {
-    font-size: 30px;
-    color: #fff;
+    font-size: 20px;
+    color: #424242;
 }
 
 .MuiBadge-badge {
@@ -148,7 +150,7 @@
 .mobileSearchIcon {
     display: none;
     font-size: 25px;
-    color: #fff;
+    color: #424242;
     cursor: pointer;
 }
 
@@ -157,26 +159,46 @@
 /* Show hamburger & mobile search icon on smaller screens, hide big nav & search box */
 @media (max-width: 1000px) {
     .hamburgerIcon {
-        display: block;
-        /* Show the hamburger on mobile */
+        display: block; /* Show the hamburger on mobile */
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
     }
 
     .navLinks {
-        display: none;
-        /* Hide the desktop nav links on mobile */
+        display: none; /* Hide the desktop nav links on mobile */
+       
     }
 
     .searchBox {
-        display: none;
-        /* Hide the large search input on mobile */
+        display: none;/* Hide the large search input on mobile */
+        
     }
+    .topbar{
+    justify-content: center;
+    box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.25);
+    }
+    
+      .rightIcons {
+        position: absolute;
+        right: 30px;
+        top: 50%;
+        gap: 10px;
+        transform: translateY(-50%);
+      }
+      .cartIcon{
+        margin-right: 5px;
+      }
 
     .mobileSearchIcon {
-        display: block;
-        /* Show mobile search icon */
+        display: block; /* Show mobile search icon */
+       
+    }
+    .logoImg{
+   margin: 0 auto;
     }
 
-    /* You can also reduce font sizes if desired */
 }
 
 @media (min-width: 1000px) {

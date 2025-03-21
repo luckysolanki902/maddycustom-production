@@ -31,7 +31,7 @@ const Topbar = () => {
       <div className={styles.leftSection}>
         {/* Hamburger icon only visible on smaller screens (handled via CSS) */}
         <div className={styles.hamburgerIcon} onClick={() => dispatch(toggleSidebar())}>
-          <Menu style={{ fontSize: 30, color: '#fff', cursor: 'pointer' }} />
+          <Menu style={{ fontSize: 30, color: '#424242', cursor: 'pointer' }} />
         </div>
 
         {/* Logo */}
