@@ -63,7 +63,31 @@
   font-family: Jost, sans-serif;
   align-items: flex-start;
   gap: 0.2rem;
+  position: relative;
+  overflow: hidden;
 }
+
+.offer5::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.5), transparent);
+  transform: skewX(-25deg);
+  animation: coinShine 2s infinite;
+}
+
+@keyframes coinShine {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 150%;
+  }
+}
+
 
 .offer5Line1 {
   font-weight: 500;
@@ -157,5 +181,32 @@
   .studdspngincard img {
     width: 2.5em;
     height: auto;
+  }
+}
+/* font-sizes */
+@media (max-width: 600px) {
+  .taptozoom {
+    font-size: 0.8rem;
+  }
+  .offer5Line1 {
+    font-size: 0.65rem;
+  }
+  .offer5Line2 {
+    font-size: 0.4rem;
+  }
+  .offer5Line3 {
+    font-size: 0.25rem;
+  }
+  .productName {
+    font-size: 1rem;
+  }
+  .productCardSubtitles {
+    font-size: 0.75rem;
+  }
+  .rupees {
+    font-size: 1rem;
+  }
+  .priceValue {
+    font-size: 0.85rem;
   }
 }

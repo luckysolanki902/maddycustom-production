@@ -205,17 +205,17 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false }
         <div className={styles.prodDescRow2}>
           <div className={styles.productCardSubtitles}>
             {product.variantDetails?.cardCaptions?.map((caption, index) => {
-              const allStrings = product.variantDetails?.cardCaptions?.join(' ');
-              const overallLength = allStrings.length;
-              const charLimit = 45
-              const shortenedString = overallLength > charLimit ? allStrings.slice(0, charLimit-5) + '...more' : allStrings;
+              const charLimit = 48;
+              const shortenedString = caption.length > charLimit
+                ? caption.slice(0, charLimit) + '...more'
+                : caption;
               return (
                 <React.Fragment key={index}>
-                  <span>{shortenedString}</span>
-                  <br />
+                  <span>{shortenedString}</span> <br />
                 </React.Fragment>
               );
             })}
+
           </div>
         </div>
 
