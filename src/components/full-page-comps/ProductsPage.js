@@ -72,8 +72,7 @@ export default function ProductsPage({
       try {
         setIsLoading(true);
         const res = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
           }/api/shop/products`,
           {
             method: "POST",
@@ -141,99 +140,101 @@ export default function ProductsPage({
 
       <div style={{ backgroundColor: showLayout2 ? "#F1F3F6" : "white" }}>
         <div style={{ maxWidth: showLayout2 ? "1200px" : "100%", margin: "auto" }}>
-          <header>
-            <div className={styles.headContainer}>
-              <div className={styles.headingFlex}>
-                <h1
-                  className={styles.bikeHeading}
-                  style={{
-                    fontSize: isLargeDevice
-                      ? variant?.name.length > 15
-                        ? "2.5rem"
-                        : variant?.name.length > 20
-                        ? "2rem"
-                        : "3.5rem"
-                      : variant?.name.length > 15
-                      ? "1.8rem"
-                      : variant?.name.length > 20
-                      ? "1.5rem"
-                      : "2.2rem"
-                  }}
-                >
-                  {variant?.name}
-                  {variant?.name?.toLowerCase().includes("tank") && (
-                    <button
-                      className={styles.sizebutton}
-                      style={{ backgroundColor: "#d6fcff" }}
-                    >
-                      {variant?.name === "Slim Tank Wraps"
-                        ? "6.8 cm wide"
-                        : variant?.name === "Medium Tank Wraps"
-                        ? "7 cm wide"
-                        : variant?.name === "Wide Tank Wraps"
-                        ? "19.05 cm wide"
-                        : null}
-                    </button>
-                  )}
-                </h1>
+          <div className={`${showLayout2 ? styles.layout2withpadding : ''}`}>
 
-                {/* Subtitles or special text for helmets */}
-                {variant?.subtitles?.length > 0 && variant?.subtitles[0] && (
-                  variant.variantCode === "hel" ? (
-                    <>
-                      <h2 className={styles.helmetTagline}>
-                        &quot;Best designed helmets of India <br /> with safety of&quot;
+            <header>
+              <div className={styles.headContainer}>
+                <div className={styles.headingFlex}>
+                  <h1
+                    className={styles.bikeHeading}
+                    style={{
+                      fontSize: isLargeDevice
+                        ? variant?.name.length > 15
+                          ? "2.5rem"
+                          : variant?.name.length > 20
+                            ? "2rem"
+                            : "3.5rem"
+                        : variant?.name.length > 15
+                          ? "1.8rem"
+                          : variant?.name.length > 20
+                            ? "1.5rem"
+                            : "2.2rem"
+                    }}
+                  >
+                    {variant?.name}
+                    {variant?.name?.toLowerCase().includes("tank") && (
+                      <button
+                        className={styles.sizebutton}
+                        style={{ backgroundColor: "#d6fcff" }}
+                      >
+                        {variant?.name === "Slim Tank Wraps"
+                          ? "6.8 cm wide"
+                          : variant?.name === "Medium Tank Wraps"
+                            ? "7 cm wide"
+                            : variant?.name === "Wide Tank Wraps"
+                              ? "19.05 cm wide"
+                              : null}
+                      </button>
+                    )}
+                  </h1>
+
+                  {/* Subtitles or special text for helmets */}
+                  {variant?.subtitles?.length > 0 && variant?.subtitles[0] && (
+                    variant.variantCode === "hel" ? (
+                      <>
+                        <h2 className={styles.helmetTagline}>
+                          &quot;Best designed helmets of India <br /> with safety of&quot;
+                        </h2>
+                        <Image
+                          className={styles.studds}
+                          src={`${baseImageUrl}${variant?.availableBrands?.[0]?.brandLogo || ""}`}
+                          width={1103 / 5}
+                          height={394 / 5}
+                          alt={"studds"}
+                        />
+                      </>
+                    ) : (
+                      <h2 className={styles.belowMainHeading}>
+                        {variant?.subtitles[0]}
                       </h2>
-                      <Image
-                        className={styles.studds}
-                        src={`${baseImageUrl}${variant?.availableBrands?.[0]?.brandLogo || ""}`}
-                        width={1103 / 5}
-                        height={394 / 5}
-                        alt={"studds"}
-                      />
-                    </>
-                  ) : (
-                    <h2 className={styles.belowMainHeading}>
-                      {variant?.subtitles[0]}
-                    </h2>
-                  )
-                )}
+                    )
+                  )}
+                </div>
               </div>
-            </div>
-          </header>
+            </header>
 
-          {/* Video Embed for Small Devices */}
-          {variant?.showCase?.[0]?.available && isSmallDevice && (
-            <div className={style.videoCard} aria-label="Product Video">
-              <iframe
-                width="100%"
-                height="100%"
-                src="https://www.youtube.com/embed/MOX9WDmSkCA?autoplay=1&mute=1&loop=1&playlist=MOX9WDmSkCA&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&disablekb=1"
-                title="Product Video"
-                allow="autoplay; encrypted-media"
-                allowFullScreen
-                style={{ pointerEvents: "none" }}
-              />
-              <h1>Maddy Custom</h1>
-            </div>
-          )}
+            {/* Video Embed for Small Devices */}
+            {variant?.showCase?.[0]?.available && isSmallDevice && (
+              <div className={style.videoCard} aria-label="Product Video">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src="https://www.youtube.com/embed/MOX9WDmSkCA?autoplay=1&mute=1&loop=1&playlist=MOX9WDmSkCA&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&disablekb=1"
+                  title="Product Video"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                  style={{ pointerEvents: "none" }}
+                />
+                <h1>Maddy Custom</h1>
+              </div>
+            )}
 
-          {/* If category is "tank wraps" and user is on a small device => show carousel */}
-          {category?.specificCategoryCode === "tw" && isSmallDevice && (
-            <div className={herosectionStyles.carouseldiv}>
-              <FullWidthRoundCornerLandscapeCarousel
-                images={[
-                  `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel1.jpg`,
-                  `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel2.jpg`,
-                  `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel3.jpg`
-                ]}
-              />
-            </div>
-          )}
+            {/* If category is "tank wraps" and user is on a small device => show carousel */}
+            {category?.specificCategoryCode === "tw" && isSmallDevice && (
+              <div className={herosectionStyles.carouseldiv}>
+                <FullWidthRoundCornerLandscapeCarousel
+                  images={[
+                    `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel1.jpg`,
+                    `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel2.jpg`,
+                    `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel3.jpg`
+                  ]}
+                />
+              </div>
+            )}
 
-          {/* Filter by tags */}
-          <Tags setTagFilter={setTagFilter} tags={uniqueTags} />
-
+            {/* Filter by tags */}
+            <Tags setTagFilter={setTagFilter} tags={uniqueTags} />
+          </div>
           {/* Example sort dropdown 
           <FormControl variant="outlined" className={styles.sortSelect} size="small">
             <InputLabel id="sort-select-label">Sort By</InputLabel>
