@@ -76,11 +76,26 @@ export async function GET(req) {
         }
       }
 
+      const buttons = [
+        {
+          type: 'button',
+          sub_type: 'COPY_CODE',
+          index: '0',
+          parameters: [
+            {
+              type: 'coupon_code',
+              coupon_code: `RIDE15`,
+            },
+          ],
+        },
+      ];
+
       const result = await sendWhatsAppMessage({
         user: { _id: userId, name: userName, phoneNumber },
         campaignName: 'abandonedcart_rem2',
         orderId,
         // templateParams: [userName || 'Friend'],
+        buttons,
         media,
       });
 
