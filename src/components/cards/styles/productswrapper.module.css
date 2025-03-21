@@ -12,17 +12,18 @@
 }
 
 .productsGrid2 {
-  margin-top: 2rem;
+  margin-top: 0.2rem;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  row-gap: 1rem;
-  column-gap: 1rem;
+  row-gap: 0.2rem;
+  column-gap: 0.2rem;
   padding: 20px;
   overflow-x: hidden;
   width: 100%;
   max-width: 1200px; /* Adjust as needed */
   margin-left: auto;
   margin-right: auto;
+
 }
 
 
@@ -106,8 +107,7 @@
 /* ProductCard main container styling */
 .mainCardDiv {
   cursor: pointer;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1),
-    0 1px 3px rgba(145, 145, 145, 0.08);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(145, 145, 145, 0.08);
   padding: 0.2rem 0.5rem 1rem 0.5rem;
   /* flex-grow: 1;  */
   /* Allows the card to grow and fill the grid cell */

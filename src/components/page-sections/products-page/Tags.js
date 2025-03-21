@@ -22,6 +22,10 @@ const Tags = ({ setTagFilter, tags }) => {
       setTagFilter(tag); // Set the tag filter
     }
   };
+    if (uniqueTags?.length <= 1) {
+      return null
+    }
+
 
   return (
     <div className={styles.tagMainContainer}>

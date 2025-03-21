@@ -240,6 +240,7 @@
 }
 
 .bikeHeading {
+    /* background-color: black; */
     font-family:  Jost;
     color: #2e2e2e;
     margin: 1.9rem;
@@ -248,8 +249,13 @@
     flex-direction: column;
     justify-content: end;
     align-items: end;
+    font-weight: 500;
 }
 
+.layout2withpadding{
+    background-color: white;
+    padding-bottom: 1rem;
+}
 
 .smallradio {
     display: flex;
@@ -382,10 +388,7 @@
         font-size: 0.6rem;
     }
 
-    .bikeHeading {
-        letter-spacing: 2px;
-        word-spacing: 0.6rem;
-    }
+
 
     .helmetTagline {
         font-size: 0.8rem;

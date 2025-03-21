@@ -104,7 +104,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false }
   return (
     <div
       className={styles.mainCardDiv}
-      style={{ cursor: isZoomed ? 'default' : 'pointer', backgroundColor: 'white' }}
+      style={{ cursor: isZoomed ? 'default' : 'pointer', backgroundColor: 'white', boxShadow: showLayout2 ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(145, 145, 145, 0.08)' }}
       onClick={() => {
         if (!isZoomed) {
           navigateToProductPage();
@@ -204,12 +204,18 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false }
 
         <div className={styles.prodDescRow2}>
           <div className={styles.productCardSubtitles}>
-            {product.variantDetails?.cardCaptions?.map((caption, index) => (
-              <React.Fragment key={index}>
-                <span>{caption}</span>
-                <br />
-              </React.Fragment>
-            ))}
+            {product.variantDetails?.cardCaptions?.map((caption, index) => {
+              const allStrings = product.variantDetails?.cardCaptions?.join(' ');
+              const overallLength = allStrings.length;
+              const charLimit = 45
+              const shortenedString = overallLength > charLimit ? allStrings.slice(0, charLimit-5) + '...more' : allStrings;
+              return (
+                <React.Fragment key={index}>
+                  <span>{shortenedString}</span>
+                  <br />
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
 
