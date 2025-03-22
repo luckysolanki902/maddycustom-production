@@ -67,12 +67,20 @@ export const TopBoughtProducts = ({
           },
         });
         const { products: fetched, hasMore: more } = data || {};
+  
+        // Map through fetched products and add selectedOption if options exist
+        const updatedFetched = fetched.map((product) =>
+          Array.isArray(product.options) && product.options.length > 0
+            ? { ...product, selectedOption: product.options[0] }
+            : product
+        );
+  
         if (newSkip === 0) {
-          setProducts(fetched);
-          mergedExcludes.current.push(...fetched.map((p) => p._id));
+          setProducts(updatedFetched);
+          mergedExcludes.current.push(...updatedFetched.map((p) => p._id));
         } else {
-          setProducts((prev) => [...prev, ...fetched]);
-          mergedExcludes.current.push(...fetched.map((p) => p._id));
+          setProducts((prev) => [...prev, ...updatedFetched]);
+          mergedExcludes.current.push(...updatedFetched.map((p) => p._id));
         }
         setHasMore(more);
       } catch (err) {
@@ -87,13 +95,14 @@ export const TopBoughtProducts = ({
     },
     [subCategories, currentProductId, excludeProductIds]
   );
+  
 
   const handleLoadMore = () => {
     const newSkip = skip + PAGE_SIZE;
     setSkip(newSkip);
     fetchProducts(newSkip, mergedExcludes.current);
   };
-
+  console.log(products)
   return (
     <Box sx={{ width: '100%', mt: 3, p: 2 }}>
       <Typography variant="h5" sx={{ mb: 2 }}>
