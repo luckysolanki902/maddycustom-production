@@ -5,23 +5,38 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
 import mongoose from 'mongoose';
 import { statusMapping } from '@/lib/constants/shiprocketStatusMapping';
-import inventory from '@/models/Inventory';
-import option from '@/models/Option';
+import Inventory from '@/models/Inventory';
+import Option from '@/models/Option';
+import Product from '@/models/Product';
 
-// Helper: Update inventory for a given inventory document _id
-async function updateInventory(inventoryId, delta, session) {
-  console.log(`Updating inventory for ID ${inventoryId} with delta ${delta}`);
+// Helper: Restore inventory for cancelled orders.
+// This adds back the sold quantity: availableQuantity increases by qty and reservedQuantity decreases by qty.
+async function restoreInventory(inventoryId, qty, session) {
   const result = await mongoose.model('Inventory').updateOne(
     { _id: inventoryId },
     {
       $inc: {
-        availableQuantity: delta,
-        reservedQuantity: -delta,
+        availableQuantity: qty,
+        reservedQuantity: -qty,
       },
     },
     { session }
   );
-  console.log(`Inventory update result for ${inventoryId}:`, result);
+  return result;
+}
+
+// Helper: Clear reserved inventory for delivered orders.
+// This subtracts the quantity from reservedQuantity only.
+async function clearReservedInventory(inventoryId, qty, session) {
+  const result = await mongoose.model('Inventory').updateOne(
+    { _id: inventoryId },
+    {
+      $inc: {
+        reservedQuantity: -qty,
+      },
+    },
+    { session }
+  );
   return result;
 }
 
@@ -32,7 +47,6 @@ export const config = {
 };
 
 export async function POST(request) {
-  console.log('--- Shiprocket Webhook request received ---');
 
   // Validate security token
   const receivedToken = request.headers.get('x-api-key');
@@ -48,9 +62,7 @@ export async function POST(request) {
 
   try {
     const rawBody = await request.text();
-    console.log('Raw request body:', rawBody);
     const payload = JSON.parse(rawBody);
-    console.log('Parsed payload:', payload);
 
     const { order_id, current_status } = payload;
     if (!order_id || !current_status) {
@@ -60,13 +72,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
     }
 
-    // Look up the order by _id if valid, otherwise by shiprocketOrderId
+    // Look up the order by _id if valid, otherwise by shiprocketOrderId.
     let order;
     if (mongoose.Types.ObjectId.isValid(order_id)) {
-      console.log(`order_id ${order_id} is a valid MongoDB ObjectId. Looking up by _id.`);
       order = await Order.findById(order_id).session(session);
     } else {
-      console.log(`order_id ${order_id} is NOT a valid MongoDB ObjectId. Looking up by shiprocketOrderId.`);
       order = await Order.findOne({ shiprocketOrderId: order_id }).session(session);
     }
 
@@ -76,65 +86,60 @@ export async function POST(request) {
       session.endSession();
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
-    console.log('Order found:', order);
 
-    // Normalize and map status
+    // Normalize and map the current status
     const normalizedStatus = current_status.toLowerCase().replace(/[-_]/g, ' ').trim();
     const mappedStatus = statusMapping[normalizedStatus] || 'unknown';
-    console.log(`Mapped status for '${current_status}' (normalized: '${normalizedStatus}') is '${mappedStatus}'`);
 
-    // Determine inventory update delta
-    let inventoryDelta = 0;
-
-    // We no longer do inventory deductions here for "orderCreated",
-    // because that now happens in the Razorpay verify-payment webhook.
-
+    // Determine inventory action based on mapped status:
+    // - For "cancelled": restore inventory (move quantity from reserved back to available).
+    // - For "delivered": clear reserved inventory (finalize sale by clearing the reserved count).
+    let inventoryAction = null;
     if (mappedStatus === 'cancelled') {
-      // Restore inventory
-      inventoryDelta = order.items.reduce((acc, item) => acc + item.quantity, 0);
-      console.log(`Inventory delta for cancelled: ${inventoryDelta}`);
+      inventoryAction = 'restore';
+    } else if (mappedStatus === 'delivered') {
+      inventoryAction = 'clearReserved';
     } else {
-      console.log(`No inventory update required for status: ${mappedStatus}`);
     }
 
-    // Update inventory for each order item if needed
-    if (inventoryDelta !== 0) {
-      console.log('Starting inventory updates for each order item.');
+    // If an inventory action is needed, process each order item accordingly.
+    if (inventoryAction) {
       for (const item of order.items) {
-        console.log('Processing order item:', item);
-        if (item.Option) {
-          console.log(`Updating inventory for Option ${item.Option} with quantity multiplier ${item.quantity}`);
-          await updateInventory(item.Option, inventoryDelta * item.quantity, session);
+        // Check if the order item uses an Option.
+        // Some orders may use the legacy field "Option" (uppercase) or the newer "option" (lowercase).
+        if (item.Option || item.option) {
+          const optionId = item.Option || item.option;
+          const optionDoc = await Option.findById(optionId).session(session);
+          if (optionDoc?.inventoryData) {
+            if (inventoryAction === 'restore') {
+              await restoreInventory(optionDoc.inventoryData, item.quantity, session);
+            } else if (inventoryAction === 'clearReserved') {
+              await clearReservedInventory(optionDoc.inventoryData, item.quantity, session);
+            }
+          } else {
+          }
         } else if (item.product) {
-          console.log(`Updating inventory for Product ${item.product} with quantity multiplier ${item.quantity}`);
-          const result = await mongoose.model('Product').updateOne(
-            { _id: item.product },
-            {
-              $inc: {
-                'inventoryData.availableQuantity': inventoryDelta * item.quantity,
-                'inventoryData.reservedQuantity': -(inventoryDelta * item.quantity),
-              },
-            },
-            { session }
-          );
-          console.log(`Product inventory update result for product ${item.product}:`, result);
+          const productDoc = await Product.findById(item.product).session(session);
+          if (productDoc?.inventoryData) {
+            if (inventoryAction === 'restore') {
+              await restoreInventory(productDoc.inventoryData, item.quantity, session);
+            } else if (inventoryAction === 'clearReserved') {
+              await clearReservedInventory(productDoc.inventoryData, item.quantity, session);
+            }
+          } else {
+          }
         } else {
-          console.warn('Order item does not have an Option or product reference:', item);
         }
       }
-      console.log('Completed inventory updates.');
     }
 
     // Update order delivery status
-    console.log(`Updating order delivery status to '${mappedStatus}' (actual status: '${current_status}')`);
     order.deliveryStatus = mappedStatus;
     order.actualDeliveryStatus = current_status;
     await order.save({ session });
-    console.log('Order updated successfully in the database.');
 
     await session.commitTransaction();
     session.endSession();
-    console.log('Transaction committed successfully.');
 
     return NextResponse.json({ message: 'Order updated successfully.' }, { status: 200 });
   } catch (error) {
