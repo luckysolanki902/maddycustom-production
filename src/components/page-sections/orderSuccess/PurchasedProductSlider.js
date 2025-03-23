@@ -4,7 +4,6 @@ import { Box, Card, CardMedia, CardContent, Typography } from '@mui/material';
 import Link from 'next/link';
 
 const PurchasedProductSlider = ({ items, baseImageUrl }) => {
-console.log(items)
   return (
   <Box sx={{padding:'1rem'}}>
     <Typography variant="h5" gutterBottom>
@@ -25,7 +24,7 @@ console.log(items)
       }}
     >
       {items.map((item) => {
-        const imageSRC=item.option?item.option?.images[0]:item?.product?.images[0]
+        const imageSRC=item.thumnail
         
         return(
         <Box
