@@ -168,6 +168,7 @@ function ProductCard({ product }) {
   };
 
   const { imageUrl, outOfStock } = getDisplayImage(product);
+  const thumbnail = imageUrl ;
 
   return (
     <Box
@@ -248,7 +249,9 @@ function ProductCard({ product }) {
             e.stopPropagation();
           }}
         >
-          <AddToCartButton product={product} />
+          {/* {console.log(product.images[0],"image url")} */}
+
+          <AddToCartButton product={{...product,thumbnail }} />
         </Box>
       </Box>
     </Box>

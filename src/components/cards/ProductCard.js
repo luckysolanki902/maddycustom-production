@@ -100,7 +100,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false }
       ? `${baseImageUrl}${imageUrl}`
       : `${baseImageUrl}/${imageUrl}`;
   }
-
+   
   return (
     <div
       className={styles.mainCardDiv}
@@ -243,6 +243,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false }
               <AddToCartButton
                 product={{
                   ...product,
+                  thumbnail: imageUrl,
                   selectedOption: product.options ? product.options[0] : null,
                   price: product.variantDetails?.availableBrands?.length > 0
                     ? product.variantDetails.availableBrands[0].brandBasePrice + product.price
