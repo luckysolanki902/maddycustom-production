@@ -4,7 +4,7 @@ import { Box, Card, CardMedia, CardContent, Typography } from '@mui/material';
 import Link from 'next/link';
 
 const PurchasedProductSlider = ({ items, baseImageUrl }) => {
-
+console.log(items)
   return (
   <Box sx={{padding:'1rem'}}>
     <Typography variant="h5" gutterBottom>
@@ -25,11 +25,11 @@ const PurchasedProductSlider = ({ items, baseImageUrl }) => {
       }}
     >
       {items.map((item) => {
-        const imageSRC=item.option?item.option?.images[0]:item.product?.images[0]
+        const imageSRC=item.option?item.option?.images[0]:item?.product?.images[0]
         
         return(
         <Box
-          key={item.product._id}
+          key={item?.product?._id}
           sx={{
             flex: '0 0 auto',
             width: 300,
@@ -54,7 +54,7 @@ const PurchasedProductSlider = ({ items, baseImageUrl }) => {
             </CardMedia>
             <CardContent sx={{ flex: '1 0 auto' }}>
               <Typography component="div" variant="h6">
-                <Link href={`/shop/${item.product.pageSlug}`} legacyBehavior>
+                <Link href={`/shop/${item?.product?.pageSlug}`} legacyBehavior>
                   <a style={{ textDecoration: 'none', color: 'inherit' }}>{item.name}</a>
                 </Link>
               </Typography>
