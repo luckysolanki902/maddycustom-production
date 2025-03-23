@@ -10,12 +10,13 @@ import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import Product from '@/models/Product';
+import Option from '@/models/Option';
+import Inventory from '@/models/Inventory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import SpecificCategory from '@/models/SpecificCategory';
 
-// Helper: Update inventory for a given inventory document _id
+// Helper: Update inventory for a given Inventory document _id
 async function updateInventory(inventoryId, delta, session) {
-  console.log(`Updating inventory for Inventory doc ID ${inventoryId} with delta ${delta}`);
   const result = await mongoose.model('Inventory').updateOne(
     { _id: inventoryId },
     {
@@ -26,7 +27,6 @@ async function updateInventory(inventoryId, delta, session) {
     },
     { session }
   );
-  console.log(`Inventory update result for ${inventoryId}:`, result);
   return result;
 }
 
@@ -42,6 +42,8 @@ export const config = {
  * 1. Verifies Razorpay signature
  * 2. Updates order payment status (self-correcting if needed)
  * 3. Deducts inventory (idempotent) if a payment is captured
+ *    - If an order item has an "option" reference, use that Option’s inventoryData.
+ *    - Otherwise, use the Product’s inventoryData.
  * 4. Creates Shiprocket order if conditions are met
  * 5. Commits transaction
  * 6. Sends WhatsApp notification after the transaction
@@ -101,7 +103,7 @@ export async function POST(request) {
 
     const razorpayEvent = eventData?.event;
     if (!['payment.captured', 'payment.failed'].includes(razorpayEvent)) {
-      // Ignore other events
+      logs.push(`Unhandled Razorpay event type: ${razorpayEvent}`);
       return NextResponse.json({ message: 'Event type not handled.' }, { status: 200 });
     }
 
@@ -126,7 +128,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
-    // Helper for logging timestamps
     const timestampStr = new Date().toLocaleString('en-IN', {
       year: 'numeric',
       month: '2-digit',
@@ -142,11 +143,10 @@ export async function POST(request) {
     // 4. Handle Payment Updates
     // -----------------------------
     if (razorpayEvent === 'payment.captured') {
-      // If order is still 'pending' or 'failed', correct it to partial/fully paid
       if (['pending', 'failed'].includes(order.paymentStatus)) {
-        const paymentAmount = payment.amount / 100; // paise => INR
+        const paymentAmount = payment.amount / 100; // convert paise -> INR
 
-        // Update order in memory
+        // Update order with payment details
         order.paymentDetails.razorpayDetails.paymentId = paymentId;
         order.paymentDetails.razorpayDetails.signature = signatureDetail;
         order.paymentDetails.amountPaidOnline += paymentAmount;
@@ -155,7 +155,7 @@ export async function POST(request) {
           order.paymentDetails.amountDueOnline - paymentAmount
         );
 
-        // Decide final paymentStatus
+        // Determine final payment status
         if (
           order.paymentDetails.amountDueOnline <= 0 &&
           order.paymentDetails.amountDueCod <= 0
@@ -170,19 +170,16 @@ export async function POST(request) {
           logs.push(`[${timestampStr}] Payment status -> paidPartially`);
         }
 
-        // Check/increment coupon usage if necessary
+        // Check/increment coupon usage if applicable
         if (order.couponApplied?.length > 0) {
           const [appliedCoupon] = order.couponApplied;
           if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
-            const couponDoc = await Coupon.findOne({ code: appliedCoupon.couponCode }).session(
-              session
-            );
+            const couponDoc = await Coupon.findOne({ code: appliedCoupon.couponCode }).session(session);
             if (couponDoc) {
               couponDoc.usageCount += 1;
               await couponDoc.save({ session });
               appliedCoupon.incrementedCouponUsage = true;
-              // Overwrite the couponApplied array with updated usage
-              order.couponApplied = order.couponApplied.map((c) =>
+              order.couponApplied = order.couponApplied.map(c =>
                 c.couponCode === appliedCoupon.couponCode
                   ? { ...c.toObject(), incrementedCouponUsage: true }
                   : c
@@ -191,55 +188,49 @@ export async function POST(request) {
             }
           }
         }
-
-        // Save changes (payment status, coupon usage, etc.)
         await order.save({ session });
       } else {
-        logs.push(
-          `[${timestampStr}] payment.captured received but order already in ${order.paymentStatus}.`
-        );
+        logs.push(`[${timestampStr}] payment.captured received but order already in ${order.paymentStatus}.`);
       }
 
-      // 4a. Now deduct inventory if we haven't yet done so for this order
-      //     We only do this once per order. If the user pays partially or fully,
-      //     we reserve the inventory.
+      // 4a. Deduct inventory (only once)
       if (
         (order.paymentStatus === 'paidPartially' || order.paymentStatus === 'allPaid') &&
-        !order.inventoryDeducted && // idempotency check
-        !order.isTestingOrder // skip if this is a test order
+        !order.inventoryDeducted && // ensure we don't deduct twice
+        !order.isTestingOrder // skip for test orders
       ) {
         logs.push(`[${timestampStr}] Deducting inventory for order ${order._id}`);
-        // For "new" order scenario: We treat it like "orderCreated", so we do a negative delta
-        const inventoryDelta = -1 * order.items.reduce((acc, item) => acc + item.quantity, 0);
+        // Use a fixed delta of -1 per unit purchased.
+        const unitDelta = -1;
 
-        // Deduct inventory per item
         for (const item of order.items) {
-          if (item.Option) {
-            logs.push(`Updating inventory for Option ${item.Option} x ${item.quantity}`);
-            await updateInventory(item.Option, inventoryDelta * item.quantity, session);
+          if (item.option) {
+            // Use Option's inventoryData if present
+            logs.push(`Updating inventory for Option ${item.option} x ${item.quantity}`);
+            const optionDoc = await Option.findById(item.option).session(session);
+            if (optionDoc?.inventoryData) {
+              await updateInventory(optionDoc.inventoryData, unitDelta * item.quantity, session);
+            } else {
+              logs.push(`Option ${item.option} has no inventoryData reference. Cannot update inventory.`);
+            }
           } else if (item.product) {
+            // Otherwise, update Product's inventoryData
             logs.push(`Updating inventory for Product ${item.product} x ${item.quantity}`);
-            await mongoose.model('Product').updateOne(
-              { _id: item.product },
-              {
-                $inc: {
-                  'inventoryData.availableQuantity': inventoryDelta * item.quantity,
-                  'inventoryData.reservedQuantity': -(inventoryDelta * item.quantity),
-                },
-              },
-              { session }
-            );
+            const productDoc = await Product.findById(item.product).session(session);
+            if (productDoc?.inventoryData) {
+              await updateInventory(productDoc.inventoryData, unitDelta * item.quantity, session);
+            } else {
+              logs.push(`No inventoryData reference found on product ${item.product}. Cannot update inventory.`);
+            }
           } else {
-            logs.push('Order item does not have an Option or product reference:', item);
+            logs.push(`Order item does not have an option or product reference. Skipping. ${JSON.stringify(item)}`);
           }
         }
-
-        // Mark inventory as deducted so we don't do it again
+        // Mark inventory as deducted
         order.inventoryDeducted = true;
         await order.save({ session });
       }
     } else if (razorpayEvent === 'payment.failed') {
-      // If order is not already fully/partially paid or failed, set to 'failed'
       if (!['allPaid', 'paidPartially', 'failed'].includes(order.paymentStatus)) {
         order.paymentStatus = 'failed';
         order.paymentDetails.razorpayDetails.paymentId = paymentId;
@@ -250,16 +241,13 @@ export async function POST(request) {
         session.endSession();
         return NextResponse.json({ message: 'Payment failed.' }, { status: 200 });
       } else {
-        logs.push(
-          `[${timestampStr}] payment.failed received but order already in ${order.paymentStatus}.`
-        );
+        logs.push(`[${timestampStr}] payment.failed received but order already in ${order.paymentStatus}.`);
       }
     }
 
     // -----------------------------
-    // 5. Possibly Create Shiprocket
+    // 5. Possibly Create Shiprocket Order
     // -----------------------------
-    // Re-fetch in case we've just updated the DB
     const latestOrder = await Order.findById(internalOrderId)
       .populate({
         path: 'items.product',
@@ -276,7 +264,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Order not found after update.' }, { status: 404 });
     }
 
-    // If payment is partial or fully paid, and delivery is still pending, and no SR order yet => create it
     if (
       ['allPaid', 'paidPartially'].includes(latestOrder.paymentStatus) &&
       latestOrder.deliveryStatus === 'pending' &&
@@ -303,27 +290,23 @@ export async function POST(request) {
         order_date: new Date().toISOString(),
         billing_customer_name: firstName,
         billing_last_name: lastName || '',
-        billing_address: `${latestOrder.address.addressLine1} ${
-          latestOrder.address.addressLine2 || ''
-        }`,
+        billing_address: `${latestOrder.address.addressLine1} ${latestOrder.address.addressLine2 || ''}`,
         billing_city: latestOrder.address.city,
         billing_pincode: latestOrder.address.pincode,
         billing_state: latestOrder.address.state,
         billing_country: latestOrder.address.country,
         billing_phone: latestOrder.address.receiverPhoneNumber,
         shipping_is_billing: true,
-        order_items: latestOrder.items.map((item) => ({
+        order_items: latestOrder.items.map(item => ({
           name: item.name,
           sku: item.sku,
           units: item.quantity,
           selling_price: item.priceAtPurchase,
         })),
-        payment_method:
-          latestOrder.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
-        sub_total:
-          latestOrder.paymentDetails.amountDueCod > 0
-            ? latestOrder.paymentDetails.amountDueCod
-            : latestOrder.totalAmount,
+        payment_method: latestOrder.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
+        sub_total: latestOrder.paymentDetails.amountDueCod > 0
+          ? latestOrder.paymentDetails.amountDueCod
+          : latestOrder.totalAmount,
         length,
         breadth,
         height,
@@ -377,7 +360,7 @@ export async function POST(request) {
     session.endSession();
 
     // -----------------------------
-    // 7. Attempt to Send WhatsApp (Async Post-Transaction)
+    // 7. Send WhatsApp Notification (Async)
     // -----------------------------
     try {
       if (!latestOrder.isTestingOrder) {
@@ -396,7 +379,6 @@ export async function POST(request) {
               ],
             },
           ];
-
           await sendWhatsAppMessage({
             user: userDoc,
             prefUserName: latestOrder.address.receiverName || '',
@@ -406,7 +388,6 @@ export async function POST(request) {
             carouselCards: [],
             buttons,
           });
-
           logs.push(`[${timestampStr}] WhatsApp message sent to user: ${userDoc._id}`);
         } else {
           logs.push(`[${timestampStr}] No matching user found for orderId: ${latestOrder._id}`);
@@ -425,7 +406,6 @@ export async function POST(request) {
       { status: 200 }
     );
   } catch (err) {
-    // If an error occurs during the process, roll back
     await session.abortTransaction();
     session.endSession();
     console.error(`Error processing Razorpay webhook for orderId ${internalOrderId}`, err, logs);
