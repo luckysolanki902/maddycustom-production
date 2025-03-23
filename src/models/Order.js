@@ -50,7 +50,7 @@ const OrderSchema = new mongoose.Schema(
           required: true,
           index: true,
         },
-      option: {
+        option: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Option',
           required: false,
@@ -254,6 +254,10 @@ const OrderSchema = new mongoose.Schema(
       type: String,
       default: null,
       index: true,
+    },
+    inventoryDeducted: {
+      type: Boolean,
+      default: false
     },
 
     // Extra fields like bike model:
