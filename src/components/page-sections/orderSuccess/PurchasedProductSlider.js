@@ -24,7 +24,7 @@ const PurchasedProductSlider = ({ items, baseImageUrl }) => {
       }}
     >
       {items.map((item) => {
-        const imageSRC=item.thumnail
+        const imageSRC=item?.thumbnail
         
         return(
         <Box
