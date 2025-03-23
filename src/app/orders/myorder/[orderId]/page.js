@@ -44,13 +44,13 @@ export default async function OrderPage({ params }) {
   };
 
   // Get unique freebie descriptions from the order items
-  const uniqueFreebies = Array.from(
-    new Set(
-      order.items
-        .filter((item) => item.product.freebies?.available && item.product.freebies.description)
-        .map((item) => item.product.freebies.description)
-    )
-  );
+  // const uniqueFreebies = Array.from(
+  //   new Set(
+  //     order.items
+  //       .filter((item) => item.product.freebies?.available && item.product.freebies.description)
+  //       .map((item) => item.product.freebies.description)
+  //   )
+  // );
 
   return (
     <Box className={styles.main}>
