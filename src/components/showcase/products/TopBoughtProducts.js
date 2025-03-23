@@ -102,7 +102,6 @@ export const TopBoughtProducts = ({
     setSkip(newSkip);
     fetchProducts(newSkip, mergedExcludes.current);
   };
-  console.log(products)
   return (
     <Box sx={{ width: '100%', mt: 3, p: 2 }}>
       <Typography variant="h5" sx={{ mb: 2 }}>
