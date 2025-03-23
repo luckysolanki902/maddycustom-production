@@ -244,9 +244,16 @@ const OrderSchema = new mongoose.Schema(
       default: 'pending',
       index: true, // Index for efficient querying
     },
+
     actualDeliveryStatus: {
       type: String,
       default: 'pending',
+    },
+
+    shiprocketOrderId: {
+      type: String,
+      default: null,
+      index: true,
     },
 
     // Extra fields like bike model:
@@ -328,5 +335,6 @@ if (mongoose.models.Order) {
 }
 // Indexes for better performance
 OrderSchema.index({ 'address.receiverName': 'text', 'address.receiverPhoneNumber': 'text' });
+
 
 module.exports = mongoose.models.Order || mongoose.model('Order', OrderSchema);

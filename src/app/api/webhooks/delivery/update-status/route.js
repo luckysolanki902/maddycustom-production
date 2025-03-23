@@ -3,14 +3,10 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
-import Product from '@/models/Product';
-import Inventory from '@/models/Inventory';
-import Option from '@/models/Option';
 import mongoose from 'mongoose';
 import { statusMapping } from '@/lib/constants/shiprocketStatusMapping';
 
 // Helper: Update inventory for a given inventory document _id
-// delta: a number (positive to add to available and subtract from reserved; negative to do the opposite)
 async function updateInventory(inventoryId, delta, session) {
   console.log(`Updating inventory for ID ${inventoryId} with delta ${delta}`);
   const result = await mongoose.model('Inventory').updateOne(
@@ -35,7 +31,7 @@ export const config = {
 
 export async function POST(request) {
   console.log('--- Webhook request received ---');
-  
+
   // Validate security token
   const receivedToken = request.headers.get('x-api-key');
   const expectedToken = process.env.SHIPROCKET_WEBHOOK_SECRET;
@@ -62,68 +58,51 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
     }
 
-    // Validate that order_id is a valid ObjectId
-    if (!mongoose.Types.ObjectId.isValid(order_id)) {
-      console.error('Invalid order_id format:', order_id);
-      await session.abortTransaction();
-      session.endSession();
-      return NextResponse.json(
-        { message: 'Webhook triggered, but provided order_id is not a valid MongoDB ObjectId.' },
-        { status: 200 }
-      );
+    // Look up the order by _id if valid, otherwise by shiprocketOrderId
+    let order;
+    if (mongoose.Types.ObjectId.isValid(order_id)) {
+      console.log(`order_id ${order_id} is a valid MongoDB ObjectId. Looking up by _id.`);
+      order = await Order.findById(order_id).session(session);
+    } else {
+      console.log(`order_id ${order_id} is NOT a valid MongoDB ObjectId. Looking up by shiprocketOrderId.`);
+      order = await Order.findOne({ shiprocketOrderId: order_id }).session(session);
     }
 
-    const order = await Order.findById(order_id).session(session);
     if (!order) {
-      console.error('Order not found for order_id:', order_id);
+      console.error('Order not found for provided order identifier:', order_id);
       await session.abortTransaction();
       session.endSession();
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
     console.log('Order found:', order);
 
-    // Normalize the received status and map it using statusMapping
+    // Normalize and map status
     const normalizedStatus = current_status.toLowerCase().replace(/[-_]/g, ' ').trim();
     const mappedStatus = statusMapping[normalizedStatus] || 'unknown';
     console.log(`Mapped status for '${current_status}' (normalized: '${normalizedStatus}') is '${mappedStatus}'`);
 
-    // Determine if we need to update inventory.
-    // Our logic:
-    // - If status is "orderCreated": update inventory by reducing available and increasing reserved.
-    //   (Typically, that update would occur when the order is created, so we may not adjust it here.)
-    // - If status is "cancelled": update inventory to release reserved stock.
-    // - If status is "delivered": no inventory change.
-    // - For other statuses, no inventory change.
+    // Determine inventory update delta
     let inventoryDelta = 0;
     if (mappedStatus === "orderCreated") {
-      // New order: reduce available, increase reserved.
-      // (delta is negative, because we want to subtract available and add to reserved.)
       inventoryDelta = -1 * order.items.reduce((acc, item) => acc + item.quantity, 0);
       console.log(`Inventory delta for orderCreated: ${inventoryDelta}`);
     } else if (mappedStatus === "cancelled") {
-      // Cancelled order: reverse the reserved; add back available.
-      // (delta is positive, meaning add to available, subtract reserved.)
       inventoryDelta = order.items.reduce((acc, item) => acc + item.quantity, 0);
       console.log(`Inventory delta for cancelled: ${inventoryDelta}`);
     } else {
       console.log(`No inventory update required for status: ${mappedStatus}`);
     }
 
-    // Update inventory for each order item if delta is non-zero.
+    // Update inventory for each order item if needed
     if (inventoryDelta !== 0) {
       console.log('Starting inventory updates for each order item.');
-      // For each item in order.items:
-      // If Option is present, update the Inventory referenced in that Option.
-      // Otherwise, update the Inventory referenced in the Product.
       for (const item of order.items) {
         console.log('Processing order item:', item);
-        // If the item has an Option reference:
         if (item.Option) {
           console.log(`Updating inventory for Option ${item.Option} with quantity multiplier ${item.quantity}`);
           await updateInventory(item.Option, inventoryDelta * item.quantity, session);
         } else if (item.product) {
           console.log(`Updating inventory for Product ${item.product} with quantity multiplier ${item.quantity}`);
-          // Update using product.inventoryData. If needed, you might fetch product details to ensure the inventoryData field is available.
           const result = await mongoose.model('Product').updateOne(
             { _id: item.product },
             { 
@@ -142,7 +121,7 @@ export async function POST(request) {
       console.log('Completed inventory updates.');
     }
 
-    // Update the order's delivery status fields
+    // Update order delivery status
     console.log(`Updating order delivery status to '${mappedStatus}' (actual status: '${current_status}')`);
     order.deliveryStatus = mappedStatus;
     order.actualDeliveryStatus = current_status;
