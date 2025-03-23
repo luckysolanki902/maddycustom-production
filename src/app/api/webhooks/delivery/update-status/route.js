@@ -5,6 +5,8 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
 import mongoose from 'mongoose';
 import { statusMapping } from '@/lib/constants/shiprocketStatusMapping';
+import inventory from '@/models/Inventory';
+import option from '@/models/Option';
 
 // Helper: Update inventory for a given inventory document _id
 async function updateInventory(inventoryId, delta, session) {
