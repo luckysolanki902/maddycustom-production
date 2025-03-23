@@ -342,6 +342,7 @@ const OrderForm = ({
             quantity: item.quantity,
             priceAtPurchase: item.productDetails.price,
             sku: item.productDetails.selectedOption?item.productDetails.selectedOption.sku:item.productDetails.sku,
+            thumbnail: item.productDetails.thumbnail,
           })),
           paymentModeId: paymentModeConfig._id,
           address: {
@@ -370,7 +371,7 @@ const OrderForm = ({
           utmDetails: utmDetails.utmDetails || null,
           extraFields: orderForm.extraFields, // include extra fields
         });
-
+        // console.log('Order created:', orderResponse.data);
         const { orderId: createdOrderId, message, paymentDetails: createdPaymentDetails } =
           orderResponse.data;
         dispatch(setLastOrderId(createdOrderId));
@@ -382,6 +383,7 @@ const OrderForm = ({
         showSnackbar('Failed to create order. Please try again.', 'error');
         throw error;
       }
+      
 
       // 4) Process Payment (if amountDueOnline > 0)
       if (paymentDetails.amountDueOnline > 0) {
