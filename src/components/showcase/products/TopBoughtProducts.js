@@ -178,7 +178,7 @@ function ProductCard({ product }) {
       sx={{
         minWidth: 200,
         width: 200,
-        border: '1px solid #ddd',
+        border:'1px solid rgba(84, 84, 84,1)',
         backgroundColor: '#fff',
         pt: '1rem',
         flexShrink: 0,

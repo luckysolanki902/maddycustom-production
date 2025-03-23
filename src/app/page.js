@@ -20,6 +20,7 @@ import ProductSlider from '@/components/showcase/sliders/ProductSlider';
 import FeaturedProducts from '@/components/page-sections/homepage/FeaturedProducts';
 import { Box, Typography } from '@mui/material';
 import KeychainImageGrid from '@/components/page-sections/homepage/KeychainImageGrid';
+import ProductCategoryBox from '@/components/page-sections/homepage/ProductCategoryBox';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -48,13 +49,15 @@ const HomePage = async () => {
 
   // Destructure categories and variants from searchCategoriesData
   const { categories, variants } = searchCategoriesData;
-
   return (
     <>
 
       <main>
+     {/* Render ProductCategoryBox above HeroSection only on screens larger than 1200px */}
+     <ProductCategoryBox position="aboveHero" />
         {/* Logo and Main Carousel */}
         <HeroSection />
+        <ProductCategoryBox position="belowHero" />
 
         {/* SearchBox */}
         <div className={styles.chooseDiv}>CHOOSE</div>

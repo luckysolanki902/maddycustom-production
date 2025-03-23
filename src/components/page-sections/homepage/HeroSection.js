@@ -24,7 +24,7 @@ export default function HeroSection() {
                     priority={true}
                 />
             </div> */}
-            <div id='searchyourbikeinput' style={{paddingTop: '2rem'}}>
+            <div id='searchyourbikeinput' style={{paddingTop: '1rem'}}>
                 <div className={styles.carouseldiv}>
                     <FullWidthRoundCornerLandscapeCarousel images={[
                         // `${baseUrl}/assets/carousels/homepage-main/holi_sale_2025.png`,
