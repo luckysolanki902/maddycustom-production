@@ -32,7 +32,7 @@ export const config = {
 };
 
 export async function POST(request) {
-  console.log('--- Webhook request received ---');
+  console.log('--- Shiprocket Webhook request received ---');
 
   // Validate security token
   const receivedToken = request.headers.get('x-api-key');
@@ -85,10 +85,12 @@ export async function POST(request) {
 
     // Determine inventory update delta
     let inventoryDelta = 0;
-    if (mappedStatus === "orderCreated") {
-      inventoryDelta = -1 * order.items.reduce((acc, item) => acc + item.quantity, 0);
-      console.log(`Inventory delta for orderCreated: ${inventoryDelta}`);
-    } else if (mappedStatus === "cancelled") {
+
+    // We no longer do inventory deductions here for "orderCreated",
+    // because that now happens in the Razorpay verify-payment webhook.
+
+    if (mappedStatus === 'cancelled') {
+      // Restore inventory
       inventoryDelta = order.items.reduce((acc, item) => acc + item.quantity, 0);
       console.log(`Inventory delta for cancelled: ${inventoryDelta}`);
     } else {
@@ -107,11 +109,11 @@ export async function POST(request) {
           console.log(`Updating inventory for Product ${item.product} with quantity multiplier ${item.quantity}`);
           const result = await mongoose.model('Product').updateOne(
             { _id: item.product },
-            { 
-              $inc: { 
-                'inventoryData.availableQuantity': inventoryDelta * item.quantity, 
-                'inventoryData.reservedQuantity': -inventoryDelta * item.quantity 
-              }
+            {
+              $inc: {
+                'inventoryData.availableQuantity': inventoryDelta * item.quantity,
+                'inventoryData.reservedQuantity': -(inventoryDelta * item.quantity),
+              },
             },
             { session }
           );

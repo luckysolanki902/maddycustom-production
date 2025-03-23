@@ -13,6 +13,23 @@ import Product from '@/models/Product';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import SpecificCategory from '@/models/SpecificCategory';
 
+// Helper: Update inventory for a given inventory document _id
+async function updateInventory(inventoryId, delta, session) {
+  console.log(`Updating inventory for Inventory doc ID ${inventoryId} with delta ${delta}`);
+  const result = await mongoose.model('Inventory').updateOne(
+    { _id: inventoryId },
+    {
+      $inc: {
+        availableQuantity: delta,
+        reservedQuantity: -delta,
+      },
+    },
+    { session }
+  );
+  console.log(`Inventory update result for ${inventoryId}:`, result);
+  return result;
+}
+
 // Disable body parsing to access raw body
 export const config = {
   api: {
@@ -24,16 +41,17 @@ export const config = {
  * Razorpay Webhook Handler
  * 1. Verifies Razorpay signature
  * 2. Updates order payment status (self-correcting if needed)
- * 3. Creates Shiprocket order if conditions are met
- * 4. Commits transaction
- * 5. Sends WhatsApp notification after the transaction
+ * 3. Deducts inventory (idempotent) if a payment is captured
+ * 4. Creates Shiprocket order if conditions are met
+ * 5. Commits transaction
+ * 6. Sends WhatsApp notification after the transaction
  */
 export async function POST(request) {
   await connectToDatabase();
   const session = await mongoose.startSession();
   session.startTransaction();
 
-  const logs = []; // Collect logs in an array for clarity
+  const logs = []; // Collect logs for debugging
   let internalOrderId = null;
 
   try {
@@ -124,10 +142,9 @@ export async function POST(request) {
     // 4. Handle Payment Updates
     // -----------------------------
     if (razorpayEvent === 'payment.captured') {
-      // If order is still 'pending' or 'failed', we should correct it to partial/fully paid.
-      // Even if paymentId is already set, we ensure the DB status is correct.
+      // If order is still 'pending' or 'failed', correct it to partial/fully paid
       if (['pending', 'failed'].includes(order.paymentStatus)) {
-        const paymentAmount = payment.amount / 100; // from paise => INR
+        const paymentAmount = payment.amount / 100; // paise => INR
 
         // Update order in memory
         order.paymentDetails.razorpayDetails.paymentId = paymentId;
@@ -175,15 +192,54 @@ export async function POST(request) {
           }
         }
 
-        // Save changes
+        // Save changes (payment status, coupon usage, etc.)
         await order.save({ session });
       } else {
         logs.push(
           `[${timestampStr}] payment.captured received but order already in ${order.paymentStatus}.`
         );
       }
+
+      // 4a. Now deduct inventory if we haven't yet done so for this order
+      //     We only do this once per order. If the user pays partially or fully,
+      //     we reserve the inventory.
+      if (
+        (order.paymentStatus === 'paidPartially' || order.paymentStatus === 'allPaid') &&
+        !order.inventoryDeducted && // idempotency check
+        !order.isTestingOrder // skip if this is a test order
+      ) {
+        logs.push(`[${timestampStr}] Deducting inventory for order ${order._id}`);
+        // For "new" order scenario: We treat it like "orderCreated", so we do a negative delta
+        const inventoryDelta = -1 * order.items.reduce((acc, item) => acc + item.quantity, 0);
+
+        // Deduct inventory per item
+        for (const item of order.items) {
+          if (item.Option) {
+            logs.push(`Updating inventory for Option ${item.Option} x ${item.quantity}`);
+            await updateInventory(item.Option, inventoryDelta * item.quantity, session);
+          } else if (item.product) {
+            logs.push(`Updating inventory for Product ${item.product} x ${item.quantity}`);
+            await mongoose.model('Product').updateOne(
+              { _id: item.product },
+              {
+                $inc: {
+                  'inventoryData.availableQuantity': inventoryDelta * item.quantity,
+                  'inventoryData.reservedQuantity': -(inventoryDelta * item.quantity),
+                },
+              },
+              { session }
+            );
+          } else {
+            logs.push('Order item does not have an Option or product reference:', item);
+          }
+        }
+
+        // Mark inventory as deducted so we don't do it again
+        order.inventoryDeducted = true;
+        await order.save({ session });
+      }
     } else if (razorpayEvent === 'payment.failed') {
-      // If order not already paid or marked as failed, set to 'failed'
+      // If order is not already fully/partially paid or failed, set to 'failed'
       if (!['allPaid', 'paidPartially', 'failed'].includes(order.paymentStatus)) {
         order.paymentStatus = 'failed';
         order.paymentDetails.razorpayDetails.paymentId = paymentId;
@@ -288,7 +344,7 @@ export async function POST(request) {
           logs.push(`[${timestampStr}] Shiprocket order created: ${srResponse.order_id}`);
         } else {
           console.error(`Shiprocket API error for order ${internalOrderId}:`, srResponse);
-          logs.push(`[${timestampStr}] Shiprocket creation failed: package_box_error or invalid`);
+          logs.push(`[${timestampStr}] Shiprocket creation failed: packaging_box_error or invalid`);
           await session.abortTransaction();
           session.endSession();
           return NextResponse.json({ error: 'Failed to create Shiprocket order.' }, { status: 500 });
