@@ -81,6 +81,38 @@ export async function trackShiprocketOrder(orderId) {
 }
 
 /**
+ * Check if Shiprocket can service a given pickup and delivery postcode
+*/
+export async function checkServiceability(pickupPostcode, deliveryPostcode) {
+  try {
+    const token = await getShiprocketToken();
+
+    const response = await axios.get(
+      'https://apiv2.shiprocket.in/v1/external/courier/serviceability/',
+      {
+        params: {
+          pickup_postcode: pickupPostcode,
+          delivery_postcode: deliveryPostcode,
+          weight: 1,
+          cod: 0 // Fix for required field missing error
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(
+      'Error checking Shiprocket serviceability:',
+      error.response ? error.response.data : error.message
+    );
+    throw new Error('Failed to check Shiprocket serviceability.');
+  }
+}
+
+
+/**
  * Get packaging details from a variant or fallback to product-level packaging
  * 
  * @param {Object} item The cart item (with `product` property)

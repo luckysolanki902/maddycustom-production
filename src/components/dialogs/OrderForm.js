@@ -271,6 +271,29 @@ const OrderForm = ({
     setIsPaymentProcessing(true);
 
     try {
+      // Before creating the order or processing payment, check serviceability
+      let serviceability;
+      try {
+        const response = await axios.get(
+          `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${data.pincode}`
+        );
+        serviceability = response.data;
+        // Adjust condition based on your API's response
+        if (!serviceability.serviceable) {
+          showSnackbar(
+            `The pincode ${data.pincode} is either invalid or we don't deliver to this location!`,
+            'warning'
+          );
+          return;
+        }
+      } catch (error) {
+        showSnackbar(
+          error.response?.data?.error || error.message || 'Serviceability check failed',
+          'warning'
+        );
+        return;
+      }
+
       // 1) Add/Update Address
       try {
         const addAddressResponse = await axios.post('/api/user/add-address', {
@@ -334,14 +357,13 @@ const OrderForm = ({
             itemSource: item.productDetails.source || 'inhouse',
             brand: item.productDetails.brand || null,
             option: item.productDetails.selectedOption?._id || null,
-            name: `${item.productDetails.name} ${
-              item.productDetails.category?.name?.endsWith('s')
-                ? item.productDetails.category?.name.slice(0, -1)
-                : item.productDetails.category?.name
-            }`,
+            name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+              ? item.productDetails.category?.name.slice(0, -1)
+              : item.productDetails.category?.name
+              }`,
             quantity: item.quantity,
             priceAtPurchase: item.productDetails.price,
-            sku: item.productDetails.selectedOption?item.productDetails.selectedOption.sku:item.productDetails.sku,
+            sku: item.productDetails.selectedOption ? item.productDetails.selectedOption.sku : item.productDetails.sku,
             thumbnail: item.productDetails.thumbnail,
           })),
           paymentModeId: paymentModeConfig._id,
@@ -383,7 +405,7 @@ const OrderForm = ({
         showSnackbar('Failed to create order. Please try again.', 'error');
         throw error;
       }
-      
+
 
       // 4) Process Payment (if amountDueOnline > 0)
       if (paymentDetails.amountDueOnline > 0) {
@@ -429,11 +451,10 @@ const OrderForm = ({
             totalAmount: totalCost,
             items: cartItems.map((item) => ({
               product: item.productId,
-              name: `${item.productDetails.name} ${
-                item.productDetails.category?.name?.endsWith('s')
-                  ? item.productDetails.category?.name.slice(0, -1)
-                  : item.productDetails.category?.name
-              }`,
+              name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+                ? item.productDetails.category?.name.slice(0, -1)
+                : item.productDetails.category?.name
+                }`,
               quantity: item.quantity,
               priceAtPurchase: item.priceAtPurchase,
             })),
