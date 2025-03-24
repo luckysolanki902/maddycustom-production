@@ -29,6 +29,9 @@ export const TopBoughtProducts = ({
   currentProductId = '',
   excludeProductIds = [],
 }) => {
+  if (subCategories.length === 0) {
+    subCategories = ['Car Wraps', 'Car Care'];
+  }
   const PAGE_SIZE = 10;
   const [products, setProducts] = useState([]);
   const [skip, setSkip] = useState(0);

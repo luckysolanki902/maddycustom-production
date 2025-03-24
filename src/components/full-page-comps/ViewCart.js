@@ -28,7 +28,6 @@ import {
 } from '@/lib/utils/cartCalculations';
 import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
 import { setCouponApplied } from '@/store/slices/orderFormSlice';
-import Features from '../page-sections/viewcart/Features';
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
 
 const ViewCart = () => {
