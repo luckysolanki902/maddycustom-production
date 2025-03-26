@@ -1,0 +1,309 @@
+.main{
+    background-color: #ffffff;
+}
+ /* styles/Faq.module.css */
+
+/* ===== FaqHeader.js ===== */
+.header {
+    margin-top: 26px;
+    text-align: center;
+    padding: 2rem 0;
+    margin-bottom: 80px;
+    background-color: #ffffff;
+  }
+  
+  .title {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: bold;
+    font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  }
+  
+  .subtitle {
+    margin: 0.5rem 0 0 0;
+    font-size: 1rem;
+    color: #424242;
+  }
+  
+  /* ===== FaqInputBox.js ===== */
+
+ /* 
+  This is an example of how to achieve:
+  - One main container with a heading section
+  - Overlapping input box ~40% below the heading
+  - #f4f4f4 textarea
+  - Mobile input as a single underline
+*/
+
+/* The main container wrapping everything */
+.mainContainer {
+    position: relative;
+    width: 100%;
+    /* Height is arbitrary; adjust to your liking */
+    height: 140px; 
+    background-color: #fff;
+    margin-bottom: 19rem; /* So page content below doesn't overlap */
+  }
+  
+  /* Heading section */
+  .headingContainer {
+    width: 100%;
+    height: 150px; /* Adjust as needed */
+    background-color: #424242;
+    display: flex;
+    /* align-items: center; */
+    justify-content: center;
+  }
+  
+  .heading {
+    color: #fff;
+    font-size: 2rem;
+    margin-top: 10px;
+  }
+  
+  /* Overlapping input box */
+  .inputContainer {
+    position: absolute;
+    left: 50%;
+    /* 
+      The top position is set to 60% of the heading 
+      container's height. If headingContainer is 250px, 
+      then 60% of that is ~150px. Adjust as you like.
+    */
+    top: 60%;
+    transform: translateX(-50%);
+    width: 400px; /* Adjust as needed */
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 2rem;
+    border: 2px solid #424242;
+  }
+  
+  /* The form inside the input box */
+  .form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* The message textarea with #f4f4f4 background */
+  .messageField {
+    background-color: #f4f4f4;
+    border: none;
+    width: 100%;
+    height: 100px;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    resize: vertical; /* allow user to resize if needed */
+    outline: none;
+  }
+  
+  /* Mobile field with just an underline */
+  .mobileFieldContainer {
+    border-bottom: 1px solid #42424262;
+    margin-bottom: 1rem;
+  }
+  
+  .mobileField {
+    width: 100%;
+    border: none;
+    outline: none;
+    padding: 0.5rem 0;
+    font-size: 1rem;
+    background-color: transparent;
+  }
+  
+  /* Submit button styling */
+  .submitButton {
+    align-self: center; /* pushes button to the right */
+    background-color: #424242;
+    color: #fff;
+    padding: 0.7rem 2.5rem;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    border-radius: 2px;
+    margin-top: 10px;
+  }
+  
+  .submitButton:hover {
+    background-color: #555;
+  }
+  
+
+/* ========== PAGE LAYOUT ========== */
+.faqPage {
+  padding: 2rem;
+}
+
+.faqHeading {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+}
+
+.faqRow {
+  display: flex;
+  gap: 2rem; /* Space between columns */
+  flex-wrap: wrap; /* So it wraps on smaller screens */
+  justify-content: flex-start; /* or center, as you prefer */
+}
+
+/* Each FAQ Section (card) */
+.faqSection {
+  /* 
+    By default (desktop/tablet), 
+    each section takes 50% minus the gap
+  */
+  flex: 0 0 calc(50% - 2rem);
+  max-width: calc(50% - 2rem);
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 280px; /* ensures it doesn't shrink too much */
+  margin-bottom: 2rem; /* spacing below each row */
+}
+
+/* Dark bar for product heading */
+.faqSectionHeader {
+  background-color: #424242;
+  color: #fff;
+  padding: 1rem;
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+
+/* Container for the accordion items */
+.accordionContainer {
+  padding: 1rem;
+}
+/* "More" button at the bottom of each column */
+.moreButton {
+  display: block;
+  margin: 1rem auto;
+  background-color: #424242;
+  color: #fff;
+  border: none;
+  padding: 0.4rem 2.5rem;
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: 1.9rem;
+}
+
+.moreButton:hover {
+  background-color: #555;
+}
+
+/* ========== ACCORDION CARD ========== */
+.card {
+   border-bottom: 1px solid #ccc; /*Divider between items */
+  padding: 0.5rem 0;
+}
+
+/* Button for question text + expand/collapse icon */
+.cardButton {
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.cardButton:hover {
+  background-color: #eee;
+}
+
+/* The hidden content that appears on expand */
+.cardContent {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  color: #424242;
+  padding-left: 0.5rem; /* Indent content a bit */
+}
+.faqHeading{
+  font-weight: 600;
+  font-size: 50px;
+}
+/* Example for the product title in FaqAccordionSection */
+.productTitle {
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: #ffffff; /* matches the dark header background? */
+  margin: 0;
+  /* or any styling you want */
+}
+
+/* The FAQ question title in FaqAccordionCard */
+.faqTitle {
+  font-size: 1rem;
+  font-weight: 400;
+  color: #000; /* black text, for instance */
+}
+
+/* The FAQ answer content in FaqAccordionCard */
+.faqContent {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: #555; /* a medium gray, for example */
+}
+
+
+  /* ========== RESPONSIVE BREAKPOINTS ========== */
+@media (max-width: 768px) {
+  .heading {
+    font-size: 1.8rem;
+  }
+  .faqHeading {
+    font-size: 1.8rem;
+  }
+  .submitButton {
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+  }
+  .moreButton {
+    font-size: 1.5rem;
+    padding: 0.6rem 2rem;
+  }
+  .faqSection {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .headingContainer {
+    height: 120px;
+  }
+  .heading {
+    font-size: 1.5rem;
+    margin-top: 5px;
+  }
+  .inputContainer {
+    width: 95%;
+    padding: 1.5rem;
+  }
+  .mainContainer{
+    height: 100px;
+  }
+  .messageField {
+    height: 80px;
+    font-size: 0.9rem;
+  }
+  .submitButton {
+    padding: 0.7rem 1.5rem;
+    font-size: 1rem;
+  }
+  .faqRow {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .faqSection {
+    max-width: 100%;
+  }
+}
