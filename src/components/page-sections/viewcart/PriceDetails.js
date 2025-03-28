@@ -13,7 +13,9 @@ const PriceDetails = ({
   totalCostWithDelivery,
   onOpenCoupon,
   onRemoveCoupon,
-}) => (
+}) => {
+  console.log(discountAmount)
+  return(
   <div className={`${styles.cartItem} ${styles.priceDetails}`}>
     {/* Delivery Cost */}
     <div className={styles.priceDetailRow}>
@@ -72,6 +74,6 @@ const PriceDetails = ({
       />
     </div>
   </div>
-);
+)};
 
 export default PriceDetails;
