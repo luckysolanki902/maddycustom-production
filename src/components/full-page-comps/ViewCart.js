@@ -6,20 +6,14 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { removeItem } from '@/store/slices/cartSlice';
 import styles from './styles/viewcart.module.css';
-
-// Subcomponents
 import ViewCartHeader from '../page-sections/viewcart/ViewCartHeader';
 import CartList from '../page-sections/viewcart/CartList';
 import PriceDetails from '../page-sections/viewcart/PriceDetails';
 import PaymentModes from '../page-sections/viewcart/PaymentModes';
 import Footer from '../page-sections/viewcart/Footer';
-
-// Dialogs and Notifications
 import ApplyCoupon from '../dialogs/ApplyCoupon';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
 import OrderForm from '../dialogs/OrderForm';
-
-// Utility Functions
 import {
   calculateTotalQuantity,
   calculateTotalCostBeforeDiscount,
@@ -29,6 +23,9 @@ import {
 import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
 import { setCouponApplied } from '@/store/slices/orderFormSlice';
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
+import { motion } from 'framer-motion';
+import Image from 'next/image';
+import Confetti from 'react-confetti';
 
 const ViewCart = () => {
   const dispatch = useDispatch();
@@ -37,39 +34,41 @@ const ViewCart = () => {
   const orderForm = useSelector((state) => state.orderForm);
   const { couponApplied } = orderForm;
 
-  // Coupon state
   const [isCouponDialogOpen, setIsCouponDialogOpen] = useState(false);
   const [couponState, setCouponState] = useState({
     couponApplied: false,
     couponName: '',
     couponDiscount: 0,
-    discountType: '', // 'percentage' or 'fixed'
+    discountType: '',
     isDbCoupon: false,
   });
-
-  // Snackbar State
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
-    severity: 'success', // 'success' | 'error' | 'info' | 'warning'
+    severity: 'success',
   });
-
-  // Payment Modes State
   const [paymentModes, setPaymentModes] = useState([]);
   const [selectedPaymentMode, setSelectedPaymentMode] = useState(null);
   const [isLoadingPaymentModes, setIsLoadingPaymentModes] = useState(true);
-
-  // OrderForm Dialog State
   const [isOrderFormOpen, setIsOrderFormOpen] = useState(false);
+  const [autoApplyAnimation, setAutoApplyAnimation] = useState(false);
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+  const [autoAppliedCoupon, setAutoAppliedCoupon] = useState(false);
 
-  // Fetch Payment Modes on Component Mount
+  // Assume you know whether this is the customer's first order.
+  const isFirstOrder = false; // Replace with real logic if available
+
+  // Get window dimensions (for confetti)
+  useEffect(() => {
+    setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+  }, []);
+
   useEffect(() => {
     const fetchPaymentModes = async () => {
       try {
         const response = await axios.get('/api/checkout/modeofpayments');
         if (response.status === 200) {
           setPaymentModes(response.data.data);
-          // Set default selected payment mode (e.g., 'online')
           const defaultMode =
             response.data.data.find((mode) => mode.name === 'online') ||
             response.data.data[0];
@@ -92,55 +91,33 @@ const ViewCart = () => {
         setIsLoadingPaymentModes(false);
       }
     };
-
     fetchPaymentModes();
   }, []);
 
-  // Use utility functions to calculate totals
   const totalQuantity = calculateTotalQuantity(cartItems);
   const totalCostBeforeDiscount = calculateTotalCostBeforeDiscount(cartItems);
   const discountAmount = calculateDiscountAmount(totalCostBeforeDiscount, couponState);
-  const totalCostAfterDiscount = calculateTotalCostAfterDiscount(
-    totalCostBeforeDiscount,
-    discountAmount
-  );
-
-  // Delivery Cost (Default or based on payment mode)
-  const deliveryCost = 0; // Default delivery cost
-
-  // Extra Charge based on Payment Mode
-  const extraCharge =
-    selectedPaymentMode && selectedPaymentMode.extraCharge
-      ? selectedPaymentMode.extraCharge
-      : 0;
-
-  // Total cost including delivery and extra charge
-  const totalCostWithDelivery =
-    totalCostAfterDiscount + deliveryCost + extraCharge;
-
-  // Original Total (for display when coupon applied)
+  const totalCostAfterDiscount = calculateTotalCostAfterDiscount(totalCostBeforeDiscount, discountAmount);
+  const deliveryCost = 0;
+  const extraCharge = selectedPaymentMode?.extraCharge || 0;
+  const totalCostWithDelivery = totalCostAfterDiscount + deliveryCost + extraCharge;
   const originalTotal = totalCostBeforeDiscount + deliveryCost + extraCharge;
-
-  // Calculate Payment Splits based on selected payment mode
   const onlinePercentage = selectedPaymentMode?.configuration?.onlinePercentage;
   const codPercentage = selectedPaymentMode?.configuration?.codPercentage;
+  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
-  // Handle removing a cart item
   const handleRemoveItem = (productId) => {
     dispatch(removeItem({ productId }));
   };
 
-  // Updated handleBack function
   const handleBack = () => {
     router.back();
   };
 
-  // Handle Checkout button click
   const handleCheckout = () => {
     setIsOrderFormOpen(true);
   };
 
-  // Handle applying a coupon
   const handleApplyCoupon = (couponCode, discount, discountType, isDbCoupon) => {
     setCouponState({
       couponApplied: true,
@@ -154,17 +131,9 @@ const ViewCart = () => {
       message: 'Coupon applied successfully!',
       severity: 'success',
     });
-    dispatch(setCouponApplied({ couponCode: couponCode, discountAmount }));
+    dispatch(setCouponApplied({ couponCode, discountAmount: discount }));
   };
 
-  // (Empty useEffect removed or left minimal if not needed)
-
-  // Handle Snackbar close
-  const handleSnackbarClose = () => {
-    setSnackbar((prev) => ({ ...prev, open: false }));
-  };
-
-  // Handle removing a coupon
   const handleRemoveCoupon = () => {
     setCouponState({
       couponApplied: false,
@@ -181,33 +150,75 @@ const ViewCart = () => {
     dispatch(setCouponApplied({ couponCode: '', discountAmount: 0 }));
   };
 
-  // Handle Payment Mode Selection
   const handlePaymentModeChange = (event) => {
     const selectedModeName = event.target.value;
     const mode = paymentModes.find((mode) => mode.name === selectedModeName);
     setSelectedPaymentMode(mode);
   };
 
-  // --- Memoize props for TopBoughtProducts ---
   const topBoughtSubCategories = useMemo(() => {
-    // Create a unique array of subCategories from cartItems
     return [...new Set(cartItems.map((item) => item.productDetails.subCategory))];
   }, [cartItems]);
 
   const topBoughtCurrentProductId = useMemo(() => {
-    // Join all product IDs from cartItems into a comma-separated string
     return cartItems.map((item) => item.productDetails._id).join(',');
   }, [cartItems]);
 
+  // --- Auto-apply logic ---
+  useEffect(() => {
+    const autoApplyOffer = async () => {
+      try {
+        const res = await fetch('/api/checkout/coupons');
+        const data = await res.json();
+        if (res.ok) {
+          // Find the first offer that has autoApply true and is applicable.
+          const autoOffer = data.coupons.find((offer) => {
+            if (!offer.autoApply) return false;
+            const cartCondition = offer.conditions.find((cond) => cond.type === 'cart_value');
+            if (cartCondition && totalCostBeforeDiscount < cartCondition.value) return false;
+            const firstOrderCondition = offer.conditions.find((cond) => cond.type === 'first_order');
+            if (firstOrderCondition && !isFirstOrder) return false;
+            return true;
+          });
+          if (autoOffer && !couponState.couponApplied) {
+            // Trigger the auto-apply animation.
+            setAutoApplyAnimation(true);
+            // Delay applying coupon until animation completes (e.g., 2 seconds)
+            setTimeout(() => {
+              setAutoAppliedCoupon(true)
+              handleApplyCoupon(
+                autoOffer.couponCodes[0],
+                autoOffer.actions[0].type === 'discount_percent'
+                  ? Math.min(
+                      (autoOffer.actions[0].discountValue / 100) * totalCostBeforeDiscount,
+                      autoOffer.discountCap
+                    )
+                  : autoOffer.actions[0].discountValue,
+                autoOffer.actions[0].type === 'discount_percent' ? 'percentage' : 'fixed',
+                false
+              );
+              setAutoApplyAnimation(false);
+            }, 5000);
+          }
+        }
+      } catch (error) {
+        console.error('Error during auto apply:', error.message);
+      }
+    };
+
+    if (totalQuantity > 0) {
+      autoApplyOffer();
+    }
+  }, [totalQuantity, totalCostBeforeDiscount, couponState.couponApplied, isFirstOrder,cartItems]);
+
+  const handleSnackbarClose = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
+
   return (
     <div className={styles.container}>
-      {/* Header */}
       <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
-
-      {/* Cart Items List */}
       {totalQuantity > 0 && <CartList cartItems={cartItems} onRemove={handleRemoveItem} />}
-
-      {/* Price Details and Payment Modes */}
       {totalQuantity > 0 && (
         <section className={styles.cartList}>
           <PriceDetails
@@ -218,7 +229,6 @@ const ViewCart = () => {
             onOpenCoupon={() => setIsCouponDialogOpen(true)}
             onRemoveCoupon={handleRemoveCoupon}
           />
-
           <PaymentModes
             paymentModes={paymentModes}
             isLoading={isLoadingPaymentModes}
@@ -227,16 +237,8 @@ const ViewCart = () => {
           />
         </section>
       )}
-
-      {/* Top Bought Products with memoized props */}
-      <TopBoughtProducts 
-        subCategories={topBoughtSubCategories}
-        currentProductId={topBoughtCurrentProductId}
-      />
-
+      <TopBoughtProducts subCategories={topBoughtSubCategories} currentProductId={topBoughtCurrentProductId} />
       <HappyCustomersClient headingText='Happy Customers' />
-
-      {/* Total Cost and Checkout */}
       {totalQuantity > 0 && (
         <Footer
           totalCost={totalCostWithDelivery}
@@ -246,17 +248,13 @@ const ViewCart = () => {
           codPercentage={codPercentage}
         />
       )}
-
-      {/* Coupon Dialog */}
       <ApplyCoupon
         open={isCouponDialogOpen}
         onClose={() => setIsCouponDialogOpen(false)}
         onApplyCoupon={handleApplyCoupon}
         totalCost={totalCostBeforeDiscount}
-        removeCoupon={handleRemoveCoupon}
+        isFirstOrder={isFirstOrder}
       />
-
-      {/* Order Form Dialog */}
       <OrderForm
         open={isOrderFormOpen}
         onClose={() => setIsOrderFormOpen(false)}
@@ -268,14 +266,25 @@ const ViewCart = () => {
         discountAmountFinal={discountAmount}
         items={cartItems}
       />
-
-      {/* Custom Snackbar for Feedback */}
-      <CustomSnackbar
-        open={snackbar.open}
-        message={snackbar.message}
-        severity={snackbar.severity}
-        handleClose={handleSnackbarClose}
-      />
+      <CustomSnackbar open={snackbar.open} message={snackbar.message} severity={snackbar.severity} handleClose={handleSnackbarClose} />
+      
+      {/* Auto-Apply Animation Overlay */}
+      {autoApplyAnimation && (
+        <div className={styles.autoApplyAnimationOverlay}>
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: [0, 1.2, 1] }}
+            exit={{ scale: 0 }}
+            transition={{ duration: 2 }}
+            className={styles.autoApplyAnimation}
+          >
+            <Image src={`/images/off.jpg`} alt="Auto Applying Coupon" width="200" height="200" />
+          </motion.div>
+          {windowSize.width > 0 && (
+            <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={300} />
+          )}
+        </div>
+      )}
     </div>
   );
 };

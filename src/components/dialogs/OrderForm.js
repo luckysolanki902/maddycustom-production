@@ -273,26 +273,26 @@ const OrderForm = ({
     try {
       // Before creating the order or processing payment, check serviceability
       let serviceability;
-      try {
-        const response = await axios.get(
-          `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${data.pincode}`
-        );
-        serviceability = response.data;
-        // Adjust condition based on your API's response
-        if (!serviceability.serviceable) {
-          showSnackbar(
-            `The pincode ${data.pincode} is either invalid or we don't deliver to this location!`,
-            'warning'
-          );
-          return;
-        }
-      } catch (error) {
-        showSnackbar(
-          error.response?.data?.error || error.message || 'Serviceability check failed',
-          'warning'
-        );
-        return;
-      }
+      // try {
+      //   const response = await axios.get(
+      //     `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${data.pincode}`
+      //   );
+      //   serviceability = response.data;
+      //   // Adjust condition based on your API's response
+      //   if (!serviceability.serviceable) {
+      //     showSnackbar(
+      //       `The pincode ${data.pincode} is either invalid or we don't deliver to this location!`,
+      //       'warning'
+      //     );
+      //     return;
+      //   }
+      // } catch (error) {
+      //   showSnackbar(
+      //     error.response?.data?.error || error.message || 'Serviceability check failed',
+      //     'warning'
+      //   );
+      //   return;
+      // }
 
       // 1) Add/Update Address
       try {
