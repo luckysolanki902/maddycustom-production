@@ -1,50 +1,133 @@
-"use client";
+'use client';
 import React, { useState } from 'react';
 import styles from './styles/Faq.module.css';
+import { FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 
-const FaqInputBox = () => {
+const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
   const [issue, setIssue] = useState('');
   const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
+  const [category, setCategory] = useState('');
+  const [subcategory, setSubcategory] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  
 
-  // Temporary submit handler for demonstration
-  // Replace or extend this to connect with your backend
-  const handleSubmit = (e) => {
+  const categories = {
+    "Order Related": [
+      "Didn't receive order ID",
+      "Can't track order",
+      "Shipping delay",
+      "Other"
+    ],
+    "Product Related": [
+      "Size doubts",
+      "Material queries",
+      "Installation help",
+      "Other"
+    ],
+    "Other": []
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Issue:', issue);
-    console.log('Mobile:', mobile);
+    setLoading(true);
+    try {
+      const res = await fetch('/api/openai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userMessage: issue,
+          mobile,
+          email,
+          category,
+          subcategory,
+        }),
+      });
+      // Retrieve the support query ID from headers
+      const requestId = res.headers.get('X-Request-ID');
+      const data = await res.text();
 
-    // Example of how you'd call a backend endpoint:
-    // fetch('/api/submit-issue', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ issue, mobile }),
-    // })
-    //   .then((res) => res.json())
-    //   .then((data) => {
-    //     console.log('Response from server:', data);
-    //   })
-    //   .catch((err) => {
-    //     console.error('Error submitting:', err);
-    //   });
+      // Show the AI response dialog in parent
+      onChatResponse(data, requestId);
+
+      // Once submitted, hide the submit button
+      setSubmitted(true);
+    } catch (error) {
+      console.error('Error fetching chat response', error);
+    }
+    setLoading(false);
   };
 
   return (
     <div className={styles.mainContainer}>
-      {/* Heading section */}
       <div className={styles.headingContainer}>
         <h2 className={styles.heading}>How can we help you?</h2>
       </div>
-
-      {/* Overlapping input box section */}
       <div className={styles.inputContainer}>
         <form onSubmit={handleSubmit} className={styles.form}>
+          {/* Category Dropdown */}
+          <select
+            className={styles.dropdown}
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setSubcategory('');
+            }}
+            required
+          >
+            <option value="" disabled>
+              Select Category
+            </option>
+            {Object.keys(categories).map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+
+          {/* Subcategory Dropdown or Input */}
+          {category && category !== "Other" && (
+            <select
+              className={styles.dropdown}
+              value={subcategory}
+              onChange={(e) => setSubcategory(e.target.value)}
+              required
+            >
+              <option value="" disabled>
+                Select Subcategory
+              </option>
+              {categories[category].map((sub) => (
+                <option key={sub} value={sub}>
+                  {sub}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {category === "Other" && (
+            <div className={styles.mobileFieldContainer}>
+              <input
+                type="text"
+                className={styles.mobileField}
+                placeholder="Subject"
+                value={subcategory}
+                onChange={(e) => setSubcategory(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          {/* Issue Textarea */}
           <textarea
             className={styles.messageField}
             placeholder="Please enter your issue here"
             value={issue}
             onChange={(e) => setIssue(e.target.value)}
+            required
           />
-          
+
+          {/* Mobile Number Input */}
           <div className={styles.mobileFieldContainer}>
             <input
               type="text"
@@ -52,12 +135,39 @@ const FaqInputBox = () => {
               placeholder="Mobile Number"
               value={mobile}
               onChange={(e) => setMobile(e.target.value)}
+              required
             />
           </div>
 
-          <button type="submit" className={styles.submitButton}>
-            Submit
-          </button>
+          {/* Email Input */}
+          <div className={styles.mobileFieldContainer}>
+            <input
+              type="email"
+              className={styles.mobileField}
+              placeholder="Email Address (optional)"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+
+          {/* Submit button OR Reopen dialog */}
+          {!submitted ? (
+            <button
+              type="submit"
+              className={styles.submitButton}
+              disabled={loading}
+            >
+              {loading ? 'Submitting...' : 'Submit'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={styles.submitButton}
+              onClick={onReopenChat}
+            >
+              Reopen Chat
+            </button>
+          )}
         </form>
       </div>
     </div>
@@ -65,5 +175,3 @@ const FaqInputBox = () => {
 };
 
 export default FaqInputBox;
-
-
