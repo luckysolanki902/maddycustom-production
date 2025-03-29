@@ -382,7 +382,8 @@ export async function POST(request) {
           await sendWhatsAppMessage({
             user: userDoc,
             prefUserName: latestOrder.address.receiverName || '',
-            campaignName: 'order_confirmed',
+            // campaignName: 'order_confirmed',
+            campaignName: 'delay_eid',
             orderId: latestOrder._id,
             templateParams: [],
             carouselCards: [],
