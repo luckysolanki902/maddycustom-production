@@ -383,7 +383,7 @@ export async function POST(request) {
             user: userDoc,
             prefUserName: latestOrder.address.receiverName || '',
             campaignName:
-              new Date().getTime() < new Date('2023-04-03T00:00:00.000Z').getTime()
+              new Date().getTime() < new Date('2025-04-03T00:00:00.000Z').getTime()
                 ? 'delay_eid'
                 : 'order_confirmed',
             orderId: latestOrder._id,
