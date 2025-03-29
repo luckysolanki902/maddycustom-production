@@ -42,7 +42,7 @@
     /* Height is arbitrary; adjust to your liking */
     height: 140px; 
     background-color: #fff;
-    margin-bottom: 19rem; /* So page content below doesn't overlap */
+    margin-bottom: 21rem; /* So page content below doesn't overlap */
   }
   
   /* Heading section */
@@ -72,7 +72,8 @@
     */
     top: 60%;
     transform: translateX(-50%);
-    width: 400px; /* Adjust as needed */
+    width: 90vw; /* Adjust as needed */
+    max-width: 600px;
     background-color: #fff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     border-radius: 6px;
@@ -137,8 +138,9 @@
   padding: 2rem;
 }
 
+
 .faqHeading {
-  font-size: 2rem;
+  font-size: 2.5rem;
   margin-bottom: 2rem;
 }
 
@@ -187,7 +189,7 @@
   padding: 0.4rem 2.5rem;
   cursor: pointer;
   border-radius: 2px;
-  font-size: 1.9rem;
+  font-size: 1.2rem;
 }
 
 .moreButton:hover {
@@ -226,13 +228,10 @@
   color: #424242;
   padding-left: 0.5rem; /* Indent content a bit */
 }
-.faqHeading{
-  font-weight: 600;
-  font-size: 50px;
-}
+
 /* Example for the product title in FaqAccordionSection */
 .productTitle {
-  font-size: 1.4rem;
+  font-size: 1.1rem;
   font-weight: 500;
   color: #ffffff; /* matches the dark header background? */
   margin: 0;
@@ -248,11 +247,37 @@
 
 /* The FAQ answer content in FaqAccordionCard */
 .faqContent {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   line-height: 1.4;
   color: #555; /* a medium gray, for example */
 }
 
+/* Dropdown Styles */
+.dropdown {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  outline: none;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+
+
+
+
+
+.dropdown option:hover {
+  background-color: #424242;
+}
+
+
+.dropdown option:active {
+  background-color: #333;
+}
 
   /* ========== RESPONSIVE BREAKPOINTS ========== */
 @media (max-width: 768px) {
@@ -267,7 +292,7 @@
     font-size: 1rem;
   }
   .moreButton {
-    font-size: 1.5rem;
+    font-size: 1rem;
     padding: 0.6rem 2rem;
   }
   .faqSection {
