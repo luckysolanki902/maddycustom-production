@@ -194,7 +194,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       </div>
       {!isSmallDevice && (
         <div className={styles.chatwithusMain}>
-          <Link href={'https://wa.me/8112673988'}>
+          <Link href={'/faqs'}>
             <Image
               className={styles.chatwithus}
               src={`${imageBaseUrl}/assets/icons/chatwithus.png`}

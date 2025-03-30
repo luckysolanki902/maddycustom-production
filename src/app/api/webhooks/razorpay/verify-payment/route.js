@@ -382,7 +382,10 @@ export async function POST(request) {
           await sendWhatsAppMessage({
             user: userDoc,
             prefUserName: latestOrder.address.receiverName || '',
-            campaignName: 'order_confirmed',
+            campaignName:
+              new Date().getTime() < new Date('2025-04-03T00:00:00.000Z').getTime()
+                ? 'delay_eid'
+                : 'order_confirmed',
             orderId: latestOrder._id,
             templateParams: [],
             carouselCards: [],

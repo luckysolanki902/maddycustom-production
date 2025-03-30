@@ -1,9 +1,8 @@
-// /app/api/meta/pixel-products-csv/route.js
+// /app/api/products-csv/route.js
 
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Product from '@/models/Product';
 import SpecificCategory from '@/models/SpecificCategory';
-import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import { NextResponse } from 'next/server';
 import { Parser } from 'json2csv';
 
@@ -39,7 +38,7 @@ export async function GET() {
 
     // Transform the product data to include only required fields
     const csvData = products.map(product => ({
-      id: product._id,
+      id: product.sku,
       title: product.title,
       description: product.specificCategoryVariant && product.specificCategoryVariant.productDescription
         ? product.specificCategoryVariant.productDescription.replace('{uniqueName}', product.name)
