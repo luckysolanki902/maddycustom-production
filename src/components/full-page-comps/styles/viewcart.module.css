@@ -1,3 +1,4 @@
+/* Existing styles */
 
 .container {
   background-color: #F1FFFC;
@@ -20,7 +21,6 @@
   align-items: center;
 }
 
-
 .heading span {
   margin-left: 0.5rem;
   color: #676767;
@@ -41,10 +41,8 @@
   margin-top: 30px;
 }
 
-
 @media (min-width: 600px) {
   .cartList {
-    
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1.2rem;
@@ -55,7 +53,6 @@
 
 .cartItem {
   color: black;
-  
   display: flex;
   align-items: center;
   background-color: #ffffff;
@@ -72,9 +69,7 @@
   align-items: flex-start;
   padding: 1.5rem;
   gap: 1rem;
-
 }
-
 
 .priceField {
   min-width: 150px;
@@ -82,15 +77,17 @@
   font-size: 1.1rem;
   display: flex;
 }
-.mopBox{
+
+.mopBox {
   padding-left: 1.5rem;
   align-items: flex-start;
   padding: 1.5rem;
-
 }
-.patch{
+
+.patch {
   background-color: #fafa7d;
 }
+
 .priceDetailRow {
   display: flex;
 }
@@ -110,7 +107,6 @@
 .priceValue {
   font-size: 1.1rem;
   color: gray;
-
 }
 
 .productDetails {
@@ -158,6 +154,7 @@
   padding: 10px 20px;
   font-size: 16px;
 }
+
 .autoApplyAnimationOverlay {
   position: fixed;
   top: 0;
@@ -175,4 +172,101 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ------------------------------------------ */
+/* New UI additions as per the screenshot     */
+/* ------------------------------------------ */
+
+/* 1) Top banner: "You saved ₹100 on FREE shipping" */
+.freeShippingBanner {
+  background-color: #ebfff0;  /* light greenish background */
+  color: #00a341;             /* matching green text color */
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-align: center;
+  font-size: 1rem;
+}
+
+/* 2) Coupon save banner: "You saved ₹X on COUPON_CODE" */
+.couponSaveBanner {
+  background-color: #fdf4e7;  /* light orange-ish background */
+  color: #ff9800;             /* deeper orange text color */
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-align: center;
+  font-size: 1rem;
+}
+
+/* 3) Locked offer container: "Add ₹XYZ more to unlock X% off coupon" */
+.lockedOfferContainer {
+  display: flex;
+  align-items: center;
+  background-color: #fffbea; /* light yellow-ish background */
+  color: #f57c00;            /* orange text color */
+  padding: 8px 16px;
+  margin: 8px 0;
+  border-radius: 4px;
+}
+
+.lockedOfferText {
+  margin-left: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* 3b) Unlocked offer container: "You can now unlock X% off coupon!" */
+.unlockedOfferContainer {
+  display: flex;
+  align-items: center;
+  background-color: #e8ffef; /* light greenish background */
+  color: #00a341;
+  padding: 8px 16px;
+  margin: 8px 0;
+  border-radius: 4px;
+}
+
+.unlockedOfferText {
+  margin-left: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.applyNowButton {
+  margin-left: auto;
+  background-color: #00a341;
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* 4) "View all coupons" section */
+.viewAllCouponsSection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0;
+}
+
+.viewAllCouponsText {
+  font-weight: 600;
+  color: #333;
+  font-size: 1rem;
+}
+
+.viewAllCouponsButton {
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
 }
