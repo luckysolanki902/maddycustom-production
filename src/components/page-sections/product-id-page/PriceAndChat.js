@@ -37,7 +37,7 @@ export default function PriceAndChat({ price }) {
 
                 {/* Chat with us */}
                 {isSmallDevice && <div className={styles.chatwithusMain}>
-                    <Link href={'https://wa.me/8112673988'} >
+                    <Link href={'/faqs'} >
                         <Image className={styles.chatwithus} src={`${imageBaseUrl}/assets/icons/chatwithus.png`} width={1400} height={400} alt='chat with us'></Image>
                     </Link>
                 </div>}

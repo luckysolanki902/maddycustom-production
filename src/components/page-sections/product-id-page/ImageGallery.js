@@ -182,7 +182,7 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                   }
                   className={styles.thumbArrowButton}
                 >
-                  <ArrowBackIosNewIcon />
+                  <ArrowBackIosNewIcon sx={{zIndex: 2}}/>
                 </IconButton>
                 <IconButton
                   onClick={() =>
@@ -190,7 +190,7 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                   }
                   className={styles.thumbArrowButton}
                 >
-                  <ArrowForwardIosIcon />
+                  <ArrowForwardIosIcon sx={{zIndex: 2}}/>
                 </IconButton>
               </div>
             )}
