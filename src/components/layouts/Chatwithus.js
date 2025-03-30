@@ -11,7 +11,7 @@ const Chatwithus = () => {
 
   return (
     <div className={styles.parent}>
-      <Link href={'https://wa.me/8112673988'} onClick={handleChatClick}>
+      <Link href={'/faqs'} onClick={handleChatClick}>
         <Image className={styles.chatwithus} src={'/images/icons/chatwithus.png'} width={700} height={200} alt='chat with us' />
       </Link>
     </div>

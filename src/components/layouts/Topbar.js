@@ -53,8 +53,8 @@ const Topbar = () => {
         <div className={styles.navLinks}>
           {[
             { text: 'Home', href: '/' },
-            { text: 'Contact Us', href: '/#homecontactdiv' },
             { text: 'Track Your Order', href: '/orders/track' },
+            { text: 'Customer Support', href: '/faqs' },
           ].map((item) => (
             <Link
               key={item.text}

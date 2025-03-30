@@ -1,0 +1,59 @@
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    font-family: 'Jost', sans-serif;
+    text-align: center;
+  }
+  
+  .heading {
+    font-family: 'Krona One', sans-serif;
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 3px solid #000;
+    display: inline-block;
+    padding-bottom: 0.5rem;
+  }
+  
+  .text {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 1.2rem;
+  }
+  
+  .link {
+    color: #0070f3;
+    text-decoration: none;
+  }
+  
+  .link:hover {
+    text-decoration: underline;
+  }
+  
+  .whatsappContainer {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  .whatsappLink {
+    display: inline-flex;
+    align-items: center;
+    background-color: #25d366;
+    color: #fff;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+  }
+  
+  .whatsappLink:hover {
+    background-color: #20b955;
+  }
+  
+  .whatsappIcon {
+    height: 34px;
+    width: 34px;
+  }
+  
