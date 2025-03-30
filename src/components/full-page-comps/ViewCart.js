@@ -27,13 +27,48 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Confetti from 'react-confetti';
 
+// Helper function to dynamically evaluate an offer's conditions.
+const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
+  let applicable = true;
+
+  offer.conditions.forEach((condition) => {
+    if (condition.type === 'cart_value') {
+     
+      switch (condition.operator) {
+        case '>=':
+          if (!(totalCost >= condition.value)) applicable = false;
+          break;
+        case '<=':
+          if (!(totalCost <= condition.value)) applicable = false;
+          break;
+        case '>':
+          if (!(totalCost > condition.value)) applicable = false;
+          break;
+        case '<':
+          if (!(totalCost < condition.value)) applicable = false;
+          break;
+        case '==':
+          if (!(totalCost === condition.value)) applicable = false;
+          break;
+        default:
+          applicable = false;
+      }
+    } else if (condition.type === 'first_order') {
+      if (isFirstOrder !== condition.value) applicable = false;
+    }
+  });
+  return applicable;
+};
+
 const ViewCart = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
   const orderForm = useSelector((state) => state.orderForm);
   const { couponApplied } = orderForm;
+ 
 
+  // Updated couponState now stores the full offer object.
   const [isCouponDialogOpen, setIsCouponDialogOpen] = useState(false);
   const [couponState, setCouponState] = useState({
     couponApplied: false,
@@ -41,6 +76,7 @@ const ViewCart = () => {
     couponDiscount: 0,
     discountType: '',
     isDbCoupon: false,
+    offer: null,
   });
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -118,13 +154,15 @@ const ViewCart = () => {
     setIsOrderFormOpen(true);
   };
 
-  const handleApplyCoupon = (couponCode, discount, discountType, isDbCoupon) => {
+  // Updated handler to store the full offer (if provided)
+  const handleApplyCoupon = (couponCode, discount, discountType, isDbCoupon, offerData = null) => {
     setCouponState({
       couponApplied: true,
       couponName: couponCode,
       couponDiscount: discount,
       discountType: discountType,
       isDbCoupon: isDbCoupon,
+      offer: offerData,
     });
     setSnackbar({
       open: true,
@@ -141,6 +179,7 @@ const ViewCart = () => {
       couponDiscount: 0,
       discountType: '',
       isDbCoupon: false,
+      offer: null,
     });
     setSnackbar({
       open: true,
@@ -183,9 +222,9 @@ const ViewCart = () => {
           if (autoOffer && !couponState.couponApplied) {
             // Trigger the auto-apply animation.
             setAutoApplyAnimation(true);
-            // Delay applying coupon until animation completes (e.g., 2 seconds)
+            // Delay applying coupon until animation completes (e.g., 5 seconds)
             setTimeout(() => {
-              setAutoAppliedCoupon(true)
+              setAutoAppliedCoupon(true);
               handleApplyCoupon(
                 autoOffer.couponCodes[0],
                 autoOffer.actions[0].type === 'discount_percent'
@@ -195,7 +234,8 @@ const ViewCart = () => {
                     )
                   : autoOffer.actions[0].discountValue,
                 autoOffer.actions[0].type === 'discount_percent' ? 'percentage' : 'fixed',
-                false
+                false,
+                autoOffer
               );
               setAutoApplyAnimation(false);
             }, 5000);
@@ -209,7 +249,23 @@ const ViewCart = () => {
     if (totalQuantity > 0) {
       autoApplyOffer();
     }
-  }, [totalQuantity, totalCostBeforeDiscount, couponState.couponApplied, isFirstOrder,cartItems]);
+  }, [totalQuantity, totalCostBeforeDiscount, couponState.couponApplied, isFirstOrder, cartItems]);
+
+  // --- Re-check applied coupon on cart update dynamically ---
+  useEffect(() => {
+    if (couponState.couponApplied && couponState.offer) {
+      
+      const stillApplicable = isOfferApplicable(couponState.offer, totalCostBeforeDiscount, isFirstOrder);
+      if (!stillApplicable) {
+        handleRemoveCoupon();
+        setSnackbar({
+          open: true,
+          message: `The applied offer (${couponState.couponName}) is no longer valid due to cart changes.`,
+          severity: 'warning',
+        });
+      }
+    }
+  }, [totalCostBeforeDiscount, couponState, isFirstOrder, cartItems]);
 
   const handleSnackbarClose = () => {
     setSnackbar((prev) => ({ ...prev, open: false }));
@@ -238,7 +294,7 @@ const ViewCart = () => {
         </section>
       )}
       <TopBoughtProducts subCategories={topBoughtSubCategories} currentProductId={topBoughtCurrentProductId} />
-      <HappyCustomersClient headingText='Happy Customers' />
+      <HappyCustomersClient headingText="Happy Customers" />
       {totalQuantity > 0 && (
         <Footer
           totalCost={totalCostWithDelivery}
@@ -266,8 +322,12 @@ const ViewCart = () => {
         discountAmountFinal={discountAmount}
         items={cartItems}
       />
-      <CustomSnackbar open={snackbar.open} message={snackbar.message} severity={snackbar.severity} handleClose={handleSnackbarClose} />
-      
+      <CustomSnackbar
+        open={snackbar.open}
+        message={snackbar.message}
+        severity={snackbar.severity}
+        handleClose={handleSnackbarClose}
+      />
       {/* Auto-Apply Animation Overlay */}
       {autoApplyAnimation && (
         <div className={styles.autoApplyAnimationOverlay}>

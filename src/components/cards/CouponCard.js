@@ -19,11 +19,11 @@ const CouponCard = ({
   };
 
   // Use the thumbnail as the background if available.
-  console.log(thumbnail)
+
   const backgroundStyle = thumbnail
     ? { backgroundImage: `url(${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/${thumbnail})` }
     : {};  
- console.log(backgroundStyle.backgroundImage)
+
 
   // Apply grayscale and reduce opacity if not applicable.
   const cardStyle = {
