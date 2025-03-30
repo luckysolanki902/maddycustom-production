@@ -158,3 +158,21 @@
   padding: 10px 20px;
   font-size: 16px;
 }
+.autoApplyAnimationOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999; /* Ensures it appears above other elements */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* Allows interactions to pass through */
+}
+
+.autoApplyAnimation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
