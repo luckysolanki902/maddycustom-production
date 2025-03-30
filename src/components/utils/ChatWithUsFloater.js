@@ -8,7 +8,7 @@ const ChatwithusFloater = () => {
 
   return (
     <div className={styles.parent}>
-      <Link href={'https://wa.me/8112673988'}>
+      <Link href={'/faqs'}>
         <Image className={styles.chatwithus} src={`${baseImageUrl}/assets/icons/chatwithus.png`} width={700} height={200} alt='chat with us' />
       </Link>
     </div>

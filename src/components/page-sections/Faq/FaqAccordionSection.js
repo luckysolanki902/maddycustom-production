@@ -29,10 +29,14 @@ const FaqAccordionSection = ({ productTitle, faqData }) => {
       </div>
 
       {/* Only show the "More" button if there are more than 4 items */}
+      
       {!showAll && faqData.length > 4 && (
-        <button className={styles.moreButton} onClick={() => setShowAll(true)}>
+        <div style={{display:'flex', justifyContent: 'center', marginBottom:'1rem'}}>
+
+        <button className={styles.submitButton} onClick={() => setShowAll(true)}>
           More
         </button>
+        </div>
       )}
     </div>
   );

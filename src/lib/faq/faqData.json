@@ -1,7 +1,7 @@
 {
     "faqSections": [
       {
-        "productTitle": "Order Related Queries (Refined & Professionalized)",
+        "productTitle": "Product Related Queries",
         "faqs": [
           {
             "title": "Are pillar wraps for both sides or just one side?",
@@ -26,7 +26,7 @@
         ]
       },
       {
-        "productTitle": "Delivery Related Queries (Refined & Professionalized)",
+        "productTitle": "Delivery Related Queries",
         "faqs": [
           {
             "title": "Unable to track my package",
