@@ -15,6 +15,12 @@ const SupportRequestSchema = new mongoose.Schema(
     resolvedBy: {
       type: String,
       enum: ['ai', 'support team'],
+      default: 'ai'
+    },
+    department: {
+      type: String,
+      enum: ['production', 'marketing'],
+      default: 'production',
     },
   },
   { timestamps: true }
