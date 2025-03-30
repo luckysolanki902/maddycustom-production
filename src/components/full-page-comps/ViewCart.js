@@ -27,13 +27,10 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Confetti from 'react-confetti';
 
-// Helper function to dynamically evaluate an offer's conditions.
 const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
   let applicable = true;
-
   offer.conditions.forEach((condition) => {
     if (condition.type === 'cart_value') {
-     
       switch (condition.operator) {
         case '>=':
           if (!(totalCost >= condition.value)) applicable = false;
@@ -66,10 +63,8 @@ const ViewCart = () => {
   const cartItems = useSelector((state) => state.cart.items);
   const orderForm = useSelector((state) => state.orderForm);
   const { couponApplied } = orderForm;
- 
 
-  // Updated couponState now stores the full offer object.
-  const [isCouponDialogOpen, setIsCouponDialogOpen] = useState(false);
+  // Local coupon state
   const [couponState, setCouponState] = useState({
     couponApplied: false,
     couponName: '',
@@ -78,6 +73,24 @@ const ViewCart = () => {
     isDbCoupon: false,
     offer: null,
   });
+
+  // Rehydrate local coupon state from Redux on mount/update.
+  useEffect(() => {
+    if (couponApplied.couponCode) {
+      setCouponState({
+        couponApplied: true,
+        couponName: couponApplied.couponCode,
+        couponDiscount: couponApplied.discountAmount,
+        // Defaulting to 'fixed'. Adjust if needed.
+        discountType: 'fixed',
+        isDbCoupon: false,
+        offer: null,
+      });
+    }
+  }, [couponApplied]);
+
+  // Other component state and hooks.
+  const [isCouponDialogOpen, setIsCouponDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -92,13 +105,14 @@ const ViewCart = () => {
   const [autoAppliedCoupon, setAutoAppliedCoupon] = useState(false);
 
   // Assume you know whether this is the customer's first order.
-  const isFirstOrder = false; // Replace with real logic if available
+  const isFirstOrder = false; // Replace with your logic if available
 
-  // Get window dimensions (for confetti)
+  // Set window dimensions (for confetti)
   useEffect(() => {
     setWindowSize({ width: window.innerWidth, height: window.innerHeight });
   }, []);
 
+  // Fetch payment modes.
   useEffect(() => {
     const fetchPaymentModes = async () => {
       try {
@@ -154,7 +168,7 @@ const ViewCart = () => {
     setIsOrderFormOpen(true);
   };
 
-  // Updated handler to store the full offer (if provided)
+  // Handler to apply coupon
   const handleApplyCoupon = (couponCode, discount, discountType, isDbCoupon, offerData = null) => {
     setCouponState({
       couponApplied: true,
@@ -172,6 +186,8 @@ const ViewCart = () => {
     dispatch(setCouponApplied({ couponCode, discountAmount: discount }));
   };
 
+  // Handler to remove coupon.
+  // Also sets a flag in localStorage so auto-apply won’t reapply it.
   const handleRemoveCoupon = () => {
     setCouponState({
       couponApplied: false,
@@ -187,6 +203,7 @@ const ViewCart = () => {
       severity: 'warning',
     });
     dispatch(setCouponApplied({ couponCode: '', discountAmount: 0 }));
+    localStorage.setItem('autoApplyDisabled', 'true');
   };
 
   const handlePaymentModeChange = (event) => {
@@ -205,48 +222,48 @@ const ViewCart = () => {
 
   // --- Auto-apply logic ---
   useEffect(() => {
-    const autoApplyOffer = async () => {
-      try {
-        const res = await fetch('/api/checkout/coupons');
-        const data = await res.json();
-        if (res.ok) {
-          // Find the first offer that has autoApply true and is applicable.
-          const autoOffer = data.coupons.find((offer) => {
-            if (!offer.autoApply) return false;
-            const cartCondition = offer.conditions.find((cond) => cond.type === 'cart_value');
-            if (cartCondition && totalCostBeforeDiscount < cartCondition.value) return false;
-            const firstOrderCondition = offer.conditions.find((cond) => cond.type === 'first_order');
-            if (firstOrderCondition && !isFirstOrder) return false;
-            return true;
-          });
-          if (autoOffer && !couponState.couponApplied) {
-            // Trigger the auto-apply animation.
-            setAutoApplyAnimation(true);
-            // Delay applying coupon until animation completes (e.g., 5 seconds)
-            setTimeout(() => {
-              setAutoAppliedCoupon(true);
-              handleApplyCoupon(
-                autoOffer.couponCodes[0],
-                autoOffer.actions[0].type === 'discount_percent'
-                  ? Math.min(
-                      (autoOffer.actions[0].discountValue / 100) * totalCostBeforeDiscount,
-                      autoOffer.discountCap
-                    )
-                  : autoOffer.actions[0].discountValue,
-                autoOffer.actions[0].type === 'discount_percent' ? 'percentage' : 'fixed',
-                false,
-                autoOffer
-              );
-              setAutoApplyAnimation(false);
-            }, 5000);
-          }
-        }
-      } catch (error) {
-        console.error('Error during auto apply:', error.message);
-      }
-    };
+    // Check if the user has explicitly removed the coupon.
+    const autoApplyDisabled = localStorage.getItem('autoApplyDisabled') === 'true';
 
-    if (totalQuantity > 0) {
+    if (totalQuantity > 0 && !autoApplyDisabled) {
+      const autoApplyOffer = async () => {
+        try {
+          const res = await fetch('/api/checkout/coupons');
+          const data = await res.json();
+          if (res.ok) {
+            const autoOffer = data.coupons.find((offer) => {
+              if (!offer.autoApply) return false;
+              const cartCondition = offer.conditions.find((cond) => cond.type === 'cart_value');
+              if (cartCondition && totalCostBeforeDiscount < cartCondition.value) return false;
+              const firstOrderCondition = offer.conditions.find((cond) => cond.type === 'first_order');
+              if (firstOrderCondition && !isFirstOrder) return false;
+              return true;
+            });
+            if (autoOffer && !couponState.couponApplied) {
+              setAutoApplyAnimation(true);
+              setTimeout(() => {
+                setAutoAppliedCoupon(true);
+                handleApplyCoupon(
+                  autoOffer.couponCodes[0],
+                  autoOffer.actions[0].type === 'discount_percent'
+                    ? Math.min(
+                        (autoOffer.actions[0].discountValue / 100) * totalCostBeforeDiscount,
+                        autoOffer.discountCap
+                      )
+                    : autoOffer.actions[0].discountValue,
+                  autoOffer.actions[0].type === 'discount_percent' ? 'percentage' : 'fixed',
+                  false,
+                  autoOffer
+                );
+                setAutoApplyAnimation(false);
+              }, 5000);
+            }
+          }
+        } catch (error) {
+          console.error('Error during auto apply:', error.message);
+        }
+      };
+
       autoApplyOffer();
     }
   }, [totalQuantity, totalCostBeforeDiscount, couponState.couponApplied, isFirstOrder, cartItems]);
@@ -254,7 +271,6 @@ const ViewCart = () => {
   // --- Re-check applied coupon on cart update dynamically ---
   useEffect(() => {
     if (couponState.couponApplied && couponState.offer) {
-      
       const stillApplicable = isOfferApplicable(couponState.offer, totalCostBeforeDiscount, isFirstOrder);
       if (!stillApplicable) {
         handleRemoveCoupon();
@@ -328,25 +344,37 @@ const ViewCart = () => {
         severity={snackbar.severity}
         handleClose={handleSnackbarClose}
       />
-      {/* Auto-Apply Animation Overlay */}
-      {autoApplyAnimation && (
-        <div className={styles.autoApplyAnimationOverlay}>
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: [0, 1.2, 1] }}
-            exit={{ scale: 0 }}
-            transition={{ duration: 2 }}
-            className={styles.autoApplyAnimation}
-          >
-            <Image src={`/images/off.jpg`} alt="Auto Applying Coupon" width="200" height="200" />
-          </motion.div>
-          {windowSize.width > 0 && (
-            <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={300} />
-          )}
-        </div>
-      )}
+      {/* Optionally, add a button to clear the autoApplyDisabled flag if needed */}
+      <button onClick={() => {
+            localStorage.removeItem('autoApplyDisabled');
+            setSnackbar({ open: true, message: 'Auto-apply re-enabled.', severity: 'info' });
+          }}>
+            Re-enable Auto-Apply
+          </button>
     </div>
   );
 };
 
 export default ViewCart;
+
+
+
+
+
+ {/* Auto-Apply Animation Overlay */}
+//  {autoApplyAnimation && (
+//   <div className={styles.autoApplyAnimationOverlay}>
+//     <motion.div
+//       initial={{ scale: 0 }}
+//       animate={{ scale: [0, 1.2, 1] }}
+//       exit={{ scale: 0 }}
+//       transition={{ duration: 2 }}
+//       className={styles.autoApplyAnimation}
+//     >
+//       <Image src={`/images/off.jpg`} alt="Auto Applying Coupon" width="200" height="200" />
+//     </motion.div>
+//     {windowSize.width > 0 && (
+//       <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={300} />
+//     )}
+//   </div>
+// )}
