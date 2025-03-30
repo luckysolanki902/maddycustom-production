@@ -96,10 +96,12 @@ const Footer = () => {
       <AccordionDetails sx={{ paddingTop: 0 }}>
         <ul className={styles.categoryList}>
           <li>
-            <Link href="#">All Product</Link>
+            <Link href="/shop/accessories/car-care/car-air-freshners/hanging-bottle-car-fresheners">
+              Car Fresheners
+            </Link>
           </li>
           <li>
-            <Link href="shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps">
+            <Link href="/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps">
               Bonnet Wrap
             </Link>
           </li>
