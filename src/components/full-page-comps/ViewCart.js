@@ -26,6 +26,7 @@ import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Confetti from 'react-confetti';
+import { ChevronRight } from '@mui/icons-material';
 
 const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
   let applicable = true;
@@ -82,9 +83,9 @@ const ViewCart = () => {
         couponName: couponApplied.couponCode,
         couponDiscount: couponApplied.discountAmount,
         // Defaulting to 'fixed'. Adjust if needed.
-        discountType: 'fixed',
-        isDbCoupon: false,
-        offer: null,
+        discountType: couponApplied.discountType,
+        isDbCoupon: couponApplied.isDbCoupon,
+        offer: couponApplied.offer,
       });
     }
   }, [couponApplied]);
@@ -103,6 +104,10 @@ const ViewCart = () => {
   const [autoApplyAnimation, setAutoApplyAnimation] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [autoAppliedCoupon, setAutoAppliedCoupon] = useState(false);
+
+  // State for the "best coupon" not yet applicable but can be unlocked
+  const [bestCoupon, setBestCoupon] = useState(null);
+  const [couponShortfall, setCouponShortfall] = useState(0);
 
   // Assume you know whether this is the customer's first order.
   const isFirstOrder = false; // Replace with your logic if available
@@ -144,26 +149,29 @@ const ViewCart = () => {
     fetchPaymentModes();
   }, []);
 
+  // Calculate cart totals
   const totalQuantity = calculateTotalQuantity(cartItems);
   const totalCostBeforeDiscount = calculateTotalCostBeforeDiscount(cartItems);
   const discountAmount = calculateDiscountAmount(totalCostBeforeDiscount, couponState);
   const totalCostAfterDiscount = calculateTotalCostAfterDiscount(totalCostBeforeDiscount, discountAmount);
-  const deliveryCost = 0;
+  const deliveryCost = 0; // For your example
   const extraCharge = selectedPaymentMode?.extraCharge || 0;
   const totalCostWithDelivery = totalCostAfterDiscount + deliveryCost + extraCharge;
   const originalTotal = totalCostBeforeDiscount + deliveryCost + extraCharge;
   const onlinePercentage = selectedPaymentMode?.configuration?.onlinePercentage;
   const codPercentage = selectedPaymentMode?.configuration?.codPercentage;
-  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
+  // Handler to remove item from cart
   const handleRemoveItem = (productId) => {
     dispatch(removeItem({ productId }));
   };
 
+  // Handler for going back
   const handleBack = () => {
     router.back();
   };
 
+  // Checkout
   const handleCheckout = () => {
     setIsOrderFormOpen(true);
   };
@@ -183,11 +191,10 @@ const ViewCart = () => {
       message: 'Coupon applied successfully!',
       severity: 'success',
     });
-    dispatch(setCouponApplied({ couponCode, discountAmount: discount }));
+    dispatch(setCouponApplied({ couponCode, discountAmount: discount,discountType, isDbCoupon, offer: offerData }));
   };
 
-  // Handler to remove coupon.
-  // Also sets a flag in localStorage so auto-apply won’t reapply it.
+  // Handler to remove coupon + disable auto-apply
   const handleRemoveCoupon = () => {
     setCouponState({
       couponApplied: false,
@@ -202,27 +209,52 @@ const ViewCart = () => {
       message: 'Coupon removed.',
       severity: 'warning',
     });
-    dispatch(setCouponApplied({ couponCode: '', discountAmount: 0 }));
+    dispatch(setCouponApplied({ couponCode: '', discountAmount: 0, discountType: '', isDbCoupon: false, offer: null }));
     localStorage.setItem('autoApplyDisabled', 'true');
   };
 
+  // Payment mode change
   const handlePaymentModeChange = (event) => {
     const selectedModeName = event.target.value;
     const mode = paymentModes.find((mode) => mode.name === selectedModeName);
     setSelectedPaymentMode(mode);
   };
 
+  // Subcategories for "TopBoughtProducts"
   const topBoughtSubCategories = useMemo(() => {
     return [...new Set(cartItems.map((item) => item.productDetails.subCategory))];
   }, [cartItems]);
 
+  // Product IDs for "TopBoughtProducts"
   const topBoughtCurrentProductId = useMemo(() => {
     return cartItems.map((item) => item.productDetails._id).join(',');
   }, [cartItems]);
 
+  // --- Fetch "best coupon" data if user is not yet eligible but might be close
+  useEffect(() => {
+    const fetchBestCoupon = async () => {
+      if (totalCostBeforeDiscount <= 0) return;
+      try {
+        const res = await axios.get('/api/checkout/bestcoupon', {
+          params: { cartValue: totalCostBeforeDiscount },
+        });
+        if (res.status === 200) {
+          const { bestOffer, shortfall } = res.data;
+          setBestCoupon(bestOffer);
+          setCouponShortfall(shortfall);
+        }
+        console.log(bestCoupon);
+        console.log(couponShortfall);
+      } catch (error) {
+        console.error('Error fetching best coupon:', error);
+      }
+    };
+
+    fetchBestCoupon();
+  }, [totalCostBeforeDiscount]);
+
   // --- Auto-apply logic ---
   useEffect(() => {
-    // Check if the user has explicitly removed the coupon.
     const autoApplyDisabled = localStorage.getItem('autoApplyDisabled') === 'true';
 
     if (totalQuantity > 0 && !autoApplyDisabled) {
@@ -283,16 +315,108 @@ const ViewCart = () => {
     }
   }, [totalCostBeforeDiscount, couponState, isFirstOrder, cartItems]);
 
+  useEffect(() => {
+    const fetchBestCoupon = async () => {
+      if (totalCostBeforeDiscount <= 0) return;
+      try {
+        const res = await axios.get('/api/checkout/bestcoupon', {
+          params: { cartValue: totalCostBeforeDiscount },
+        });
+        if (res.status === 200) {
+          const { bestOffer, shortfall } = res.data;
+          setBestCoupon(bestOffer);
+          setCouponShortfall(shortfall);
+          console.log(bestOffer)
+          console.log(shortfall)
+        }
+      } catch (error) {
+        console.error('Error fetching best coupon:', error);
+      }
+    };
+
+    fetchBestCoupon();
+  }, [totalCostBeforeDiscount]);
+
+  // Close snackbar
   const handleSnackbarClose = () => {
     setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
   return (
     <div className={styles.container}>
+      {/* 1) Top Banner: "You saved ₹100 on FREE shipping" */}
+      {/* Show this only if you want to highlight free shipping. Otherwise, conditionally show. */}
+      <div className={styles.freeShippingBanner}>
+        <span>You saved ₹100 on FREE shipping</span>
+      </div>
+
       <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
+
+     
+      
+       
       {totalQuantity > 0 && <CartList cartItems={cartItems} onRemove={handleRemoveItem} />}
+       {/* 2) If a coupon is applied, show "You saved ₹X on {couponState.couponName}" */}
+      {couponState.couponApplied && couponState.couponDiscount > 0 && (
+        <div className={styles.couponSaveBanner}>
+          <span>
+            You saved ₹{couponState.couponDiscount} on {couponState.couponName}
+          </span>
+        </div>
+      )}
+      {/* 3) Section: "Add ₹XYZ more to unlock X% off" if bestCoupon is not yet applicable */}
+      {bestCoupon && couponShortfall > 0 && (
+        <div className={styles.lockedOfferContainer}>
+          <Image
+            src={`${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/icons/price-tag1.png`} // Replace with your actual discount SVG
+            alt="discount"
+            width={30}
+            height={30}
+          />
+          <span className={styles.lockedOfferText}>
+            Add ₹{couponShortfall} more to unlock {bestCoupon.discountPercent}% off coupon
+          </span>
+        </div>
+      )}
+
+      {/* If bestCoupon is already applicable (shortfall = 0) but not applied,
+          you can optionally show "You can unlock 10% off now!" */}
+      {bestCoupon && couponShortfall === 0 && !couponState.couponApplied && (
+        <div className={styles.unlockedOfferContainer}>
+          <Image
+            src={`${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/icons/price-tag2.png`}
+            alt="discount"
+            width={30}
+            height={30}
+          />
+          <span className={styles.unlockedOfferText}>
+            You can now unlock {bestCoupon.discountPercent}% off coupon!
+          </span>
+          {/* Optionally a button to open the coupon modal */}
+          <button
+            className={styles.applyNowButton}
+            onClick={() => setIsCouponDialogOpen(true)}
+          >
+            Apply Now
+          </button>
+        </div>
+      )}
+            {/* 4) "View all coupons" link that leads to the same modal as "Check coupons" */}
+      {totalQuantity > 0 && (
+        <div className={styles.viewAllCouponsSection}>
+          <span className={styles.viewAllCouponsText}>View all coupons</span>
+          <button
+            className={styles.viewAllCouponsButton}
+            onClick={() => setIsCouponDialogOpen(true)}
+          >
+           <ChevronRight/>
+          </button>
+        </div>
+      )}
+
       {totalQuantity > 0 && (
         <section className={styles.cartList}>
+        
           <PriceDetails
             deliveryCost={deliveryCost}
             couponState={couponState}
@@ -301,6 +425,7 @@ const ViewCart = () => {
             onOpenCoupon={() => setIsCouponDialogOpen(true)}
             onRemoveCoupon={handleRemoveCoupon}
           />
+
           <PaymentModes
             paymentModes={paymentModes}
             isLoading={isLoadingPaymentModes}
@@ -309,8 +434,12 @@ const ViewCart = () => {
           />
         </section>
       )}
+
+
+
       <TopBoughtProducts subCategories={topBoughtSubCategories} currentProductId={topBoughtCurrentProductId} />
       <HappyCustomersClient headingText="Happy Customers" />
+
       {totalQuantity > 0 && (
         <Footer
           totalCost={totalCostWithDelivery}
@@ -320,6 +449,7 @@ const ViewCart = () => {
           codPercentage={codPercentage}
         />
       )}
+
       <ApplyCoupon
         open={isCouponDialogOpen}
         onClose={() => setIsCouponDialogOpen(false)}
@@ -344,37 +474,36 @@ const ViewCart = () => {
         severity={snackbar.severity}
         handleClose={handleSnackbarClose}
       />
+
       {/* Optionally, add a button to clear the autoApplyDisabled flag if needed */}
-      <button onClick={() => {
-            localStorage.removeItem('autoApplyDisabled');
-            setSnackbar({ open: true, message: 'Auto-apply re-enabled.', severity: 'info' });
-          }}>
-            Re-enable Auto-Apply
-          </button>
+      <button
+        onClick={() => {
+          localStorage.removeItem('autoApplyDisabled');
+          setSnackbar({ open: true, message: 'Auto-apply re-enabled.', severity: 'info' });
+        }}
+      >
+        Re-enable Auto-Apply
+      </button>
+
+      {/* Auto-Apply Animation Overlay (if desired) */}
+      {/* {autoApplyAnimation && (
+        <div className={styles.autoApplyAnimationOverlay}>
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: [0, 1.2, 1] }}
+            exit={{ scale: 0 }}
+            transition={{ duration: 2 }}
+            className={styles.autoApplyAnimation}
+          >
+            <Image src={`/images/off.jpg`} alt="Auto Applying Coupon" width="200" height="200" />
+          </motion.div>
+          {windowSize.width > 0 && (
+            <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={300} />
+          )}
+        </div>
+      )} */}
     </div>
   );
 };
 
 export default ViewCart;
-
-
-
-
-
- {/* Auto-Apply Animation Overlay */}
-//  {autoApplyAnimation && (
-//   <div className={styles.autoApplyAnimationOverlay}>
-//     <motion.div
-//       initial={{ scale: 0 }}
-//       animate={{ scale: [0, 1.2, 1] }}
-//       exit={{ scale: 0 }}
-//       transition={{ duration: 2 }}
-//       className={styles.autoApplyAnimation}
-//     >
-//       <Image src={`/images/off.jpg`} alt="Auto Applying Coupon" width="200" height="200" />
-//     </motion.div>
-//     {windowSize.width > 0 && (
-//       <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={300} />
-//     )}
-//   </div>
-// )}
