@@ -14,7 +14,7 @@ import CustomSnackbar from '@/components/notifications/CustomSnackbar';
 // Helper to compute effective discount for an offer
 const calculateEffectiveDiscount = (offer, totalCost) => {
   const action = offer.actions[0];
-  console.log(action.discountValue,"action.discountValue",totalCost,"totalCost",offer.discountCap,"offer.discountCap")
+
   if (action.type === 'discount_percent') {
     let discount = (action.discountValue / 100) * totalCost;
     if (offer.discountCap && discount > offer.discountCap) {
@@ -118,14 +118,19 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
       return;
     }
     try {
+
       const res = await fetch('/api/checkout/coupons/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: couponCode.trim(), totalCost, isFirstOrder }),
       });
+
+
       const data = await res.json();
+ 
       if (res.ok && data.valid) {
-        onApplyCoupon(couponCode.trim(), data.discountValue, data.discountType, true);
+  
+        onApplyCoupon(couponCode.trim(), data.discountValue, data.discountType, true, data.offer);
         onClose();
       } else {
         setSnackbar({
@@ -159,7 +164,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
           message: 'Coupon applied successfully!',
           severity: 'success',
         });
-        onApplyCoupon(code, data.discountValue, data.discountType, false);
+        onApplyCoupon(code, data.discountValue, data.discountType, false,data.offer);
         onClose();
       } else {
         setSnackbar({

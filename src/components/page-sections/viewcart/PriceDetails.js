@@ -14,7 +14,6 @@ const PriceDetails = ({
   onOpenCoupon,
   onRemoveCoupon,
 }) => {
-  console.log(discountAmount)
   return(
   <div className={`${styles.cartItem} ${styles.priceDetails}`}>
     {/* Delivery Cost */}

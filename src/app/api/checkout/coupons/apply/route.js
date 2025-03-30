@@ -111,6 +111,7 @@ export async function POST(request) {
         discountValue: discount,
         discountType: action.type === 'discount_percent' ? 'percentage' : 'fixed',
         message: 'Coupon applied successfully.',
+        offer: offer,
       },
       { status: 200 }
     );
