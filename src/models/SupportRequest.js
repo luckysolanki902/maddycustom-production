@@ -1,0 +1,30 @@
+import mongoose from 'mongoose';
+
+const SupportRequestSchema = new mongoose.Schema(
+  {
+    mobile: { type: String, required: true },
+    email: { type: String },
+    category: { type: String, required: true },
+    subcategory: { type: String, required: true },
+    issue: { type: String, required: true },
+    status: {
+      type: String,
+      enum: ['pending', 'resolved', 'unresolved'],
+      default: 'pending',
+    },
+    resolvedBy: {
+      type: String,
+      enum: ['ai', 'support team'],
+      default: 'ai'
+    },
+    department: {
+      type: String,
+      enum: ['production', 'marketing'],
+      default: 'production',
+    },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.models.SupportRequest ||
+  mongoose.model('SupportRequest', SupportRequestSchema);
