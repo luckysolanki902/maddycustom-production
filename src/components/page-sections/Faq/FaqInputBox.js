@@ -11,7 +11,7 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
   const [subcategory, setSubcategory] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  
+
 
   const categories = {
     "Order Related": [
@@ -60,7 +60,7 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
   };
 
   return (
-    <div className={styles.mainContainer}>
+    <div className={styles.mainContainer} style={{marginBottom: category ? '25rem': '10rem'}}>
       <div className={styles.headingContainer}>
         <h2 className={styles.heading}>How can we help you?</h2>
       </div>
@@ -119,16 +119,16 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
           )}
 
           {/* Issue Textarea */}
-          <textarea
+          {subcategory && <textarea
             className={styles.messageField}
             placeholder="Please enter your issue here"
             value={issue}
             onChange={(e) => setIssue(e.target.value)}
             required
-          />
+          />}
 
           {/* Mobile Number Input */}
-          <div className={styles.mobileFieldContainer}>
+          {issue && <div className={styles.mobileFieldContainer}>
             <input
               type="text"
               className={styles.mobileField}
@@ -137,10 +137,10 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
               onChange={(e) => setMobile(e.target.value)}
               required
             />
-          </div>
+          </div>}
 
           {/* Email Input */}
-          <div className={styles.mobileFieldContainer}>
+          {mobile && <div className={styles.mobileFieldContainer}>
             <input
               type="email"
               className={styles.mobileField}
@@ -148,7 +148,7 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-          </div>
+          </div>}
 
           {/* Submit button OR Reopen dialog */}
           {!submitted ? (

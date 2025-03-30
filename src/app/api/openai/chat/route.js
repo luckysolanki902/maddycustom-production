@@ -45,12 +45,12 @@ Instructions:
 Please answer the user's query in a friendly tone.
 If you need to include any links (only those included in business and faq data), provide them in the format:
 {link: <URL or /relativePath>, linkText: <Descriptive text>}
-Example: {link: https://www.example.com, linkText: Example Site}, always provide tracking link if the query category is 'Order Related'
+Example: {link: https://www.example.com, linkText: Example Site}, always provide tracking link if the query category is 'Order Related', Simply enter your order ID or phone number to check the status. If user mentions the orderId which is a mongodb object id, then you can provide the direct link with ?orderId={orderId} in the tracking link as the direct link. else without parameter.
     `;
 
         // Make a chat completion request (non-streaming)
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini", // or "gpt-4"
+            model: "gpt-4o-mini", // or "gpt-4o"
             messages: [
                 { role: "system", content: "You are a helpful assistant." },
                 { role: "user", content: prompt }

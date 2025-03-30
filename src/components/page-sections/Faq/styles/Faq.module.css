@@ -8,7 +8,7 @@
     margin-top: 26px;
     text-align: center;
     padding: 2rem 0;
-    margin-bottom: 80px;
+    margin-bottom: 50px;
     background-color: #ffffff;
   }
   
@@ -21,8 +21,9 @@
   
   .subtitle {
     margin: 0.5rem 0 0 0;
-    font-size: 1rem;
+    font-size: 0.8rem;
     color: #424242;
+    padding: 0 1rem;
   }
   
   /* ===== FaqInputBox.js ===== */
@@ -42,7 +43,6 @@
     /* Height is arbitrary; adjust to your liking */
     height: 140px; 
     background-color: #fff;
-    margin-bottom: 21rem; /* So page content below doesn't overlap */
   }
   
   /* Heading section */
@@ -53,6 +53,7 @@
     display: flex;
     /* align-items: center; */
     justify-content: center;
+
   }
   
   .heading {
@@ -120,11 +121,11 @@
     align-self: center; /* pushes button to the right */
     background-color: #424242;
     color: #fff;
-    padding: 0.7rem 2.5rem;
+    padding: 0.5rem 2.5rem;
     border: none;
     cursor: pointer;
     font-size: 1rem;
-    border-radius: 2px;
+    border-radius: 0.5rem;
     margin-top: 10px;
   }
   
@@ -160,7 +161,6 @@
   flex: 0 0 calc(50% - 2rem);
   max-width: calc(50% - 2rem);
   background-color: #f9f9f9;
-  border-radius: 4px;
   overflow: hidden;
   min-width: 280px; /* ensures it doesn't shrink too much */
   margin-bottom: 2rem; /* spacing below each row */
@@ -170,7 +170,7 @@
 .faqSectionHeader {
   background-color: #424242;
   color: #fff;
-  padding: 1rem;
+  padding: 0.5rem 1rem;
   font-weight: 800;
   font-size: 1.2rem;
 }
@@ -179,22 +179,8 @@
 .accordionContainer {
   padding: 1rem;
 }
-/* "More" button at the bottom of each column */
-.moreButton {
-  display: block;
-  margin: 1rem auto;
-  background-color: #424242;
-  color: #fff;
-  border: none;
-  padding: 0.4rem 2.5rem;
-  cursor: pointer;
-  border-radius: 2px;
-  font-size: 1.2rem;
-}
 
-.moreButton:hover {
-  background-color: #555;
-}
+
 
 /* ========== ACCORDION CARD ========== */
 .card {
@@ -288,12 +274,8 @@
     font-size: 1.8rem;
   }
   .submitButton {
-    padding: 0.8rem 2rem;
+    padding: 0.4rem 2rem;
     font-size: 1rem;
-  }
-  .moreButton {
-    font-size: 1rem;
-    padding: 0.6rem 2rem;
   }
   .faqSection {
     flex: 0 0 100%;
@@ -321,7 +303,6 @@
     font-size: 0.9rem;
   }
   .submitButton {
-    padding: 0.7rem 1.5rem;
     font-size: 1rem;
   }
   .faqRow {

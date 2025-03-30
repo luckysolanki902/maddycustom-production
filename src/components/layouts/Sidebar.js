@@ -45,7 +45,7 @@ export default function Sidebar({ categories = [], variants = [] }) {
   // Nav items: if an item has an "action", we call that on click
   const navItems = [
     { text: 'Home', href: '/' },
-    { text: 'Contact Us', href: '/#homecontactdiv' },
+    { text: 'Customer Support', href: '/faqs' },
     { text: 'Search Categories', action: () => dispatch(openSearchDialog()) },
     { text: 'Track Your Order', href: '/orders/track' },
   ];
