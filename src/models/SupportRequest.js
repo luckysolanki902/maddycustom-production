@@ -15,12 +15,17 @@ const SupportRequestSchema = new mongoose.Schema(
     resolvedBy: {
       type: String,
       enum: ['ai', 'support team'],
-      default: 'ai'
+      default: 'ai',
     },
     department: {
       type: String,
       enum: ['production', 'marketing'],
       default: 'production',
+    },
+    // New field to store the AI's response
+    aiResponse: {
+      type: String,
+      default: '',
     },
   },
   { timestamps: true }

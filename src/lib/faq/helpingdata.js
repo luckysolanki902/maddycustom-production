@@ -21,10 +21,10 @@ What is the life span of your car fragrance?
 Our fragrances are pretty long lasting with impactful life span of 28 days.
 
 Unable to track my package
-You can track your order through our tracking page using this link https://www.maddycustom.com/orders/track. 
+You can track your order through our tracking page using this link https://www.maddycustom.com/orders/track. You have to enter your order ID to know the status. If you don't know your order Id.
 
 Order ID not received
-Orders typically take 1-2 days to be shipped. In some cases, the order ID is generated after shipping and will be sent to you via SMS or WhatsApp. Please wait for 1-2 days, and if you still haven’t received it, feel free to reach out.
+Orders typically take 1-2 days to be shipped. In some cases, the order ID is generated after shipping and will be sent to you via email and WhatsApp. Please wait for 1-2 days, and if you still haven’t received it, feel free to reach out.
 
 Shipping is taking longer than expected
 Our standard delivery time is approximately 7 days. However, due to certain local restrictions or logistical challenges, delivery in some areas may take up to 10 days.
