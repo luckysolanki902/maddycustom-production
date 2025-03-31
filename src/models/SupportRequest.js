@@ -31,5 +31,9 @@ const SupportRequestSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+if(mongoose.models.SupportRequest){
+  delete mongoose.models.SupportRequest
+}
+
 export default mongoose.models.SupportRequest ||
   mongoose.model('SupportRequest', SupportRequestSchema);
