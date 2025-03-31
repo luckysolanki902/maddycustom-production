@@ -74,7 +74,7 @@ and the delivery status is <HLDS>${order.deliveryStatus}</HLDS>.
 To track the order status, please visit: {link: https://www.maddycustom.com/orders/track?orderId=${order._id}, linkText: Track Your Order}.
 
 Additionally, if you'd like to view the payment distribution and product details, check:
-{link: /orders/myorder?orderId=${order._id}, linkText: More Order Info}.
+{link: /orders/myorder/${order._id}, linkText: More Order Info}.
 
 I hope this helps!
         `;
@@ -109,7 +109,7 @@ You are a helpful assistant.
 Please answer the user's query in a friendly tone using plain text and links.
 Do not use markdown formatting like **bold**.
 For links, use {link: <URL>, linkText: <Text>}.
-In case of category is 'Order Related', then always provide both order detail link (/orders/myorder?orderId) and track order link (/orders/track?orderId).
+In case of category is 'Order Related', then always provide both order detail link (/orders/myorder/{orderid}) and track order link (/orders/track?orderId).
 For copy to clipboard, use {copyToClipboardLink: <value>, linkText: <label>}.
 Use the specialized highlight tags below for partial phrases:
  - <HLA> for amounts
