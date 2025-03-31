@@ -15,7 +15,7 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
 
   const categories = {
     "Order Related": [
-      "Didn't receive order ID",
+      "Did not receive order ID",
       "Can't track order",
       "Shipping delay",
       "Other"
@@ -157,7 +157,7 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
               className={styles.submitButton}
               disabled={loading}
             >
-              {loading ? 'Submitting...' : 'Submit'}
+              {loading ? 'Resolving...' : 'Resolve'}
             </button>
           ) : (
             <button

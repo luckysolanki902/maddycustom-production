@@ -37,7 +37,7 @@ const [
 ] = await Promise.all([
   fetchOurUniqueProducts(),
   fetchRandomProducts('f', 10), // Pass your specific category slug here
-  fetchFeaturedproducts('caf'),
+  fetchFeaturedproducts('f'),
   fetchHappyCustomers(null),
   fetchSearchCategories(),
 ]);
