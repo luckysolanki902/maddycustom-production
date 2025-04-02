@@ -18,9 +18,10 @@ export async function GET(req) {
     // Fetch an active offer with a cart_value condition.
     // Here, we simply fetch one offer sorted by highest priority as an example.
     const bestOffer = await Offer.findOne({
-   
- 
-     
+      isActive: true,
+      'conditions.type': 'cart_value',
+      validFrom: { $lte: currentDateIST },
+      validUntil: { $gte: currentDateIST },
     }).sort({ priority: -1 }).select('-__v -createdAt -updatedAt');
 
     if (!bestOffer) {

@@ -1,7 +1,8 @@
 /* Existing styles */
 
 .container {
-  background-color: #F1FFFC;
+  /* background-color: #F1FFFC; */
+  background-color: white;
   min-height: 100vh;
   padding: 1.2rem;
   margin: 0;
@@ -139,7 +140,8 @@
   left: 0;
   width: 100vw;
   padding: 1rem;
-  background-color: #EEFEFC;
+  /* background-color: #EEFEFC; */
+  background-color: white;
   box-shadow: 0px -5px 5px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -180,26 +182,34 @@
 
 /* 1) Top banner: "You saved ₹100 on FREE shipping" */
 .freeShippingBanner {
-  background-color: #ebfff0;  /* light greenish background */
-  color: #00a341;             /* matching green text color */
+  background-color: #cbffce;  /* light greenish background */
+            /* matching green text color */
   padding: 8px 16px;
   margin-bottom: 8px;
   border-radius: 4px;
   font-weight: 600;
-  text-align: center;
+  text-align: left;
+  display: flex;
+  justify-content: start;
+  align-items: center;
   font-size: 1rem;
+  gap: 5px;
+  border-radius: 15px;
 }
 
 /* 2) Coupon save banner: "You saved ₹X on COUPON_CODE" */
 .couponSaveBanner {
   background-color: #fdf4e7;  /* light orange-ish background */
-  color: #ff9800;             /* deeper orange text color */
+          /* deeper orange text color */
   padding: 8px 16px;
   margin-bottom: 8px;
   border-radius: 4px;
   font-weight: 600;
   text-align: center;
   font-size: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 /* 3) Locked offer container: "Add ₹XYZ more to unlock X% off coupon" */
@@ -224,9 +234,8 @@
   display: flex;
   align-items: center;
   background-color: #e8ffef; /* light greenish background */
-  color: #00a341;
   padding: 8px 16px;
-  margin: 8px 0;
+  margin: 8px 0 0 0;
   border-radius: 4px;
 }
 
@@ -254,6 +263,9 @@
   align-items: center;
   justify-content: space-between;
   margin: 8px 0;
+  background-color: white;
+  border-radius: 10px;
+  padding: 10px 15px;
 }
 
 .viewAllCouponsText {
@@ -269,4 +281,16 @@
   cursor: pointer;
   font-weight: 600;
   font-size: 0.9rem;
+}
+
+.maincomp {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .maincomp {
+    grid-template-columns: 1fr;
+  }
 }

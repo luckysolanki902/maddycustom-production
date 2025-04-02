@@ -211,6 +211,7 @@ const ViewCart = () => {
     });
     dispatch(setCouponApplied({ couponCode: '', discountAmount: 0, discountType: '', isDbCoupon: false, offer: null }));
     localStorage.setItem('autoApplyDisabled', 'true');
+    localStorage.setItem('autoApplyDisabledAt', new Date().toISOString());
   };
 
   // Payment mode change
@@ -255,7 +256,12 @@ const ViewCart = () => {
 
   // --- Auto-apply logic ---
   useEffect(() => {
-    const autoApplyDisabled = localStorage.getItem('autoApplyDisabled') === 'true';
+    const autoApplyDisabledAt = localStorage.getItem('autoApplyDisabledAt');
+    const autoApplyDisabled =
+      localStorage.getItem('autoApplyDisabled') === 'true' &&
+      autoApplyDisabledAt &&
+      new Date(autoApplyDisabledAt).getTime() + 5 * 60 * 1000 > new Date().getTime();
+
 
     if (totalQuantity > 0 && !autoApplyDisabled) {
       const autoApplyOffer = async () => {
@@ -288,7 +294,7 @@ const ViewCart = () => {
                   autoOffer
                 );
                 setAutoApplyAnimation(false);
-              }, 5000);
+              }, 1000);
             }
           }
         } catch (error) {
@@ -346,22 +352,28 @@ const ViewCart = () => {
     <div className={styles.container}>
       {/* 1) Top Banner: "You saved ₹100 on FREE shipping" */}
       {/* Show this only if you want to highlight free shipping. Otherwise, conditionally show. */}
-      <div className={styles.freeShippingBanner}>
-        <span>You saved ₹100 on FREE shipping</span>
-      </div>
-
-      <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
+       <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
+     
+    {totalQuantity > 0 && <div className={styles.maincomp}>
+    <div style={{padding:'10px', backgroundColor:'#eaf4fe',borderRadius:'10px'}}>
+     
 
      
-      
+      <div className={styles.freeShippingBanner}>
+        <Image src="/Free Shipping.png" alt="Free Shipping" width={40} height={40}></Image><span>You saved ₹100 on FREE shipping</span>
+      </div>
        
       {totalQuantity > 0 && <CartList cartItems={cartItems} onRemove={handleRemoveItem} />}
+      </div>
+      <div style={{display:'flex', flexDirection:'column',padding:'10px' ,gap:'10px', backgroundColor:'#eaf4fe',borderRadius:'10px'}}>
        {/* 2) If a coupon is applied, show "You saved ₹X on {couponState.couponName}" */}
       {couponState.couponApplied && couponState.couponDiscount > 0 && (
         <div className={styles.couponSaveBanner}>
+        
           <span>
             You saved ₹{couponState.couponDiscount} on {couponState.couponName}
           </span>
+          <Image src="/Premium Quality.png" alt="Free Shipping" width={40} height={40}></Image>
         </div>
       )}
       {/* 3) Section: "Add ₹XYZ more to unlock X% off" if bestCoupon is not yet applicable */}
@@ -378,13 +390,13 @@ const ViewCart = () => {
           </span>
         </div>
       )}
-
+     
       {/* If bestCoupon is already applicable (shortfall = 0) but not applied,
           you can optionally show "You can unlock 10% off now!" */}
       {bestCoupon && couponShortfall === 0 && !couponState.couponApplied && (
         <div className={styles.unlockedOfferContainer}>
           <Image
-            src={`${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/icons/price-tag2.png`}
+            src={`/Premium Quality.png`}
             alt="discount"
             width={30}
             height={30}
@@ -415,8 +427,6 @@ const ViewCart = () => {
       )}
 
       {totalQuantity > 0 && (
-        <section className={styles.cartList}>
-        
           <PriceDetails
             deliveryCost={deliveryCost}
             couponState={couponState}
@@ -425,15 +435,18 @@ const ViewCart = () => {
             onOpenCoupon={() => setIsCouponDialogOpen(true)}
             onRemoveCoupon={handleRemoveCoupon}
           />
-
+      )}
+      {totalQuantity > 0 && (
           <PaymentModes
             paymentModes={paymentModes}
             isLoading={isLoadingPaymentModes}
             selectedPaymentMode={selectedPaymentMode}
             onChange={handlePaymentModeChange}
           />
-        </section>
+        
       )}
+      </div>
+      </div>}
 
 
 
@@ -475,15 +488,7 @@ const ViewCart = () => {
         handleClose={handleSnackbarClose}
       />
 
-      {/* Optionally, add a button to clear the autoApplyDisabled flag if needed */}
-      <button
-        onClick={() => {
-          localStorage.removeItem('autoApplyDisabled');
-          setSnackbar({ open: true, message: 'Auto-apply re-enabled.', severity: 'info' });
-        }}
-      >
-        Re-enable Auto-Apply
-      </button>
+      
 
       {/* Auto-Apply Animation Overlay (if desired) */}
       {/* {autoApplyAnimation && (
