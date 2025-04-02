@@ -21,6 +21,7 @@ import FeaturedProducts from '@/components/page-sections/homepage/FeaturedProduc
 import { Box, Typography } from '@mui/material';
 import KeychainImageGrid from '@/components/page-sections/homepage/KeychainImageGrid';
 import ProductCategoryBox from '@/components/page-sections/homepage/ProductCategoryBox';
+import MobileSearchBox from '@/components/page-sections/homepage/MobileSearchBox';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -38,7 +39,7 @@ const [
 ] = await Promise.all([
   fetchOurUniqueProducts(),
   fetchRandomProducts('f', 10), // Pass your specific category slug here
-  fetchFeaturedproducts('caf'),
+  fetchFeaturedproducts('f'),
   fetchHappyCustomers(null),
   fetchSearchCategories(),
 ]);
@@ -53,6 +54,7 @@ const HomePage = async () => {
     <>
 
       <main>
+        <MobileSearchBox/>
      {/* Render ProductCategoryBox above HeroSection only on screens larger than 1200px */}
      <ProductCategoryBox position="aboveHero" />
         {/* Logo and Main Carousel */}
