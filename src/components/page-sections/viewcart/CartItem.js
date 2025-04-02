@@ -42,7 +42,7 @@ const CartItem = ({ item, onRemove }) => {
       key={item.productId}
       className={styles.cartItem}
     >
-      <Checkbox
+      {/* <Checkbox
         onClick={(e) => e.stopPropagation()}
         checked={true}
         onChange={handleCheckboxChange}
@@ -50,7 +50,7 @@ const CartItem = ({ item, onRemove }) => {
           color: 'black',
           '&.Mui-checked': { color: 'black' },
         }}
-      />
+      /> */}
 
       <Image
         width={538}

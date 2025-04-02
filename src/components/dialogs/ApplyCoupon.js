@@ -17,10 +17,10 @@ const calculateEffectiveDiscount = (offer, totalCost) => {
 
   if (action.type === 'discount_percent') {
     let discount = (action.discountValue / 100) * totalCost;
-    if (offer.discountCap && discount > offer.discountCap) {
-      discount = offer.discountCap;
-      return discount;
-    }
+    // if (offer.discountCap && discount > offer.discountCap) {
+    //   discount = offer.discountCap;
+    //   return discount;
+    // }
     return action.discountValue;
   } else if (action.type === 'discount_fixed') {
     return action.discountValue;

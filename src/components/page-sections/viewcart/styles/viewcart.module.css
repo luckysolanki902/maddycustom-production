@@ -1,5 +1,6 @@
 .container {
-  background-color: #F1FFFC;
+  /* background-color: #F1FFFC; */
+  background-color: white;
   min-height: 100vh;
   padding: 1.2rem;
   margin: 0;
@@ -51,12 +52,14 @@
 
 @media (min-width: 600px) {
   .cartList {
-
+/* 
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1.2rem;
+    gap: 1.2rem; */
+    overflow: auto;
     margin-bottom: 40px;
     margin-top: 40px;
+    max-height: 600px;
   }
 }
 
@@ -67,7 +70,7 @@
   align-items: center;
   background-color: #ffffff;
   border-radius: 10px;
-  padding: 10px;
+  padding: 10px 15px;
   box-shadow: 0 2px 4px 4px #b7fffb2c, 0 2px 1px 1px #a5e4ff18;
   min-height: 110px;
   border-radius: 1.2rem;
@@ -184,7 +187,8 @@
   left: 0;
   width: 100vw;
   padding: 1rem;
-  background-color: #EEFEFC;
+  /* background-color: #EEFEFC; */
+  background-color: white;
   box-shadow: 0px -5px 5px 3px rgba(0, 0, 0, 0.1);
   transition: height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }

@@ -36,12 +36,14 @@ export async function POST(request) {
   const { code, totalCost, isFirstOrder } = await request.json();
 
   if (!code) {
+    console.error('Coupon code is required.');
     return NextResponse.json(
       { valid: false, message: 'Coupon code is required.' },
       { status: 400 }
     );
   }
   if (typeof totalCost !== 'number') {
+    console.error('Total cost must be a number.');
     return NextResponse.json(
       { valid: false, message: 'Total cost must be a number.' },
       { status: 400 }
@@ -54,8 +56,10 @@ export async function POST(request) {
       couponCodes: code.toUpperCase(),
       isActive: true,
     });
+    // console.log(offer,code)
 
     if (!offer) {
+      console.error('Invalid coupon code.');
       return NextResponse.json(
         { valid: false, message: 'Invalid coupon code.' },
         { status: 400 }
@@ -65,6 +69,7 @@ export async function POST(request) {
     // Get current time in IST.
     const currentDateIST = moment().tz('Asia/Kolkata').toDate();
     if (currentDateIST < offer.validFrom || currentDateIST > offer.validUntil) {
+      console.error('Coupon is expired or not yet valid.');
       return NextResponse.json(
         { valid: false, message: 'Coupon is expired or not yet valid.' },
         { status: 400 }
