@@ -4,7 +4,7 @@ import NextTopLoader from 'nextjs-toploader';
 const TopLoadingBar = () => {
   return (
     <NextTopLoader
-      color="rgba(255, 255, 255, 0.7)" // creamish loader with 80% opacity
+      color="#424242"
       initialPosition={0.05}       // relaxed entrance position
       crawlSpeed={5}               // slower crawl for smooth progress
       height={3}                   // moderate thickness for visibility

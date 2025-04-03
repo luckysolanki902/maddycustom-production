@@ -114,9 +114,9 @@ export async function GET(req) {
         sentCount++;
       } else {
         // Log the failure reason for this order/user
-        console.error(
-          `Failed to send message for Order ${order._id} (User: ${userObj.phoneNumber}): ${result.message}`
-        );
+        // console.error(
+        //   `Failed to send message for Order ${order._id} (User: ${userObj.phoneNumber}): ${result.message}`
+        // );
       }
 
       // Add detailed info for this order, including failure reason if present
