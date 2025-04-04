@@ -1,24 +1,49 @@
 // app/api/checkout/coupons/apply/route.js
-
 import connectToDatabase from '@/lib/middleware/connectToDb';
-import Coupon from '@/models/Coupon';
+import Offer from '@/models/Offer';
 import { NextResponse } from 'next/server';
 import moment from 'moment-timezone';
+
+function evaluateCondition(condition, totalCost, isFirstOrder = false) {
+  // Currently supporting 'cart_value' and 'first_order' conditions.
+  if (condition.type === 'cart_value') {
+    switch (condition.operator) {
+      case '>=':
+        return totalCost >= condition.value;
+      case '<=':
+        return totalCost <= condition.value;
+      case '>':
+        return totalCost > condition.value;
+      case '<':
+        return totalCost < condition.value;
+      case '==':
+        return totalCost === condition.value;
+      default:
+        return false;
+    }
+  }
+  if (condition.type === 'first_order') {
+    // condition.value should be true to indicate it applies only on the first order.
+    return isFirstOrder === condition.value;
+  }
+  // Additional condition types can be added here.
+  return false;
+}
 
 export async function POST(request) {
   await connectToDatabase();
 
-  const { code, totalCost } = await request.json();
+  const { code, totalCost, isFirstOrder } = await request.json();
 
   if (!code) {
-    // console.warn('Coupon application failed: Coupon code is missing.');
+    console.error('Coupon code is required.');
     return NextResponse.json(
       { valid: false, message: 'Coupon code is required.' },
       { status: 400 }
     );
   }
   if (typeof totalCost !== 'number') {
-    // console.warn('Coupon application failed: Total cost is not a number.');
+    console.error('Total cost must be a number.');
     return NextResponse.json(
       { valid: false, message: 'Total cost must be a number.' },
       { status: 400 }
@@ -26,48 +51,72 @@ export async function POST(request) {
   }
 
   try {
-    const coupon = await Coupon.findOne({
-      code: code.toUpperCase(),
+    // Look up the offer by coupon code.
+    const offer = await Offer.findOne({
+      couponCodes: code.toUpperCase(),
       isActive: true,
     });
-    if (!coupon) {
-      // console.warn(`Invalid coupon code attempted: ${code}`);
+    // console.log(offer,code)
+
+    if (!offer) {
+      console.error('Invalid coupon code.');
       return NextResponse.json(
         { valid: false, message: 'Invalid coupon code.' },
         { status: 400 }
       );
     }
 
-    if(coupon.minimumPurchasePrice>totalCost){
-      // console.warn(`Required Minimum order price not achieved: ${code}`);
-      return NextResponse.json(
-        { valid: false, message: `Minimum order price should be ${coupon.minimumPurchasePrice}.` },
-        { status: 400 }
-      );
-    }
-
-    // Get current time in IST
+    // Get current time in IST.
     const currentDateIST = moment().tz('Asia/Kolkata').toDate();
-
-    if (currentDateIST < coupon.validFrom || currentDateIST > coupon.validUntil) {
-      // console.warn(`Coupon code expired or not yet valid: ${code}`);
+    if (currentDateIST < offer.validFrom || currentDateIST > offer.validUntil) {
+      console.error('Coupon is expired or not yet valid.');
       return NextResponse.json(
         { valid: false, message: 'Coupon is expired or not yet valid.' },
         { status: 400 }
       );
     }
 
-    // Optionally, you can perform additional checks like usage limits here
+    // Evaluate all conditions.
+    let conditionsMet = true;
+    for (let condition of offer.conditions) {
+      if (!evaluateCondition(condition, totalCost, isFirstOrder)) {
+        conditionsMet = false;
+        break;
+      }
+    }
 
-    // No changes needed to the coupon document in this context
-    // If you have logic to track usage per application, include it here
+    if (!conditionsMet) {
+      return NextResponse.json(
+        { valid: false, message: offer.conditionMessage || 'Coupon conditions are not met.' },
+        { status: 400 }
+      );
+    }
+
+    // Calculate discount based on the action.
+    // Assuming one action per offer for now.
+    const action = offer.actions[0];
+    let discount = 0;
+    if (action.type === 'discount_percent') {
+      discount = (action.discountValue / 100) * totalCost;
+      // If a discountCap is specified, cap the discount.
+      if (offer.discountCap && discount > offer.discountCap) {
+        discount = (offer.discountCap/totalCost)*100;
+      }
+      else
+      discount = action.discountValue;
+    } else if (action.type === 'discount_fixed') {
+      discount = action.discountValue;
+    } else {
+      // For other action types (free_item, bogo), additional logic would be needed.
+    }
 
     return NextResponse.json(
       {
         valid: true,
-        discountValue: coupon.discountValue,
-        discountType: coupon.discountType,
+        discountValue: discount,
+        discountType: action.type === 'discount_percent' ? 'percentage' : 'fixed',
         message: 'Coupon applied successfully.',
+        offer: offer,
       },
       { status: 200 }
     );
