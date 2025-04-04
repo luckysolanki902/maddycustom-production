@@ -1,6 +1,8 @@
+/* Existing styles */
 
 .container {
-  background-color: #F1FFFC;
+  /* background-color: #F1FFFC; */
+  background-color: white;
   min-height: 100vh;
   padding: 1.2rem;
   margin: 0;
@@ -19,7 +21,6 @@
   display: flex;
   align-items: center;
 }
-
 
 .heading span {
   margin-left: 0.5rem;
@@ -41,10 +42,8 @@
   margin-top: 30px;
 }
 
-
 @media (min-width: 600px) {
   .cartList {
-    
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1.2rem;
@@ -55,7 +54,6 @@
 
 .cartItem {
   color: black;
-  
   display: flex;
   align-items: center;
   background-color: #ffffff;
@@ -72,9 +70,7 @@
   align-items: flex-start;
   padding: 1.5rem;
   gap: 1rem;
-
 }
-
 
 .priceField {
   min-width: 150px;
@@ -82,15 +78,17 @@
   font-size: 1.1rem;
   display: flex;
 }
-.mopBox{
+
+.mopBox {
   padding-left: 1.5rem;
   align-items: flex-start;
   padding: 1.5rem;
-
 }
-.patch{
+
+.patch {
   background-color: #fafa7d;
 }
+
 .priceDetailRow {
   display: flex;
 }
@@ -110,7 +108,6 @@
 .priceValue {
   font-size: 1.1rem;
   color: gray;
-
 }
 
 .productDetails {
@@ -143,7 +140,8 @@
   left: 0;
   width: 100vw;
   padding: 1rem;
-  background-color: #EEFEFC;
+  /* background-color: #EEFEFC; */
+  background-color: white;
   box-shadow: 0px -5px 5px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -157,4 +155,142 @@
 .checkoutButton {
   padding: 10px 20px;
   font-size: 16px;
+}
+
+.autoApplyAnimationOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999; /* Ensures it appears above other elements */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* Allows interactions to pass through */
+}
+
+.autoApplyAnimation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ------------------------------------------ */
+/* New UI additions as per the screenshot     */
+/* ------------------------------------------ */
+
+/* 1) Top banner: "You saved ₹100 on FREE shipping" */
+.freeShippingBanner {
+  background-color: #cbffce;  /* light greenish background */
+            /* matching green text color */
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-align: left;
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  font-size: 1rem;
+  gap: 5px;
+  border-radius: 15px;
+}
+
+/* 2) Coupon save banner: "You saved ₹X on COUPON_CODE" */
+.couponSaveBanner {
+  background-color: #fdf4e7;  /* light orange-ish background */
+          /* deeper orange text color */
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-align: center;
+  font-size: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 3) Locked offer container: "Add ₹XYZ more to unlock X% off coupon" */
+.lockedOfferContainer {
+  display: flex;
+  align-items: center;
+  background-color: #fffbea; /* light yellow-ish background */
+  color: #f57c00;            /* orange text color */
+  padding: 8px 16px;
+  margin: 8px 0;
+  border-radius: 4px;
+}
+
+.lockedOfferText {
+  margin-left: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* 3b) Unlocked offer container: "You can now unlock X% off coupon!" */
+.unlockedOfferContainer {
+  display: flex;
+  align-items: center;
+  background-color: #e8ffef; /* light greenish background */
+  padding: 8px 16px;
+  margin: 8px 0 0 0;
+  border-radius: 4px;
+}
+
+.unlockedOfferText {
+  margin-left: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.applyNowButton {
+  margin-left: auto;
+  background-color: #00a341;
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* 4) "View all coupons" section */
+.viewAllCouponsSection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0;
+  background-color: white;
+  border-radius: 10px;
+  padding: 10px 15px;
+}
+
+.viewAllCouponsText {
+  font-weight: 600;
+  color: #333;
+  font-size: 1rem;
+}
+
+.viewAllCouponsButton {
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.maincomp {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .maincomp {
+    grid-template-columns: 1fr;
+  }
 }

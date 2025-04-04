@@ -28,7 +28,7 @@ function getDisplayImage(product) {
   return { imageUrl: null, outOfStock: true };
 }
 
-const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false }) => {
+const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, hidePrice = false }) => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const [isZoomed, setIsZoomed] = useState(false);
@@ -100,7 +100,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false }
       ? `${baseImageUrl}${imageUrl}`
       : `${baseImageUrl}/${imageUrl}`;
   }
-   
+
   return (
     <div
       className={styles.mainCardDiv}
@@ -219,7 +219,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false }
           </div>
         </div>
 
-        <div className={styles.prodDescRow3}>
+        {!hidePrice && <div className={styles.prodDescRow3}>
           <div className={styles.price}>
             <span className={styles.rupees}>₹</span>
             <span className={styles.priceValue}>
@@ -234,7 +234,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false }
               <span style={{ marginLeft: '0.4rem' }}>off</span>
             </div>
           </div>
-        </div>
+        </div>}
 
         <div className={styles.prodDescLastRow}>
           {/* Condition: If variant is available and not out of stock => show AddToCart */}

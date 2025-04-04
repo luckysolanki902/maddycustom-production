@@ -393,7 +393,7 @@ const OrderForm = ({
           utmDetails: utmDetails.utmDetails || null,
           extraFields: orderForm.extraFields, // include extra fields
         });
-        // console.log('Order created:', orderResponse.data);
+      
         const { orderId: createdOrderId, message, paymentDetails: createdPaymentDetails } =
           orderResponse.data;
         dispatch(setLastOrderId(createdOrderId));
