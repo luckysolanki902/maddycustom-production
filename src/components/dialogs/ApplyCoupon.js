@@ -1,4 +1,3 @@
-// components/dialogs/ApplyCoupon.js
 "use client";
 import React, { useState, useEffect } from 'react';
 import Dialog from '@mui/material/Dialog';
@@ -14,13 +13,7 @@ import CustomSnackbar from '@/components/notifications/CustomSnackbar';
 // Helper to compute effective discount for an offer
 const calculateEffectiveDiscount = (offer, totalCost) => {
   const action = offer.actions[0];
-
   if (action.type === 'discount_percent') {
-    let discount = (action.discountValue / 100) * totalCost;
-    // if (offer.discountCap && discount > offer.discountCap) {
-    //   discount = offer.discountCap;
-    //   return discount;
-    // }
     return action.discountValue;
   } else if (action.type === 'discount_fixed') {
     return action.discountValue;
@@ -55,7 +48,6 @@ const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
     } else if (condition.type === 'first_order') {
       if (isFirstOrder !== condition.value) applicable = false;
     }
-    // Additional conditions can be added here.
   });
   return applicable;
 };
@@ -108,6 +100,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
     }
   };
 
+  // Handle coupon application from the text field.
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
       setSnackbar({
@@ -118,20 +111,15 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
       return;
     }
     try {
-
       const res = await fetch('/api/checkout/coupons/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: couponCode.trim(), totalCost, isFirstOrder }),
       });
-
-
       const data = await res.json();
- 
       if (res.ok && data.valid) {
-  
         onApplyCoupon(couponCode.trim(), data.discountValue, data.discountType, true, data.offer);
-        onClose();
+        onClose(); // Close dialog on successful apply
       } else {
         setSnackbar({
           open: true,
@@ -149,6 +137,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
     }
   };
 
+  // Handle coupon application from a coupon card.
   const handleApplyCouponFromCard = async (code) => {
     setIsLoading(true);
     try {
@@ -164,8 +153,8 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
           message: 'Coupon applied successfully!',
           severity: 'success',
         });
-        onApplyCoupon(code, data.discountValue, data.discountType, false,data.offer);
-        onClose();
+        onApplyCoupon(code, data.discountValue, data.discountType, false, data.offer);
+        onClose(); // Close dialog immediately after applying coupon
       } else {
         setSnackbar({
           open: true,
@@ -231,7 +220,9 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
         <section className={styles.couponCardsSection} style={{ padding: '1rem' }}>
           {isLoading ? (
             <>
-              <Skeleton variant="rectangular" sx={{ width: '9rem', height: '14rem', borderRadius: '1rem' }} />
+              <Skeleton variant="rectangular" sx={{ width: '9rem', height: '14rem', borderRadius: '1rem', marginBottom: '1rem' }} />
+              <Skeleton variant="rectangular" sx={{ width: '9rem', height: '14rem', borderRadius: '1rem', marginBottom: '1rem' }} />
+              <Skeleton variant="rectangular" sx={{ width: '9rem', height: '14rem', borderRadius: '1rem', marginBottom: '1rem' }} />
             </>
           ) : availableCoupons.length > 0 ? (
             availableCoupons.map((coupon) => {
@@ -244,7 +235,6 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
                   discount={effectiveDiscount}
                   discountType={coupon.actions[0].type === 'discount_percent' ? 'percentage' : 'fixed'}
                   validity={new Date(coupon.validUntil).toLocaleDateString()}
-                  // Pass the applicable flag and the conditionMessage to the card.
                   applicable={applicable}
                   conditionMessage={!applicable ? coupon.conditionMessage : ''}
                   onApply={() => handleApplyCouponFromCard(coupon.couponCodes[0])}
