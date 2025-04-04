@@ -1,94 +1,210 @@
 .card {
   position: relative;
-  width: 10rem;
-  height: 15rem;
-  border-radius: 1rem;
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+  width: 180px; /* Smaller width */
+  min-height: 260px; /* Smaller height */
+  border-radius: 0.8rem;
+  color: #fff;
+  /* box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); */
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  margin: 1rem;
+  margin: 0.5rem;
+  /* transition: transform 0.3s ease, box-shadow 0.3s ease; */
 }
 
+/* Hover effect */
 .card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0px 12px 24px rgba(0, 0, 0, 0.3);
+  transform: translateY(-6px);
+  /* box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); */
 }
 
+/* "Ticket" cut-out circles */
+.card::before,
+.card::after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.card::before {
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.card::after {
+  top: 50%;
+  right: 0;
+  transform: translate(50%, -50%);
+}
+
+/* Dashed line across the middle */
+.dashedLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px dashed #fff;
+  z-index: 2;
+}
+
+/* Background overlay with big discount text */
 .overlay {
   position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
   height: 100%;
-  /* Dark-to-light gradient overlay */
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.3));
+  top: 0;
+  left: 0;
   z-index: 1;
 }
 
-.content {
+.bigDiscount {
   position: absolute;
-  bottom: 0;
-  z-index: 2;
-  padding: 0.8rem;
-  width: 100%;
+  font-size: 3rem; /* Smaller font size */
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.1);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-15deg);
+}
+
+/* Main content on top */
+.content {
+  position: relative;
+  z-index: 3;
+  padding: 0.6rem;
   text-align: center;
-  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
 }
 
 .header {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
 }
 
 .couponName {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: bold;
   margin: 0;
-  color: #fff;
+  margin-bottom: 0.4rem;
 }
 
 .discountSection {
-  margin: 0.5rem 0;
+  margin: 0.4rem 0;
 }
 
 .discountValue {
-  font-size: 2.5rem;
+  font-size: 1.5rem;
   font-weight: bold;
-  color: #fff;
+  margin-right: 0.2rem;
 }
 
 .offText {
-  display: block;
-  font-size: 0.9rem;
-  color: #ddd;
+  font-size: 0.8rem;
+  vertical-align: middle;
 }
 
 .validity {
-  font-size: 0.7rem;
-  color: #ccc;
-  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  margin-bottom: 0.4rem;
+  color: #f0f0f0;
 }
 
 .conditionMessage {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   background-color: rgba(255, 255, 255, 0.2);
   color: #fff;
   padding: 0.3rem;
   border-radius: 0.3rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.applyButton {
+  margin-top: 0.4rem;
 }
 
 .applyButton button {
-  font-size: 0.7rem;
-  padding: 0.3rem 0.8rem;
-  border-radius: 0.4rem;
-  text-transform: uppercase;
+  background: #fff !important;
+  color: #000 !important;
+  font-size: 0.7rem !important;
+  padding: 0.3rem 0.6rem !important;
+  border-radius: 0.3rem !important;
+  text-transform: uppercase !important;
 }
 
-@media screen and (max-width: 600px) {
+/* Darken & grayscale when not applicable */
+.notApplicable {
+  filter: grayscale(100%) brightness(0.6);
+}
+
+/* Additional media queries */
+
+/* For screens smaller than 768px */
+@media screen and (max-width: 768px) {
   .card {
-    width: 9rem;
-    height: 14rem;
+    width: 160px;
+    min-height: 240px;
   }
+  .bigDiscount {
+    font-size: 2.5rem;
+  }
+  .couponName {
+    font-size: 0.85rem;
+  }
+  .discountValue {
+    font-size: 1.4rem;
+  }
+  .offText {
+    font-size: 0.75rem;
+  }
+  .validity {
+    font-size: 0.7rem;
+  }
+  .conditionMessage {
+    font-size: 0.65rem;
+  }
+}
+
+/* For very small screens (e.g., mobile) */
+@media screen and (max-width: 480px) {
+  .card {
+    width: 140px;
+    min-height: 220px;
+    margin: 0.3rem;
+  }
+  .bigDiscount {
+    font-size: 2rem;
+  }
+  .couponName {
+    font-size: 0.8rem;
+  }
+  .discountValue {
+    font-size: 1.3rem;
+  }
+  .offText {
+    font-size: 0.7rem;
+  }
+  .validity {
+    font-size: 0.65rem;
+  }
+  .conditionMessage {
+    font-size: 0.6rem;
+  }
+}
+
+/* Container styling (for example usage) to show two cards per row on smaller screens */
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.container > * {
+  flex: 1 0 45%; /* Approximately 2 per row */
+  max-width: 45%;
+  box-sizing: border-box;
 }

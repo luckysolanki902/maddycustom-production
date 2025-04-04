@@ -11,28 +11,32 @@
     gap: 4rem;
 }
 
+.extraMargin{
+    margin-top: 1.5rem;
+}
+
 .item {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: start;
     text-align: center;
-    gap: 0.9rem;
+    gap: 0rem;
 }
 
 .item img {
-    width: 4.5rem;
+    width: 3rem;
     height: auto;
 }
 
 .word {
-    max-width: 6rem;
     text-align: center;
-    line-height: 1rem;
-    min-height: 2.5rem; /* Adjust this to ensure text areas are uniform */
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 0.8rem;
+    font-family: Jost, sans-serif;
+    color: #7A7A7A;
 }
 
 /* Media Queries for Responsiveness */

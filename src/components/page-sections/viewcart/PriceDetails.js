@@ -15,7 +15,7 @@ const PriceDetails = ({
   onRemoveCoupon,
 }) => {
   return(
-  <div className={`${styles.cartItem} ${styles.priceDetails}`}>
+  <div className={`${styles.cartItem} ${styles.priceDetails}`} style={{marginBottom: '0.4rem'}}>
     {/* Delivery Cost */}
     <div className={styles.priceDetailRow}>
       <div className={styles.priceField}>Delivery Cost</div>

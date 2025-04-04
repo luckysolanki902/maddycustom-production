@@ -62,6 +62,7 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://www.youtube.com" />
         <AnalyticsHead />
 
+
         {/* JSON-LD Structured Data */}
         <script
           type="application/ld+json"

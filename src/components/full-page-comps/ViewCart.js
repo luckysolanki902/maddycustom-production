@@ -23,10 +23,13 @@ import {
 import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
 import { setCouponApplied } from '@/store/slices/orderFormSlice';
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
-import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Confetti from 'react-confetti';
 import { ChevronRight } from '@mui/icons-material';
+import DiscountOutlinedIcon from '@mui/icons-material/DiscountOutlined';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DiscountIcon from '@mui/icons-material/Discount';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
 const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
   let applicable = true;
@@ -191,7 +194,7 @@ const ViewCart = () => {
       message: 'Coupon applied successfully!',
       severity: 'success',
     });
-    dispatch(setCouponApplied({ couponCode, discountAmount: discount,discountType, isDbCoupon, offer: offerData }));
+    dispatch(setCouponApplied({ couponCode, discountAmount: discount, discountType, isDbCoupon, offer: offerData }));
   };
 
   // Handler to remove coupon + disable auto-apply
@@ -285,9 +288,9 @@ const ViewCart = () => {
                   autoOffer.couponCodes[0],
                   autoOffer.actions[0].type === 'discount_percent'
                     ? Math.min(
-                        (autoOffer.actions[0].discountValue / 100) * totalCostBeforeDiscount,
-                        autoOffer.discountCap
-                      )
+                      (autoOffer.actions[0].discountValue / 100) * totalCostBeforeDiscount,
+                      autoOffer.discountCap
+                    )
                     : autoOffer.actions[0].discountValue,
                   autoOffer.actions[0].type === 'discount_percent' ? 'percentage' : 'fixed',
                   false,
@@ -352,107 +355,120 @@ const ViewCart = () => {
     <div className={styles.container}>
       {/* 1) Top Banner: "You saved ₹100 on FREE shipping" */}
       {/* Show this only if you want to highlight free shipping. Otherwise, conditionally show. */}
-       <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
-     
-    {totalQuantity > 0 && <div className={styles.maincomp}>
-    <div style={{padding:'10px', backgroundColor:'#eaf4fe',borderRadius:'10px'}}>
-     
+      <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
 
-     
-      <div className={styles.freeShippingBanner}>
-        <Image src="/Free Shipping.png" alt="Free Shipping" width={40} height={40}></Image><span>You saved ₹100 on FREE shipping</span>
-      </div>
-       
-      {totalQuantity > 0 && <CartList cartItems={cartItems} onRemove={handleRemoveItem} />}
-      </div>
-      <div style={{display:'flex', flexDirection:'column',padding:'10px' ,gap:'10px', backgroundColor:'#eaf4fe',borderRadius:'10px'}}>
-       {/* 2) If a coupon is applied, show "You saved ₹X on {couponState.couponName}" */}
-      {couponState.couponApplied && couponState.couponDiscount > 0 && (
-        <div className={styles.couponSaveBanner}>
-        
-          <span>
-            You saved ₹{couponState.couponDiscount} on {couponState.couponName}
-          </span>
-          <Image src="/Premium Quality.png" alt="Free Shipping" width={40} height={40}></Image>
+      {totalQuantity > 0 && <div className={styles.maincomp}>
+
+        <div className={styles.blueCont}>
+          {totalQuantity > 0 && <CartList cartItems={cartItems} onRemove={handleRemoveItem} />}
         </div>
-      )}
-      {/* 3) Section: "Add ₹XYZ more to unlock X% off" if bestCoupon is not yet applicable */}
-      {bestCoupon && couponShortfall > 0 && (
-        <div className={styles.lockedOfferContainer}>
-          <Image
-            src={`${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/icons/price-tag1.png`} // Replace with your actual discount SVG
-            alt="discount"
-            width={30}
-            height={30}
-          />
-          <span className={styles.lockedOfferText}>
-            Add ₹{couponShortfall} more to unlock {bestCoupon.discountPercent}% off coupon
-          </span>
-        </div>
-      )}
-     
-      {/* If bestCoupon is already applicable (shortfall = 0) but not applied,
-          you can optionally show "You can unlock 10% off now!" */}
-      {bestCoupon && couponShortfall === 0 && !couponState.couponApplied && (
-        <div className={styles.unlockedOfferContainer}>
-          <Image
-            src={`/Premium Quality.png`}
-            alt="discount"
-            width={30}
-            height={30}
-          />
-          <span className={styles.unlockedOfferText}>
-            You can now unlock {bestCoupon.discountPercent}% off coupon!
-          </span>
-          {/* Optionally a button to open the coupon modal */}
-          <button
-            className={styles.applyNowButton}
-            onClick={() => setIsCouponDialogOpen(true)}
-          >
-            Apply Now
-          </button>
-        </div>
-      )}
+
+        <div className={styles.blueCont2}>
+
+          {/* 2) Section: "Add ₹XYZ more to unlock X% off" if bestCoupon is not yet applicable */}
+          {bestCoupon && couponShortfall > 0 && (
+            <div className={styles.lockedOfferContainer}>
+
+              <span className={styles.lockedOfferText}>
+                Add ₹{couponShortfall} more to unlock {bestCoupon.discountPercent}% off coupon
+              </span>
+              <DiscountOutlinedIcon sx={{ color: '#4dff68', fontSize: 40 }} />
+
+            </div>
+          )}
+
+          {/* 3) If a coupon is applied, show "You saved ₹X on {couponState.couponName}" */}
+          <div className={styles.currentAndAllCoupons}>
+
+            {couponState.couponApplied && couponState.couponDiscount > 0 && (
+              <div className={styles.couponSaveBanner}>
+                <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27, marginLeft: '-0.1rem' }} />
+
+                <span>
+                  You saved ₹{couponState.couponDiscount} on {couponState.couponName}
+                </span>
+              </div>
+            )}
+
+            <div style={{ borderBottom: '1px dashed #cee2ff', margin: '0 1rem' }}></div>
+
+            {/* If bestCoupon is already applicable (shortfall = 0) but not applied,
+          you 
+          can optionally show "You can unlock 10% off now!" */}
+            {/* {bestCoupon && couponShortfall === 0 && !couponState.couponApplied && (
+            <div className={styles.unlockedOfferContainer}>
+              <Image
+                src={`/Premium Quality.png`}
+                alt="discount"
+                width={30}
+                height={30}
+              />
+              <span className={styles.unlockedOfferText}>
+                You can now unlock {bestCoupon.discountPercent}% off coupon!
+              </span>
+              <button
+                className={styles.applyNowButton}
+                onClick={() => setIsCouponDialogOpen(true)}
+              >
+                Apply Now
+              </button>
+            </div>
+          )} */}
+
             {/* 4) "View all coupons" link that leads to the same modal as "Check coupons" */}
-      {totalQuantity > 0 && (
-        <div className={styles.viewAllCouponsSection}>
-          <span className={styles.viewAllCouponsText}>View all coupons</span>
-          <button
-            className={styles.viewAllCouponsButton}
-            onClick={() => setIsCouponDialogOpen(true)}
-          >
-           <ChevronRight/>
-          </button>
-        </div>
-      )}
+            {totalQuantity > 0 && (
+              <div
+                onClick={() => setIsCouponDialogOpen(true)}
+                className={styles.viewAllCouponsSection}>
+                <button
+                  className={styles.viewAllCouponsButton}
+                >
+                  <DiscountIcon sx={{ color: 'white', fontSize: 15 }} />
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
 
-      {totalQuantity > 0 && (
-          <PriceDetails
-            deliveryCost={deliveryCost}
-            couponState={couponState}
-            discountAmount={discountAmount}
-            totalCostWithDelivery={totalCostWithDelivery}
-            onOpenCoupon={() => setIsCouponDialogOpen(true)}
-            onRemoveCoupon={handleRemoveCoupon}
-          />
-      )}
-      {totalQuantity > 0 && (
-          <PaymentModes
-            paymentModes={paymentModes}
-            isLoading={isLoadingPaymentModes}
-            selectedPaymentMode={selectedPaymentMode}
-            onChange={handlePaymentModeChange}
-          />
-        
-      )}
-      </div>
+                  <span className={styles.viewAllCouponsText}>View all coupons</span>
+                  <ChevronRightIcon sx={{ color: '#616161', fontSize: 22 }} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {totalQuantity > 0 && (
+            <PriceDetails
+              deliveryCost={deliveryCost}
+              couponState={couponState}
+              discountAmount={discountAmount}
+              totalCostWithDelivery={totalCostWithDelivery}
+              onOpenCoupon={() => setIsCouponDialogOpen(true)}
+              onRemoveCoupon={handleRemoveCoupon}
+            />
+          )}
+          {totalQuantity > 0 && (
+            <PaymentModes
+              paymentModes={paymentModes}
+              isLoading={isLoadingPaymentModes}
+              selectedPaymentMode={selectedPaymentMode}
+              onChange={handlePaymentModeChange}
+            />
+
+          )}
+
+          
+        </div>
       </div>}
 
-
-
+<div style={{margin:'0 0.4rem', borderRadius: '0.6rem',
+  //  border:'1px solid red'
+   }}>
       <TopBoughtProducts subCategories={topBoughtSubCategories} currentProductId={topBoughtCurrentProductId} />
+
+</div>
       <HappyCustomersClient headingText="Happy Customers" />
 
+
+
+  
       {totalQuantity > 0 && (
         <Footer
           totalCost={totalCostWithDelivery}
@@ -487,26 +503,6 @@ const ViewCart = () => {
         severity={snackbar.severity}
         handleClose={handleSnackbarClose}
       />
-
-      
-
-      {/* Auto-Apply Animation Overlay (if desired) */}
-      {/* {autoApplyAnimation && (
-        <div className={styles.autoApplyAnimationOverlay}>
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: [0, 1.2, 1] }}
-            exit={{ scale: 0 }}
-            transition={{ duration: 2 }}
-            className={styles.autoApplyAnimation}
-          >
-            <Image src={`/images/off.jpg`} alt="Auto Applying Coupon" width="200" height="200" />
-          </motion.div>
-          {windowSize.width > 0 && (
-            <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={300} />
-          )}
-        </div>
-      )} */}
     </div>
   );
 };
