@@ -354,9 +354,9 @@ const ViewCart = () => {
 
   return (
     <div className={styles.container} style={{position: 'relative'}}>
-      <header className={totalQuantity > 0 ? styles.headerCont0 : styles.headerCont0}>
+{ !isCouponDialogOpen &&     <header className={totalQuantity > 0 ? styles.headerCont0 : styles.headerCont0}>
         <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
-      </header>
+      </header>}
 
       {totalQuantity > 0 && <div className={styles.maincomp}>
 
