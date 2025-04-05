@@ -7,7 +7,6 @@ import helpingData from '@/lib/faq/helpingdata';
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
-console.log('openai api key: ', process.env.OPENAI_API_KEY);
 
 // Helper to format date as "11 Feb, 2025 04:34pm (en-IN)"
 function getCustomDateString(date) {

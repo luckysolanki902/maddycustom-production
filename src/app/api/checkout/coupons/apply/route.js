@@ -56,7 +56,6 @@ export async function POST(request) {
       couponCodes: code.toUpperCase(),
       isActive: true,
     });
-    // console.log(offer,code)
 
     if (!offer) {
       console.error('Invalid coupon code.');

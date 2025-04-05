@@ -14,7 +14,6 @@ const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
 export default async function OrderPage({ params }) {
   const { orderId } = await params;
-console.log(orderId);
   let data;
   try {
     data = await fetchOrder(orderId);
