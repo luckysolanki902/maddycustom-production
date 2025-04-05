@@ -4,7 +4,6 @@ import Offer from '@/models/Offer';
 import { NextResponse } from 'next/server';
 import moment from 'moment-timezone';
 
-export const revalidate = 60; // seconds
 export async function GET() {
   await connectToDatabase();
 
