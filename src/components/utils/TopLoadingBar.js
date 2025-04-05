@@ -13,6 +13,7 @@ const TopLoadingBar = () => {
       shadow="0 0 8px rgba(255,255,255,0.5)"  // subtle white shadow
       zIndex={1600}
       showAtBottom={false}
+      showSpinner={false}
     />
   );
 };
