@@ -354,7 +354,7 @@ const ViewCart = () => {
 
   return (
     <div className={styles.container} style={{position: 'relative'}}>
-      <header className={totalQuantity > 0 ? styles.headerCont : styles.headerCont0}>
+      <header className={totalQuantity > 0 ? styles.headerCont0 : styles.headerCont0}>
         <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
       </header>
 
