@@ -20,6 +20,12 @@
   align-items: center;
   margin-top: 1rem;
   margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  background-color: rgb(255, 255, 255);
+  width: 100%;
+  max-width: 1200px;
+  justify-content: flex-start;
 }
 
 .heading {
@@ -71,8 +77,8 @@
 
 
 .freeShippingBanner {
-  position: sticky;
-  top: 0;
+  position: fixed;
+  top: 8rem;
   width: 100%;
   left: 0;
   margin-top: 0.6rem;
@@ -85,19 +91,20 @@
   font-weight: 600;
   border-radius: 0.6rem;
   z-index: 3;
+  height: 4rem;
 }
 
-@media screen and (max-width: 600px) {
+@media screen and (min-width: 768px) {
   .freeShippingBanner {
-    position: fixed;
-    top: 58px;
+    position: sticky;
+    top: 0;
     border-radius: 0;
   }
 
 }
 
 
-@media (min-width: 600px) {
+@media (min-width: 768px) {
   .cartList {
     /* 
     display: grid;
@@ -200,6 +207,7 @@
   display: flex;
   gap: 1rem;
   align-items: center;
+  padding: 0.5rem
 }
 
 
@@ -236,7 +244,6 @@
   bottom: 0;
   left: 0;
   width: 100vw;
-  padding: 1rem;
   /* background-color: #EEFEFC; */
   background-color: white;
   box-shadow: 0px -5px 5px 3px rgba(0, 0, 0, 0.1);
@@ -257,6 +264,22 @@
   /* gap: 1.5rem; */
 }
 
+.rightSection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 1rem;
+}
+
+
+@media (width < 768px) {
+  .rightSection {
+    width: 50vw;
+  padding-right: 0rem;
+
+    
+  }
+}
 
 .checkoutButton {
   padding: 10px 20px;
@@ -271,7 +294,7 @@
 }
 
 
-@media (width > 600px) {
+@media (width > 768px) {
 
   .leftSection {
     gap: 2.5rem;

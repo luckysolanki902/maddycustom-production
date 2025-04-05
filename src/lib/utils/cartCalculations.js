@@ -12,7 +12,6 @@ export const calculateTotalCostBeforeDiscount = (cartItems) =>
   }, 0);
 
 export const calculateDiscountAmount = (totalCost, couponState) => {
-  console.log('couponState', couponState.offer);
   if (!couponState.couponApplied) return 0;
   const { discountType, couponDiscount } = couponState;
   console.log('discountType', discountType, 'couponDiscount', couponDiscount);

@@ -1,7 +1,6 @@
 /* Existing styles */
 
 .container {
-  /* background-color: #F1FFFC; */
   background-color: white;
   min-height: 100vh;
   padding: 1.2rem;
@@ -9,12 +8,58 @@
   padding-bottom: 6rem;
   max-width: 1200px;
   margin: auto;
+  position: relative;
 
 }
 
-.header {
+
+.headerCont {
+  position: fixed;
+  top: 4.6rem;
+  width: 100%;
+  left: 0;
   display: flex;
   align-items: center;
+  background-color: white;
+  z-index: 6;
+  /* box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.15); */
+  height: 4rem;
+  justify-content: center;
+  z-index: 699;
+}
+
+.headerCont0 {
+  position: fixed;
+  top: 4.6rem;
+  width: 100%;
+  left: 0;
+  display: flex;
+  height: 4rem;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  z-index: 6999;
+}
+
+@media (width < 768px) {
+  .container {
+    background-color: #eaf4fe;
+
+  }
+
+  .headerCont {
+    position: fixed;
+    top: 8rem;
+    width: 100%;
+    left: 0;
+    display: flex;
+    align-items: center;
+    background-color: white;
+    z-index: 6;
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.15);
+    height: 4rem;
+  }
+
 }
 
 .heading {
@@ -23,6 +68,7 @@
   text-align: center;
   display: flex;
   align-items: center;
+  /* background-color: white; */
 }
 
 .heading span {
@@ -32,7 +78,7 @@
   font-size: 1.5rem;
 }
 
-.blueCont{
+.blueCont {
   border-radius: 10px;
   background-color: #eaf4fe;
   padding: 0;
@@ -40,9 +86,16 @@
   padding-right: 10px;
   display: flex;
   flex-direction: column;
-  
+
 }
-.blueCont2{
+
+@media (width < 768px) {
+  .blueCont {
+    margin-top: 8rem;
+  }
+}
+
+.blueCont2 {
   border-radius: 10px;
   background-color: #eaf4fe;
   padding: 0;
@@ -55,7 +108,13 @@
 
 }
 
-.currentAndAllCoupons{
+@media (width > 768px){
+  .blueCont2 {
+    padding-top: 1.5rem;
+  }
+}
+
+.currentAndAllCoupons {
   display: flex;
   flex-direction: column;
   border-radius: 0.6rem;
@@ -65,23 +124,26 @@
   margin-bottom: 2rem;
   margin-top: 0.4rem;
 }
-.couponSaveBanner{
+
+.couponSaveBanner {
   color: black;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
+
 @media screen and (max-width: 7680px) {
-  .container{
+  .container {
     padding: 0;
     padding-bottom: 6rem;
   }
-  .blueCont{
-  padding-top:20px;
-  border-radius: 0px;
+
+  .blueCont {
+    padding-top: 20px;
+    border-radius: 0px;
 
   }
-  
+
 }
 
 .subHeading {
@@ -201,11 +263,13 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 9999; /* Ensures it appears above other elements */
+  z-index: 9999;
+  /* Ensures it appears above other elements */
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none; /* Allows interactions to pass through */
+  pointer-events: none;
+  /* Allows interactions to pass through */
 }
 
 .autoApplyAnimation {
@@ -226,7 +290,7 @@
   display: flex;
   align-items: center;
   background: linear-gradient(to right, #DCFFDD 65%, #FFFFFF);
-  padding:20px 26px;
+  padding: 20px 26px;
   margin: 0.4rem 0;
   margin-bottom: 0;
   border-radius: 0.8rem;
@@ -240,10 +304,11 @@
 }
 
 
+
 .applyNowButton {
   margin-left: auto;
-  background-color:#e6f0e6;
-
+  background-color: transparent;
+  color: #24f72f;
   border: none;
   padding: 6px 12px;
   border-radius: 4px;
@@ -253,11 +318,13 @@
 }
 
 /* 4) "View all coupons" section */
-.viewAllCouponsSection{
+.viewAllCouponsSection {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  cursor: pointer;
 }
+
 .viewAllCouponsText {
   font-weight: 600;
   color: #333;
@@ -284,9 +351,20 @@
   gap: 10px;
 }
 
+@media (width> 768px) {
+  .maincomp {
+    margin-top: 6rem;
+  }
+}
+
 @media (max-width: 768px) {
   .maincomp {
     grid-template-columns: 1fr;
     gap: 0;
+
+  }
+
+  .extraPaddingTop {
+    margin-bottom: 5rem;
   }
 }

@@ -1,4 +1,5 @@
 // app/api/features/get-variants/route.js
+export const revalidate = 3600; // seconds
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Product from '@/models/Product';

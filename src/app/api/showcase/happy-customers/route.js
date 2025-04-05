@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import HappyCustomer from '@/models/HappyCustomer';
 
+export const revalidate = 3600; // seconds
+
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const parentSpecificCategoryId = searchParams.get('parentSpecificCategoryId');

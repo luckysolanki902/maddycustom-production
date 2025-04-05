@@ -5,6 +5,8 @@ import SpecificCategory from '@/models/SpecificCategory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import { NextResponse } from 'next/server';
 
+export const revalidate = 3600; // seconds
+
 export async function GET(request) {
   try {
     // Connect to the database
