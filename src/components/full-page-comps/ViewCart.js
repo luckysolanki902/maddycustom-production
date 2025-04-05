@@ -268,64 +268,64 @@ const ViewCart = () => {
       new Date(autoApplyDisabledAt).getTime() + 5 * 60 * 1000 > new Date().getTime();
 
 
-      if (totalQuantity > 0 && !autoApplyDisabled) {
-        const autoApplyOffer = async () => {
-          try {
-            const res = await fetch('/api/checkout/coupons');
-            const data = await res.json();
-            if (res.ok && data.coupons && data.coupons.length > 0) {
-              // Filter for autoApply offers that meet cart and first order conditions.
-              const applicableOffers = data.coupons.filter((offer) => {
-                if (!offer.autoApply) return false;
-                const cartCondition = offer.conditions.find((cond) => cond.type === 'cart_value');
-                if (cartCondition && totalCostBeforeDiscount < cartCondition.value) return false;
-                const firstOrderCondition = offer.conditions.find((cond) => cond.type === 'first_order');
-                if (firstOrderCondition && !isFirstOrder) return false;
-                return true;
-              });
-      
-              if (applicableOffers.length > 0 && !couponState.couponApplied) {
-                // For each offer, compute the effective discount.
-                const offersWithEffectiveDiscount = applicableOffers.map((offer) => {
-                  let effectiveDiscount = 0;
-                  const action = offer.actions[0]; // assuming one action per offer
-                  if (action.type === 'discount_percent') {
-                    effectiveDiscount = Math.min(
-                      (action.discountValue / 100) * totalCostBeforeDiscount,
-                      offer.discountCap || Infinity
-                    );
-                  } else if (action.type === 'discount_fixed') {
-                    effectiveDiscount = action.discountValue;
-                  }
-                  return { ...offer, effectiveDiscount };
-                });
-      
-                // Find the offer with the maximum effective discount.
-                const bestOffer = offersWithEffectiveDiscount.reduce((prev, curr) => {
-                  return curr.effectiveDiscount > prev.effectiveDiscount ? curr : prev;
-                }, offersWithEffectiveDiscount[0]);
-      
-                setAutoApplyAnimation(true);
-                setTimeout(() => {
-                  setAutoAppliedCoupon(true);
-                  handleApplyCoupon(
-                    bestOffer.couponCodes[0],
-                    bestOffer.actions[0].discountValue,
-                    bestOffer.actions[0].type === 'discount_percent' ? 'percentage' : 'fixed',
-                    false,
-                    bestOffer
+    if (totalQuantity > 0 && !autoApplyDisabled) {
+      const autoApplyOffer = async () => {
+        try {
+          const res = await fetch('/api/checkout/coupons');
+          const data = await res.json();
+          if (res.ok && data.coupons && data.coupons.length > 0) {
+            // Filter for autoApply offers that meet cart and first order conditions.
+            const applicableOffers = data.coupons.filter((offer) => {
+              if (!offer.autoApply) return false;
+              const cartCondition = offer.conditions.find((cond) => cond.type === 'cart_value');
+              if (cartCondition && totalCostBeforeDiscount < cartCondition.value) return false;
+              const firstOrderCondition = offer.conditions.find((cond) => cond.type === 'first_order');
+              if (firstOrderCondition && !isFirstOrder) return false;
+              return true;
+            });
+
+            if (applicableOffers.length > 0 && !couponState.couponApplied) {
+              // For each offer, compute the effective discount.
+              const offersWithEffectiveDiscount = applicableOffers.map((offer) => {
+                let effectiveDiscount = 0;
+                const action = offer.actions[0]; // assuming one action per offer
+                if (action.type === 'discount_percent') {
+                  effectiveDiscount = Math.min(
+                    (action.discountValue / 100) * totalCostBeforeDiscount,
+                    offer.discountCap || Infinity
                   );
-                  setAutoApplyAnimation(false);
-                }, 1000);
-              }
+                } else if (action.type === 'discount_fixed') {
+                  effectiveDiscount = action.discountValue;
+                }
+                return { ...offer, effectiveDiscount };
+              });
+
+              // Find the offer with the maximum effective discount.
+              const bestOffer = offersWithEffectiveDiscount.reduce((prev, curr) => {
+                return curr.effectiveDiscount > prev.effectiveDiscount ? curr : prev;
+              }, offersWithEffectiveDiscount[0]);
+
+              setAutoApplyAnimation(true);
+              setTimeout(() => {
+                setAutoAppliedCoupon(true);
+                handleApplyCoupon(
+                  bestOffer.couponCodes[0],
+                  bestOffer.actions[0].discountValue,
+                  bestOffer.actions[0].type === 'discount_percent' ? 'percentage' : 'fixed',
+                  false,
+                  bestOffer
+                );
+                setAutoApplyAnimation(false);
+              }, 1000);
             }
-          } catch (error) {
-            console.error('Error during auto apply:', error.message);
           }
-        };
-      
-        autoApplyOffer();
-      }
+        } catch (error) {
+          console.error('Error during auto apply:', error.message);
+        }
+      };
+
+      autoApplyOffer();
+    }
   }, [totalQuantity, totalCostBeforeDiscount, couponState.couponApplied, isFirstOrder, cartItems]);
 
   // --- Re-check applied coupon on cart update dynamically ---
@@ -370,8 +370,8 @@ const ViewCart = () => {
   };
 
   return (
-    <div className={styles.container} style={{position: 'relative'}}>
-{ !isCouponDialogOpen &&     <header className={totalQuantity > 0 ? styles.headerCont0 : styles.headerCont0}>
+    <div className={styles.container} style={{ position: 'relative' }}>
+      {!isCouponDialogOpen && !isOrderFormOpen && <header className={totalQuantity > 0 ? styles.headerCont0 : styles.headerCont0}>
         <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
       </header>}
 
@@ -403,9 +403,9 @@ const ViewCart = () => {
                 <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27, marginLeft: '-0.1rem' }} />
 
                 <span>
-                                  <span style={{ fontWeight: 600 }}>
-                  You saved</span> ₹{calculateDiscountAmount(totalCostBeforeDiscount, couponState)} on {couponState.couponName}
-                
+                  <span style={{ fontWeight: 600 }}>
+                    You saved</span> ₹{calculateDiscountAmount(totalCostBeforeDiscount, couponState)} on {couponState.couponName}
+
                 </span>
               </div>
             )}
@@ -480,20 +480,20 @@ const ViewCart = () => {
       </div>}
 
       <div style={{
-        margin: '0 0.4rem', borderRadius: '0.6rem',backgroundColor: 'white',marginTop: totalQuantity <= 0 ? '5rem' :'-0.5rem'
+        margin: '0 0.4rem', borderRadius: '0.6rem', backgroundColor: 'white', marginTop: totalQuantity <= 0 ? '5rem' : '-0.5rem'
         //  border:'1px solid red'
       }}>
         <TopBoughtProducts subCategories={topBoughtSubCategories} currentProductId={topBoughtCurrentProductId} />
 
       </div>
       <div style={{
-        margin: '0.4rem 0.4rem', borderRadius: '0.6rem',backgroundColor: 'white',
+        margin: '0.4rem 0.4rem', borderRadius: '0.6rem', backgroundColor: 'white',
         padding: '0 0.5rem',
-        paddingLeft:'0.8rem'
+        paddingLeft: '0.8rem'
         //  border:'1px solid red'
       }}>
-      <HappyCustomersClient headingText="Happy Customers" />
-</div>
+        <HappyCustomersClient headingText="Happy Customers" />
+      </div>
 
 
 
