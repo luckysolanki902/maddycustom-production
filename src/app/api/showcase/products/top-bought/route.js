@@ -8,6 +8,8 @@ import Option from '@/models/Option';
 import mongoose from 'mongoose';
 import inventory from '@/models/Inventory';
 
+export const revalidate = 3600; // seconds
+
 export async function GET(request) {
   try {
     await connectToDatabase();

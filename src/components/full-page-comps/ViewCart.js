@@ -112,8 +112,8 @@ const ViewCart = () => {
   const [bestCoupon, setBestCoupon] = useState(null);
   const [couponShortfall, setCouponShortfall] = useState(0);
 
-  const [appliableCoupon,setAppliableCoupon] = useState(null);
-  const [appliableCouponShortfall,setAppliableCouponShortfall] = useState(0);
+  const [appliableCoupon, setAppliableCoupon] = useState(null);
+  const [appliableCouponShortfall, setAppliableCouponShortfall] = useState(0);
 
   // Assume you know whether this is the customer's first order.
   const isFirstOrder = false; // Replace with your logic if available
@@ -250,8 +250,7 @@ const ViewCart = () => {
           setAppliableCoupon(bestOffer);
           setAppliableCouponShortfall(shortfall);
         }
-        console.log(bestCoupon);
-        console.log(couponShortfall);
+
       } catch (error) {
         console.error('Error fetching best coupon:', error);
       }
@@ -349,14 +348,13 @@ const ViewCart = () => {
       if (totalCostBeforeDiscount <= 0) return;
       try {
         const res = await axios.get('/api/checkout/bestcoupon', {
-          params: { cartValue: totalCostBeforeDiscount , appliedCoupon: couponState.couponName },
+          params: { cartValue: totalCostBeforeDiscount, appliedCoupon: couponState.couponName },
         });
         if (res.status === 200) {
           const { bestOffer, shortfall } = res.data;
           setBestCoupon(bestOffer);
           setCouponShortfall(shortfall);
-          console.log(bestOffer)
-          console.log(shortfall)
+
         }
       } catch (error) {
         console.error('Error fetching best coupon:', error);
@@ -372,10 +370,10 @@ const ViewCart = () => {
   };
 
   return (
-    <div className={styles.container}>
-      {/* 1) Top Banner: "You saved ₹100 on FREE shipping" */}
-      {/* Show this only if you want to highlight free shipping. Otherwise, conditionally show. */}
-      <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
+    <div className={styles.container} style={{position: 'relative'}}>
+{ !isCouponDialogOpen &&     <header className={totalQuantity > 0 ? styles.headerCont0 : styles.headerCont0}>
+        <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
+      </header>}
 
       {totalQuantity > 0 && <div className={styles.maincomp}>
 
@@ -405,35 +403,38 @@ const ViewCart = () => {
                 <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27, marginLeft: '-0.1rem' }} />
 
                 <span>
-                  You saved ₹{calculateDiscountAmount(totalCostBeforeDiscount, couponState)} on {couponState.couponName}
+                                  <span style={{ fontWeight: 600 }}>
+                  You saved</span> ₹{calculateDiscountAmount(totalCostBeforeDiscount, couponState)} on {couponState.couponName}
+                
                 </span>
               </div>
             )}
-
-            <div style={{ borderBottom: '1px dashed #cee2ff', margin: '0 1rem' }}></div>
 
             {/* If bestCoupon is already applicable (shortfall = 0) but not applied,
           you 
           can optionally show "You can unlock 10% off now!" */}
             {appliableCoupon && appliableCouponShortfall === 0 && !couponState.couponApplied && (
-            <div className={styles.couponSaveBanner}>
-              <Image
-                src={`/Premium Quality.png`}
-                alt="discount"
-                width={25}
-                height={25}
-              />
-              <span className={styles.couponSaveBanner}>
-                You can now unlock {appliableCoupon.discountType === 'percentage' ? `${appliableCoupon.discountValue}%` : appliableCoupon.discountValue} off coupon!
-              </span>
-              <button
-                className={styles.applyNowButton}
-                onClick={() => setIsCouponDialogOpen(true)}
-              >
-                Apply Now
-              </button>
-            </div>
-          )}
+              <div className={styles.couponSaveBanner}>
+                <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27, marginLeft: '-0.1rem' }} />
+
+                <span className={styles.couponSaveBanner}>
+                  You can now unlock {appliableCoupon.discountType === 'percentage' ? `${appliableCoupon.discountValue}%` : appliableCoupon.discountValue} off coupon!
+                </span>
+                <button
+                  className={styles.applyNowButton}
+                  onClick={() => setIsCouponDialogOpen(true)}
+                >
+                  Apply Now
+                </button>
+              </div>
+            )}
+
+
+            {(appliableCoupon && appliableCouponShortfall === 0 && !couponState.couponApplied) || (couponState.couponApplied && couponState.couponDiscount > 0) &&
+              <div style={{ borderBottom: '1px dashed #cee2ff', margin: '0 1rem' }}>
+              </div>
+            }
+
 
             {/* 4) "View all coupons" link that leads to the same modal as "Check coupons" */}
             {totalQuantity > 0 && (
@@ -474,21 +475,28 @@ const ViewCart = () => {
 
           )}
 
-          
+
         </div>
       </div>}
 
-<div style={{margin:'0 0.4rem', borderRadius: '0.6rem',
-  //  border:'1px solid red'
-   }}>
-      <TopBoughtProducts subCategories={topBoughtSubCategories} currentProductId={topBoughtCurrentProductId} />
+      <div style={{
+        margin: '0 0.4rem', borderRadius: '0.6rem',backgroundColor: 'white',marginTop: totalQuantity <= 0 ? '5rem' :'-0.5rem'
+        //  border:'1px solid red'
+      }}>
+        <TopBoughtProducts subCategories={topBoughtSubCategories} currentProductId={topBoughtCurrentProductId} />
 
-</div>
+      </div>
+      <div style={{
+        margin: '0.4rem 0.4rem', borderRadius: '0.6rem',backgroundColor: 'white',
+        padding: '0 0.5rem',
+        paddingLeft:'0.8rem'
+        //  border:'1px solid red'
+      }}>
       <HappyCustomersClient headingText="Happy Customers" />
+</div>
 
 
 
-  
       {totalQuantity > 0 && (
         <Footer
           totalCost={totalCostWithDelivery}

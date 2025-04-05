@@ -4,6 +4,8 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
 
+export const revalidate = 1800; // seconds
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const categoryCode = searchParams.get('category');

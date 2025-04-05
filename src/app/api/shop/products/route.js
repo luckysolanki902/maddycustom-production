@@ -14,6 +14,8 @@ export const config = {
   },
 };
 
+export const revalidate = 600; // seconds
+
 export async function POST(request) {
   try {
     const { slug, page = 1, limit = 15, tagFilter = null, sortBy = 'default' } = await request.json();

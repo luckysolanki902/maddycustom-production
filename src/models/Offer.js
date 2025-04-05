@@ -197,6 +197,10 @@ const OfferSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    discountCap: {
+      type: Number,
+      default: 0,
+    }
   },
   { timestamps: true } // Automatically manages createdAt and updatedAt fields.
 );

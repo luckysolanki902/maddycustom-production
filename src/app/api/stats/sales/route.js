@@ -1,3 +1,4 @@
+export const revalidate = 1800; // seconds
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
 import mongoose from 'mongoose';
