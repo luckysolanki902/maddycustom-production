@@ -1,51 +1,86 @@
-// components/cards/CouponCard.js
-
-import React from 'react';
-import styles from './styles/couponcard.module.css';
-import Image from 'next/image';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@mui/material';
+import styles from './styles/couponcard.module.css';
 
-const CouponCard = ({ discount, discountType, validity, name, onApply, index }) => {
-    const handleApplyClick = () => {
-        // Call the function passed from CouponDialog to apply the coupon
-        onApply(name, discount, discountType);
-    };
-const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-    return (
-        <div className={styles.mainDiv} style={{filter: `hue-rotate(${index * 25}deg)`}}>
-            <div className={styles.mdLogo}>
-                <Image src={`${baseImageUrl}/assets/logos/md-logo-light.png`} width={1242 / 7} height={1614 / 7} alt='md' />
-            </div>
+// Array of darker gradient backgrounds that look cool in any combination.
+const darkerGradients = [
+  'linear-gradient(135deg, #F02FC2, #6094EA)',
+  'linear-gradient(135deg, #F5D020, #F53803)',
+  'linear-gradient(135deg, #00C9FF, #92FE9D)',
+  'linear-gradient(135deg, #FBAB7E, #F7CE68)',
+  'linear-gradient(135deg, #EB3349, #F45C43)',
+  'linear-gradient(135deg, #FFC107, #FF9900)',
+  'linear-gradient(135deg, #45B3FA, #4183D7)',
+  'linear-gradient(135deg, #6A6BD1, #7356B8)',
+];
 
-            <div className={styles.percent}>
-                {discountType === 'percentage' ? `${discount}%` : `₹${discount}`}
-                <div>
-                    {discountType === 'percentage' ? `${discount}%` : `₹${discount}`}
-                </div>
-            </div>
-            <p>off</p>
+const CouponCard = ({
+  discount,
+  discountType, // 'percentage' or 'fixed'
+  validity,
+  name,
+  onApply,
+  applicable = true,
+  conditionMessage,
+}) => {
+  // Persist the selected background color
+  const [background, setBackground] = useState('');
 
-            <div className={styles.cut}>
-                <div className={styles.circle}></div>
-                <div className={styles.validity}>
-                    Valid till {validity}
-                </div>
-                <div className={styles.lineMain}>
-                    <div className={styles.lines}></div>
-                    <div className={styles.lines}></div>
-                    <div className={styles.lines}></div>
-                    <div className={styles.lines}></div>
-                </div>
-                <div className={styles.circle}></div>
-            </div>
+  useEffect(() => {
+    const selected = darkerGradients[Math.floor(Math.random() * darkerGradients.length)];
+    setBackground(selected);
+  }, []);
 
-            <div className={styles.applyButton}>
-                <Button variant="contained" color="primary" onClick={handleApplyClick}>
-                    Apply
-                </Button>
-            </div>
+  const handleApplyClick = () => {
+    if (onApply) {
+      onApply(name, discount, discountType);
+    }
+  };
+
+  return (
+    <div
+      className={`${styles.card} ${!applicable ? styles.notApplicable : ''}`}
+      style={{ background: background }}
+    >
+      {/* Background overlay with big discount text */}
+      <div className={styles.overlay}>
+        <div className={styles.bigDiscount}>
+          {discountType === 'percentage'
+            ? `${discount}% OFF`
+            : `₹${discount} OFF`}
         </div>
-    );
-}
+      </div>
+      <div className={styles.dashedLine}></div>
+
+      {/* Main content */}
+      <div className={styles.content}>
+        <div className={styles.header}>
+          <h3 className={styles.couponName}>{name}</h3>
+        </div>
+        <div className={styles.discountSection}>
+          <span className={styles.discountValue}>
+            {discountType === 'percentage'
+              ? `${discount}%`
+              : `₹${discount}`}
+          </span>
+          <span className={styles.offText}>OFF</span>
+        </div>
+        <div className={styles.validity}>
+          Valid till {new Date(validity).toLocaleDateString()}
+        </div>
+        {!applicable && conditionMessage && (
+          <div className={styles.conditionMessage}>{conditionMessage}</div>
+        )}
+        {applicable && (
+          <div className={styles.applyButton}>
+            <Button variant="contained" onClick={handleApplyClick}>
+              Apply
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default CouponCard;

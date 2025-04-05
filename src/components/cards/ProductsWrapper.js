@@ -5,7 +5,7 @@ import HeaderCarousel from '../showcase/carousels/HeaderCarousel';
 import styles from './styles/productswrapper.module.css';
 import { useMediaQuery } from '@mui/material';
 
-const ProductsWrapper = ({ variant, products, category, isLoading, showLayout2, hideCartButton = false }) => {
+const ProductsWrapper = ({ variant, products, category, isLoading, showLayout2, hideCartButton = false, hidePrice = false }) => {
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
@@ -49,6 +49,7 @@ const ProductsWrapper = ({ variant, products, category, isLoading, showLayout2, 
             isLoading={isLoading}
             showLayout2={showLayout2}
             hideCartButton={hideCartButton}
+            hidePrice={hidePrice}
           />
         );
       })}

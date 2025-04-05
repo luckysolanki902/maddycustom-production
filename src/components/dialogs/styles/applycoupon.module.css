@@ -34,13 +34,14 @@
     margin: 1rem;
     display: flex;
     justify-content: flex-start;
-    gap: 2rem;
+    gap: 1rem;
     flex-wrap: wrap;
 }
 
 @media(width<600px) {
     .couponCardsSection {
         justify-content: space-between;
+        padding: 0rem;
 
     }
 }
