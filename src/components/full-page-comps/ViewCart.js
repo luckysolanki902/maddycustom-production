@@ -112,6 +112,9 @@ const ViewCart = () => {
   const [bestCoupon, setBestCoupon] = useState(null);
   const [couponShortfall, setCouponShortfall] = useState(0);
 
+  const [appliableCoupon,setAppliableCoupon] = useState(null);
+  const [appliableCouponShortfall,setAppliableCouponShortfall] = useState(0);
+
   // Assume you know whether this is the customer's first order.
   const isFirstOrder = false; // Replace with your logic if available
 
@@ -239,13 +242,13 @@ const ViewCart = () => {
     const fetchBestCoupon = async () => {
       if (totalCostBeforeDiscount <= 0) return;
       try {
-        const res = await axios.get('/api/checkout/bestcoupon', {
+        const res = await axios.get('/api/checkout/applicablecoupon', {
           params: { cartValue: totalCostBeforeDiscount },
         });
         if (res.status === 200) {
           const { bestOffer, shortfall } = res.data;
-          setBestCoupon(bestOffer);
-          setCouponShortfall(shortfall);
+          setAppliableCoupon(bestOffer);
+          setAppliableCouponShortfall(shortfall);
         }
         console.log(bestCoupon);
         console.log(couponShortfall);
@@ -329,7 +332,7 @@ const ViewCart = () => {
       if (totalCostBeforeDiscount <= 0) return;
       try {
         const res = await axios.get('/api/checkout/bestcoupon', {
-          params: { cartValue: totalCostBeforeDiscount },
+          params: { cartValue: totalCostBeforeDiscount , appliedCoupon: couponState.couponName },
         });
         if (res.status === 200) {
           const { bestOffer, shortfall } = res.data;
@@ -370,7 +373,7 @@ const ViewCart = () => {
             <div className={styles.lockedOfferContainer}>
 
               <span className={styles.lockedOfferText}>
-                Add ₹{couponShortfall} more to unlock {bestCoupon.discountPercent}% off coupon
+                Add ₹{couponShortfall} more to unlock {bestCoupon.discountType === 'percentage' ? `${bestCoupon.discountValue}%` : bestCoupon.discountValue} off coupon
               </span>
               <DiscountOutlinedIcon sx={{ color: '#4dff68', fontSize: 40 }} />
 
@@ -395,16 +398,16 @@ const ViewCart = () => {
             {/* If bestCoupon is already applicable (shortfall = 0) but not applied,
           you 
           can optionally show "You can unlock 10% off now!" */}
-            {/* {bestCoupon && couponShortfall === 0 && !couponState.couponApplied && (
-            <div className={styles.unlockedOfferContainer}>
+            {appliableCoupon && appliableCouponShortfall === 0 && !couponState.couponApplied && (
+            <div className={styles.couponSaveBanner}>
               <Image
                 src={`/Premium Quality.png`}
                 alt="discount"
-                width={30}
-                height={30}
+                width={25}
+                height={25}
               />
-              <span className={styles.unlockedOfferText}>
-                You can now unlock {bestCoupon.discountPercent}% off coupon!
+              <span className={styles.couponSaveBanner}>
+                You can now unlock {appliableCoupon.discountType === 'percentage' ? `${appliableCoupon.discountValue}%` : appliableCoupon.discountValue} off coupon!
               </span>
               <button
                 className={styles.applyNowButton}
@@ -413,7 +416,7 @@ const ViewCart = () => {
                 Apply Now
               </button>
             </div>
-          )} */}
+          )}
 
             {/* 4) "View all coupons" link that leads to the same modal as "Check coupons" */}
             {totalQuantity > 0 && (

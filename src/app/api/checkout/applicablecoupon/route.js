@@ -1,4 +1,3 @@
-// app/api/checkout/bestcoupon/route.js
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Offer from '@/models/Offer';
 import { NextResponse } from 'next/server';
@@ -11,11 +10,11 @@ export async function GET(req) {
     // Get current time in IST
     const currentDateIST = moment().tz('Asia/Kolkata').toDate();
 
-    // Parse query parameters from the request URL
+    // Parse query parameter 'cartValue' from the request URL
     const { searchParams } = new URL(req.url);
     const cartValue = parseFloat(searchParams.get('cartValue')) || 0;
 
-    // Fetch all active offers that have a cart_value condition and are valid now.
+    // Fetch all active offers with a cart_value condition that are valid now.
     const offers = await Offer.find({
       isActive: true,
       'conditions.type': 'cart_value',
@@ -31,15 +30,16 @@ export async function GET(req) {
     }
 
     // Map offers to include computed fields.
-    // This mapping handles both fixed and percentage discount types.
+    // For percentage discounts, compute effective discount (capped if needed).
     const mappedOffers = offers.map((offer) => {
       const cartCondition = offer.conditions.find(
         (cond) => cond.type === 'cart_value'
       );
       const requiredCartValue = cartCondition ? cartCondition.value : 0;
+      // Calculate how much more is needed; if 0 then it's applicable.
       const shortfall = Math.max(0, requiredCartValue - cartValue);
 
-      if(shortfall === 0) return ;
+      // Get discount action (handling both percentage and fixed)
       const discountAction = offer.actions.find(
         (action) =>
           action.type === 'discount_percent' || action.type === 'discount_fixed'
@@ -47,16 +47,22 @@ export async function GET(req) {
 
       let discountType = null;
       let discountValue = 0;
+      let effectiveDiscount = 0;
       if (discountAction) {
         if (discountAction.type === 'discount_percent') {
           discountType = 'percentage';
           discountValue = discountAction.discountValue;
+          effectiveDiscount = (discountValue / 100) * cartValue;
+          // Cap the discount if discountCap is provided.
+          if (offer.discountCap && effectiveDiscount > offer.discountCap) {
+            effectiveDiscount = offer.discountCap;
+          }
         } else if (discountAction.type === 'discount_fixed') {
           discountType = 'fixed';
           discountValue = discountAction.discountValue;
+          effectiveDiscount = discountValue;
         }
       }
-
       return {
         offer,
         name: offer.name,
@@ -64,63 +70,49 @@ export async function GET(req) {
         shortfall,
         discountType,
         discountValue,
+        effectiveDiscount,
       };
     });
 
-    // Sort offers by smallest shortfall first.
-    // In case of tie, for percentage offers, the one with higher discount percent is preferred;
-    // for fixed offers, the one with higher fixed discount is preferred.
-    mappedOffers.sort((a, b) => {
-      if (a.shortfall !== b.shortfall) {
-        return a.shortfall - b.shortfall;
-      }
-      return b.discountValue - a.discountValue;
-    });
+    // Filter only the offers that are fully applicable (shortfall equals 0)
+    const applicableOffers = mappedOffers.filter((o) => o.shortfall === 0);
 
-    // Always select the offer with the smallest shortfall.
-    const selectedOffer = mappedOffers[0];
-
-    if (!selectedOffer) {
+    if (applicableOffers.length === 0) {
       return NextResponse.json(
-        { message: 'No offers available at the moment.' },
-        { status: 200 } // Changed status to 200 to indicate success.
+        { message: 'No applicable coupon available at the moment.' },
+        { status: 200 }
       );
     }
 
-    const { name, discountType, discountValue, requiredCartValue, shortfall } = selectedOffer;
+    // Sort applicable offers by effective discount in descending order.
+    applicableOffers.sort((a, b) => b.effectiveDiscount - a.effectiveDiscount);
+
+    const bestOffer = applicableOffers[0];
     let message = '';
-    if (shortfall > 0) {
-      if (discountType === 'percentage') {
-        message = `Add ₹${shortfall} more to unlock ${discountValue}% off coupon!`;
-      } else if (discountType === 'fixed') {
-        message = `Add ₹${shortfall} more to unlock ₹${discountValue} off coupon!`;
-      }
-    } else {
-      if (discountType === 'percentage') {
-        message = `Apply coupon now to get ${discountValue}% off!`;
-      } else if (discountType === 'fixed') {
-        message = `Apply coupon now to get ₹${discountValue} off!`;
-      }
+    if (bestOffer.discountType === 'percentage') {
+      message = `Apply coupon now to get ${bestOffer.discountValue}% off!`;
+    } else if (bestOffer.discountType === 'fixed') {
+      message = `Apply coupon now to get ₹${bestOffer.discountValue} off!`;
     }
 
     const responseData = {
       bestOffer: {
-        name,
-        discountType,
-        discountValue,
-        requiredCartValue,
+        name: bestOffer.name,
+        discountType: bestOffer.discountType,
+        discountValue: bestOffer.discountValue,
+        requiredCartValue: bestOffer.requiredCartValue,
+        effectiveDiscount: bestOffer.effectiveDiscount,
       },
-      shortfall,
+      shortfall: 0,
       message,
     };
 
     return NextResponse.json(responseData, { status: 200 });
   } catch (error) {
-    console.error('Error fetching best coupon:', error.message);
+    console.error('Error fetching best applicable coupon:', error.message);
     return NextResponse.json(
       { message: 'Server error. Please try again.' },
       { status: 500 }
     );
   }
 }
-
