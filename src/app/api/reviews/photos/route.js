@@ -1,4 +1,5 @@
 // app/api/reviews/photos/route.js
+export const revalidate = 1800; // seconds
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import connectToDatabase from '@/lib/middleware/connectToDb';

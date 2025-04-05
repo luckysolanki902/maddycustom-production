@@ -17,13 +17,13 @@ if (!cached) {
 // Use a very small pool size to avoid too many connections per Lambda
 const options = {
   bufferCommands: false,
-  maxPoolSize: 1,
+  maxPoolSize: 2,
   minPoolSize: 0,
-  serverSelectionTimeoutMS: 5000,   // Fail fast if no server is found
+  serverSelectionTimeoutMS: 10000,   // Fail fast if no server is found
   socketTimeoutMS: 30000,          // Socket idle timeout
   heartbeatFrequencyMS: 10000,     // Ping server every 10s
   maxIdleTimeMS: 10000,            // Reap idle connections after 10s
-  waitQueueTimeoutMS: 5000,        // Time to wait in queue for a connection
+  waitQueueTimeoutMS: 15000,        // Time to wait in queue for a connection
 };
 
 async function connectToDatabase() {

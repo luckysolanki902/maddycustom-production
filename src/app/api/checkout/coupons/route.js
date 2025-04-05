@@ -5,6 +5,7 @@ import Coupon from '@/models/Coupon';
 import { NextResponse } from 'next/server';
 import moment from 'moment-timezone';
 
+export const revalidate = 60; // seconds
 export async function GET() {
   await connectToDatabase();
 

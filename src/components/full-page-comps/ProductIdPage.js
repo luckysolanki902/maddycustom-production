@@ -192,7 +192,10 @@ export default function ProductIdPage({
       if (!category?._id) return;
       try {
         const response = await fetch(
-          `/api/stats/sales?type=specificCategory&id=${category._id}&days=10&round=true`
+          `/api/stats/sales?type=specificCategory&id=${category._id}&days=10&round=true`,
+          {
+            next: { revalidate: 1800 },
+          }
         );
         const data = await response.json();
         setSoldCount(data.totalItemsSold);
