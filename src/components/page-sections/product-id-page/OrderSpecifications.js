@@ -8,16 +8,16 @@ const OrderSpecifications = ({ features = [], borderUrl, justContStart }) => {
 
     const newFeatures = [
         {
-            name: "7 Days Replacement",
-            imageUrl: "/assets/icons/7-day-replacement1.png"
+            name: "Premium Quality",
+            imageUrl: "/assets/icons/thumbs_up.png"
         },
         {
-            name: "Free Shipping",
-            imageUrl: "/assets/icons/free-shipping1.png"
+            name: "Free Delivery",
+            imageUrl: "/assets/icons/free_shipping_truck.png"
         },
         {
-            name: "Partial COD",
-            imageUrl: "/assets/icons/partial-cod1.png"
+            name: "Secure Payment",
+            imageUrl: "/assets/icons/secure_payment.png"
         }
     ]
     

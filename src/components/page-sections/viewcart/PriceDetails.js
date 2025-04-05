@@ -13,8 +13,9 @@ const PriceDetails = ({
   totalCostWithDelivery,
   onOpenCoupon,
   onRemoveCoupon,
-}) => (
-  <div className={`${styles.cartItem} ${styles.priceDetails}`}>
+}) => {
+  return(
+  <div className={`${styles.cartItem} ${styles.priceDetails}`} style={{marginBottom: '0.4rem'}}>
     {/* Delivery Cost */}
     <div className={styles.priceDetailRow}>
       <div className={styles.priceField}>Delivery Cost</div>
@@ -72,6 +73,6 @@ const PriceDetails = ({
       />
     </div>
   </div>
-);
+)};
 
 export default PriceDetails;

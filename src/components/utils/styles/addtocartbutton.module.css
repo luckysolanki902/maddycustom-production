@@ -22,6 +22,14 @@
   margin-top: 0.5rem;
 }
 
+.smaller{
+  font-size: 0.9rem;
+  height: 1.6rem;
+  padding: 0.4 0;
+  width: 100px;
+  min-width: 100px;
+}
+
 /* New class for black button */
 .blackButton {
   background-color: #424242;
