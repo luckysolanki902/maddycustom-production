@@ -10,7 +10,6 @@ export async function GET() {
   try {
     // Get current time in IST
     const currentDateIST = moment().tz('Asia/Kolkata').toDate();
-    // console.log(currentDateIST);
 
     // Fetch only active offers that should be shown as cards and are within the validity period.
     const offers = await Offer.find({isActive: true,validFrom: { $lte: currentDateIST }, validUntil: { $gte: currentDateIST }}).select('-__v -createdAt -updatedAt');
