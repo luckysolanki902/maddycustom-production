@@ -18,7 +18,7 @@ export async function fetchProducts(slug, page = 1, limit = ITEMS_PER_PAGE, tagF
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug: fullSlug, page, limit, tagFilter, sortBy }),
       // Use revalidation to balance cache storage and data freshness
-      next: { revalidate: 60 },
+      next: { revalidate: 600 },
     });
 
     if (res.status === 404) {
@@ -48,7 +48,7 @@ export async function fetchProductDetails(slug) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug: fullSlug }),
-      next: { revalidate: 60 },
+      next: { revalidate: 600 },
     });
 
     if (res.status === 404) {

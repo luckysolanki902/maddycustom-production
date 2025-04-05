@@ -7,6 +7,8 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 
 const disableFakeAddition = false; // Toggle to disable dummy reviews
 
+export const revalidate = 1800; // seconds
+
 export async function GET(request) {
   try {
     await connectToDatabase();

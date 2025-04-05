@@ -1,4 +1,5 @@
 // app/shop/[...slug]/page.js
+export const revalidate = 600; // Revalidate this page every 60 seconds
 import React from 'react';
 import ProductsPage from '@/components/full-page-comps/ProductsPage';
 import ProductIdPage from '@/components/full-page-comps/ProductIdPage';
