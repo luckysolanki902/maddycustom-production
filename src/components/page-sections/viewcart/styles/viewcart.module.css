@@ -1,12 +1,4 @@
-.container {
-  /* background-color: #F1FFFC; */
-  background-color: white;
-  min-height: 100vh;
-  padding: 1.2rem;
-  margin: 0;
-  padding-bottom: 15rem;
-
-}
+/* src/components/page-sections/viewcart/styles/viewcart.module.css */
 
 /* productprice color update */
 .productPrice {
@@ -14,7 +6,7 @@
   /* padding-right:10px ; */
   margin-bottom: 60px;
 }
-
+/* 'My Cart' heading container */
 .header {
   display: flex;
   align-items: center;
@@ -27,7 +19,7 @@
   max-width: 1200px;
   justify-content: flex-start;
 }
-
+/* My Cart heading */
 .heading {
   margin: 0;
   margin-left: 1rem;
@@ -39,6 +31,12 @@
   font-weight: 500;
 }
 
+
+@media (width < 768px) {  
+  .heading {
+    font-size: 1.3rem;
+  }
+}
 
 .heading span {
   margin-left: 0.5rem;
@@ -53,16 +51,16 @@
 }
 
 .cartList::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .cartList::-webkit-scrollbar-thumb {
-  background-color: #c0c0c0;
+  background-color: #c0c0c052;
   border-radius: 10px;
 }
 
 .cartList::-webkit-scrollbar-thumb:hover {
-  background-color: #a0a0a0;
+  background-color: #a0a0a09f;
 }
 
 .cartList {
@@ -78,10 +76,9 @@
 
 .freeShippingBanner {
   position: fixed;
-  top: 8rem;
+  top: 4rem;
   width: 100%;
   left: 0;
-  margin-top: 0.6rem;
   background-color: #CBFFCE;
   padding: 1rem;
   display: flex;
@@ -91,7 +88,8 @@
   font-weight: 600;
   border-radius: 0.6rem;
   z-index: 3;
-  height: 4rem;
+  height: 3rem;
+  font-size: 0.9rem;
 }
 
 @media screen and (min-width: 768px) {
@@ -106,12 +104,7 @@
 
 @media (min-width: 768px) {
   .cartList {
-    /* 
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.2rem; */
     overflow: auto;
-    /* margin-bottom: 40px; */
     max-height: 600px;
   }
 }

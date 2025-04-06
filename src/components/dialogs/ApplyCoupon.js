@@ -184,7 +184,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" fullScreen>
       <DialogContent style={{ backgroundColor: 'white', height: '100vh', padding: '0' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginTop: '1rem', marginRight: '1rem' }}>
-          <Button color="inherit" onClick={onClose} sx={{ padding: '1rem' }}>
+          <div color="inherit" onClick={onClose} className={styles.backButton}>
             <Image
               src={`${baseImageUrl}/assets/icons/lessthan1.png`}
               width={46}
@@ -192,7 +192,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
               alt="Back"
               style={{ width: '1rem', height: 'auto' }}
             />
-          </Button>
+          </div>
           <div className={styles.inputMain} style={{ flexGrow: '1', display: 'flex' }}>
             <TextField
               autoFocus
@@ -217,7 +217,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
           </div>
         </div>
 
-        <section className={styles.couponCardsSection} style={{ padding: '1rem' }}>
+        <section className={styles.couponCardsSection}>
           {isLoading ? (
             <>
               <Skeleton variant="rectangular" sx={{ width: '9rem', height: '14rem', borderRadius: '1rem', marginBottom: '1rem' }} />
