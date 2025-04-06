@@ -1,9 +1,7 @@
-// app/api/webhooks/razorpay/verify-payment/route.js
-
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
-import Coupon from '@/models/Coupon';
+import Offer from '@/models/Offer';
 import User from '@/models/User';
 import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shiprocket';
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
@@ -170,21 +168,23 @@ export async function POST(request) {
           logs.push(`[${timestampStr}] Payment status -> paidPartially`);
         }
 
-        // Check/increment coupon usage if applicable
+        // Check/increment offer usage if applicable (using Offer schema)
         if (order.couponApplied?.length > 0) {
           const [appliedCoupon] = order.couponApplied;
           if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
-            const couponDoc = await Coupon.findOne({ code: appliedCoupon.couponCode }).session(session);
-            if (couponDoc) {
-              couponDoc.usageCount += 1;
-              await couponDoc.save({ session });
+            const offerDoc = await Offer.findOne({
+              couponCodes: appliedCoupon.couponCode.toUpperCase(),
+            }).session(session);
+            if (offerDoc) {
+              offerDoc.usedCount += 1;
+              await offerDoc.save({ session });
               appliedCoupon.incrementedCouponUsage = true;
               order.couponApplied = order.couponApplied.map(c =>
                 c.couponCode === appliedCoupon.couponCode
                   ? { ...c.toObject(), incrementedCouponUsage: true }
                   : c
               );
-              logs.push(`[${timestampStr}] Coupon usage incremented: ${appliedCoupon.couponCode}`);
+              logs.push(`[${timestampStr}] Offer usage incremented: ${appliedCoupon.couponCode}`);
             }
           }
         }
