@@ -30,7 +30,7 @@ const rootReducer = combineReducers({
 });
 
 const persistConfig = {
-  key: 'root',
+  key: 'root_v2',
   storage,
   // Do not include the UI slice here
   whitelist: ['cart', 'orderForm', 'utm', 'variantPreference', 'userBehavior'],
