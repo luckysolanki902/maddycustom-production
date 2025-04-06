@@ -28,20 +28,43 @@
     /* letter-spacing: 2px; */
     text-transform: none;
 }
+.backButton{
+    background-color: transparent;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.9rem;
+    margin: 0 0.5rem;
+}
 
+.backButton:hover{
+    background-color: #e6f0e686;
+}
 .couponCardsSection {
-    padding: 1rem;
-    margin: 1rem;
+    padding:1rem 1rem;
+    margin: 0rem;
     display: flex;
     justify-content: flex-start;
     gap: 1rem;
     flex-wrap: wrap;
+    /* justify-items: center; */
 }
 
 @media(width<600px) {
     .couponCardsSection {
-        justify-content: space-between;
-        padding: 0rem;
+        display: grid;
+        padding: 1rem 0;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 1rem;
+        justify-items: center;
+        /* No margin on .card elements; let grid handle spacing */
+      }
+}
 
-    }
+@media(width<440px) {
+    .couponCardsSection {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      }
 }
