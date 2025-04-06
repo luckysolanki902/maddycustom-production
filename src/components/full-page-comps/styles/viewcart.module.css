@@ -1,5 +1,4 @@
-/* Existing styles */
-
+/* src/components/full-page-comps/styles/viewcart.module.css */
 .container {
   background-color: white;
   min-height: 100vh;
@@ -13,24 +12,9 @@
 }
 
 
-.headerCont {
-  position: fixed;
-  top: 4.6rem;
-  width: 100%;
-  left: 0;
-  display: flex;
-  align-items: center;
-  background-color: white;
-  z-index: 6;
-  /* box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.15); */
-  height: 4rem;
-  justify-content: center;
-  z-index: 699;
-}
-
 .headerCont0 {
   position: fixed;
-  top: 4.6rem;
+  top: 0rem;
   width: 100%;
   left: 0;
   display: flex;
@@ -49,7 +33,7 @@
 
   .headerCont {
     position: fixed;
-    top: 8rem;
+    top: 0rem;
     width: 100%;
     left: 0;
     display: flex;
@@ -62,22 +46,6 @@
 
 }
 
-.heading {
-  margin: 0;
-  margin-left: 1rem;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  /* background-color: white; */
-}
-
-.heading span {
-  margin-left: 0.5rem;
-  color: #676767;
-  font-weight: 400;
-  font-size: 1.5rem;
-}
-
 .blueCont {
   border-radius: 10px;
   background-color: #eaf4fe;
@@ -86,12 +54,13 @@
   padding-right: 10px;
   display: flex;
   flex-direction: column;
+  padding-bottom: 1rem;
 
 }
 
 @media (width < 768px) {
   .blueCont {
-    margin-top: 8rem;
+    margin-top: 2rem;
   }
 }
 
@@ -140,152 +109,12 @@
 
   .blueCont {
     padding-top: 20px;
-    border-radius: 0px;
 
   }
 
 }
 
-.subHeading {
-  position: absolute;
-  right: 20px;
-}
-
-
-.cartItem {
-  color: black;
-  display: flex;
-  align-items: center;
-  background-color: #ffffff;
-  border-radius: 10px;
-  padding: 10px;
-  box-shadow: 0 2px 4px 4px #b7fffb2c, 0 2px 1px 1px #a5e4ff18;
-  min-height: 110px;
-  border-radius: 1.2rem;
-}
-
-.priceDetails {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 1.5rem;
-  gap: 1rem;
-}
-
-.priceField {
-  min-width: 150px;
-  text-align: left;
-  font-size: 1.1rem;
-  display: flex;
-}
-
-.mopBox {
-  padding-left: 1.5rem;
-  align-items: flex-start;
-  padding: 1.5rem;
-}
-
-.patch {
-  background-color: #fafa7d;
-}
-
-.priceDetailRow {
-  display: flex;
-}
-
-.rupee {
-  font-size: 0.7rem;
-}
-
-.productImage {
-  width: 100px;
-  height: auto;
-  object-fit: cover;
-  border-radius: 5px;
-  margin-right: 15px;
-}
-
-.priceValue {
-  font-size: 1.1rem;
-  color: gray;
-}
-
-.productDetails {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.categoryName {
-  flex-grow: 1;
-  font-size: 0.9rem;
-  font-weight: 600;
-  line-height: 1rem;
-}
-
-.productName {
-  flex-grow: 1;
-  font-size: 0.8rem;
-  color: gray;
-}
-
-.footer {
-  margin-top: 30px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100vw;
-  padding: 1rem;
-  /* background-color: #EEFEFC; */
-  background-color: white;
-  box-shadow: 0px -5px 5px 3px rgba(0, 0, 0, 0.1);
-}
-
-.totalCost {
-  font-size: 20px;
-  font-weight: bold;
-  display: flex;
-  flex-direction: column;
-}
-
-.checkoutButton {
-  padding: 10px 20px;
-  font-size: 16px;
-}
-
-.autoApplyAnimationOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 9999;
-  /* Ensures it appears above other elements */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  /* Allows interactions to pass through */
-}
-
-.autoApplyAnimation {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ------------------------------------------ */
-/* New UI additions as per the screenshot     */
-/* ------------------------------------------ */
-
-
-
-
-/* 3) Locked offer container: "Add ₹XYZ more to unlock X% off coupon" */
+ /* Locked offer container: "Add ₹XYZ more to unlock X% off coupon" */ 
 .lockedOfferContainer {
   display: flex;
   align-items: center;
@@ -317,7 +146,7 @@
   font-size: 0.9rem;
 }
 
-/* 4) "View all coupons" section */
+/*"View all coupons" section */
 .viewAllCouponsSection {
   display: flex;
   align-items: center;
@@ -353,7 +182,7 @@
 
 @media (width> 768px) {
   .maincomp {
-    margin-top: 6rem;
+    /* margin-top: 6rem; */
   }
 }
 

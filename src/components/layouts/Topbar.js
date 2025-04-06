@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -8,6 +8,7 @@ import styles from './styles/topbar.module.css';
 import { ShoppingCart, Search, Menu } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import Badge from '@mui/material/Badge';
+import { useSpring, animated } from 'react-spring';
 
 import { toggleSidebar, openSearchDialog } from '@/store/slices/uiSlice';
 
@@ -15,22 +16,60 @@ const Topbar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const dispatch = useDispatch();
-
   const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+
 
   // Get total quantity from Redux
   const items = useSelector((state) => state.cart.items);
   const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
 
-  // For demonstration only: we'll just do a basic show/hide for mobile
-  // by using CSS media queries in topbar.module.css
+  // Scroll detection state: track previous scroll position and visibility
+  const [prevScrollY, setPrevScrollY] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    let ticking = false;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          // Hide the topbar when scrolling down (past 100px) and show when scrolling up
+          if (currentScrollY > prevScrollY && currentScrollY > 100) {
+            setIsVisible(false);
+          } else {
+            setIsVisible(true);
+          }
+          setPrevScrollY(currentScrollY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [prevScrollY]);
+
+  // Create a smooth animation for the topbar using react-spring
+  const animationProps = useSpring({
+    transform: isVisible ? 'translateY(0%)' : 'translateY(-100%)',
+    config: { tension: 210, friction: 20 },
+  });
+
+  
+  // If pathname is /viewcart, don't render the topbar
+  if (pathname === '/viewcart') return null;
 
   return (
-    <nav className={styles.topbar}>
+    <animated.nav style={animationProps} className={styles.topbar}>
       {/* Left Section: hamburger (mobile) + logo + links (desktop) */}
       <div className={styles.leftSection}>
         {/* Hamburger icon only visible on smaller screens (handled via CSS) */}
-        <div className={styles.hamburgerIcon} onClick={() => dispatch(toggleSidebar())}>
+        <div
+          className={styles.hamburgerIcon}
+          onClick={() => dispatch(toggleSidebar())}
+        >
           <Menu style={{ fontSize: 30, color: '#424242', cursor: 'pointer' }} />
         </div>
 
@@ -59,9 +98,9 @@ const Topbar = () => {
             <Link
               key={item.text}
               href={item.href}
-              className={
-                `${styles.navItem} ${pathname === item.href ? styles.active : ''}`
-              }
+              className={`${styles.navItem} ${
+                pathname === item.href ? styles.active : ''
+              }`}
             >
               {item.text}
             </Link>
@@ -69,26 +108,24 @@ const Topbar = () => {
         </div>
       </div>
 
-
-
-      {/* Right Side - Show a search icon on mobile, cart icon, etc. */}
+      {/* Right Side - search icon (mobile), desktop search box and cart icon */}
       <div className={styles.rightIcons}>
         {/* Mobile search icon - visible only on mobile via CSS */}
         <Search
           className={styles.mobileSearchIcon}
           onClick={() => dispatch(openSearchDialog())}
         />
-              {/* Middle Section (desktop search) - hidden on mobile */}
-      <div className={styles.searchBox}>
-        <Search className={styles.searchIcon} />
-        <input
-          type="text"
-          placeholder="Search on MaddyCustom"
-          className={styles.searchInput}
-          onClick={() => dispatch(openSearchDialog())}
-          readOnly // We make it readOnly, so focusing triggers the dialog
-        />
-      </div>
+        {/* Desktop search box - hidden on mobile */}
+        <div className={styles.searchBox}>
+          <Search className={styles.searchIcon} />
+          <input
+            type="text"
+            placeholder="Search on MaddyCustom"
+            className={styles.searchInput}
+            onClick={() => dispatch(openSearchDialog())}
+            readOnly // focusing triggers the dialog
+          />
+        </div>
         {/* Cart Icon with Badge */}
         <div
           className={styles.cartContainer}
@@ -99,8 +136,9 @@ const Topbar = () => {
           </Badge>
         </div>
       </div>
-    </nav>
+    </animated.nav>
   );
 };
 
 export default Topbar;
+

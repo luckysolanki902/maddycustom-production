@@ -371,7 +371,7 @@ const ViewCart = () => {
 
   return (
     <div className={styles.container} style={{ position: 'relative' }}>
-      {!isCouponDialogOpen && !isOrderFormOpen && <header className={totalQuantity > 0 ? styles.headerCont0 : styles.headerCont0}>
+      {!isCouponDialogOpen && !isOrderFormOpen && <header className={styles.headerCont0 }>
         <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
       </header>}
 
@@ -480,7 +480,7 @@ const ViewCart = () => {
       </div>}
 
       <div style={{
-        margin: '0 0.4rem', borderRadius: '0.6rem', backgroundColor: 'white', marginTop: totalQuantity <= 0 ? '5rem' : '-0.5rem'
+        margin: '0 0.4rem', borderRadius: '0.6rem', backgroundColor: 'white', marginTop: totalQuantity <= 0 ? '0rem' : '-0.5rem'
         //  border:'1px solid red'
       }}>
         <TopBoughtProducts subCategories={topBoughtSubCategories} currentProductId={topBoughtCurrentProductId} />
