@@ -29,18 +29,17 @@ const getClientIp = async () => {
  * @param {object} options - Additional event parameters.
  */
 const sendToServer = async (eventName, options) => {
-  return;
-  // try {
-  //   const res = await fetch('/api/meta/conversion-api', {
-  //     method: 'POST',
-  //     headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify({ eventName, options }),
-  //   });
-  //   if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
-  //   await res.json();
-  // } catch (error) {
-  //   console.error('Error sending event to server:', error);
-  // }
+  try {
+    const res = await fetch('/api/meta/conversion-api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventName, options }),
+    });
+    if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
+    await res.json();
+  } catch (error) {
+    console.error('Error sending event to server:', error);
+  }
 };
 
 /**
