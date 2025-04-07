@@ -58,17 +58,21 @@ export default function SearchCategoryDialog() {
   // Determine if we're on mobile (using a width threshold)
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1000;
 
-  // Close the dialog
-  const handleClose = () => {
+  // Close the dialog with an option to skip history manipulation
+  const handleClose = useCallback((skipHistory = false) => {
     if (isMobile && pushedStateRef.current) {
-      window.history.back();
+      if (skipHistory) {
+        // Instead of going back, replace the current history entry to clean up
+        window.history.replaceState(null, document.title);
+      } else {
+        window.history.back();
+      }
       pushedStateRef.current = false;
-    } else {
-      dispatch(closeSearchDialog());
     }
+    dispatch(closeSearchDialog());
     setSearchText('');
     setSuggestions([]);
-  };
+  }, [dispatch, isMobile]);
 
   // When dialog opens, fetch categories/variants and (if mobile) push history state
   useEffect(() => {
@@ -103,14 +107,13 @@ export default function SearchCategoryDialog() {
 
       if (isMobile) {
         const handlePopState = () => {
-          dispatch(closeSearchDialog());
-          pushedStateRef.current = false;
+          handleClose();
         };
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
       }
     }
-  }, [isOpen, dispatch, isMobile]);
+  }, [isOpen, isMobile, handleClose]);
 
   // Also try to focus using another useEffect (as a backup)
   useEffect(() => {
@@ -164,7 +167,8 @@ export default function SearchCategoryDialog() {
         }
       }
     }
-    handleClose();
+    // For route navigation on mobile, skip the history back step
+    handleClose(true);
   };
 
   // Pressing Enter picks the first suggestion
@@ -192,7 +196,7 @@ export default function SearchCategoryDialog() {
     <Dialog
       fullScreen
       open={isOpen}
-      onClose={handleClose} // Closes on tapping outside or pressing ESC
+      onClose={() => handleClose()} // Closes on tapping outside or pressing ESC
       TransitionComponent={Transition}
       PaperProps={{ style: { backgroundColor: 'white' } }}
     >
@@ -200,7 +204,7 @@ export default function SearchCategoryDialog() {
         sx={{ position: 'relative', backgroundColor: 'white', boxShadow: 'none' }}
       >
         <Toolbar className={searchStyles.searchheader}>
-          <IconButton edge="start" color="inherit" onClick={handleClose}>
+          <IconButton edge="start" color="inherit" onClick={() => handleClose()}>
             <Image
               src={`${baseUrl}/assets/icons/left-arrow.png`}
               width={24}
@@ -301,7 +305,7 @@ export default function SearchCategoryDialog() {
               ))}
             </List>
           ) : (
-            <Typography variant="h6" align="center" sx={{ mt: 4, fontFamily: 'Jost' }}>
+            <Typography variant="body1" align="center" sx={{ mt: 4, fontFamily: 'Jost' }}>
               {isLoading ? 'Loading Categories...' : 'No results found'}
             </Typography>
           )}
