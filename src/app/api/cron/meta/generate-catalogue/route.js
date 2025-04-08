@@ -28,8 +28,8 @@ async function runCatalogueUpdate() {
   const now = new Date();
 
   // Limits for batch processing
-  const PRODUCT_BATCH_SIZE = 1000; // Number of products to fetch
-  const GLOBAL_FEED_LIMIT = 1000;   // Max feed entries created per API call
+  const PRODUCT_BATCH_SIZE = 100; // Number of products to fetch
+  const GLOBAL_FEED_LIMIT = 100;   // Max feed entries created per API call
 
   // 2) Retrieve an active (in_progress) cycle or create one
   let cycle = await CatalogueCycle.findOne({ status: 'in_progress' });
