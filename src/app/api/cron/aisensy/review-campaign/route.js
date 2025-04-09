@@ -4,6 +4,7 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
 import Product from '@/models/Product';
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
+import User from '@/models/User';
 
 export async function GET(req) {
   try {
