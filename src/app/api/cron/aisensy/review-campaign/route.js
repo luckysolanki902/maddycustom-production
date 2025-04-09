@@ -24,7 +24,7 @@ export async function GET(req) {
       deliveryStatus: 'delivered',
     })
       .sort({ createdAt: -1 }) // recent orders first
-      .limit(50)
+      .limit(20)
       .populate('user')
       .populate('items.product')
       .exec();

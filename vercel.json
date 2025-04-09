@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/aisensy/review-campaign",
-      "schedule": "*/20 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/meta/generate-catalogue",
