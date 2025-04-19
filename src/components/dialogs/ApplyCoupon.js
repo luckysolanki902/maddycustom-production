@@ -71,7 +71,7 @@ const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) 
   const fetchAvailableCoupons = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/checkout/coupons');
+      const res = await fetch('/api/checkout/coupons?cards=true');
       const data = await res.json();
       if (res.ok) {
         // Sort offers based on effective discount (descending order)

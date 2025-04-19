@@ -4,15 +4,24 @@ import Offer from '@/models/Offer';
 import { NextResponse } from 'next/server';
 import moment from 'moment-timezone';
 
-export async function GET() {
+export async function GET(request) {
   await connectToDatabase();
 
   try {
     // Get current time in IST
     const currentDateIST = moment().tz('Asia/Kolkata').toDate();
 
+    const queryParams = new URLSearchParams(request.nextUrl.search);
+    const showAsCards = queryParams.get('cards') === 'true';
+    
+
     // Fetch only active offers that should be shown as cards and are within the validity period.
-    const offers = await Offer.find({isActive: true,validFrom: { $lte: currentDateIST }, validUntil: { $gte: currentDateIST }}).select('-__v -createdAt -updatedAt');
+    const offers = await Offer.find({
+      isActive: true,
+      ...(showAsCards ? { showAsCard: true } : {}),
+      validFrom: { $lte: currentDateIST },
+      validUntil: { $gte: currentDateIST },
+    }).select('-__v -createdAt -updatedAt');
 
     return NextResponse.json({ coupons: offers }, { status: 200 });
   } catch (error) {
@@ -23,3 +32,4 @@ export async function GET() {
     );
   }
 }
+

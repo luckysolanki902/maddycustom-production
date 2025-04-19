@@ -271,7 +271,7 @@ const ViewCart = () => {
     if (totalQuantity > 0 && !autoApplyDisabled) {
       const autoApplyOffer = async () => {
         try {
-          const res = await fetch('/api/checkout/coupons');
+          const res = await fetch('/api/checkout/coupons?cards=true');
           const data = await res.json();
           if (res.ok && data.coupons && data.coupons.length > 0) {
             // Filter for autoApply offers that meet cart and first order conditions.
