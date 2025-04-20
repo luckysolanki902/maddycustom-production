@@ -67,10 +67,11 @@ export async function GET(req) {
       if (firstItem && firstItem.product) {
         const product = await Product.findById(firstItem.product).lean();
         if (product && product.images && product.images.length > 0) {
+          const imageUrl = product.images[0].startsWith('/')
+            ? `${imageBaseUrl}${product.images[0]}`
+            : `${imageBaseUrl}/${product.images[0]}`;
           media = {
-            url: firstItem?.thumbnail || (product.images[0].startsWith('/')
-              ? `${imageBaseUrl}${product.images[0]}`
-              : `${imageBaseUrl}/${product.images[0]}`),
+            url: firstItem.thumbnail ? `${imageBaseUrl}${firstItem.thumbnail}` : imageUrl,
             filename: 'product-image'
           };
         }
