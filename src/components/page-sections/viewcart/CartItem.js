@@ -42,7 +42,7 @@ const CartItem = ({ item, onRemove }) => {
       key={item.productId}
       className={styles.cartItem}
     >
-      <Checkbox
+      {/* <Checkbox
         onClick={(e) => e.stopPropagation()}
         checked={true}
         onChange={handleCheckboxChange}
@@ -50,15 +50,17 @@ const CartItem = ({ item, onRemove }) => {
           color: 'black',
           '&.Mui-checked': { color: 'black' },
         }}
-      />
+      /> */}
+      <div className={styles.productImageContainer}>
 
-      <Image
-        width={538}
-        height={341.5}
-        src={imageSrc}
-        alt={item.productDetails.name}
-        className={styles.productImage}
-      />
+        <Image
+          width={538}
+          height={341.5}
+          src={imageSrc}
+          alt={item.productDetails.name}
+          className={styles.productImage}
+        />
+      </div>
 
 
       <div className={styles.productDetails}>
@@ -73,14 +75,14 @@ const CartItem = ({ item, onRemove }) => {
         <div className={styles.productName}>
           {item?.productDetails?.name?.length < 20 ? item?.productDetails?.name : (item?.productDetails?.name.slice(0, 20) + '...')}
         </div>
-        
-         <AddToCartButton product={item.productDetails} />
-        
+
+        <AddToCartButton product={item.productDetails} smaller={true} />
+
       </div>
 
-     <div className={styles.productPrice}>
-          ₹{(item.productDetails.price * item.quantity).toFixed(0)}/-
-        </div>
+      <div className={styles.productPrice}>
+        ₹{(item.productDetails.price * item.quantity).toFixed(0)}/-
+      </div>
 
     </div>
   );

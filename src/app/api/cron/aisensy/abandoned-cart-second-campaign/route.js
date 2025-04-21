@@ -68,9 +68,13 @@ export async function GET(req) {
         const product = await Product.findById(firstItem.product).lean();
         if (product && product.images && product.images.length > 0) {
           media = {
-            url: firstItem?.thumbnail || (product.images[0].startsWith('/')
-              ? `${imageBaseUrl}${product.images[0]}`
-              : `${imageBaseUrl}/${product.images[0]}`),
+            url: firstItem?.thumbnail
+              ? (firstItem.thumbnail.startsWith('/')
+                ? `${imageBaseUrl}${firstItem.thumbnail}`
+                : `${imageBaseUrl}/${firstItem.thumbnail}`)
+              : (product.images[0].startsWith('/')
+                ? `${imageBaseUrl}${product.images[0]}`
+                : `${imageBaseUrl}/${product.images[0]}`),
             filename: 'product-image'
           };
         }

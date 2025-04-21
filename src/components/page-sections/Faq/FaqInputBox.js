@@ -1,7 +1,6 @@
 'use client';
 import React, { useState } from 'react';
 import styles from './styles/Faq.module.css';
-import { FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 
 const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
   const [issue, setIssue] = useState('');
@@ -11,7 +10,6 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
   const [subcategory, setSubcategory] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-
 
   const categories = {
     "Order Related": [
@@ -29,8 +27,20 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
     "Other": []
   };
 
+  // A simple regex-based validation for a 10-digit mobile number
+  const validateMobile = (number) => {
+    return /^\d{10}$/.test(number);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate mobile number here
+    if (!validateMobile(mobile)) {
+      alert("Please enter a valid 10-digit mobile number.");
+      return; // Stop submission
+    }
+
     setLoading(true);
     try {
       const res = await fetch('/api/openai/chat', {
@@ -60,7 +70,10 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
   };
 
   return (
-    <div className={styles.mainContainer} style={{marginBottom: category ? '25rem': '10rem'}}>
+    <div
+      className={styles.mainContainer}
+      style={{ marginBottom: category ? '25rem' : '10rem' }}
+    >
       <div className={styles.headingContainer}>
         <h2 className={styles.heading}>How can we help you?</h2>
       </div>
@@ -119,36 +132,42 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
           )}
 
           {/* Issue Textarea */}
-          {subcategory && <textarea
-            className={styles.messageField}
-            placeholder="Please enter your issue here"
-            value={issue}
-            onChange={(e) => setIssue(e.target.value)}
-            required
-          />}
-
-          {/* Mobile Number Input */}
-          {issue && <div className={styles.mobileFieldContainer}>
-            <input
-              type="text"
-              className={styles.mobileField}
-              placeholder="Mobile Number"
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
+          {subcategory && (
+            <textarea
+              className={styles.messageField}
+              placeholder="Please enter your issue here"
+              value={issue}
+              onChange={(e) => setIssue(e.target.value)}
               required
             />
-          </div>}
+          )}
+
+          {/* Mobile Number Input */}
+          {issue && (
+            <div className={styles.mobileFieldContainer}>
+              <input
+                type="text"
+                className={styles.mobileField}
+                placeholder="Mobile Number"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                required
+              />
+            </div>
+          )}
 
           {/* Email Input */}
-          {mobile && <div className={styles.mobileFieldContainer}>
-            <input
-              type="email"
-              className={styles.mobileField}
-              placeholder="Email Address (optional)"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>}
+          {mobile && (
+            <div className={styles.mobileFieldContainer}>
+              <input
+                type="email"
+                className={styles.mobileField}
+                placeholder="Email Address (optional)"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+          )}
 
           {/* Submit button OR Reopen dialog */}
           {!submitted ? (

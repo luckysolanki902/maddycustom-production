@@ -1,12 +1,10 @@
-// @/store/slices/orderFormSlice.js
-
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   userDetails: {
     name: '',
     phoneNumber: '',
-    userId: '', // Added userId
+    userId: '',
   },
   addressDetails: {
     addressLine1: '',
@@ -20,12 +18,15 @@ const initialState = {
   prefilledAddress: null,
   couponApplied: {
     couponCode: '',
-    discountAmount: 0
+    discountAmount: 0,
+    discountType: '',
+    isDbCoupon: false,
+    offer: null,
   },
   lastOrderId: '',
   lastOrderIdSetAt: null,
-  extraFields: {}, 
-  loginDialogShown: false, // Added field to track if dialog was shown
+  extraFields: {},
+  loginDialogShown: false,
 };
 
 const orderFormSlice = createSlice({
@@ -45,6 +46,7 @@ const orderFormSlice = createSlice({
       state.prefilledAddress = action.payload;
     },
     setCouponApplied: (state, action) => {
+      // Merge the existing couponApplied state with the payload.
       state.couponApplied = { ...state.couponApplied, ...action.payload };
     },
     setLastOrderId: (state, action) => {
@@ -66,7 +68,7 @@ export const {
   setUserExists,
   setPrefilledAddress,
   setCouponApplied,
-  setLastOrderId, 
+  setLastOrderId,
   setExtraFields,
   setLoginDialogShown,
   resetOrderForm,

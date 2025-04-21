@@ -252,7 +252,7 @@ function ProductCard({ product }) {
             e.stopPropagation();
           }}
         >
-          {/* {console.log(product.images[0],"image url")} */}
+     
 
           <AddToCartButton product={{...product,thumbnail }} />
         </Box>

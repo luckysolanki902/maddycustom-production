@@ -192,7 +192,10 @@ export default function ProductIdPage({
       if (!category?._id) return;
       try {
         const response = await fetch(
-          `/api/stats/sales?type=specificCategory&id=${category._id}&days=10&round=true`
+          `/api/stats/sales?type=specificCategory&id=${category._id}&days=10&round=true`,
+          {
+            next: { revalidate: 1800 },
+          }
         );
         const data = await response.json();
         setSoldCount(data.totalItemsSold);
@@ -242,7 +245,7 @@ export default function ProductIdPage({
       style.backgroundImage = `url(${imageBaseUrl}/${opt.thumbnail})`;
       style.backgroundSize = "cover";
       style.backgroundPosition = "center";
-      // console.log(opt.thumbnail)
+  
     } else {
       // Fallback: use the option detail value (prefer "color" if available, else first value)
       const optionValue =
@@ -272,11 +275,10 @@ export default function ProductIdPage({
     }
     return `${detailValue} ${product.title}`;
   };
-  // console.log(selectedOption)
+ 
     //  thumbnail should reciew images from the selected option if available
     const thumbnail = selectedOption?.images[0] || product?.images[0] ;
-    // const thumbnail = "thumbnail"
-    // {console.log(thumbnail)}
+   
   return (
     <div style={{ paddingBottom: "6rem" }}>
       <div className={styles.container}>

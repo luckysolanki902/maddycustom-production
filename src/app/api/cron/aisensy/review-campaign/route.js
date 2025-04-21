@@ -4,6 +4,7 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
 import Product from '@/models/Product';
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
+import User from '@/models/User';
 
 export async function GET(req) {
   try {
@@ -22,6 +23,7 @@ export async function GET(req) {
       createdAt: { $gte: FEB_1_2025, $lte: cutoffDate },
       deliveryStatus: 'delivered',
     })
+      .sort({ createdAt: -1 }) // recent orders first
       .limit(20)
       .populate('user')
       .populate('items.product')
@@ -114,9 +116,9 @@ export async function GET(req) {
         sentCount++;
       } else {
         // Log the failure reason for this order/user
-        console.error(
-          `Failed to send message for Order ${order._id} (User: ${userObj.phoneNumber}): ${result.message}`
-        );
+        // console.error(
+        //   `Failed to send message for Order ${order._id} (User: ${userObj.phoneNumber}): ${result.message}`
+        // );
       }
 
       // Add detailed info for this order, including failure reason if present

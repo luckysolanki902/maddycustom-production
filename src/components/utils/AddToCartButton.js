@@ -17,7 +17,7 @@ import {
 } from '../../store/slices/cartSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
 
-export default function AddToCartButton({ product, isBlackButton = false, isLarge = false }) {
+export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, smaller = false }) {
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
   const cartItem = cartItems.find((item) => item.productId === product._id);
@@ -120,11 +120,13 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     styles.main,
     isBlackButton ? styles.blackButton : '',
     isLarge ? styles.largeButton : '',
+    smaller ? styles.smaller : '',
   ].join(' ').trim();
 
   if (cartItem) {
     return (
-      <div className={mainClasses} onClick={(e) => e.stopPropagation()}>
+      <div className={mainClasses} onClick={(e) => e.stopPropagation()}
+       >
         <button onClick={handleDecrement} className={styles.decrement}>
           <RemoveIcon fontSize='1rem'/>
         </button>

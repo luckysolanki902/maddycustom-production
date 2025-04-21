@@ -7,7 +7,6 @@ import helpingData from '@/lib/faq/helpingdata';
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
-console.log('openai api key: ', process.env.OPENAI_API_KEY);
 
 // Helper to format date as "11 Feb, 2025 04:34pm (en-IN)"
 function getCustomDateString(date) {
@@ -15,8 +14,8 @@ function getCustomDateString(date) {
 
   const day = d.getDate();
   const shortMonths = [
-    'Jan','Feb','Mar','Apr','May','Jun',
-    'Jul','Aug','Sep','Oct','Nov','Dec'
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
   ];
   const monthStr = shortMonths[d.getMonth()];
   const year = d.getFullYear();
@@ -65,19 +64,8 @@ export async function POST(req) {
 
         // Insert specialized highlight tags: <HLA>, <HLD>, <HLP>, <HLDS>
         orderDetailsText = `
-I see that your latest order {copyToClipboardLink: ${order._id}, linkText: ${order._id}} 
-has a total of <HLA>₹${order.totalAmount}</HLA>.
-It was placed on <HLD>${formattedDate}</HLD>.
-The payment status is <HLP>${order.paymentStatus}</HLP>, 
-and the delivery status is <HLDS>${order.deliveryStatus}</HLDS>.
-
-To track the order status, please visit: {link: https://www.maddycustom.com/orders/track?orderId=${order._id}, linkText: Track Your Order}.
-
-Additionally, if you'd like to view the payment distribution and product details, check:
-{link: /orders/myorder/${order._id}, linkText: More Order Info}.
-
-I hope this helps!
-        `;
+Here is your latest order {copyToClipboardLink: ${order._id}, linkText: ${order._id}}, it has a total of <HLA>₹${order.totalAmount}</HLA>, placed on <HLD>${formattedDate}</HLD>, its payment status is <HLP>${order.paymentStatus}</HLP>, and its delivery status is <HLDS>${order.deliveryStatus}</HLDS>, to track the order visit {link: https://www.maddycustom.com/orders/track?orderId=${order._id}, linkText: Track Your Order}, you can also view payment and product details at {link: /orders/myorder/${order._id}, linkText: More Order Info}.
+`;
       }
     }
 
@@ -95,28 +83,16 @@ ${category}
 User Issue Subcategory:
 ${subcategory}
 
-${
-  orderDetailsText
-    ? `
+${orderDetailsText
+        ? `
 User fetched order details (if category is 'Order Related'):
 ${orderDetailsText}
 `
-    : ''
-}
+        : ''
+      }
 
 Instructions:
-You are a helpful assistant. 
-Please answer the user's query in a friendly tone using plain text and links.
-Do not use markdown formatting like **bold**.
-For links, use {link: <URL>, linkText: <Text>}.
-In case of category is 'Order Related', then always provide both order detail link (only provide order detail link if orderId is present) (/orders/myorder/{orderid}) and track order link (/orders/track?orderId). Always tell user about why they haven't received a orderId or notification...like 1-2 days process etc present above.
-For copy to clipboard, use {copyToClipboardLink: <value>, linkText: <label>}.
-Use the specialized highlight tags below for partial phrases:
- - <HLA> for amounts
- - <HLD> for date/time
- - <HLP> for payment status
- - <HLDS> for delivery status
-Return the final text.
+You are a helpful assistant who should respond in one single paragraph, be polite and adjust your tone based on the user's mood. Avoid line breaks, avoid any markdown formatting like ** or * or _, and avoid italic or bold formatting. If the user is frustrated, respond empathetically. If the user is cheerful, respond in a friendly, upbeat manner. If the user is neutral, keep a calm, helpful tone. Always return the final text as a single paragraph without additional new lines. For links, use {link: <URL>, linkText: <Text>}. In case the category is 'Order Related', always include both the order detail link (/orders/myorder/{orderid}) if the order ID is present and the track order link (/orders/track?orderId). Always explain why the user might not have received their order ID or notification, for example that it can take 1-2 days. For copying a value to the clipboard, use {copyToClipboardLink: <value>, linkText: <label>}. Use the specialized highlight tags for partial phrases: <HLA> for amounts, <HLD> for date/time, <HLP> for payment status, <HLDS> for delivery status. Return only one paragraph as your final answer. This is a one-time response assistant designed to answer a single query per interaction. Please do not invite the user to ask follow-up questions or reach out again unless specifically required. Always end your response with this line as part of the same paragraph (no line breaks): If your query is resolved, please press the yes button below. If not, press no and our customer care executive will get in touch with you within 24 hours.
     `;
 
     // Chat completion call (non-streaming)
