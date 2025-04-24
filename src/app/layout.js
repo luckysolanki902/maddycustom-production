@@ -4,7 +4,7 @@ import '@/styles/globals.css';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { generateWebsiteSchema, generateOrganizationSchema } from '@/lib/metadata/json-lds';
 import ReduxProvider from '@/components/layouts/ReduxProvider';
-// import FloatingActionBar from '@/components/utils/FloatingActionButton';
+import FloatingActionBar from '@/components/utils/FloatingActionButton';
 import TopLoadingBar from '@/components/utils/TopLoadingBar';
 import AnalyticsHead from '@/components/layouts/AnalyticsHead';
 import UTMCapture from '@/components/analytics/UTMCapture';
@@ -82,7 +82,7 @@ export default function RootLayout({ children }) {
           <SearchCategoryDialog />
 
           {children}
-          {/* <FloatingActionBar /> */}
+          <FloatingActionBar />
           <Footer />
           <TimeTracker />
           <LoginDialog />
