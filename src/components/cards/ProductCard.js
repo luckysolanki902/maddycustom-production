@@ -33,7 +33,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const [isZoomed, setIsZoomed] = useState(false);
   const router = useRouter();
-
+//
     // pull MRP & final price, then memoize discount%
     // 1) fallback to 1000 if MRP is missing
       const mrp = product.MRP ?? 1000;
