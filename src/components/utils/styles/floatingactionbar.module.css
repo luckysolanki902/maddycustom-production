@@ -20,7 +20,7 @@
   align-items: center;
   padding: 14px 24px;
   gap: 36px;
-  box-shadow: 0 0 4px 2px #4de1ff24, 0 0 4px 2px #40bcff33;
+  box-shadow: 0 4px 4px 2px #a5f0ff24, 0 4px 4px 2px #40bcff33;
 }
 
 .iconButton {
