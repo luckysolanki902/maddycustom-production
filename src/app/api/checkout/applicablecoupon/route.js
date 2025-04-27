@@ -1,72 +1,71 @@
+// app/api/checkout/applicablecoupon/route.js
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Offer from '@/models/Offer';
 import { NextResponse } from 'next/server';
 import moment from 'moment-timezone';
 
-export async function GET(req) {
+export async function GET(request) {
   await connectToDatabase();
 
   try {
-    // Get current time in IST
-    const currentDateIST = moment().tz('Asia/Kolkata').toDate();
-
-    // Parse query parameter 'cartValue' from the request URL
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const cartValue = parseFloat(searchParams.get('cartValue')) || 0;
 
-    // Fetch all active offers with a cart_value condition that are valid now.
-    const offers = await Offer.find({
+    const nowIst     = moment().tz('Asia/Kolkata');
+    const startOfDay = nowIst.clone().startOf('day');
+    const endOfDay   = nowIst.clone().endOf('day');
+
+    // fetch all active cart_value offers
+    const allOffers = await Offer.find({
       isActive: true,
       'conditions.type': 'cart_value',
-      validFrom: { $lte: currentDateIST },
-      validUntil: { $gte: currentDateIST },
     }).select('-__v -createdAt -updatedAt');
 
-    if (!offers || offers.length === 0) {
+    // filter by validity today in IST
+    const dateValid = allOffers.filter(offer => {
+      const startIst = moment(offer.validFrom).tz('Asia/Kolkata').startOf('day');
+      const endIst   = moment(offer.validUntil).tz('Asia/Kolkata').endOf('day');
+      return nowIst.isBetween(startIst, endIst, null, '[]');
+    });
+
+    if (dateValid.length === 0) {
       return NextResponse.json(
         { message: 'No offers available at the moment.' },
         { status: 200 }
       );
     }
 
-    // Map offers to include computed fields.
-    // For percentage discounts, compute effective discount (capped if needed).
-    const mappedOffers = offers.map((offer) => {
-      const cartCondition = offer.conditions.find(
-        (cond) => cond.type === 'cart_value'
-      );
-      const requiredCartValue = cartCondition ? cartCondition.value : 0;
-      // Calculate how much more is needed; if 0 then it's applicable.
-      const shortfall = Math.max(0, requiredCartValue - cartValue);
+    // map with computed discounts
+    const mapped = dateValid.map(offer => {
+      const cond = offer.conditions.find(c => c.type === 'cart_value') || {};
+      const required = cond.value || 0;
+      const shortfall = Math.max(0, required - cartValue);
 
-      // Get discount action (handling both percentage and fixed)
-      const discountAction = offer.actions.find(
-        (action) =>
-          action.type === 'discount_percent' || action.type === 'discount_fixed'
-      );
+      const action = offer.actions.find(a =>
+        a.type === 'discount_percent' || a.type === 'discount_fixed'
+      ) || {};
 
       let discountType = null;
       let discountValue = 0;
       let effectiveDiscount = 0;
-      if (discountAction) {
-        if (discountAction.type === 'discount_percent') {
-          discountType = 'percentage';
-          discountValue = discountAction.discountValue;
-          effectiveDiscount = (discountValue / 100) * cartValue;
-          // Cap the discount if discountCap is provided.
-          if (offer.discountCap && effectiveDiscount > offer.discountCap) {
-            effectiveDiscount = offer.discountCap;
-          }
-        } else if (discountAction.type === 'discount_fixed') {
-          discountType = 'fixed';
-          discountValue = discountAction.discountValue;
-          effectiveDiscount = discountValue;
+
+      if (action.type === 'discount_percent') {
+        discountType = 'percentage';
+        discountValue = action.discountValue;
+        effectiveDiscount = (discountValue / 100) * cartValue;
+        if (offer.discountCap && effectiveDiscount > offer.discountCap) {
+          effectiveDiscount = offer.discountCap;
         }
+      } else if (action.type === 'discount_fixed') {
+        discountType = 'fixed';
+        discountValue = action.discountValue;
+        effectiveDiscount = discountValue;
       }
+
       return {
         offer,
         name: offer.name,
-        requiredCartValue,
+        requiredCartValue: required,
         shortfall,
         discountType,
         discountValue,
@@ -74,40 +73,35 @@ export async function GET(req) {
       };
     });
 
-    // Filter only the offers that are fully applicable (shortfall equals 0)
-    const applicableOffers = mappedOffers.filter((o) => o.shortfall === 0);
-
-    if (applicableOffers.length === 0) {
+    const applicable = mapped.filter(o => o.shortfall === 0);
+    if (applicable.length === 0) {
       return NextResponse.json(
         { message: 'No applicable coupon available at the moment.' },
         { status: 200 }
       );
     }
 
-    // Sort applicable offers by effective discount in descending order.
-    applicableOffers.sort((a, b) => b.effectiveDiscount - a.effectiveDiscount);
+    applicable.sort((a, b) => b.effectiveDiscount - a.effectiveDiscount);
+    const best = applicable[0];
 
-    const bestOffer = applicableOffers[0];
     let message = '';
-    if (bestOffer.discountType === 'percentage') {
-      message = `Apply coupon now to get ${bestOffer.discountValue}% off!`;
-    } else if (bestOffer.discountType === 'fixed') {
-      message = `Apply coupon now to get ₹${bestOffer.discountValue} off!`;
+    if (best.discountType === 'percentage') {
+      message = `Apply coupon now to get ${best.discountValue}% off!`;
+    } else if (best.discountType === 'fixed') {
+      message = `Apply coupon now to get ₹${best.discountValue} off!`;
     }
 
-    const responseData = {
+    return NextResponse.json({
       bestOffer: {
-        name: bestOffer.name,
-        discountType: bestOffer.discountType,
-        discountValue: bestOffer.discountValue,
-        requiredCartValue: bestOffer.requiredCartValue,
-        effectiveDiscount: bestOffer.effectiveDiscount,
+        name: best.name,
+        discountType: best.discountType,
+        discountValue: best.discountValue,
+        requiredCartValue: best.requiredCartValue,
+        effectiveDiscount: best.effectiveDiscount,
       },
       shortfall: 0,
       message,
-    };
-
-    return NextResponse.json(responseData, { status: 200 });
+    }, { status: 200 });
   } catch (error) {
     console.error('Error fetching best applicable coupon:', error.message);
     return NextResponse.json(
