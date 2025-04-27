@@ -8,28 +8,30 @@ export async function GET(request) {
   await connectToDatabase();
 
   try {
-    // Get current time in IST
-    const currentDateIST = moment().tz('Asia/Kolkata').toDate();
+    const { searchParams } = new URL(request.url);
+    const showAsCards = searchParams.get('cards') === 'true';
 
-    const queryParams = new URLSearchParams(request.nextUrl.search);
-    const showAsCards = queryParams.get('cards') === 'true';
-    
+    const nowIst     = moment().tz('Asia/Kolkata');
+    const startOfDay = nowIst.clone().startOf('day');
+    const endOfDay   = nowIst.clone().endOf('day');
 
-    // Fetch only active offers that should be shown as cards and are within the validity period.
-    const offers = await Offer.find({
+    const allOffers = await Offer.find({
       isActive: true,
-      ...(showAsCards ? { showAsCard: true } : {}),
-      validFrom: { $lte: currentDateIST },
-      validUntil: { $gte: currentDateIST },
+      ...(showAsCards && { showAsCard: true }),
     }).select('-__v -createdAt -updatedAt');
 
-    return NextResponse.json({ coupons: offers }, { status: 200 });
+    const validOffers = allOffers.filter(offer => {
+      const offerStartIst = moment(offer.validFrom).tz('Asia/Kolkata').startOf('day');
+      const offerEndIst   = moment(offer.validUntil).tz('Asia/Kolkata').endOf('day');
+      return nowIst.isBetween(offerStartIst, offerEndIst, null, '[]');
+    });
+
+    return NextResponse.json({ coupons: validOffers }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching active offers:', error.message);
+    console.error('Error fetching offers:', error);
     return NextResponse.json(
       { message: 'Server error. Please try again.' },
       { status: 500 }
     );
   }
 }
-
