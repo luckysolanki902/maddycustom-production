@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, memo } from "react";
+import React, { useState, useEffect, useRef, memo , useMemo } from "react";
 import Image from "next/image";
 import styles from "./styles/productid.module.css";
 import { useSelector, useDispatch } from "react-redux";
@@ -51,6 +51,16 @@ export default function ProductIdPage({
     chrome: "#d9d9d9",
     candyred: "#b44b08",
   };
+
+    // pull MRP & final price, then memoize discount%
+    // 1) fallback to 1000 if MRP is missing
+      const mrp = product.MRP ?? 1000;
+    const finalPrice = product.variantDetails?.availableBrands?.length > 0
+    ? product.variantDetails.availableBrands[0].brandBasePrice + product.price
+    : product.price;
+  const discountPercent = useMemo(() =>
+    Math.round(((mrp - finalPrice) / mrp) * 100)
+  , [mrp, finalPrice]);
 
   const options = product.options || [];
   const [isZoomed, setIsZoomed] = useState(false);
@@ -444,13 +454,16 @@ export default function ProductIdPage({
               </div>
             )}
 
-            <MemoizedPriceAndChat
-              price={
-                variant?.availableBrands?.length > 0
-                  ? variant.availableBrands[0].brandBasePrice + product.price
-                  : product.price
-              }
-            />
+<div className={styles.priceSection}>
+  <span className={styles.currentPrice}>₹{finalPrice}</span>
+  <div className={styles.priceArrangement}>
+  <div className={styles.priceRow}>
+    <span className={styles.mrp}>₹{mrp}</span>
+    <span className={styles.discountPercentage}>{discountPercent}% off</span>
+  </div>
+  <div className={styles.offerSubtitle}>on every order</div>
+  </div>
+</div>
 
             {!isMobile && (
               <div className={styles.orderSpecificationsContainer}>
