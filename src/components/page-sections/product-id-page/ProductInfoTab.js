@@ -64,6 +64,18 @@ export default function ProductDescription({
   let firstImageBlock = null;
   let remainingContent = currentTab.content;
 
+  // Separate "Product Details" content
+  const productDetailsHeadingIndex = blocks.findIndex(block => block.type === "paragraph" && block.data.text.includes("Product Details"));
+  let productDetailsContent = [];
+  let contentAfterProductDetails = [];
+
+  if (productDetailsHeadingIndex !== -1) {
+    productDetailsContent = blocks.slice(0, productDetailsHeadingIndex + 1); // Includes "Product Details"
+    contentAfterProductDetails = blocks.slice(productDetailsHeadingIndex + 1);
+  } else {
+    contentAfterProductDetails = blocks;
+  }
+
   // If we do NOT want to showProductImageFirst, 
   // we can check if the first block is an image. Then separate it:
   if (!showProductImageFirst && blocks[0]?.type === "image") {
@@ -182,15 +194,20 @@ export default function ProductDescription({
             </Box>
           )}
 
-          {/* The rest of the EditorJS content, in a collapsible container */}
+          {/* Product Details section */}
+          <Box sx={{ mt: 2 }}>
+            <CustomRenderer data={{ blocks: productDetailsContent }} />
+          </Box>
+
+          {/* Collapsible content starts after Product Details */}
           <Collapse
             in={expanded}
-            collapsedSize={showProductImageFirst ? "0px" : "150px"} 
+            collapsedSize={showProductImageFirst ? "0px" : "150px"}
             timeout="auto"
             sx={{ overflow: "hidden" }}
           >
             <Box sx={{ p: { xs: 1, sm: 2 } }}>
-              <CustomRenderer data={remainingContent} />
+              <CustomRenderer data={{ blocks: contentAfterProductDetails }} />
             </Box>
           </Collapse>
 
