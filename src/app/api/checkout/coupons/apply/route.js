@@ -4,6 +4,56 @@ import Offer from '@/models/Offer';
 import { NextResponse } from 'next/server';
 import moment from 'moment-timezone';
 
+// --- Bundle Discount Calculation Helper ---
+// Helper: Get count of items in cart by scope (product or category)
+function getCartItemCountByScope(cartItems, scope, scopeValue) {
+  if (scope === 'product') {
+    return cartItems.filter(i => scopeValue.includes(i.productId)).reduce((a, b) => a + b.quantity, 0);
+  } else if (scope === 'category') {
+    // Use specificCategory (ObjectId) for category scope
+    return cartItems.filter(i => scopeValue.map(String).includes(String(i.specificCategory))).reduce((a, b) => a + b.quantity, 0);
+  }
+  return 0;
+}
+
+// Helper: Get price of items in cart by scope (product or category)
+function getCartItemUnitPriceByScope(cartItems, scope, scopeValue) {
+  if (scope === 'product') {
+    const item = cartItems.find(i => scopeValue.includes(i.productId));
+    return item ? item.price : 0;
+  } else if (scope === 'category') {
+    // Use specificCategory (ObjectId) for category scope
+    const items = cartItems.filter(i => scopeValue.map(String).includes(String(i.specificCategory)));
+    return items.length > 0 ? items[0].price : 0;
+  }
+  return 0;
+}
+
+function calculateBundleDiscount(cartItems, offer) {
+  if (!offer || !offer.actions || !offer.actions.length) return 0;
+  const action = offer.actions[0];
+  if (action.type !== 'bundle') return 0;
+  const bundleComponents = action.bundleComponents || action.bundleItems || [];
+  const bundlePrice = action.bundlePrice;
+  if (!bundleComponents.length || !bundlePrice) return 0;
+  let minBundles = Infinity;
+  for (const comp of bundleComponents) {
+    const countInCart = getCartItemCountByScope(cartItems, comp.scope, comp.scopeValue);
+    const possibleBundles = Math.floor(countInCart / comp.quantity);
+    minBundles = Math.min(minBundles, possibleBundles);
+  }
+  if (minBundles === 0 || minBundles === Infinity) return 0;
+  let normalPrice = 0;
+  for (const comp of bundleComponents) {
+    const unitPrice = getCartItemUnitPriceByScope(cartItems, comp.scope, comp.scopeValue);
+    normalPrice += unitPrice * comp.quantity;
+  }
+  const totalNormalPrice = normalPrice * minBundles;
+  const totalBundlePrice = bundlePrice * minBundles;
+  const discount = totalNormalPrice - totalBundlePrice;
+  return discount > 0 ? discount : 0;
+}
+
 function evaluateCondition(condition, totalCost, isFirstOrder = false) {
   // Currently supporting 'cart_value' and 'first_order' conditions.
   if (condition.type === 'cart_value') {
@@ -33,7 +83,7 @@ function evaluateCondition(condition, totalCost, isFirstOrder = false) {
 export async function POST(request) {
   await connectToDatabase();
 
-  const { code, totalCost, isFirstOrder } = await request.json();
+  const { code, totalCost, isFirstOrder, cartItems } = await request.json();
 
   if (!code) {
     console.error('Coupon code is required.');
@@ -105,15 +155,15 @@ export async function POST(request) {
       discount = action.discountValue;
     } else if (action.type === 'discount_fixed') {
       discount = action.discountValue;
-    } else {
-      // For other action types (free_item, bogo), additional logic would be needed.
+    } else if (action.type === 'bundle' && Array.isArray(cartItems)) {
+      discount = calculateBundleDiscount(cartItems, offer);
     }
 
     return NextResponse.json(
       {
         valid: true,
         discountValue: discount,
-        discountType: action.type === 'discount_percent' ? 'percentage' : 'fixed',
+        discountType: action.type === 'discount_percent' ? 'percentage' : (action.type === 'bundle' ? 'bundle' : 'fixed'),
         message: 'Coupon applied successfully.',
         offer: offer,
       },
