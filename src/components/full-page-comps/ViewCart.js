@@ -19,6 +19,7 @@ import {
   calculateTotalCostBeforeDiscount,
   calculateDiscountAmount,
   calculateTotalCostAfterDiscount,
+  calculateBundleDiscount,
 } from '@/lib/utils/cartCalculations';
 import { setCouponApplied } from '@/store/slices/orderFormSlice';
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
@@ -267,6 +268,68 @@ const ViewCart = () => {
     }
   }, [totalQuantity, totalCostBeforeDiscount, couponState.couponApplied, isFirstOrder, cartItems]);
 
+  // --- Bundle Offer Auto-Apply Logic ---
+  useEffect(() => {
+    const checkAndApplyBundle = async () => {
+      try {
+        const res = await fetch('/api/checkout/coupons');
+        const data = await res.json();
+        if (res.ok && data.coupons?.length) {
+          const bundleOffers = data.coupons.filter(
+            (offer) => offer.autoApply && offer.actions[0]?.type === 'bundle'
+          );
+          let bestBundle = null;
+          let bestDiscount = 0;
+          for (const offer of bundleOffers) {
+            const discount = calculateBundleDiscount(cartItems, offer);
+            if (discount > bestDiscount) {
+              bestDiscount = discount;
+              bestBundle = offer;
+            }
+          }
+          // If bundle is valid and discount > 0, apply it. If not valid, remove it.
+          if (bestBundle && bestDiscount > 0) {
+            if (
+              !couponState.couponApplied ||
+              couponState.discountType !== 'bundle' ||
+              couponState.couponName !== bestBundle.couponCodes[0] ||
+              couponState.couponDiscount !== bestDiscount
+            ) {
+              setAutoAppliedCoupon(true);
+              handleApplyCoupon(
+                bestBundle.couponCodes[0] || 'BUNDLE',
+                bestDiscount,
+                'bundle',
+                false,
+                bestBundle
+              );
+            }
+          } else if (couponState.couponApplied && couponState.discountType === 'bundle') {
+            handleRemoveCoupon();
+          }
+        } else if (couponState.couponApplied && couponState.discountType === 'bundle') {
+          handleRemoveCoupon();
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    checkAndApplyBundle();
+    // Always re-run on cartItems, couponState, and discount
+  }, [cartItems, couponState.couponDiscount, couponState.couponApplied]);
+
+  // --- Robust coupon removal for all types ---
+  useEffect(() => {
+    // Remove coupon if it is no longer valid (discount is 0 or requirements not met)
+    if (
+      couponState.couponApplied &&
+      couponState.discountType === 'bundle' &&
+      (!couponState.couponDiscount || couponState.couponDiscount === 0)
+    ) {
+      handleRemoveCoupon();
+    }
+  }, [couponState.couponDiscount, couponState.couponApplied]);
+
   // Re-check applied coupon validity
   useEffect(() => {
     if (couponState.couponApplied && couponState.offer) {
@@ -313,7 +376,15 @@ const ViewCart = () => {
 
             <div className={styles.currentAndAllCoupons}>
               {/* Applied-coupon banner */}
-              {couponState.couponApplied && couponState.couponDiscount > 0 && (
+              {couponState.couponApplied && couponState.couponDiscount > 0 && couponState.discountType === 'bundle' && (
+                <div className={styles.couponSaveBanner}>
+                  <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27 }} />
+                  <span>
+                    <strong>You saved</strong> ₹{couponState.couponDiscount} on the bundle
+                  </span>
+                </div>
+              )}
+              {couponState.couponApplied && couponState.couponDiscount > 0 && couponState.discountType !== 'bundle' && (
                 <div className={styles.couponSaveBanner}>
                   <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27 }} />
                   <span>
@@ -325,7 +396,7 @@ const ViewCart = () => {
               )}
 
               {/* Now-applicable banner */}
-              {appliableCoupon &&
+              {couponState.discountType !== 'bundle' && appliableCoupon &&
                 appliableCouponShortfall === 0 &&
                 !couponState.couponApplied && (
                   <>
