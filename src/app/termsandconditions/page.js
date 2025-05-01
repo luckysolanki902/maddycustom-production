@@ -6,7 +6,7 @@ import { createMetadata } from '@/lib/metadata/create-metadata';
 
 export async function generateMetadata() {
     return createMetadata({
-        title: 'Terms & Conditions - Maddy Custom',
+        title: 'Refunds and Replacements - Maddy Custom',
         canonical: 'https://www.maddycustom.com/termsandconditions',
     });
 }

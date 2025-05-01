@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -20,7 +21,7 @@ import {
   calculateDiscountAmount,
   calculateTotalCostAfterDiscount,
 } from '@/lib/utils/cartCalculations';
-import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
+// import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
 import { setCouponApplied } from '@/store/slices/orderFormSlice';
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
 import Image from 'next/image';
@@ -492,7 +493,7 @@ const ViewCart = () => {
         paddingLeft: '0.8rem'
         //  border:'1px solid red'
       }}>
-        <HappyCustomersClient headingText="Happy Customers" />
+        {/* <HappyCustomersClient headingText="Happy Customers" /> */}
       </div>
 
 

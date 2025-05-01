@@ -6,13 +6,13 @@ import CategorySearchBox from '@/components/utils/CategorySearchBox';
 import OurUniqueProductCarousel from '@/components/showcase/carousels/OurUniqueProductCarousel';
 import FlexibleLargePoster from '@/components/showcase/posters/FlexibleLargePoster';
 import HalfBikes from '@/components/page-sections/homepage/halfBikes';
-import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
+// import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
 import Image from 'next/image';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import {
   fetchOurUniqueProducts,
   fetchRandomProducts,
-  fetchHappyCustomers,
+  // fetchHappyCustomers,
   fetchSearchCategories,
   fetchFeaturedproducts,
 } from '@/lib/utils/fetchutils';
@@ -34,13 +34,13 @@ const [
   ourUniqueProductsData,
   randomProductsData, // Now using the new generic endpoint
   featuredBikeWrapsData,
-  happyCustomersData,
+  // happyCustomersData,
   searchCategoriesData,
 ] = await Promise.all([
   fetchOurUniqueProducts(),
   fetchRandomProducts('f', 10), // Pass your specific category slug here
   fetchFeaturedproducts('caf'),
-  fetchHappyCustomers(null),
+  // fetchHappyCustomers(null),
   fetchSearchCategories(),
 ]);
 
@@ -99,15 +99,15 @@ const HomePage = async () => {
         <FeaturedProducts data={featuredBikeWrapsData} />
 
         {/* Happy Customers */}
-        <div className={styles.featuredHead} style={{marginBottom:'-2rem', marginTop:'1rem'}}>
+        {/* <div className={styles.featuredHead} style={{marginBottom:'-2rem', marginTop:'1rem'}}>
           <Image
             width={940}
             height={256}
             alt='heading - featured products'
             src={`${baseImageUrl}/assets/icons/happycustomers.png`}
           />
-        </div>
-        <HappyCustomers data={happyCustomersData} noHeading={true} noShadow={true} />
+        </div> */}
+        {/* <HappyCustomers data={happyCustomersData} noHeading={true} noShadow={true} /> */}
 
         {/* Animated Half Bikes */}
         <HalfBikes />
