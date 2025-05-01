@@ -223,7 +223,7 @@ const ViewCart = () => {
     if (totalQuantity > 0 && !autoApplyDisabled) {
       (async () => {
         try {
-          const res = await fetch('/api/checkout/coupons?cards=true');
+          const res = await fetch('/api/checkout/coupons');
           const data = await res.json();
           if (res.ok && data.coupons?.length) {
             const applicable = data.coupons.filter((offer) => {
