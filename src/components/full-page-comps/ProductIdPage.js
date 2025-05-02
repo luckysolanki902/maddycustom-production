@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, memo , useMemo } from "react";
+import React, { useState, useEffect, useRef, memo, useMemo } from "react";
 import Image from "next/image";
 import styles from "./styles/productid.module.css";
 import { useSelector, useDispatch } from "react-redux";
@@ -52,15 +52,15 @@ export default function ProductIdPage({
     candyred: "#b44b08",
   };
 
-    // pull MRP & final price, then memoize discount%
-    // 1) fallback to 1000 if MRP is missing
-      const mrp = product.MRP ?? 1000;
-    const finalPrice = product.variantDetails?.availableBrands?.length > 0
+  // pull MRP & final price, then memoize discount%
+  // 1) fallback to 1000 if MRP is missing
+  const mrp = product.MRP ?? 1000;
+  const finalPrice = product.variantDetails?.availableBrands?.length > 0
     ? product.variantDetails.availableBrands[0].brandBasePrice + product.price
     : product.price;
   const discountPercent = useMemo(() =>
     Math.round(((mrp - finalPrice) / mrp) * 100)
-  , [mrp, finalPrice]);
+    , [mrp, finalPrice]);
 
   const options = product.options || [];
   const [isZoomed, setIsZoomed] = useState(false);
@@ -171,13 +171,13 @@ export default function ProductIdPage({
   // Determine inventory availability
   const optionInventory =
     selectedOption &&
-    selectedOption.inventoryData &&
-    typeof selectedOption.inventoryData.availableQuantity === "number"
+      selectedOption.inventoryData &&
+      typeof selectedOption.inventoryData.availableQuantity === "number"
       ? selectedOption.inventoryData.availableQuantity
       : null;
   const productInventory =
     product.inventoryData &&
-    typeof product.inventoryData.availableQuantity === "number"
+      typeof product.inventoryData.availableQuantity === "number"
       ? product.inventoryData.availableQuantity
       : null;
 
@@ -185,8 +185,8 @@ export default function ProductIdPage({
     optionInventory !== null
       ? optionInventory <= 0
       : productInventory !== null
-      ? productInventory <= 0
-      : false; // If no inventory data, assume out of stock
+        ? productInventory <= 0
+        : false; // If no inventory data, assume out of stock
 
   // --- FIRE THE viewContent PIXEL ONCE ---
   useEffect(() => {
@@ -255,15 +255,15 @@ export default function ProductIdPage({
       style.backgroundImage = `url(${imageBaseUrl}/${opt.thumbnail})`;
       style.backgroundSize = "cover";
       style.backgroundPosition = "center";
-  
+
     } else {
       // Fallback: use the option detail value (prefer "color" if available, else first value)
       const optionValue =
         opt.optionDetails && opt.optionDetails.color
           ? opt.optionDetails.color
           : opt.optionDetails
-          ? Object.values(opt.optionDetails)[0]
-          : null;
+            ? Object.values(opt.optionDetails)[0]
+            : null;
       if (optionValue) {
         style.backgroundColor =
           colorMap[optionValue.toLowerCase()] || optionValue.toLowerCase();
@@ -285,10 +285,10 @@ export default function ProductIdPage({
     }
     return `${detailValue} ${product.title}`;
   };
- 
-    //  thumbnail should reciew images from the selected option if available
-    const thumbnail = selectedOption?.images[0] || product?.images[0] ;
-   
+
+  //  thumbnail should reciew images from the selected option if available
+  const thumbnail = selectedOption?.images[0] || product?.images[0];
+
   return (
     <div style={{ paddingBottom: "6rem" }}>
       <div className={styles.container}>
@@ -446,32 +446,56 @@ export default function ProductIdPage({
               ))}
 
             {isMobile && (
-              <div className={styles.orderSpecificationsContainer}>
-                <MemoizedOrderSpecifications
-                  features={variant.features}
-                  justContStart={true}
-                />
-              </div>
+              <>
+                {product.specificCategory === '673aea6778c57ec01acae635' && <div className={styles.offerAdContainer}>
+                  <Image
+                    src={`${imageBaseUrl}/assets/posters/bikebundlephone.png`}
+                    alt="Bike Bundle offer PC"
+                    width={1024}
+                    height={200}
+                    className={styles.bikeBundleImage}
+                  />
+                </div>}
+                <div className={styles.orderSpecificationsContainer}>
+                  <MemoizedOrderSpecifications
+                    features={variant.features}
+                    justContStart={true}
+                  />
+                </div>
+              </>
             )}
 
-<div className={styles.priceSection}>
-  <span className={styles.currentPrice}>₹{finalPrice}</span>
-  <div className={styles.priceArrangement}>
-  <div className={styles.priceRow}>
-    <span className={styles.mrp}>₹{mrp}</span>
-    <span className={styles.discountPercentage}>{discountPercent}% off</span>
-  </div>
-  <div className={styles.offerSubtitle}>on every order</div>
-  </div>
-</div>
+            <div className={styles.priceSection}>
+              <span className={styles.currentPrice}>₹{finalPrice}</span>
+              <div className={styles.priceArrangement}>
+                <div className={styles.priceRow}>
+                  <span className={styles.mrp}>₹{mrp}</span>
+                  <span className={styles.discountPercentage}>{discountPercent}% off</span>
+                </div>
+                <div className={styles.offerSubtitle}>on every order</div>
+              </div>
+            </div>
+
+
 
             {!isMobile && (
-              <div className={styles.orderSpecificationsContainer}>
-                <MemoizedOrderSpecifications
-                  features={variant.features}
-                  justContStart={true}
-                />
-              </div>
+              <>
+                {product.specificCategory === '673aea6778c57ec01acae635' && <div className={styles.offerAdContainer}>
+                  <Image
+                    src={`${imageBaseUrl}/assets/posters/bikebundlepc.png`}
+                    alt="Bike Bundle offer PC"
+                    width={1024}
+                    height={200}
+                    className={styles.bikeBundleImage}
+                  />
+                </div>}
+                <div className={styles.orderSpecificationsContainer}>
+                  <MemoizedOrderSpecifications
+                    features={variant.features}
+                    justContStart={true}
+                  />
+                </div>
+              </>
             )}
 
             {/* Render Add to Cart Button only if in stock */}
@@ -480,14 +504,14 @@ export default function ProductIdPage({
                 <MemoizedAddToCartButtonWithOrder
                   product={{
                     ...product,
-                  thumbnail,
+                    thumbnail,
                     selectedOption: selectedOption || null,
                     variantDetails: variant,
                     category: category,
                     price:
                       variant?.availableBrands?.length > 0
                         ? variant.availableBrands[0].brandBasePrice +
-                          product.price
+                        product.price
                         : product.price,
                   }}
                   isLarge={true}
