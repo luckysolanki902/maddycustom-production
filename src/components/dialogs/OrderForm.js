@@ -270,6 +270,26 @@ const OrderForm = ({
     setIsLoading(true);
     setIsPaymentProcessing(true);
 
+    if (couponCode) {
+      try {
+        const validateRes = await axios.post('/api/checkout/coupons/apply', {
+          code: couponCode,
+          totalCost,
+          isFirstOrder: false,
+          cartItems: items,
+        });
+        if (!validateRes.data.valid) {
+          showSnackbar('Your offer is no longer valid. Please update your cart.', 'warning');
+          return;
+        }
+      } catch (e) {
+        console.error('Error validating coupon before order:', e);
+        showSnackbar('Failed to validate coupon. Please try again.', 'error');
+        return;
+      }
+    }
+
+
     try {
       // Before creating the order or processing payment, check serviceability
       let serviceability;
@@ -393,7 +413,7 @@ const OrderForm = ({
           utmDetails: utmDetails.utmDetails || null,
           extraFields: orderForm.extraFields, // include extra fields
         });
-      
+
         const { orderId: createdOrderId, message, paymentDetails: createdPaymentDetails } =
           orderResponse.data;
         dispatch(setLastOrderId(createdOrderId));
@@ -407,41 +427,45 @@ const OrderForm = ({
       }
 
 
-      // 4) Process Payment (if amountDueOnline > 0)
-      if (paymentDetails.amountDueOnline > 0) {
-        try {
-          const paymentInitResponse = await axios.post(
-            '/api/checkout/order/payment/create-razorpay-order',
-            {
-              orderId: orderId, // internal order ID
-            }
-          );
-          const { order: razorpayOrder, msg } = paymentInitResponse.data;
+// 4) Process Payment (if amountDueOnline > 0)
+if (paymentDetails.amountDueOnline > 0) {
+  try {
+    const paymentInitResponse = await axios.post(
+      '/api/checkout/order/payment/create-razorpay-order',
+      { orderId }
+    );
+    const { order: razorpayOrder, msg } = paymentInitResponse.data;
 
-          if (msg === 'success') {
-            const paymentResult = await makePayment({
-              customerName: orderForm.userDetails.name || '',
-              customerMobile: orderForm.userDetails.phoneNumber,
-              orderId, // internal order ID
-              razorpayOrder,
-            });
+    if (msg !== 'success') {
+      console.error('Failed to initiate payment:', msg);
+      showSnackbar('Failed to initiate payment.', 'error');
+      throw new Error('Payment initiation failed.');
+    }
 
-            if (paymentResult) {
-              showSnackbar('Payment Successful!', 'success');
-            } else {
-              showSnackbar('Payment failed. Please try again.', 'error');
-              throw new Error('Payment processing failed.');
-            }
-          } else {
-            console.error('Failed to initiate payment:', msg);
-            showSnackbar('Failed to initiate payment.', 'error');
-            throw new Error('Payment initiation failed.');
-          }
-        } catch (error) {
-          console.error('Error processing payment:', error.message);
-          throw error;
-        }
-      }
+    const paymentResult = await makePayment({
+      customerName: orderForm.userDetails.name || '',
+      customerMobile: orderForm.userDetails.phoneNumber,
+      orderId,
+      razorpayOrder,
+    });
+
+    // user simply closed the Razorpay modal?
+    if (paymentResult.cancelled) {
+      // stop processing, do not navigate or show any snackbar
+      setIsPaymentProcessing(false);
+      setPurchaseInitiated(false);
+      return;
+    }
+
+    // otherwise we have a real payment
+    showSnackbar('Payment Successful!', 'success');
+  } catch (error) {
+    console.error('Error processing payment:', error.message);
+    showSnackbar(error.message || 'Payment failed. Please try again.', 'error');
+    throw error;
+  }
+}
+
 
       // 5) Send Purchase Event to FB Pixel
       try {

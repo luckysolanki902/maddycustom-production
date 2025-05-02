@@ -41,7 +41,7 @@ const CouponButton = ({ couponState, openCouponDialog, removeCoupon }) => {
         height={81} // 324 / 4
         alt="Coupon Icon"
       />
-      {couponState.couponApplied ? couponState.couponName : 'Check coupons'}
+      {couponState.couponApplied ? couponState.couponName.toUpperCase() : 'Check coupons'}
 
       {/* Render Close Button Only If Coupon is Applied */}
       {couponState.couponApplied && (

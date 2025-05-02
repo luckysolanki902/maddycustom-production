@@ -16,6 +16,8 @@ const initialState = {
   },
   userExists: false,
   prefilledAddress: null,
+
+  // ⇣  coupon fields  ⇣
   couponApplied: {
     couponCode: '',
     discountAmount: 0,
@@ -23,6 +25,10 @@ const initialState = {
     isDbCoupon: false,
     offer: null,
   },
+  manualCoupon: null,          // last coupon the USER applied (or null)
+  autoApplyDisabled: false,    // true after any manual apply/remove
+  autoApplyDisabledAt: null,   // ISO timestamp when we set the flag
+
   lastOrderId: '',
   lastOrderIdSetAt: null,
   extraFields: {},
@@ -33,31 +39,35 @@ const orderFormSlice = createSlice({
   name: 'orderForm',
   initialState,
   reducers: {
-    setUserDetails: (state, action) => {
-      state.userDetails = { ...state.userDetails, ...action.payload };
+    // -------------------------------------------------- generic data
+    setUserDetails: (s, a) => { s.userDetails = { ...s.userDetails, ...a.payload }; },
+    setAddressDetails: (s, a) => { s.addressDetails = { ...s.addressDetails, ...a.payload }; },
+    setUserExists: (s, a) => { s.userExists = a.payload; },
+    setPrefilledAddress: (s, a) => { s.prefilledAddress = a.payload; },
+
+    // -------------------------------------------------- coupon workflow
+    setCouponApplied: (s, a) => {
+      s.couponApplied = { ...s.couponApplied, ...a.payload };
     },
-    setAddressDetails: (state, action) => {
-      state.addressDetails = { ...state.addressDetails, ...action.payload };
+
+    // USER typed a code or clicked “Remove”
+    setManualCoupon: (s, a) => {
+      s.manualCoupon = a.payload ? { ...a.payload } : null;
+      s.autoApplyDisabled = true;
+      s.autoApplyDisabledAt = new Date().toISOString();  // block 5 min
     },
-    setUserExists: (state, action) => {
-      state.userExists = action.payload;
+
+    // clear the 5‑minute block when we really need to
+    resetAutoApplyDisabled: (s) => {
+      s.autoApplyDisabled = false;
+      s.autoApplyDisabledAt = null;
     },
-    setPrefilledAddress: (state, action) => {
-      state.prefilledAddress = action.payload;
-    },
-    setCouponApplied: (state, action) => {
-      // Merge the existing couponApplied state with the payload.
-      state.couponApplied = { ...state.couponApplied, ...action.payload };
-    },
-    setLastOrderId: (state, action) => {
-      state.lastOrderId = action.payload;
-    },
-    setExtraFields: (state, action) => {
-      state.extraFields = { ...state.extraFields, ...action.payload };
-    },
-    setLoginDialogShown: (state, action) => {
-      state.loginDialogShown = action.payload;
-    },
+
+    // -------------------------------------------------- misc
+    setLastOrderId: (s, a) => { s.lastOrderId = a.payload; },
+    setExtraFields: (s, a) => { s.extraFields = { ...s.extraFields, ...a.payload }; },
+    setLoginDialogShown: (s, a) => { s.loginDialogShown = a.payload; },
+
     resetOrderForm: () => initialState,
   },
 });
@@ -68,6 +78,8 @@ export const {
   setUserExists,
   setPrefilledAddress,
   setCouponApplied,
+  setManualCoupon,
+  resetAutoApplyDisabled,
   setLastOrderId,
   setExtraFields,
   setLoginDialogShown,

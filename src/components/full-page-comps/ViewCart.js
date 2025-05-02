@@ -1,19 +1,28 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
+
 import { removeItem } from '@/store/slices/cartSlice';
-import styles from './styles/viewcart.module.css';
-import ViewCartHeader from '../page-sections/viewcart/ViewCartHeader';
-import CartList from '../page-sections/viewcart/CartList';
-import PriceDetails from '../page-sections/viewcart/PriceDetails';
-import PaymentModes from '../page-sections/viewcart/PaymentModes';
-import Footer from '../page-sections/viewcart/Footer';
-import ApplyCoupon from '../dialogs/ApplyCoupon';
-import CustomSnackbar from '@/components/notifications/CustomSnackbar';
-import OrderForm from '../dialogs/OrderForm';
+import {
+  setCouponApplied,
+  setManualCoupon,
+  resetAutoApplyDisabled,
+} from '@/store/slices/orderFormSlice';
+
+import styles            from './styles/viewcart.module.css';
+import ViewCartHeader    from '../page-sections/viewcart/ViewCartHeader';
+import CartList          from '../page-sections/viewcart/CartList';
+import PriceDetails      from '../page-sections/viewcart/PriceDetails';
+import PaymentModes      from '../page-sections/viewcart/PaymentModes';
+import Footer            from '../page-sections/viewcart/Footer';
+import ApplyCoupon       from '../dialogs/ApplyCoupon';
+import OrderForm         from '../dialogs/OrderForm';
+import CustomSnackbar    from '@/components/notifications/CustomSnackbar';
+import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
+
 import {
   calculateTotalQuantity,
   calculateTotalCostBeforeDiscount,
@@ -21,499 +30,455 @@ import {
   calculateTotalCostAfterDiscount,
   calculateBundleDiscount,
 } from '@/lib/utils/cartCalculations';
-import { setCouponApplied } from '@/store/slices/orderFormSlice';
-import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
-import Image from 'next/image';
-import Confetti from 'react-confetti';
+
 import DiscountOutlinedIcon from '@mui/icons-material/DiscountOutlined';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import DiscountIcon from '@mui/icons-material/Discount';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import CheckCircleIcon       from '@mui/icons-material/CheckCircle';
+import DiscountIcon          from '@mui/icons-material/Discount';
+import ChevronRightIcon      from '@mui/icons-material/ChevronRight';
+import Confetti              from 'react-confetti';
 
-const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
-  let applicable = true;
-  offer.conditions.forEach((condition) => {
-    if (condition.type === 'cart_value') {
-      switch (condition.operator) {
-        case '>=':
-          if (!(totalCost >= condition.value)) applicable = false;
-          break;
-        case '<=':
-          if (!(totalCost <= condition.value)) applicable = false;
-          break;
-        case '>':
-          if (!(totalCost > condition.value)) applicable = false;
-          break;
-        case '<':
-          if (!(totalCost < condition.value)) applicable = false;
-          break;
-        case '==':
-          if (!(totalCost === condition.value)) applicable = false;
-          break;
-        default:
-          applicable = false;
-      }
-    } else if (condition.type === 'first_order') {
-      if (isFirstOrder !== condition.value) applicable = false;
+/* ---------- helpers -------------------------------------------------- */
+const isOfferApplicable = (offer, totalCost, isFirstOrder=false) =>
+  offer.conditions.every(c=>{
+    if(c.type==='cart_value'){
+      const v=totalCost, x=c.value;
+      return (c.operator==='>='&&v>=x) || (c.operator==='>'&&v>x)
+          || (c.operator==='<'&&v<x) || (c.operator==='<= '&&v<=x)
+          || (c.operator==='=='&&v===x);
     }
+    if(c.type==='first_order') return isFirstOrder===c.value;
+    return true;
   });
-  return applicable;
-};
 
+/* ===================================================================== */
 const ViewCart = () => {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const cartItems = useSelector((state) => state.cart.items);
-  const orderForm = useSelector((state) => state.orderForm);
-  const { couponApplied } = orderForm;
+  const router   = useRouter();
 
-  // Local coupon state
-  const [couponState, setCouponState] = useState({
-    couponApplied: false,
-    couponName: '',
-    couponDiscount: 0,
-    discountType: '',
-    isDbCoupon: false,
-    offer: null,
+  /* ---------- Redux -------------------------------------------------- */
+  const cartItems   = useSelector(s=>s.cart.items);
+  const orderForm   = useSelector(s=>s.orderForm);
+  const couponRedux = orderForm.couponApplied;
+
+  /* ---------- Local coupon mirror ----------------------------------- */
+  const [couponState,setCouponState]=useState({
+    couponApplied:false,couponName:'',couponDiscount:0,
+    discountType:'',isDbCoupon:false,offer:null,
   });
-
-  // Rehydrate local coupon state from Redux
-  useEffect(() => {
-    if (couponApplied.couponCode) {
+  useEffect(()=>{
+    if(couponRedux.couponCode){
       setCouponState({
-        couponApplied: true,
-        couponName: couponApplied.couponCode,
-        couponDiscount: couponApplied.discountAmount,
-        discountType: couponApplied.discountType,
-        isDbCoupon: couponApplied.isDbCoupon,
-        offer: couponApplied.offer,
+        couponApplied:true,
+        couponName   :couponRedux.couponCode,
+        couponDiscount:couponRedux.discountAmount,
+        discountType :couponRedux.discountType,
+        isDbCoupon   :couponRedux.isDbCoupon,
+        offer        :couponRedux.offer,
       });
+    } else {
+      setCouponState(p=>({...p,couponApplied:false}));
     }
-  }, [couponApplied]);
+  },[couponRedux]);
 
-  // Component state
-  const [isCouponDialogOpen, setIsCouponDialogOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [paymentModes, setPaymentModes] = useState([]);
-  const [selectedPaymentMode, setSelectedPaymentMode] = useState(null);
-  const [isLoadingPaymentModes, setIsLoadingPaymentModes] = useState(true);
-  const [isOrderFormOpen, setIsOrderFormOpen] = useState(false);
-  const [autoApplyAnimation, setAutoApplyAnimation] = useState(false);
-  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
-  const [autoAppliedCoupon, setAutoAppliedCoupon] = useState(false);
+  /* ---------- Misc local state -------------------------------------- */
+  const [snackbar,setSnackbar]             = useState({open:false,message:'',severity:'success'});
+  const [isCouponDialogOpen,setShowCoupon] = useState(false);
+  const [paymentModes,setPaymentModes]     = useState([]);
+  const [selectedPaymentMode,setSelectedPM]= useState(null);
+  const [loadingPM,setLoadingPM]           = useState(true);
+  const [isOrderFormOpen,setDialog]        = useState(false);
 
-  // Unified coupon data
-  const [bestCoupon, setBestCoupon] = useState(null);
-  const [couponShortfall, setCouponShortfall] = useState(0);
-  const [appliableCoupon, setAppliableCoupon] = useState(null);
-  const [appliableCouponShortfall, setAppliableCouponShortfall] = useState(0);
+  const [lockedCoupon,setLockedCoupon]     = useState(null);
+  const [lockedShort,setLockedShort]       = useState(0);
+  const [nowCoupon,setNowCoupon]           = useState(null);
 
-  const isFirstOrder = false; // replace with real logic
+  const [confettiRun,setConfettiRun]       = useState(false);
+  const [viewport,setViewport]             = useState({w:0,h:0});
 
-  // Window size for confetti
-  useEffect(() => {
-    setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-  }, []);
+  const lastAutoRef = useRef({code:'',type:''});
+  const FIVE_MIN    = 5*60*1000;
+  const isFirstOrder=false; // TODO
 
-  // Fetch payment modes
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data, status } = await axios.get('/api/checkout/modeofpayments');
-        if (status === 200) {
-          setPaymentModes(data.data);
-          setSelectedPaymentMode(
-            data.data.find((m) => m.name === 'online') || data.data[0]
-          );
-        } else {
-          setSnackbar({ open: true, message: 'Failed to fetch payment modes.', severity: 'error' });
-        }
-      } catch (err) {
-        console.error(err);
-        setSnackbar({ open: true, message: 'Error fetching payment modes.', severity: 'error' });
+  /* ---------- get window size for confetti -------------------------- */
+  useEffect(()=>{
+    if(typeof window!=='undefined'){
+      setViewport({w:window.innerWidth,h:window.innerHeight});
+    }
+  },[]);
+
+  /* ---------- cart totals  ------------------------------------------- */
+  const qty    = calculateTotalQuantity(cartItems);
+  const subTot = calculateTotalCostBeforeDiscount(cartItems);
+  const disc   = calculateDiscountAmount(subTot,couponState);
+  const grand  = calculateTotalCostAfterDiscount(subTot,disc);
+
+  const deliveryCost=0;
+  const extraCharge =selectedPaymentMode?.extraCharge||0;
+  const totalPay    = grand+deliveryCost+extraCharge;
+
+  /* ---------- small helpers ----------------------------------------- */
+  const snack        = (m,s='success')=>setSnackbar({open:true,message:m,severity:s});
+  const dispatchCoupon=(p)=>dispatch(setCouponApplied({...p}));
+
+  /* ---------- APPLY / REMOVE coupon with zero-guard --------------- */
+  const applyCoupon = (code, amount, type, isDb, offer, fromAuto=false) => {
+    // **GUARD**: never apply if discount is zero or negative
+    if (amount <= 0) {
+      snack('Offer conditions are not met.', 'warning');
+      return;
+    }
+    // also double-check for normal offers
+    if (type !== 'bundle' && !isOfferApplicable(offer, subTot, isFirstOrder)) {
+      snack('Offer conditions are not met.', 'warning');
+      return;
+    }
+
+    // proceed with actual application...
+    setCouponState({
+      couponApplied:true,
+      couponName   :code,
+      couponDiscount:amount,
+      discountType :type,
+      isDbCoupon   :isDb,
+      offer        :offer,
+    });
+    dispatchCoupon({
+      couponCode   :code,
+      discountAmount:amount,
+      discountType :type,
+      isDbCoupon   :isDb,
+      offer        :offer,
+    });
+
+    if (!fromAuto) dispatch(setManualCoupon({couponCode:code}));
+    dispatch(resetAutoApplyDisabled());
+
+    if (fromAuto) lastAutoRef.current={code,type};
+
+    setConfettiRun(true);
+    setTimeout(()=>setConfettiRun(false),3500);
+    snack('Coupon applied successfully!');
+  };
+
+  const removeCoupon = () => {
+    setCouponState({
+      couponApplied:false,couponName:'',couponDiscount:0,
+      discountType:'',isDbCoupon:false,offer:null,
+    });
+    dispatchCoupon({
+      couponCode   :'',
+      discountAmount:0,
+      discountType :'',
+      isDbCoupon   :false,
+      offer        :null,
+    });
+    dispatch(setManualCoupon(null));
+    snack('Coupon removed.', 'warning');
+  };
+
+  /* ---------- fetch payment modes (unchanged) ----------------------- */
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const {data}=await axios.get('/api/checkout/modeofpayments');
+        setPaymentModes(data.data);
+        setSelectedPM(data.data.find(m=>m.name==='online')||data.data[0]);
+      } catch {
+        snack('Failed to fetch payment modes', 'error');
       } finally {
-        setIsLoadingPaymentModes(false);
+        setLoadingPM(false);
       }
     })();
-  }, []);
+  },[]);
 
-  // Cart totals
-  const totalQuantity = calculateTotalQuantity(cartItems);
-  const totalCostBeforeDiscount = calculateTotalCostBeforeDiscount(cartItems);
-  const discountAmount = calculateDiscountAmount(totalCostBeforeDiscount, couponState);
-  const totalCostAfterDiscount = calculateTotalCostAfterDiscount(totalCostBeforeDiscount, discountAmount);
-  const deliveryCost = 0;
-  const extraCharge = selectedPaymentMode?.extraCharge || 0;
-  const totalCostWithDelivery = totalCostAfterDiscount + deliveryCost + extraCharge;
-  const originalTotal = totalCostBeforeDiscount + deliveryCost + extraCharge;
-  const onlinePercentage = selectedPaymentMode?.configuration?.onlinePercentage;
-  const codPercentage = selectedPaymentMode?.configuration?.codPercentage;
-
-  // Handlers
-  const handleRemoveItem = (id) => dispatch(removeItem({ productId: id }));
-  const handleBack = () => router.back();
-  const handleCheckout = () => setIsOrderFormOpen(true);
-
-  const handleApplyCoupon = (code, discount, type, isDb, offerData = null) => {
-    setCouponState({ couponApplied: true, couponName: code, couponDiscount: discount, discountType: type, isDbCoupon: isDb, offer: offerData });
-    setSnackbar({ open: true, message: 'Coupon applied successfully!', severity: 'success' });
-    dispatch(setCouponApplied({ couponCode: code, discountAmount: discount, discountType: type, isDbCoupon: isDb, offer: offerData }));
-  };
-
-  const handleRemoveCoupon = () => {
-    setCouponState({ couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', isDbCoupon: false, offer: null });
-    setSnackbar({ open: true, message: 'Coupon removed.', severity: 'warning' });
-    dispatch(setCouponApplied({ couponCode: '', discountAmount: 0, discountType: '', isDbCoupon: false, offer: null }));
-    localStorage.setItem('autoApplyDisabled', 'true');
-    localStorage.setItem('autoApplyDisabledAt', new Date().toISOString());
-  };
-
-  const handlePaymentModeChange = (e) => {
-    const mode = paymentModes.find((m) => m.name === e.target.value);
-    setSelectedPaymentMode(mode);
-  };
-
-  // TopBoughtProducts props
-  const topBoughtSubCategories = useMemo(
-    () => [...new Set(cartItems.map((i) => i.productDetails.subCategory))],
-    [cartItems]
-  );
-  const topBoughtCurrentProductId = useMemo(
-    () => cartItems.map((i) => i.productDetails._id).join(','),
-    [cartItems]
-  );
-
-  // --- Unified fetch for both “locked” and “applicable” coupon ---
-  useEffect(() => {
-    const fetchCouponInfo = async () => {
-      if (totalCostBeforeDiscount <= 0) return;
-      try {
-        const { data, status } = await axios.get('/api/checkout/bestcoupon', {
-          params: { cartValue: totalCostBeforeDiscount },
-        });
-        if (status === 200) {
-          const { bestOffer, shortfall } = data;
-
-          if (shortfall === 0) {
-            setAppliableCoupon(bestOffer);
-            setAppliableCouponShortfall(0);
-            setBestCoupon(null);
-            setCouponShortfall(0);
-          } else {
-            setBestCoupon(bestOffer);
-            setCouponShortfall(shortfall);
-            setAppliableCoupon(null);
-            setAppliableCouponShortfall(shortfall);
-          }
+  /* ---------- best / now-applicable coupon banners ------------------ */
+  useEffect(()=>{
+    if (subTot <= 0) return;
+    (async()=>{
+      try{
+        const {data} = await axios.get('/api/checkout/bestcoupon',{params:{cartValue:subTot}});
+        const {bestOffer, shortfall} = data;
+        if (shortfall === 0) {
+          setNowCoupon(bestOffer);
+          setLockedCoupon(null);
+        } else {
+          setLockedCoupon(bestOffer);
+          setLockedShort(shortfall);
+          setNowCoupon(null);
         }
-      } catch (err) {
-        console.error('Error fetching coupon info:', err);
-      }
-    };
-    fetchCouponInfo();
-  }, [totalCostBeforeDiscount]);
+      } catch {}
+    })();
+  }, [subTot]);
 
-  // Auto-apply logic (unchanged)…
-  useEffect(() => {
-    const autoApplyDisabledAt = localStorage.getItem('autoApplyDisabledAt');
-    const autoApplyDisabled =
-      localStorage.getItem('autoApplyDisabled') === 'true' &&
-      autoApplyDisabledAt &&
-      new Date(autoApplyDisabledAt).getTime() + 5 * 60 * 1000 > Date.now();
+  /* ---------- unified auto-apply logic (bundle + normal) ---------- */
+  const { autoApplyDisabled, autoApplyDisabledAt, manualCoupon } = orderForm;
+  const blocked = autoApplyDisabled &&
+                  autoApplyDisabledAt &&
+                  Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
 
-    if (totalQuantity > 0 && !autoApplyDisabled) {
-      (async () => {
-        try {
-          const res = await fetch('/api/checkout/coupons');
-          const data = await res.json();
-          if (res.ok && data.coupons?.length) {
-            const applicable = data.coupons.filter((offer) => {
-              if (!offer.autoApply) return false;
-              const cv = offer.conditions.find((c) => c.type === 'cart_value');
-              if (cv && totalCostBeforeDiscount < cv.value) return false;
-              const fo = offer.conditions.find((c) => c.type === 'first_order');
-              if (fo && !isFirstOrder) return false;
-              return true;
-            });
-            if (applicable.length && !couponState.couponApplied) {
-              const offersWithDiscount = applicable.map((offer) => {
-                let effective = 0;
-                const action = offer.actions[0];
-                if (action.type === 'discount_percent') {
-                  effective = Math.min((action.discountValue / 100) * totalCostBeforeDiscount, offer.discountCap || Infinity);
-                } else {
-                  effective = action.discountValue;
-                }
-                return { ...offer, effectiveDiscount: effective };
-              });
-              const best = offersWithDiscount.reduce((p, c) => (c.effectiveDiscount > p.effectiveDiscount ? c : p), offersWithDiscount[0]);
-              setAutoApplyAnimation(true);
-              setTimeout(() => {
-                setAutoAppliedCoupon(true);
-                handleApplyCoupon(
-                  best.couponCodes[0],
-                  best.actions[0].discountValue,
-                  best.actions[0].type === 'discount_percent' ? 'percentage' : 'fixed',
-                  false,
-                  best
-                );
-                setAutoApplyAnimation(false);
-              }, 1000);
-            }
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      })();
-    }
-  }, [totalQuantity, totalCostBeforeDiscount, couponState.couponApplied, isFirstOrder, cartItems]);
-
-  // --- Bundle Offer Auto-Apply Logic ---
-  useEffect(() => {
-    const checkAndApplyBundle = async () => {
-      try {
+  useEffect(()=>{
+    if (blocked || manualCoupon || couponState.couponApplied || !qty) return;
+    (async()=>{
+      try{
         const res = await fetch('/api/checkout/coupons');
-        const data = await res.json();
-        if (res.ok && data.coupons?.length) {
-          const bundleOffers = data.coupons.filter(
-            (offer) => offer.autoApply && offer.actions[0]?.type === 'bundle'
-          );
-          let bestBundle = null;
-          let bestDiscount = 0;
-          for (const offer of bundleOffers) {
-            const discount = calculateBundleDiscount(cartItems, offer);
-            if (discount > bestDiscount) {
-              bestDiscount = discount;
-              bestBundle = offer;
-            }
+        const {coupons=[]} = await res.json();
+        if (!res.ok || !coupons.length) return;
+
+        let best=null, bestDisc=0;
+        for (const o of coupons) {
+          if (!o.autoApply) continue;
+          // generic condition check
+          const cv = o.conditions.find(c=>c.type==='cart_value');
+          if (cv && subTot < cv.value) continue;
+          const fo = o.conditions.find(c=>c.type==='first_order');
+          if (fo && !isFirstOrder) continue;
+
+          const act = o.actions[0];
+          let eff=0;
+          if (act.type==='bundle') {
+            eff = calculateBundleDiscount(cartItems,o);
+          } else if (act.type==='discount_percent') {
+            eff = Math.min((act.discountValue/100)*subTot, o.discountCap||Infinity);
+          } else {
+            eff = act.discountValue;
           }
-          // If bundle is valid and discount > 0, apply it. If not valid, remove it.
-          if (bestBundle && bestDiscount > 0) {
-            if (
-              !couponState.couponApplied ||
-              couponState.discountType !== 'bundle' ||
-              couponState.couponName !== bestBundle.couponCodes[0] ||
-              couponState.couponDiscount !== bestDiscount
-            ) {
-              setAutoAppliedCoupon(true);
-              handleApplyCoupon(
-                bestBundle.couponCodes[0] || 'BUNDLE',
-                bestDiscount,
-                'bundle',
-                false,
-                bestBundle
-              );
-            }
-          } else if (couponState.couponApplied && couponState.discountType === 'bundle') {
-            handleRemoveCoupon();
-          }
-        } else if (couponState.couponApplied && couponState.discountType === 'bundle') {
-          handleRemoveCoupon();
+          if (eff > bestDisc) { bestDisc = eff; best = o; }
         }
-      } catch (e) {
-        // ignore
-      }
-    };
-    checkAndApplyBundle();
-    // Always re-run on cartItems, couponState, and discount
-  }, [cartItems, couponState.couponDiscount, couponState.couponApplied]);
+        if (!best || bestDisc <= 0) return;
+        if (lastAutoRef.current.code === best.couponCodes[0]) return;
 
-  // --- Robust coupon removal for all types ---
-  useEffect(() => {
-    // Remove coupon if it is no longer valid (discount is 0 or requirements not met)
-    if (
-      couponState.couponApplied &&
-      couponState.discountType === 'bundle' &&
-      (!couponState.couponDiscount || couponState.couponDiscount === 0)
-    ) {
-      handleRemoveCoupon();
+        const act = best.actions[0];
+        const typ = act.type==='bundle'
+          ? 'bundle'
+          : act.type==='discount_percent'
+            ? 'percentage'
+            : 'fixed';
+        const amt = act.type==='bundle' ? bestDisc : act.discountValue;
+        applyCoupon(best.couponCodes[0], amt, typ, false, best, true);
+      }catch{}
+    })();
+  }, [qty, subTot, cartItems, couponState.couponApplied, blocked, manualCoupon]);
+
+  /* ---------- re-validate bundle on cart change -------------------- */
+  useEffect(()=>{
+    if (!couponState.couponApplied || couponState.discountType !== 'bundle') return;
+    const newDisc = calculateBundleDiscount(cartItems, couponState.offer);
+    if (newDisc <= 0) {
+      removeCoupon();
+      snack('Bundle offer is no longer valid after cart change.', 'warning');
+    } else if (newDisc !== couponState.couponDiscount) {
+      // update the discount value
+      setCouponState(p=>({...p,couponDiscount:newDisc}));
+      dispatchCoupon({...couponRedux,discountAmount:newDisc});
     }
-  }, [couponState.couponDiscount, couponState.couponApplied]);
+  }, [cartItems]); // eslint-disable-line
 
-  // Re-check applied coupon validity
-  useEffect(() => {
+  /* ---------- re-validate normal on cart change -------------------- */
+  useEffect(()=>{
+    if (couponState.discountType === 'bundle' || manualCoupon) return;
     if (couponState.couponApplied && couponState.offer) {
-      const stillValid = isOfferApplicable(couponState.offer, totalCostBeforeDiscount, isFirstOrder);
-      if (!stillValid) {
-        handleRemoveCoupon();
-        setSnackbar({
-          open: true,
-          message: `The applied offer (${couponState.couponName}) is no longer valid due to cart changes.`,
-          severity: 'warning',
-        });
+      if (!isOfferApplicable(couponState.offer, subTot, isFirstOrder)) {
+        removeCoupon();
+        snack(`Coupon ${couponState.couponName} no longer valid.`, 'warning');
       }
     }
-  }, [totalCostBeforeDiscount, couponState, isFirstOrder, cartItems]);
+  }, [subTot, cartItems, couponState, manualCoupon]);
 
-  // Close snackbar
-  const handleSnackbarClose = () => setSnackbar((s) => ({ ...s, open: false }));
+  /* ---------- validate before checkout ------------------------------ */
+  const validateBeforeCheckout = () => {
+    if (!couponState.couponApplied) return true;
 
+    if (couponState.discountType === 'bundle') {
+      const newDisc = calculateBundleDiscount(cartItems, couponState.offer);
+      if (newDisc <= 0) {
+        removeCoupon();
+        snack('Bundle offer is no longer valid. Please update your cart.', 'warning');
+        return false;
+      }
+      // update discount if changed
+      if (newDisc !== couponState.couponDiscount) {
+        setCouponState(p=>({...p,couponDiscount:newDisc}));
+        dispatchCoupon({...couponRedux,discountAmount:newDisc});
+      }
+      return true;
+    }
+
+    if (!isOfferApplicable(couponState.offer, subTot, isFirstOrder)) {
+      removeCoupon();
+      snack('Coupon no longer valid. Please update your cart.', 'warning');
+      return false;
+    }
+    return true;
+  };
+
+  /* ---------- suggestions memos ------------------------------------- */
+  const topSub = useMemo(()=>[...new Set(cartItems.map(i=>i.productDetails.subCategory))],[cartItems]);
+  const topIds = useMemo(()=>cartItems.map(i=>i.productDetails._id).join(','),[cartItems]);
+
+  /* ---------- render ----------------------------------------------- */
   return (
-    <div className={styles.container} style={{ position: 'relative' }}>
-      <header className={styles.headerCont0}>
-        <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
-      </header>
+    <>
+      {/* {confettiRun && (
+        <Confetti
+          width={viewport.w}
+          height={viewport.h}
+          numberOfPieces={300}
+          friction={0.7}
+          gravity={1.7}
+          wind={0.01}
+          recycle
+        />
+      )} */}
+      <div className={styles.container} style={{position:'relative'}}>
+        {/* header */}
+        <header className={styles.headerCont0}>
+          <ViewCartHeader totalQuantity={qty} onBack={()=>router.back()}/>
+        </header>
 
-      {totalQuantity > 0 && (
-        <div className={styles.maincomp}>
-          <div className={styles.blueCont}>
-            <CartList cartItems={cartItems} onRemove={handleRemoveItem} />
-          </div>
-          <div className={styles.blueCont2}>
-            {/* Locked-offer banner */}
-            {bestCoupon && couponShortfall > 0 && (
-              <div className={styles.lockedOfferContainer}>
-                <span className={styles.lockedOfferText}>
-                  Add ₹{couponShortfall} more to unlock{' '}
-                  {bestCoupon.discountType === 'percentage'
-                    ? `${bestCoupon.discountValue}%`
-                    : bestCoupon.discountValue}{' '}
-                  off coupon
-                </span>
-                <DiscountOutlinedIcon sx={{ color: '#4dff68', fontSize: 40 }} />
-              </div>
-            )}
+        {/* main */}
+        {qty>0 && (
+          <div className={styles.maincomp}>
+            <div className={styles.blueCont}>
+              <CartList
+                cartItems={cartItems}
+                onRemove={id=>dispatch(removeItem({productId:id}))}
+              />
+            </div>
 
-            <div className={styles.currentAndAllCoupons}>
-              {/* Applied-coupon banner */}
-              {couponState.couponApplied && couponState.couponDiscount > 0 && couponState.discountType === 'bundle' && (
-                <div className={styles.couponSaveBanner}>
-                  <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27 }} />
-                  <span>
-                    <strong>You saved</strong> ₹{couponState.couponDiscount} on the bundle
+            <div className={styles.blueCont2}>
+              {/* locked banner */}
+              {lockedCoupon && (
+                <div className={styles.lockedOfferContainer}>
+                  <span className={styles.lockedOfferText}>
+                    Add ₹{lockedShort} more to unlock{' '}
+                    {lockedCoupon.discountType==='percentage'
+                      ? `${lockedCoupon.discountValue}%`
+                      : lockedCoupon.discountValue}{' '}
+                    off coupon
                   </span>
-                </div>
-              )}
-              {couponState.couponApplied && couponState.couponDiscount > 0 && couponState.discountType !== 'bundle' && (
-                <div className={styles.couponSaveBanner}>
-                  <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27 }} />
-                  <span>
-                    <strong>You saved</strong> ₹
-                    {calculateDiscountAmount(totalCostBeforeDiscount, couponState)} on{' '}
-                    {couponState.couponName}
-                  </span>
+                  <DiscountOutlinedIcon sx={{color:'#4dff68',fontSize:40}}/>
                 </div>
               )}
 
-              {/* Now-applicable banner */}
-              {couponState.discountType !== 'bundle' && appliableCoupon &&
-                appliableCouponShortfall === 0 &&
-                !couponState.couponApplied && (
+              {/* coupons section */}
+              <div className={styles.currentAndAllCoupons}>
+                {couponState.couponApplied && (
+                  <div className={styles.couponSaveBanner}>
+                    <CheckCircleIcon sx={{color:'#1bde6a',fontSize:27}}/>
+                    <span>
+                      <strong>You saved</strong> ₹{couponState.couponDiscount}{' '}
+                      {couponState.discountType==='bundle'
+                        ? 'on the bundle'
+                        : `on ${couponState.couponName}`}
+                    </span>
+                  </div>
+                )}
+
+                {!couponState.couponApplied && nowCoupon && (
                   <>
                     <div className={styles.couponSaveBanner}>
-                      <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27 }} />
+                      <CheckCircleIcon sx={{color:'#1bde6a',fontSize:27}}/>
                       <span>
                         You can now unlock{' '}
-                        {appliableCoupon.discountType === 'percentage'
-                          ? `${appliableCoupon.discountValue}%`
-                          : appliableCoupon.discountValue}{' '}
+                        {nowCoupon.discountType==='percentage'
+                          ? `${nowCoupon.discountValue}%`
+                          : nowCoupon.discountValue}{' '}
                         off coupon!
                       </span>
                       <button
                         className={styles.applyNowButton}
-                        onClick={() => setIsCouponDialogOpen(true)}
+                        onClick={()=>setShowCoupon(true)}
                       >
                         Apply Now
                       </button>
                     </div>
-                    <div
-                      style={{
-                        borderBottom: '1px dashed #cee2ff',
-                        margin: '0 1rem',
-                      }}
-                    />
+                    <div style={{borderBottom:'1px dashed #cee2ff',margin:'0 1rem'}}/>
                   </>
                 )}
 
-              {/* View all coupons link */}
-              <div
-                onClick={() => setIsCouponDialogOpen(true)}
-                className={styles.viewAllCouponsSection}
-              >
-                <button className={styles.viewAllCouponsButton}>
-                  <DiscountIcon sx={{ color: 'white', fontSize: 15 }} />
-                </button>
                 <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flex: 1,
-                  }}
+                  onClick={()=>setShowCoupon(true)}
+                  className={styles.viewAllCouponsSection}
                 >
-                  <span className={styles.viewAllCouponsText}>View all coupons</span>
-                  <ChevronRightIcon sx={{ color: '#616161', fontSize: 22 }} />
+                  <button className={styles.viewAllCouponsButton}>
+                    <DiscountIcon sx={{color:'white',fontSize:15}}/>
+                  </button>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flex:1}}>
+                    <span className={styles.viewAllCouponsText}>View all coupons</span>
+                    <ChevronRightIcon sx={{color:'#616161',fontSize:22}}/>
+                  </div>
                 </div>
               </div>
+
+              {/* price & payment */}
+              <PriceDetails
+                deliveryCost={deliveryCost}
+                couponState={couponState}
+                discountAmount={disc}
+                totalCostWithDelivery={totalPay}
+                onOpenCoupon={()=>setShowCoupon(true)}
+                onRemoveCoupon={removeCoupon}
+              />
+              <PaymentModes
+                paymentModes={paymentModes}
+                isLoading={loadingPM}
+                selectedPaymentMode={selectedPaymentMode}
+                onChange={e=>setSelectedPM(paymentModes.find(m=>m.name===e.target.value))}
+              />
             </div>
-
-            <PriceDetails
-              deliveryCost={deliveryCost}
-              couponState={couponState}
-              discountAmount={discountAmount}
-              totalCostWithDelivery={totalCostWithDelivery}
-              onOpenCoupon={() => setIsCouponDialogOpen(true)}
-              onRemoveCoupon={handleRemoveCoupon}
-            />
-            <PaymentModes
-              paymentModes={paymentModes}
-              isLoading={isLoadingPaymentModes}
-              selectedPaymentMode={selectedPaymentMode}
-              onChange={handlePaymentModeChange}
-            />
           </div>
-        </div>
-      )}
+        )}
 
-      <div
-        style={{
-          margin: '0 0.4rem',
-          borderRadius: '0.6rem',
-          backgroundColor: 'white',
-          marginTop: totalQuantity <= 0 ? '0' : '-0.5rem',
-        }}
-      >
-        <TopBoughtProducts
-          subCategories={topBoughtSubCategories}
-          currentProductId={topBoughtCurrentProductId}
+        {/* suggestions */}
+        <div style={{margin:'0 .4rem',borderRadius:'.6rem',background:'#fff',marginTop:qty<=0?0:'-.5rem'}}>
+          <TopBoughtProducts subCategories={topSub} currentProductId={topIds}/>
+        </div>
+
+        {/* footer */}
+        {qty>0 && (
+          <Footer
+            totalCost={totalPay}
+            originalTotal={subTot+deliveryCost+extraCharge}
+            onCheckout={()=>{
+              if (validateBeforeCheckout()) {
+                setDialog(true);
+              }
+            }}
+            onlinePercentage={selectedPaymentMode?.configuration?.onlinePercentage}
+            codPercentage={selectedPaymentMode?.configuration?.codPercentage}
+          />
+        )}
+
+        {/* dialogs */}
+        <ApplyCoupon
+          open={isCouponDialogOpen}
+          onClose={()=>setShowCoupon(false)}
+          onApplyCoupon={applyCoupon}
+          totalCost={subTot}
+          isFirstOrder={isFirstOrder}
+          cartItems={cartItems}
+        />
+        <OrderForm
+          open={isOrderFormOpen}
+          onClose={()=>setDialog(false)}
+          paymentModeConfig={selectedPaymentMode}
+          couponCode={couponState.couponApplied?couponState.couponName:null}
+          totalCost={totalPay}
+          couponsDetails={couponRedux}
+          deliveryCost={deliveryCost}
+          discountAmountFinal={disc}
+          items={cartItems}
+        />
+
+        {/* snackbar */}
+        <CustomSnackbar
+          open={snackbar.open}
+          message={snackbar.message}
+          severity={snackbar.severity}
+          handleClose={()=>setSnackbar(p=>({...p,open:false}))}
         />
       </div>
-
-      {totalQuantity > 0 && (
-        <Footer
-          totalCost={totalCostWithDelivery}
-          originalTotal={couponState.couponApplied ? originalTotal + 100 : originalTotal + 100}
-          onCheckout={handleCheckout}
-          onlinePercentage={onlinePercentage}
-          codPercentage={codPercentage}
-        />
-      )}
-
-      <ApplyCoupon
-        open={isCouponDialogOpen}
-        onClose={() => setIsCouponDialogOpen(false)}
-        onApplyCoupon={handleApplyCoupon}
-        totalCost={totalCostBeforeDiscount}
-        isFirstOrder={isFirstOrder}
-      />
-      <OrderForm
-        open={isOrderFormOpen}
-        onClose={() => setIsOrderFormOpen(false)}
-        paymentModeConfig={selectedPaymentMode}
-        couponCode={couponState.couponApplied ? couponState.couponName : null}
-        totalCost={totalCostWithDelivery}
-        couponsDetails={couponApplied}
-        deliveryCost={deliveryCost}
-        discountAmountFinal={discountAmount}
-        items={cartItems}
-      />
-      <CustomSnackbar
-        open={snackbar.open}
-        message={snackbar.message}
-        severity={snackbar.severity}
-        handleClose={handleSnackbarClose}
-      />
-    </div>
+    </>
   );
 };
 
