@@ -1,258 +1,196 @@
-"use client";
+'use client';
 import React, { useState, useEffect } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Image from 'next/image';
-import styles from './styles/applycoupon.module.css';
-import CouponCard from '../cards/CouponCard';
 import { Typography, Skeleton } from '@mui/material';
+
+import styles from './styles/applycoupon.module.css';
+import CouponCard   from '../cards/CouponCard';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
 
-// Helper to compute effective discount for an offer
-const calculateEffectiveDiscount = (offer, totalCost) => {
-  const action = offer.actions[0];
-  if (action.type === 'discount_percent') {
-    return action.discountValue;
-  } else if (action.type === 'discount_fixed') {
-    return action.discountValue;
+/* ---------- helpers -------------------------------------------------- */
+const calculateEffectiveDiscount = (offer, totalCost, cartItems=[]) => {
+  const act = offer.actions[0];
+  if (act.type === 'discount_percent') return act.discountValue;
+  if (act.type === 'discount_fixed')   return act.discountValue;
+  if (act.type === 'bundle') {
+    // very rough estimate for sorting cards: assume full bundle present
+    // (real discount is computed server‑side when user taps)
+    return act.bundlePrice ? Math.round(act.bundlePrice) : 0;
   }
   return 0;
 };
 
-// Helper to check if an offer is applicable.
-const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
-  let applicable = true;
-  offer.conditions.forEach((condition) => {
-    if (condition.type === 'cart_value') {
-      switch (condition.operator) {
-        case '>=':
-          if (!(totalCost >= condition.value)) applicable = false;
-          break;
-        case '<=':
-          if (!(totalCost <= condition.value)) applicable = false;
-          break;
-        case '>':
-          if (!(totalCost > condition.value)) applicable = false;
-          break;
-        case '<':
-          if (!(totalCost < condition.value)) applicable = false;
-          break;
-        case '==':
-          if (!(totalCost === condition.value)) applicable = false;
-          break;
-        default:
-          applicable = false;
-      }
-    } else if (condition.type === 'first_order') {
-      if (isFirstOrder !== condition.value) applicable = false;
+const isOfferApplicable = (offer, totalCost, isFirstOrder=false) => {
+  return offer.conditions.every(c=>{
+    if(c.type==='cart_value'){
+      if(c.operator==='>='&&totalCost>=c.value) return true;
+      if(c.operator==='>' &&totalCost> c.value) return true;
+      if(c.operator==='<' &&totalCost< c.value) return true;
+      if(c.operator==='<= '&&totalCost<=c.value) return true;
+      if(c.operator==='=='&&totalCost===c.value) return true;
+      return false;
     }
+    if(c.type==='first_order') return isFirstOrder===c.value;
+    return true;
   });
-  return applicable;
 };
+/* ===================================================================== */
 
-const ApplyCoupon = ({ open, onClose, onApplyCoupon, totalCost, isFirstOrder }) => {
-  const [couponCode, setCouponCode] = useState('');
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success',
-  });
-  const [availableCoupons, setAvailableCoupons] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+const ApplyCoupon = ({
+  open, onClose, onApplyCoupon, totalCost,
+  isFirstOrder, cartItems            // ← NEW PROP
+}) => {
+  const [couponCode,setCouponCode]=useState('');
+  const [snackbar,setSnackbar]=useState({open:false,message:'',severity:'success'});
+  const [coupons,setCoupons]=useState([]);
+  const [loading,setLoading]=useState(false);
 
-  useEffect(() => {
-    if (open) {
-      fetchAvailableCoupons();
-    }
-  }, [open]);
+    /* map cart items for server */
+    const flatCart = cartItems.map(i=>({
+      productId       : i.productId || i.productDetails._id,
+      quantity        : i.quantity,
+      price           : i.price ?? i.productDetails.price,
+      specificCategory: i.specificCategory ?? i.productDetails.specificCategory,
+    }));
 
-  const fetchAvailableCoupons = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/checkout/coupons?cards=true');
+  useEffect(()=>{ if(open) fetchCoupons(); },[open]);
+
+  const fetchCoupons=async()=>{
+    setLoading(true);
+    try{
+      const res  = await fetch('/api/checkout/coupons?cards=true');
       const data = await res.json();
-      if (res.ok) {
-        // Sort offers based on effective discount (descending order)
-        const sortedOffers = data.coupons.sort((a, b) => {
-          const discountA = calculateEffectiveDiscount(a, totalCost);
-          const discountB = calculateEffectiveDiscount(b, totalCost);
-          return discountB - discountA;
+      if(res.ok){
+        const sorted = data.coupons.sort((a,b)=>{
+          const A=calculateEffectiveDiscount(a,totalCost,cartItems);
+          const B=calculateEffectiveDiscount(b,totalCost,cartItems);
+          return B-A;
         });
-        setAvailableCoupons(sortedOffers);
-      } else {
-        setSnackbar({
-          open: true,
-          message: data.message || 'Failed to fetch coupons.',
-          severity: 'error',
-        });
+        setCoupons(sorted);
+      }else{
+        setSnackbar({open:true,message:data.message||'Failed to fetch coupons.',severity:'error'});
       }
-    } catch (error) {
-      console.error('Error fetching coupons:', error.message);
-      setSnackbar({
-        open: true,
-        message: 'An error occurred. Please try again.',
-        severity: 'error',
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    }catch{
+      setSnackbar({open:true,message:'Error fetching coupons.',severity:'error'});
+    }finally{ setLoading(false); }
   };
 
-  // Handle coupon application from the text field.
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) {
-      setSnackbar({
-        open: true,
-        message: 'Please enter a coupon code.',
-        severity: 'error',
-      });
+  /* -- apply via text box -------------------------------------------- */
+  const applyViaText=async()=>{
+    if(!couponCode.trim()){
+      setSnackbar({open:true,message:'Please enter a coupon code.',severity:'error'});
       return;
     }
-    try {
-      const res = await fetch('/api/checkout/coupons/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: couponCode.trim(), totalCost, isFirstOrder }),
+    await applyCouponCode(couponCode.trim());
+  };
+
+  /* -- helper to hit apply endpoint ---------------------------------- */
+  const applyCouponCode = async(code)=>{
+    try{
+      const res = await fetch('/api/checkout/coupons/apply',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ code, totalCost, isFirstOrder, cartItems: flatCart,  }), // ← cartItems sent
       });
       const data = await res.json();
-      if (res.ok && data.valid) {
-        onApplyCoupon(couponCode.trim(), data.discountValue, data.discountType, true, data.offer);
-        onClose(); // Close dialog on successful apply
-      } else {
-        setSnackbar({
-          open: true,
-          message: data.message || 'Invalid coupon code.',
-          severity: 'error',
-        });
+      if(res.ok&&data.valid){
+        onApplyCoupon(code,data.discountValue,data.discountType,true,data.offer);
+        onClose();
+      }else{
+        setSnackbar({open:true,message:data.message||'Invalid coupon.',severity:'error'});
       }
-    } catch (error) {
-      console.error('Error applying coupon:', error.message);
-      setSnackbar({
-        open: true,
-        message: 'An error occurred. Please try again.',
-        severity: 'error',
-      });
+    }catch{
+      setSnackbar({open:true,message:'Server error. Try again.',severity:'error'});
     }
   };
 
-  // Handle coupon application from a coupon card.
-  const handleApplyCouponFromCard = async (code) => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/checkout/coupons/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, totalCost, isFirstOrder }),
-      });
-      const data = await res.json();
-      if (res.ok && data.valid) {
-        setSnackbar({
-          open: true,
-          message: 'Coupon applied successfully!',
-          severity: 'success',
-        });
-        onApplyCoupon(code, data.discountValue, data.discountType, false, data.offer);
-        onClose(); // Close dialog immediately after applying coupon
-      } else {
-        setSnackbar({
-          open: true,
-          message: data.message || 'Failed to apply coupon.',
-          severity: 'error',
-        });
-      }
-    } catch (error) {
-      console.error('Error applying coupon:', error.message);
-      setSnackbar({
-        open: true,
-        message: 'An error occurred. Please try again.',
-        severity: 'error',
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  /* -- card click ---------------------------------------------------- */
+  const handleCardApply=async(code)=>{
+    setLoading(true);
+    await applyCouponCode(code);
+    setLoading(false);
   };
 
-  const handleSnackbarClose = () => {
-    setSnackbar((prev) => ({ ...prev, open: false }));
-  };
-
+  /* -- JSX ----------------------------------------------------------- */
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" fullScreen>
-      <DialogContent style={{ backgroundColor: 'white', height: '100vh', padding: '0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: '1rem', marginRight: '1rem' }}>
-          <div color="inherit" onClick={onClose} className={styles.backButton}>
+      <DialogContent sx={{background:'#fff',height:'100vh',p:0}}>
+        {/* header */}
+        <div style={{display:'flex',alignItems:'center',margin:'1rem 1rem 0'}}>
+          <div onClick={onClose} className={styles.backButton}>
             <Image
               src={`${baseImageUrl}/assets/icons/lessthan1.png`}
-              width={46}
-              height={50}
-              alt="Back"
-              style={{ width: '1rem', height: 'auto' }}
+              width={46} height={50} alt="Back"
+              style={{width:'1rem',height:'auto'}}
             />
           </div>
-          <div className={styles.inputMain} style={{ flexGrow: '1', display: 'flex' }}>
+          <div className={styles.inputMain} style={{flexGrow:1,display:'flex'}}>
             <TextField
               autoFocus
-              type="text"
               placeholder="Type coupon code here"
               value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value)}
-              fullWidth
-              variant="outlined"
+              onChange={(e)=>setCouponCode(e.target.value)}
+              onKeyDown={(e)=>{if(e.key==='Enter')applyViaText();}}
+              fullWidth variant="outlined"
               sx={{
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': { border: 'none' },
-                  '&:hover fieldset': { border: 'none' },
-                  '&.Mui-focused fieldset': { border: 'none' },
-                },
-                '& input': { outline: 'none' },
+                '& .MuiOutlinedInput-root fieldset':{border:'none'},
+                '& input':{outline:'none'},
               }}
             />
-            <Button color="inherit" style={{ fontWeight: '600', borderRadius: '0.4rem' }} onClick={handleApplyCoupon}>
+            <Button onClick={applyViaText} color="inherit" sx={{fontWeight:600,borderRadius:'0.4rem'}}>
               Apply
             </Button>
           </div>
         </div>
 
+        {/* cards */}
         <section className={styles.couponCardsSection}>
-          {isLoading ? (
+          {loading ? (
             <>
-              <Skeleton variant="rectangular" sx={{ width: '9rem', height: '14rem', borderRadius: '1rem', marginBottom: '1rem' }} />
-              <Skeleton variant="rectangular" sx={{ width: '9rem', height: '14rem', borderRadius: '1rem', marginBottom: '1rem' }} />
-              <Skeleton variant="rectangular" sx={{ width: '9rem', height: '14rem', borderRadius: '1rem', marginBottom: '1rem' }} />
+              {Array.from({length:3}).map((_,i)=>(
+                <Skeleton key={i} variant="rectangular"
+                  sx={{width:'9rem',height:'14rem',borderRadius:'1rem',mb:'1rem'}}/>
+              ))}
             </>
-          ) : availableCoupons.length > 0 ? (
-            availableCoupons.map((coupon) => {
-              const applicable = isOfferApplicable(coupon, totalCost, isFirstOrder);
-              const effectiveDiscount = calculateEffectiveDiscount(coupon, totalCost);
+          ) : coupons.length ? (
+            coupons.map(c=>{
+              const applicable=isOfferApplicable(c,totalCost,isFirstOrder);
+              const disc = calculateEffectiveDiscount(c,totalCost,cartItems);
               return (
                 <CouponCard
-                  key={coupon._id}
-                  name={coupon.couponCodes[0]}
-                  discount={effectiveDiscount}
-                  discountType={coupon.actions[0].type === 'discount_percent' ? 'percentage' : 'fixed'}
-                  validity={new Date(coupon.validUntil).toLocaleDateString()}
+                  key={c._id}
+                  name={c.couponCodes[0]}
+                  discount={disc}
+                  discountType={
+                    c.actions[0].type==='discount_percent'?'percentage':
+                    c.actions[0].type==='bundle'        ?'bundle':'fixed'
+                  }
+                  validity={new Date(c.validUntil).toLocaleDateString()}
                   applicable={applicable}
-                  conditionMessage={!applicable ? coupon.conditionMessage : ''}
-                  onApply={() => handleApplyCouponFromCard(coupon.couponCodes[0])}
+                  conditionMessage={!applicable?c.conditionMessage:''}
+                  onApply={()=>handleCardApply(c.couponCodes[0])}
                 />
               );
             })
-          ) : (
-            <Typography variant="body2" align="center" sx={{ marginLeft: '0.5rem' }}>
+          ):(
+            <Typography variant="body2" align="center" sx={{ml:'0.5rem'}}>
               No available coupons at the moment.
             </Typography>
           )}
         </section>
       </DialogContent>
+
+      {/* snackbar */}
       <CustomSnackbar
         open={snackbar.open}
         message={snackbar.message}
         severity={snackbar.severity}
-        handleClose={handleSnackbarClose}
+        handleClose={()=>setSnackbar(p=>({...p,open:false}))}
       />
     </Dialog>
   );
