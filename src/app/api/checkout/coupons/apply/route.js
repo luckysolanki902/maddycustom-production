@@ -4,172 +4,259 @@ import Offer from '@/models/Offer';
 import { NextResponse } from 'next/server';
 import moment from 'moment-timezone';
 
-// --- Bundle Discount Calculation Helper ---
-// Helper: Get count of items in cart by scope (product or category)
+/* ------------------------------------------------------------------ */
+/* -------------------  bundle‑related helpers  --------------------- */
+/* ------------------------------------------------------------------ */
 function getCartItemCountByScope(cartItems, scope, scopeValue) {
   if (scope === 'product') {
-    return cartItems.filter(i => scopeValue.includes(i.productId)).reduce((a, b) => a + b.quantity, 0);
-  } else if (scope === 'category') {
-    // Use specificCategory (ObjectId) for category scope
-    return cartItems.filter(i => scopeValue.map(String).includes(String(i.specificCategory))).reduce((a, b) => a + b.quantity, 0);
+    return cartItems
+      .filter(i => scopeValue.includes(i.productId))
+      .reduce((a, b) => a + b.quantity, 0);
+  }
+  if (scope === 'category') {
+    return cartItems
+      .filter(i => scopeValue.map(String).includes(String(i.specificCategory)))
+      .reduce((a, b) => a + b.quantity, 0);
   }
   return 0;
 }
 
-// Helper: Get price of items in cart by scope (product or category)
 function getCartItemUnitPriceByScope(cartItems, scope, scopeValue) {
   if (scope === 'product') {
     const item = cartItems.find(i => scopeValue.includes(i.productId));
     return item ? item.price : 0;
-  } else if (scope === 'category') {
-    // Use specificCategory (ObjectId) for category scope
-    const items = cartItems.filter(i => scopeValue.map(String).includes(String(i.specificCategory)));
-    return items.length > 0 ? items[0].price : 0;
+  }
+  if (scope === 'category') {
+    const items = cartItems.filter(i =>
+      scopeValue.map(String).includes(String(i.specificCategory))
+    );
+    return items.length ? items[0].price : 0;
   }
   return 0;
 }
 
 function calculateBundleDiscount(cartItems, offer) {
-  if (!offer || !offer.actions || !offer.actions.length) return 0;
+  if (!offer?.actions?.length) return 0;
   const action = offer.actions[0];
   if (action.type !== 'bundle') return 0;
-  const bundleComponents = action.bundleComponents || action.bundleItems || [];
+
+  const bundleComponents =
+    action.bundleComponents || action.bundleItems || [];
   const bundlePrice = action.bundlePrice;
   if (!bundleComponents.length || !bundlePrice) return 0;
+
+  /* how many complete bundles? */
   let minBundles = Infinity;
   for (const comp of bundleComponents) {
-    const countInCart = getCartItemCountByScope(cartItems, comp.scope, comp.scopeValue);
-    const possibleBundles = Math.floor(countInCart / comp.quantity);
-    minBundles = Math.min(minBundles, possibleBundles);
+    const cnt = getCartItemCountByScope(
+      cartItems,
+      comp.scope,
+      comp.scopeValue
+    );
+    minBundles = Math.min(minBundles, Math.floor(cnt / comp.quantity));
   }
-  if (minBundles === 0 || minBundles === Infinity) return 0;
+  if (!minBundles || !Number.isFinite(minBundles)) return 0;
+
+  /* price diff */
   let normalPrice = 0;
   for (const comp of bundleComponents) {
-    const unitPrice = getCartItemUnitPriceByScope(cartItems, comp.scope, comp.scopeValue);
+    const unitPrice = getCartItemUnitPriceByScope(
+      cartItems,
+      comp.scope,
+      comp.scopeValue
+    );
     normalPrice += unitPrice * comp.quantity;
   }
-  const totalNormalPrice = normalPrice * minBundles;
-  const totalBundlePrice = bundlePrice * minBundles;
-  const discount = totalNormalPrice - totalBundlePrice;
+
+  const totalNormal  = normalPrice * minBundles;
+  const totalBundle  = bundlePrice  * minBundles;
+  const discount     = totalNormal - totalBundle;
+
   return discount > 0 ? discount : 0;
 }
+/* ------------------------------------------------------------------ */
 
 function evaluateCondition(condition, totalCost, isFirstOrder = false) {
-  // Currently supporting 'cart_value' and 'first_order' conditions.
   if (condition.type === 'cart_value') {
+    const v = totalCost;
+    const x = condition.value;
     switch (condition.operator) {
-      case '>=':
-        return totalCost >= condition.value;
-      case '<=':
-        return totalCost <= condition.value;
-      case '>':
-        return totalCost > condition.value;
-      case '<':
-        return totalCost < condition.value;
-      case '==':
-        return totalCost === condition.value;
-      default:
-        return false;
+      case '>=': return v >= x;
+      case '<=': return v <= x;
+      case '>':  return v >  x;
+      case '<':  return v <  x;
+      case '==': return v === x;
+      default:   return false;
     }
   }
   if (condition.type === 'first_order') {
-    // condition.value should be true to indicate it applies only on the first order.
     return isFirstOrder === condition.value;
   }
-  // Additional condition types can be added here.
   return false;
 }
 
+/* ------------------------------------------------------------------ */
+/* ---------------------------  POST  ------------------------------- */
+/* ------------------------------------------------------------------ */
 export async function POST(request) {
   await connectToDatabase();
 
-  const { code, totalCost, isFirstOrder, cartItems } = await request.json();
-console.log({cartItems})
-  if (!code) {
-    console.error('Coupon code is required.');
+  const {
+    code        = '',           // manual mode
+    totalCost   = 0,
+    isFirstOrder = false,
+    cartItems   = [],
+    auto        = false,        // ← AUTO‑APPLY flag
+  } = await request.json();
+
+  /* ================================================================
+     AUTO‑APPLY MODE  ––  pick the best auto‑applicable offer
+  =================================================================*/
+  if (auto) {
+    try {
+      const nowIst = moment().tz('Asia/Kolkata').toDate();
+
+      const offers = await Offer.find({
+        isActive : true,
+        autoApply: true,
+        validFrom : { $lte: nowIst },
+        validUntil: { $gte: nowIst },
+      }).lean();
+
+      let bestOffer    = null;
+      let bestDiscount = 0;
+
+      for (const offer of offers) {
+        /* conditions */
+        const ok = offer.conditions.every(c =>
+          evaluateCondition(c, totalCost, isFirstOrder)
+        );
+        if (!ok) continue;
+
+        /* discount value */
+        const act = offer.actions[0] || {};
+        let   d   = 0;
+        if (act.type === 'discount_percent') {
+          d = (act.discountValue / 100) * totalCost;
+          if (offer.discountCap && d > offer.discountCap) d = offer.discountCap;
+        } else if (act.type === 'discount_fixed') {
+          d = act.discountValue;
+        } else if (act.type === 'bundle') {
+          d = calculateBundleDiscount(cartItems, offer);
+        }
+
+        if (d > bestDiscount) {
+          bestDiscount = d;
+          bestOffer    = offer;
+        }
+      }
+
+      if (!bestOffer || bestDiscount <= 0) {
+        return NextResponse.json(
+          { valid: false, message: 'No applicable auto‑offers.' },
+          { status: 200 }
+        );
+      }
+
+      const act  = bestOffer.actions[0];
+      const type = act.type === 'discount_percent'
+        ? 'percentage'
+        : act.type === 'bundle'
+          ? 'bundle'
+          : 'fixed';
+
+      return NextResponse.json(
+        {
+          valid        : true,
+          discountValue: Math.floor(bestDiscount),
+          discountType : type,
+          offer        : bestOffer,
+        },
+        { status: 200 }
+      );
+    } catch (err) {
+      console.error('Auto‑apply error:', err);
+      return NextResponse.json(
+        { valid: false, message: 'Server error. Please try again.' },
+        { status: 500 }
+      );
+    }
+  }
+
+  /* ================================================================
+     MANUAL MODE  ––  user entered a code (old behaviour)
+  =================================================================*/
+  if (!code.trim()) {
     return NextResponse.json(
       { valid: false, message: 'Coupon code is required.' },
       { status: 400 }
     );
   }
-  if (typeof totalCost !== 'number') {
-    console.error('Total cost must be a number.');
-    return NextResponse.json(
-      { valid: false, message: 'Total cost must be a number.' },
-      { status: 400 }
-    );
-  }
 
   try {
-    // Look up the offer by coupon code.
+    /* 1 ‑ fetch offer by code */
     const offer = await Offer.findOne({
-      couponCodes: code.toUpperCase(),
-      isActive: true,
+      couponCodes: code.trim().toUpperCase(),
+      isActive   : true,
     }).lean();
 
     if (!offer) {
-      console.error('Invalid coupon code.');
       return NextResponse.json(
         { valid: false, message: 'Invalid coupon code.' },
         { status: 400 }
       );
     }
 
-    // Get current time in IST.
-    const currentDateIST = moment().tz('Asia/Kolkata').toDate();
-    if (currentDateIST < offer.validFrom || currentDateIST > offer.validUntil) {
-      console.error('Coupon is expired or not yet valid.');
+    /* 2 ‑ check validity window */
+    const now = moment().tz('Asia/Kolkata').toDate();
+    if (now < offer.validFrom || now > offer.validUntil) {
       return NextResponse.json(
         { valid: false, message: 'Coupon is expired or not yet valid.' },
         { status: 400 }
       );
     }
 
-    // Evaluate all conditions.
-    let conditionsMet = true;
-    for (let condition of offer.conditions) {
-      if (!evaluateCondition(condition, totalCost, isFirstOrder)) {
-        conditionsMet = false;
-        break;
-      }
-    }
-
-    if (!conditionsMet) {
+    /* 3 ‑ conditions */
+    const ok = offer.conditions.every(c =>
+      evaluateCondition(c, totalCost, isFirstOrder)
+    );
+    if (!ok) {
       return NextResponse.json(
         { valid: false, message: offer.conditionMessage || 'Coupon conditions are not met.' },
         { status: 400 }
       );
     }
 
-    // Calculate discount based on the action.
-    // Assuming one action per offer for now.
-    const action = offer.actions[0];
+    /* 4 ‑ discount calculation */
+    const action = offer.actions[0] || {};
     let discount = 0;
     if (action.type === 'discount_percent') {
       discount = (action.discountValue / 100) * totalCost;
-      // If a discountCap is specified, cap the discount.
-      if (offer.discountCap && discount > offer.discountCap) {
+      if (offer.discountCap && discount > offer.discountCap)
         discount = offer.discountCap;
-      }
     } else if (action.type === 'discount_fixed') {
       discount = action.discountValue;
-    } else if (action.type === 'bundle' && Array.isArray(cartItems)) {
+    } else if (action.type === 'bundle') {
       discount = calculateBundleDiscount(cartItems, offer);
-      console.log('Bundle discount:', discount);
     }
+
+    const type = action.type === 'discount_percent'
+      ? 'percentage'
+      : action.type === 'bundle'
+        ? 'bundle'
+        : 'fixed';
 
     return NextResponse.json(
       {
-        valid: true,
+        valid        : true,
         discountValue: Math.floor(discount),
-        discountType: action.type === 'discount_percent' ? 'percentage' : (action.type === 'bundle' ? 'bundle' : 'fixed'),
-        message: 'Coupon applied successfully.',
-        offer: offer,
+        discountType : type,
+        offer,
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error('Server Error during coupon application:', error.message);
+  } catch (err) {
+    console.error('Server Error during coupon application:', err);
     return NextResponse.json(
       { valid: false, message: 'Server error. Please try again.' },
       { status: 500 }
