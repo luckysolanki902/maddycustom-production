@@ -22,7 +22,6 @@ const initialState = {
     couponCode: '',
     discountAmount: 0,
     discountType: '',
-    isDbCoupon: false,
     offer: null,
   },
   manualCoupon: null,          // last coupon the USER applied (or null)
