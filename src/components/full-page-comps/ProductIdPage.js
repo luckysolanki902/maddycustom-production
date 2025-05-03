@@ -18,6 +18,8 @@ import { TopBoughtProducts } from "../showcase/products/TopBoughtProducts";
 import Footer from "../layouts/Footer";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import useMediaQuery from "@mui/material/useMediaQuery";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 
 // Memoize components that do not need to update on option change
 const MemoizedImageGallery = memo(ImageGallery);
@@ -72,6 +74,12 @@ export default function ProductIdPage({
   const { email, phoneNumber } = userDetails || {};
   const hasTracked = useRef(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+  const pathname = usePathname();
+  // now remove the last slug that's product id, to get link to products list page
+  const productListPageLink = pathname.split("/").slice(0, -1).join("/");
+  // Memoize the product list page link to avoid unnecessary re-renders
+  const memoizedProductListPageLink = useMemo(() => productListPageLink, [productListPageLink]);
+  
 
   // Cloudfront URL for the icon (used when thumbnail is not provided)
   const moreImagesIconUrl = `${imageBaseUrl}/assets/icons/more-images-icon.jpg`;
@@ -447,7 +455,7 @@ export default function ProductIdPage({
 
             {isMobile && (
               <>
-                {product.specificCategory === '673aea6778c57ec01acae635' && <div className={styles.offerAdContainer}>
+                {product.specificCategory === '673aea6778c57ec01acae635' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
                   <Image
                     src={`${imageBaseUrl}/assets/posters/bikebundlephone.png`}
                     alt="Bike Bundle offer PC"
@@ -455,7 +463,7 @@ export default function ProductIdPage({
                     height={200}
                     className={styles.bikeBundleImage}
                   />
-                </div>}
+                </Link>}
                 <div className={styles.orderSpecificationsContainer}>
                   <MemoizedOrderSpecifications
                     features={variant.features}
@@ -480,7 +488,7 @@ export default function ProductIdPage({
 
             {!isMobile && (
               <>
-                {product.specificCategory === '673aea6778c57ec01acae635' && <div className={styles.offerAdContainer}>
+                {product.specificCategory === '673aea6778c57ec01acae635' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
                   <Image
                     src={`${imageBaseUrl}/assets/posters/bikebundlepc.png`}
                     alt="Bike Bundle offer PC"
@@ -488,7 +496,7 @@ export default function ProductIdPage({
                     height={200}
                     className={styles.bikeBundleImage}
                   />
-                </div>}
+                </Link>}
                 <div className={styles.orderSpecificationsContainer}>
                   <MemoizedOrderSpecifications
                     features={variant.features}

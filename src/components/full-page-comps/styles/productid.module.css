@@ -27,6 +27,11 @@
     margin-bottom: 20px;
     margin-top: 20px;
     width: 100%;
+    text-decoration: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
 }
 
 .bikeBundleImage{
