@@ -8,7 +8,7 @@ import { useMediaQuery } from '@mui/material';
 const ProductsWrapper = ({ variant, products, category, isLoading, showLayout2, hideCartButton = false, hidePrice = false }) => {
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-
+const offerTaglineText = category?.specificCategoryCode === 'tw' ? ' Buy 2 for ₹499' : '';
   return (
     <div className={showLayout2 ? styles.productsGrid2 : styles.productsGrid}>
       {/* Video on large devices */}
@@ -50,6 +50,7 @@ const ProductsWrapper = ({ variant, products, category, isLoading, showLayout2, 
             showLayout2={showLayout2}
             hideCartButton={hideCartButton}
             hidePrice={hidePrice}
+            offerTaglineText={offerTaglineText}
           />
         );
       })}
