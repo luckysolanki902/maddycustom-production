@@ -13,12 +13,28 @@ export const calculateTotalCostBeforeDiscount = (cartItems) =>
 
 export const calculateDiscountAmount = (totalCost, couponState) => {
   if (!couponState.couponApplied) return 0;
-  const { discountType, couponDiscount } = couponState;
-  return discountType === 'percentage'
-    ? couponState.offer.discountCap != 0
-      ? Math.floor(Math.min((totalCost * couponDiscount) / 100, couponState.offer.discountCap))
-      : Math.floor((totalCost * couponDiscount) / 100)
-    : couponDiscount;
+  const { discountType, couponDiscount, isDbCoupon, offer } = couponState;
+
+  // If server already computed the discount, use it directly
+  // if (isDbCoupon) {
+    return Math.floor(couponDiscount);
+  // }
+
+  // switch (discountType) {
+  //   case 'percentage': {
+  //     const raw = (totalCost * couponDiscount) / 100;
+  //     const capped = offer?.discountCap
+  //       ? Math.min(raw, offer.discountCap)
+  //       : raw;
+  //     return Math.floor(capped);
+  //   }
+  //   case 'fixed':
+  //   case 'bundle':
+  //     // couponDiscount already holds the absolute discount amount
+  //     return Math.floor(couponDiscount);
+  //   default:
+  //     return Math.floor(couponDiscount);
+  // }
 };
 
 export const calculateTotalCostAfterDiscount = (totalCost, discountAmount) => {
