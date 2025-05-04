@@ -32,7 +32,15 @@ const PackagingBoxSchema = new mongoose.Schema({
   compatibleTags:{
     type: [String],
     required: true
+  },
+  priority: {
+    type: Number,
+    required: true, // Priority level for packing
+    default: 1, 
   }
+}, {
+  timestamps: true, 
 });
+
 
 module.exports = mongoose.models.PackagingBox || mongoose.model('PackagingBox', PackagingBoxSchema);

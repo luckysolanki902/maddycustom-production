@@ -282,6 +282,7 @@ export async function POST(request) {
       }
 
       const { length, breadth, height, weight } = dimensionsAndWeight;
+      console.log({ length, breadth, height, weight }, 'for orderId:', internalOrderId);
       const [firstName, ...restName] = latestOrder.address.receiverName.split(' ');
       const lastName = restName.join(' ');
 
