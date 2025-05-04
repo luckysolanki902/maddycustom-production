@@ -69,11 +69,11 @@ const CartItem = ({ item, onRemove }) => {
             item.productDetails.category?.name?.endsWith('s')
               ? item?.productDetails?.category?.name?.slice(0, -1)
               : item.productDetails.category.name :
-            (item.productDetails.category.name.slice(0, 20) + '...')}
+            (item.productDetails?.category?.name?.slice(0, 20) + '...')}
 
         </div>
         <div className={styles.productName}>
-          {item?.productDetails?.name?.length < 20 ? item?.productDetails?.name : (item?.productDetails?.name.slice(0, 20) + '...')}
+          {item?.productDetails?.name?.length < 20 ? item?.productDetails?.name : (item?.productDetails?.name?.slice(0, 20) + '...')}
         </div>
 
         <AddToCartButton product={item.productDetails} smaller={true} />

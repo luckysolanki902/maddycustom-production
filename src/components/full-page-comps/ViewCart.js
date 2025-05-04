@@ -342,8 +342,9 @@ export default function ViewCart () {
           </div>
         )}
 
-        <div style={{ margin:'0 .4rem', borderRadius:'.6rem', background:'#fff', marginTop: qty<=0?0:'-.5rem' }}>
-          <TopBoughtProducts subCategories={topSub} currentProductId={topIds}/>
+
+        <div style={{ margin:'0 .4rem', borderRadius:'1rem', background:'#fff', paddingTop: '0.5rem',}}>
+          <TopBoughtProducts  subCategories={topSub} currentProductId={topIds}/>
         </div>
 
         {qty > 0 && (
