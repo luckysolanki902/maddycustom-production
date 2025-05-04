@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/meta/generate-catalogue",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/google/merchant/sync-products",
+      "schedule": "0 1 * * *"
     }
   ]
 }
