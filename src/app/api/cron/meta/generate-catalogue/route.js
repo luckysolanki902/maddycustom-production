@@ -7,7 +7,7 @@ import Option from '@/models/Option';
 import Catalogue from '@/models/meta/Catalogue';
 import CatalogueCycle from '@/models/meta/CatalogueCycle';
 import SpecificCategory from '@/models/SpecificCategory';
-import InventoryData from '@/models/InventoryData';
+import InventoryData from '@/models/Inventory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 
 export async function GET(request) {
