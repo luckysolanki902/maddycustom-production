@@ -1,8 +1,25 @@
 /* src/components/cards/styles/productcard.module.css */
 .mainCardDiv {
   cursor: pointer;
-  padding: 0.2rem 0.5rem 1rem 0.5rem;
+  padding: 0rem 0rem 1rem 0rem;
   position: relative;
+}
+
+.fixedTagline{
+  width: 130px;
+  height: 30px;
+  background-color: #31C473;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-family: Jost, sans-serif;
+  font-weight: 600;
 }
 
 .taptozoom {

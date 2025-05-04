@@ -1,356 +1,265 @@
 // lib/utils/shiprocket.js
-
 import axios from 'axios';
 const SpecificCategoryVariant = require('@/models/SpecificCategoryVariant');
 const Product = require('@/models/Product');
 const PackagingBox = require('@/models/PackagingBox');
 
-/**
- * Function to get Shiprocket token
- */
+/* ───────────────────────────────────────────────────────────────────────────
+ * 1. SHIPROCKET HELPERS
+ * ───────────────────────────────────────────────────────────────────────── */
 export async function getShiprocketToken() {
-  try {
-    const response = await axios.post(
-      'https://apiv2.shiprocket.in/v1/external/auth/login',
-      {
-        email: process.env.SHIPROCKET_EMAIL,
-        password: process.env.SHIPROCKET_PASSWORD,
-      }
-    );
-    return response.data.token;
-  } catch (error) {
-    console.error(
-      'Error fetching Shiprocket token:',
-      error.response ? error.response.data : error.message
-    );
-    throw new Error('Failed to retrieve Shiprocket token.');
-  }
+  const res = await axios.post(
+    'https://apiv2.shiprocket.in/v1/external/auth/login',
+    {
+      email: process.env.SHIPROCKET_EMAIL,
+      password: process.env.SHIPROCKET_PASSWORD
+    }
+  );
+  return res.data.token;
 }
 
-/**
- * Function to create a Shiprocket order
- */
 export async function createShiprocketOrder(orderData) {
-  try {
-    const token = await getShiprocketToken();
-
-    const response = await axios.post(
-      'https://apiv2.shiprocket.in/v1/external/orders/create/adhoc',
-      orderData,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        }
+  const token = await getShiprocketToken();
+  const res = await axios.post(
+    'https://apiv2.shiprocket.in/v1/external/orders/create/adhoc',
+    orderData,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
       }
-    );
-    return response.data;
-  } catch (error) {
-    console.error(
-      'Error creating Shiprocket order:',
-      error.response ? error.response.data : error.message
-    );
-    throw new Error('Failed to create Shiprocket order.');
-  }
+    }
+  );
+  return res.data;
 }
 
-/**
- * Function to track a Shiprocket order by order ID
- */
 export async function trackShiprocketOrder(orderId) {
-  try {
-    const token = await getShiprocketToken();
-
-    const response = await axios.get(
-      `https://apiv2.shiprocket.in/v1/external/courier/track`,
-      {
-        params: { order_id: orderId },
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return response.data;
-  } catch (error) {
-    console.error(
-      'Error tracking Shiprocket order:',
-      error.response ? error.response.data : error.message
-    );
-    throw new Error('Failed to track Shiprocket order.');
-  }
+  const token = await getShiprocketToken();
+  const res = await axios.get(
+    'https://apiv2.shiprocket.in/v1/external/courier/track',
+    {
+      params: { order_id: orderId },
+      headers: { Authorization: `Bearer ${token}` }
+    }
+  );
+  return res.data;
 }
 
-/**
- * Check if Shiprocket can service a given pickup and delivery postcode
-*/
 export async function checkServiceability(pickupPostcode, deliveryPostcode) {
-  try {
-    const token = await getShiprocketToken();
-
-    const response = await axios.get(
-      'https://apiv2.shiprocket.in/v1/external/courier/serviceability/',
-      {
-        params: {
-          pickup_postcode: pickupPostcode,
-          delivery_postcode: deliveryPostcode,
-          weight: 1,
-          cod: 0 // Fix for required field missing error
-        },
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return response.data;
-  } catch (error) {
-    console.error(
-      'Error checking Shiprocket serviceability:',
-      error.response ? error.response.data : error.message
-    );
-    throw new Error('Failed to check Shiprocket serviceability.');
-  }
+  const token = await getShiprocketToken();
+  const res = await axios.get(
+    'https://apiv2.shiprocket.in/v1/external/courier/serviceability/',
+    {
+      params: {
+        pickup_postcode: pickupPostcode,
+        delivery_postcode: deliveryPostcode,
+        weight: 1,
+        cod: 0
+      },
+      headers: { Authorization: `Bearer ${token}` }
+    }
+  );
+  return res.data;
 }
 
-
-/**
- * Get packaging details from a variant or fallback to product-level packaging
- * 
- * @param {Object} item The cart item (with `product` property)
- * @returns {Object} { box, productWeight, hasFreebie, freebieWeight, itemName }
- */
+/* ───────────────────────────────────────────────────────────────────────────
+ * 2. PACKAGING LOOKUP
+ * ───────────────────────────────────────────────────────────────────────── */
 async function getPackagingDetailsForItem(item) {
-  // 1) If variant packaging is present:
-  const variantId = item?.product?.specificCategoryVariant?._id;
-  if (variantId) {
-    const variant = await SpecificCategoryVariant.findById(variantId).populate({
+  /* Resolve product */
+  const productDoc =
+    item?.product && typeof item.product === 'object' && item.product._id
+      ? item.product
+      : await Product.findById(item.product);
+
+  /* Resolve variant */
+  let variantDoc = null;
+  if (productDoc?.specificCategoryVariant) {
+    const variantId =
+      typeof productDoc.specificCategoryVariant === 'object'
+        ? productDoc.specificCategoryVariant._id
+        : productDoc.specificCategoryVariant;
+
+    variantDoc = await SpecificCategoryVariant.findById(variantId).populate({
       path: 'packagingDetails.boxId',
       model: 'PackagingBox'
     });
-    if (variant?.packagingDetails?.boxId) {
-      // Found packaging details on variant
-      const hasFreebie = variant.freebies?.available === true;
-      return {
-        box: variant.packagingDetails.boxId, // entire box doc
-        productWeight: variant.packagingDetails.productWeight || 0,
-        hasFreebie,
-        freebieWeight: hasFreebie ? variant.freebies.weight || 0 : 0,
-        itemName: variant.name
-      };
-    }
   }
 
-  // 2) Otherwise fallback to product-level packaging
-  const productId = item?.product?._id;
-  if (productId) {
-    const product = await Product.findById(productId).populate({
-      path: 'packagingDetails.boxId',
-      model: 'PackagingBox'
-    });
-    if (product?.packagingDetails?.boxId) {
-      // Found packaging details on product
-      return {
-        box: product.packagingDetails.boxId,
-        productWeight: product.packagingDetails.productWeight || 0,
-        hasFreebie: false,
-        freebieWeight: 0,
-        itemName: product.name
-      };
-    }
+  /* Variant‑level packaging */
+  if (variantDoc?.packagingDetails?.boxId) {
+    const hasFreebie = variantDoc.freebies?.available === true;
+    return {
+      box: variantDoc.packagingDetails.boxId,
+      productWeight: variantDoc.packagingDetails.productWeight || 0,
+      hasFreebie,
+      freebieWeight: hasFreebie ? parseFloat(variantDoc.freebies.weight || 0) : 0,
+      itemName: variantDoc.name
+    };
   }
 
-  // 3) If no packaging details found at all, throw or handle gracefully
+  /* Product‑level packaging */
+  if (productDoc?.packagingDetails?.boxId) {
+    const box =
+      typeof productDoc.packagingDetails.boxId === 'object'
+        ? productDoc.packagingDetails.boxId
+        : await PackagingBox.findById(productDoc.packagingDetails.boxId);
+
+    return {
+      box,
+      productWeight: productDoc.packagingDetails.productWeight || 0,
+      hasFreebie: false,
+      freebieWeight: 0,
+      itemName: productDoc.name
+    };
+  }
+
   throw new Error(`No packaging details found for item: ${item?._id}`);
 }
 
-/**
- * Packs items into as many boxes of a single box type as needed.
- * 
- * @param {Object} options
- * @param {Array} options.itemsForThisBox - Array of items that all share the same box doc
- * @param {Object} options.boxDoc         - The single PackagingBox document
- * 
- * @returns {Object} { length, breadth, height, weight, freebieWeight, boxesUsed, boxDetails }
- */
+/* ───────────────────────────────────────────────────────────────────────────
+ * 3. GREEDY PACKER FOR A SINGLE BOX TYPE
+ * ───────────────────────────────────────────────────────────────────────── */
 function packItemsInSingleBoxType({ itemsForThisBox, boxDoc }) {
-  // We'll open multiple boxes of this type if needed
   const { length, breadth, height } = boxDoc.dimensions;
-  const capacity = boxDoc.capacity;
-  const boxWeight = boxDoc.weight;
+  const { capacity, weight: boxWeight } = boxDoc;
 
-  // Each "open box" is an object tracking how many items we can still fit, plus packing info
   const openBoxes = [];
-  const createNewBox = () => ({
+  const createBox = () => ({
     leftoverCapacity: capacity,
     totalProductWeight: 0,
-    freebieWeights: [],
-    packedItems: []
+    freebieWeights: []
   });
 
-  // Optionally, we only assign one freebie across all boxes of this type:
   let freebieAssigned = false;
 
-  // For each item, fill existing boxes or open a new one
   for (const entry of itemsForThisBox) {
-    let remainingQty = entry.quantity;
+    let remaining = entry.quantity;
 
-    while (remainingQty > 0) {
-      // find an open box that has leftover capacity
-      let suitableBox = openBoxes.find((ob) => ob.leftoverCapacity > 0);
-      if (!suitableBox) {
-        // create a new box
-        suitableBox = createNewBox();
-        openBoxes.push(suitableBox);
+    while (remaining > 0) {
+      let box = openBoxes.find(b => b.leftoverCapacity > 0);
+      if (!box) {
+        box = createBox();
+        openBoxes.push(box);
       }
 
-      // how many of this item can we fit?
-      const canFit = Math.min(suitableBox.leftoverCapacity, remainingQty);
-      suitableBox.leftoverCapacity -= canFit;
-      suitableBox.totalProductWeight += entry.productWeight * canFit;
+      const fit = Math.min(box.leftoverCapacity, remaining);
+      box.leftoverCapacity -= fit;
+      box.totalProductWeight += entry.productWeight * fit;
 
-      // freebies
-      if (entry.hasFreebie && !freebieAssigned) {
-        if (entry.freebieWeight > 0) {
-          suitableBox.freebieWeights.push(entry.freebieWeight);
-          freebieAssigned = true;
-        }
+      if (entry.hasFreebie && !freebieAssigned && entry.freebieWeight > 0) {
+        box.freebieWeights.push(entry.freebieWeight);
+        freebieAssigned = true;
       }
 
-      // record packed items
-      suitableBox.packedItems.push({
-        itemName: entry.itemName,
-        quantity: canFit
-      });
-
-      remainingQty -= canFit;
+      remaining -= fit;
     }
   }
 
-  // Summarize the results
   const boxesUsed = openBoxes.length;
-  const totalBoxWeight = boxWeight * boxesUsed; // sum of all box (carton) weights
+  const totalProductWeight = openBoxes.reduce(
+    (sum, b) => sum + b.totalProductWeight,
+    0
+  );
+  const totalFreebieWeight = openBoxes.reduce(
+    (sum, b) => sum + b.freebieWeights.reduce((a, w) => a + w, 0),
+    0
+  );
 
-  let totalProductWeight = 0;
-  let totalFreebieWeight = 0;
-
-  // Build a detailed breakdown
-  const boxDetails = openBoxes.map((ob, idx) => {
-    totalProductWeight += ob.totalProductWeight;
-    if (ob.freebieWeights.length) {
-      totalFreebieWeight += ob.freebieWeights.reduce((a, b) => a + b, 0);
-    }
-    return {
-      boxIndex: idx + 1,
-      leftoverCapacity: ob.leftoverCapacity,
-      productWeightInBox: ob.totalProductWeight,
-      freebiesInBox: ob.freebieWeights,
-      packedItems: ob.packedItems
-    };
-  });
-
-  const finalWeight = totalProductWeight + totalBoxWeight + totalFreebieWeight;
-
-  // Return the dimension of a single box multiplied by how many we used
-  // We'll figure out the overall dimension logic later in the aggregator.
   return {
     singleBoxDimensions: { length, breadth, height },
     boxesUsed,
-    totalWeight: +finalWeight.toFixed(3),
+    totalWeight: +(
+      boxesUsed * boxWeight +
+      totalProductWeight +
+      totalFreebieWeight
+    ).toFixed(3),
     totalFreebieWeight,
-    boxDetails,
     boxName: boxDoc.name
   };
 }
 
-/**
- * Calculates total dimensions and weight by grouping items by their box ID,
- * then combining them into an "imaginary" single dimension.
- * 
- * The final dimension is computed as:
- *   length = max length among all box types used
- *   breadth = max breadth among all box types used
- *   height = sum of (height × boxesUsed) for all box types
- *
- * @param {Array} items - The list of cart items. Each item must have {product, quantity}.
- * @returns {Object} - Summaries per boxId and a grandTotal for everything.
- */
-export const getDimensionsAndWeight = async (items) => {
-  try {
-    // 1) For each item, gather packaging details (variant or product).
-    // We'll store them in a map to avoid repeated DB lookups.
-    const packagingMap = {};
-    for (const item of items) {
-      packagingMap[item._id] = await getPackagingDetailsForItem(item);
-    }
+/* ───────────────────────────────────────────────────────────────────────────
+ * 4. DIMENSION & WEIGHT AGGREGATOR WITH PRIORITY MERGING
+ * ───────────────────────────────────────────────────────────────────────── */
+const tagsIntersect = (a = [], b = []) => a.some(t => b.includes(t));
 
-    // 2) Group items by boxId
-    const groups = {};
-    for (const item of items) {
-      const pkg = packagingMap[item._id];
-      const boxId = pkg.box?._id.toString();
-      if (!groups[boxId]) {
-        groups[boxId] = {
-          boxDoc: pkg.box,
-          items: []
-        };
-      }
-      groups[boxId].items.push({
-        quantity: item.quantity,
-        productWeight: pkg.productWeight,
-        hasFreebie: pkg.hasFreebie,
-        freebieWeight: pkg.freebieWeight,
-        itemName: pkg.itemName
-      });
-    }
+export const getDimensionsAndWeight = async items => {
+  /* Build initial groups in one pass */
+  const rawGroups = {};
 
-    // 3) For each boxId group, perform the packing
-    const resultsPerBoxId = {};
+  for (const item of items) {
+    const pkg = await getPackagingDetailsForItem(item);
+    const boxId = pkg.box._id.toString();
 
-    // We'll track the final dimension with this approach:
-    let maxLength = 0;
-    let maxBreadth = 0;
-    let totalHeight = 0;
+    if (!rawGroups[boxId]) rawGroups[boxId] = { boxDoc: pkg.box, items: [] };
 
-    let overallWeight = 0;
-    let overallFreebieWeight = 0;
-    let overallBoxesUsed = 0;
-
-    for (const boxId of Object.keys(groups)) {
-      const { boxDoc, items: groupItems } = groups[boxId];
-
-      const result = packItemsInSingleBoxType({
-        itemsForThisBox: groupItems,
-        boxDoc
-      });
-
-      // Save result
-      resultsPerBoxId[boxId] = result;
-
-      // Update dimension aggregator
-      const { length, breadth, height } = result.singleBoxDimensions;
-      if (length > maxLength) maxLength = length;
-      if (breadth > maxBreadth) maxBreadth = breadth;
-      // we sum (height * boxesUsed) to get "stacked" height
-      totalHeight += height * result.boxesUsed;
-
-      // Weight aggregator
-      overallWeight += result.totalWeight;
-      overallFreebieWeight += result.totalFreebieWeight;
-      overallBoxesUsed += result.boxesUsed;
-    }
-
-    // 4) Return the final response
-    return {
-      success: true,
-      perBoxId: resultsPerBoxId,
-      length: maxLength,
-      breadth: maxBreadth,
-      height: totalHeight,
-      weight: +overallWeight.toFixed(3),
-      freebieWeight: +overallFreebieWeight.toFixed(3),
-      boxesUsed: overallBoxesUsed
-    };
-  } catch (error) {
-    console.error('Error calculating dimensions and weight:', error.message);
-    throw error;
+    rawGroups[boxId].items.push({
+      quantity: item.quantity,
+      productWeight: pkg.productWeight,
+      hasFreebie: pkg.hasFreebie,
+      freebieWeight: pkg.freebieWeight,
+      itemName: pkg.itemName
+    });
   }
+
+  /* Sort by ascending priority (1 = highest) */
+  const orderedGroups = Object.values(rawGroups).sort(
+    (a, b) => (a.boxDoc.priority ?? 99) - (b.boxDoc.priority ?? 99)
+  );
+
+  /* Merge compatible lower‑priority groups into higher‑priority ones */
+  const mergedGroups = [];
+  for (const grp of orderedGroups) {
+    let mergedInto = null;
+    for (const target of mergedGroups) {
+      if (
+        (target.boxDoc.priority ?? 99) <= (grp.boxDoc.priority ?? 99) &&
+        tagsIntersect(target.boxDoc.compatibleTags, grp.boxDoc.compatibleTags)
+      ) {
+        mergedInto = target;
+        break;
+      }
+    }
+    if (mergedInto) mergedInto.items.push(...grp.items);
+    else mergedGroups.push(grp);
+  }
+
+  /* Pack each final group */
+  const resultsPerBoxId = {};
+  let maxLength = 0,
+    maxBreadth = 0,
+    totalHeight = 0,
+    overallWeight = 0,
+    overallFreebieWeight = 0,
+    overallBoxesUsed = 0;
+
+  for (const grp of mergedGroups) {
+    const result = packItemsInSingleBoxType({
+      itemsForThisBox: grp.items,
+      boxDoc: grp.boxDoc
+    });
+
+    resultsPerBoxId[grp.boxDoc._id.toString()] = result;
+
+    const { length, breadth, height } = result.singleBoxDimensions;
+    maxLength = Math.max(maxLength, length);
+    maxBreadth = Math.max(maxBreadth, breadth);
+    totalHeight += height * result.boxesUsed;
+
+    overallWeight += result.totalWeight;
+    overallFreebieWeight += result.totalFreebieWeight;
+    overallBoxesUsed += result.boxesUsed;
+  }
+
+  return {
+    success: true,
+    perBoxId: resultsPerBoxId,
+    length: maxLength,
+    breadth: maxBreadth,
+    height: totalHeight,
+    weight: +overallWeight.toFixed(3),
+    freebieWeight: +overallFreebieWeight.toFixed(3),
+    boxesUsed: overallBoxesUsed
+  };
 };

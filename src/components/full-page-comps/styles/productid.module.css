@@ -23,6 +23,23 @@
     padding: 0 10px;
 }
 
+.offerAdContainer{
+    margin-bottom: 20px;
+    margin-top: 20px;
+    width: 100%;
+    text-decoration: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+}
+
+.bikeBundleImage{
+    width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+}
+
 .cardCaption {
     margin-top: -0.5rem;
     font-family: Jost;
