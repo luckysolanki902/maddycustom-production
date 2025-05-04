@@ -10,6 +10,7 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Product from '@/models/Product';
 import Order from '@/models/Order';
 import Option from '@/models/Option';
+import Inventory from '@/models/Inventory';
 
 export const revalidate = 36000;              // 10 h edge‑cache
 const PAGE_SIZE = 10;
