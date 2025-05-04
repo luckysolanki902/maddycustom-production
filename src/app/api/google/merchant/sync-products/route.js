@@ -14,7 +14,7 @@ export async function GET() {
     const contentApi = initializeContentApi();
 
     // 3. Fetch catalogue entries (only those you've marked processed)
-    const entries = await Catalogue.find({ processed: true }).lean();
+    const entries = await Catalogue.find().lean();
 
     // 4. Map feedData → Google product schema
     const mappedProducts = entries.map(({ feedData }) => {
