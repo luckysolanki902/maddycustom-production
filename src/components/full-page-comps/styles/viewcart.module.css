@@ -2,7 +2,7 @@
 .container {
   background-color: white;
   min-height: 100vh;
-  padding: 1.2rem;
+  padding-top: 0.6rem;
   margin: 0;
   padding-bottom: 6rem;
   max-width: 1200px;
@@ -103,7 +103,7 @@
 
 @media screen and (max-width: 7680px) {
   .container {
-    padding: 0;
+    /* padding: 0; */
     padding-bottom: 6rem;
   }
 

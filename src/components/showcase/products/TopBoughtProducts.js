@@ -1,330 +1,394 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  memo,
+} from 'react';
 import axios from 'axios';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Skeleton from '@mui/material/Skeleton';
-import Fade from '@mui/material/Fade';
+import {
+  Box,
+  Typography,
+  Skeleton,
+  Fade,
+  Card,
+  CardContent,
+  CardMedia,
+} from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
-import AddToCartButton from '@/components/utils/AddToCartButton';
 import Image from 'next/image';
+import AddToCartButton from '@/components/utils/AddToCartButton';
 
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+const PAGE_SIZE = 10;
 
-// Styled container to hide scrollbar.
+/* ─────────────────── styled helpers ─────────────────── */
 const ScrollContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   overflowX: 'auto',
   gap: theme.spacing(2),
-  paddingBottom: theme.spacing(2),
+  paddingBottom: theme.spacing(3),
+  scrollSnapType: 'x proximity',
   '&::-webkit-scrollbar': { display: 'none' },
   msOverflowStyle: 'none',
   scrollbarWidth: 'none',
 }));
+const Sentinel = styled('div')({ width: 1, height: 1 });
+const cardSx = {
+  width: 200,
+  flexShrink: 0,
+  scrollSnapAlign: 'start',
+  borderRadius: 3,
+  transition: 'transform .2s',
+  cursor: 'pointer',
+  '&:hover': { transform: 'translateY(-6px)', boxShadow: 6 },
+};
 
-export const TopBoughtProducts = ({
-  subCategories = [],
+/* ─────────────────── image helper ─────────────────── */
+const getDisplayImage = (product) => {
+  if (product.options?.length) {
+    const inStock = product.options.find(
+      (o) => o.inventoryData?.availableQuantity > 0 && o.images?.length
+    );
+    if (inStock) return { imageUrl: inStock.images[0], outOfStock: false };
+
+    const first = product.options.find((o) => o.images?.length);
+    if (first) return { imageUrl: first.images[0], outOfStock: true };
+  }
+  if (product.images?.length)
+    return {
+      imageUrl: product.images[0],
+      outOfStock: product.inventoryData?.availableQuantity <= 0,
+    };
+  return {
+    imageUrl: '/images/assets/gifs/helmetloadinggif.gif',
+    outOfStock: true,
+  };
+};
+
+/* ─────────────────── context ─────────────────── */
+const TopBoughtContext = React.createContext();
+
+/* ─────────────────── Base component ─────────────────── */
+function TopBoughtProductsBase({
+  subCategories = [],        // may be omitted by caller
   currentProductId = '',
   excludeProductIds = [],
-}) => {
-  if (subCategories.length === 0) {
-    subCategories = ['Car Wraps', 'Car Care'];
-  }
-  const PAGE_SIZE = 10;
+  singleVariantCode = '',
+  singleCategoryCode = '',
+}) {
+  const router = useRouter();
+  const scrollRef = useRef(null);
+  const sentinelRef = useRef(null);
+  const skipRef = useRef(0);
+
+  /* ---------- Normalise sub‑categories ---------- */
+  // Guarantee an array, even when undefined/null is supplied
+  const subCatArr = Array.isArray(subCategories) ? subCategories : [];
+
+  // Fallback default only if no variant/category code is supplied and caller
+  // forgot to pass a sub‑category list
+  const effectiveSubCats =
+    subCatArr.length || singleVariantCode || singleCategoryCode
+      ? subCatArr
+      : ['Car Wraps', 'Car Care'];
+
+  const subCatKey = useMemo(
+    () =>
+      [...effectiveSubCats]
+        .slice()
+        .sort()
+        .join('|'), // safe even when array is empty
+    [effectiveSubCats]
+  );
+
+  /* ---------- State ---------- */
   const [products, setProducts] = useState([]);
-  const [skip, setSkip] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingInit, setLoadingInit] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const mergedExcludes = useRef([]);
+  const [specCatName, setSpecCatName] = useState('');
 
-  useEffect(() => {
-    const initialExcludesSet = new Set(excludeProductIds.filter(Boolean));
-    if (currentProductId) {
-      initialExcludesSet.add(currentProductId);
-    }
-    mergedExcludes.current = [...initialExcludesSet];
-    setSkip(0);
-    setProducts([]);
-    setHasMore(false);
-    setInitialLoading(true);
-    fetchProducts(0, [...initialExcludesSet]);
-  }, []);
+  /* ---------- De‑dupe set ---------- */
+  const seenIds = useRef(
+    new Set([...excludeProductIds, currentProductId].filter(Boolean))
+  );
 
-  const fetchProducts = useCallback(
-    async (newSkip, excludes) => {
+  /* ---------- Fetcher ---------- */
+  const fetchPage = useCallback(
+    async (offset, isInitial) => {
       try {
-        if (newSkip === 0) {
-          setInitialLoading(true);
-        } else {
-          setLoadingMore(true);
+        isInitial ? setLoadingInit(true) : setLoadingMore(true);
+
+        const params = { skip: offset };
+        if (effectiveSubCats.length) {
+          params.subCategories = effectiveSubCats.join(',');
         }
-        const { data } = await axios.get('/api/showcase/products/top-bought', {
-          params: {
-            subCategories: subCategories.join(','),
-            currentProductId,
-            skip: newSkip,
-            excludeProductIds: excludes.join(','),
-          },
-        });
-        const { products: fetched, hasMore: more } = data || {};
-  
-        // Map through fetched products and add selectedOption if options exist
-        const updatedFetched = fetched.map((product) =>
-          Array.isArray(product.options) && product.options.length > 0
-            ? { ...product, selectedOption: product.options[0] }
-            : product
+        if (singleVariantCode) params.singleVariantCode = singleVariantCode;
+        if (singleCategoryCode) params.singleCategoryCode = singleCategoryCode;
+
+        const { data } = await axios.get(
+          '/api/showcase/products/top-bought',
+          { params }
         );
-  
-        if (newSkip === 0) {
-          setProducts(updatedFetched);
-          mergedExcludes.current.push(...updatedFetched.map((p) => p._id));
-        } else {
-          setProducts((prev) => [...prev, ...updatedFetched]);
-          mergedExcludes.current.push(...updatedFetched.map((p) => p._id));
+
+        let {
+          products: fetched = [],
+          hasMore: more = false,
+          specificCategoryName = '',
+        } = data || {};
+
+        if (isInitial && specificCategoryName) {
+          setSpecCatName(specificCategoryName);
         }
+
+        /* client‑side exclusion */
+        fetched = fetched.filter((p) => !seenIds.current.has(p._id));
+
+        /* if too few, pull next page */
+        if (fetched.length < PAGE_SIZE && more) {
+          fetched.forEach((p) => seenIds.current.add(p._id));
+          const extra = await fetchPage(offset + PAGE_SIZE, false);
+          fetched = fetched.concat(extra.fetched);
+          more = extra.more;
+        }
+
+        const ready = fetched.map((p) =>
+          Array.isArray(p.options) && p.options.length
+            ? { ...p, selectedOption: p.options[0] }
+            : p
+        );
+
+        setProducts((prev) =>
+          offset === 0 ? ready : [...prev, ...ready]
+        );
+        ready.forEach((p) => seenIds.current.add(p._id));
         setHasMore(more);
+
+        return { fetched: ready, more };
       } catch (err) {
-        console.error('Error fetching top-bought products:', err);
+        console.error('top-bought fetch err:', err);
+        return { fetched: [], more: false };
       } finally {
-        if (newSkip === 0) {
-          setInitialLoading(false);
-        } else {
-          setLoadingMore(false);
-        }
+        isInitial ? setLoadingInit(false) : setLoadingMore(false);
       }
     },
-    [subCategories, currentProductId, excludeProductIds]
+    [effectiveSubCats, singleVariantCode, singleCategoryCode]
   );
-  
 
-  const handleLoadMore = () => {
-    const newSkip = skip + PAGE_SIZE;
-    setSkip(newSkip);
-    fetchProducts(newSkip, mergedExcludes.current);
-  };
-  return (
-    <Box sx={{ width: '100%', mt: 3, p: 2 }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        Customers also bought
-      </Typography>
-      {initialLoading ? (
-        <ScrollContainer>
-          {Array.from(new Array(PAGE_SIZE)).map((_, index) => (
-            <ProductCardSkeleton key={index} />
-          ))}
-        </ScrollContainer>
-      ) : (
-        <Fade in={!initialLoading}>
-          <ScrollContainer>
-            {products.map((prod) => (
-              <ProductCard key={prod._id} product={prod} />
-            ))}
-            {loadingMore
-              ? Array.from(new Array(PAGE_SIZE)).map((_, index) => (
-                  <ProductCardSkeleton key={`skeleton-${index}`} />
-                ))
-              : hasMore && <LoadMoreCard onClick={handleLoadMore} loading={loadingMore} />}
-          </ScrollContainer>
-        </Fade>
-      )}
-    </Box>
-  );
-};
+  /* ---------- Initial load ---------- */
+  useEffect(() => {
+    skipRef.current = 0;
+    setProducts([]);
+    setHasMore(false);
+    setSpecCatName('');
+    seenIds.current = new Set(
+      [...excludeProductIds, currentProductId].filter(Boolean)
+    );
+    fetchPage(0, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveSubCats.join('|'), singleVariantCode, singleCategoryCode]);
 
-// Helper: decide which image to show based on product options.
-const getDisplayImage = (product) => {
-  // 1. If product has options with images, try to pick one with available inventory.
-  if (product.options && product.options.length > 0) {
-    for (const option of product.options) {
-      if (option.images && option.images.length > 0) {
-        if (option.inventoryData && option.inventoryData.availableQuantity > 0) {
-          return { imageUrl: option.images[0], outOfStock: false };
+  /* ---------- Infinite‑scroll observer ---------- */
+  useEffect(() => {
+    if (!sentinelRef.current || !scrollRef.current) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0].isIntersecting &&
+          hasMore &&
+          !loadingMore
+        ) {
+          const next = skipRef.current + PAGE_SIZE;
+          skipRef.current = next;
+          fetchPage(next, false);
         }
-      }
-    }
-    // 2. Fallback: use first option image (mark as out-of-stock).
-    for (const option of product.options) {
-      if (option.images && option.images.length > 0) {
-        return { imageUrl: option.images[0], outOfStock: true };
-      }
-    }
-  }
-  // 3. Otherwise, use product.images (and check product inventory if available).
-  if (product.images && product.images[0]) {
-    if (product.inventoryData && product.inventoryData.availableQuantity <= 0) {
-      return { imageUrl: product.images[0], outOfStock: true };
-    }
-    return { imageUrl: product.images[0], outOfStock: false };
-  }
-  // 4. Final fallback placeholder.
-  return { imageUrl: '/images/assets/gifs/helmetloadinggif.gif', outOfStock: true };
-};
+      },
+      { root: scrollRef.current, threshold: 0.1 }
+    );
+    obs.observe(sentinelRef.current);
+    return () => obs.disconnect();
+  }, [hasMore, loadingMore, fetchPage]);
 
-function ProductCard({ product }) {
-  const router = useRouter();
-  const productUrl = `/shop/${product.pageSlug || ''}`;
-  const goToProductPage = () => {
-    router.push(productUrl);
-  };
+  /* ---------- Section title ---------- */
+  const sectionTitle =
+    (singleVariantCode || singleCategoryCode) && specCatName
+      ? specCatName
+      : 'Customers also bought';
 
-  const { imageUrl, outOfStock } = getDisplayImage(product);
-  const thumbnail = imageUrl ;
-
+  /* ─────────────────── Render ─────────────────── */
   return (
-    <Box
-      sx={{
-        minWidth: 200,
-        width: 200,
-        border: '1px solid #ddd',
-        backgroundColor: '#fff',
-        pt: '1rem',
-        flexShrink: 0,
-        cursor: 'pointer',
-        ':hover': { boxShadow: 4 },
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        height: 300,
-      }}
-      onClick={goToProductPage}
+    <TopBoughtContext.Provider
+      value={{ singleCategoryCode, singleVariantCode }}
     >
-      <Box
-        sx={{
-          position: 'relative',
-          width: '100%',
-          mb: 1,
-          aspectRatio: '1.617523',
-        }}
-      >
-        {imageUrl ? (
-          <Image
-          width={500}
-          height={500}
-            src={
-              imageUrl.startsWith('/')
-                ? `${baseImageUrl}${imageUrl}`
-                : `${baseImageUrl}/${imageUrl}`
-            }
-            alt={product.name || 'product'}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              boxShadow: '0px 3px 6px rgba(0,0,0,0.36)',
-              filter: outOfStock ? 'grayscale(100%)' : 'none',
-              aspectRatio:'1.617',
-            }}
+      <Box sx={{ width: '100%', px: 1 }}>
+        {loadingInit && !specCatName ? (
+          <Skeleton
+            variant="text"
+            width={200}
+            height={32}
+            sx={{ mb: 1 }}
           />
         ) : (
-          <Box sx={{ width: '100%', height: '100%', bgcolor: '#f0f0f0' }} />
+          <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+            {sectionTitle}
+          </Typography>
+        )}
+
+        {loadingInit ? (
+          <ScrollContainer>
+            {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+              <ProductCardSkeleton key={`skel-${i}`} />
+            ))}
+          </ScrollContainer>
+        ) : (
+          <Fade in>
+            <ScrollContainer ref={scrollRef}>
+              {products.map((p, i) => (
+                <ProductCard key={`${p._id}-${i}`} product={p} />
+              ))}
+              {loadingMore &&
+                Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                  <ProductCardSkeleton key={`load-${i}`} />
+                ))}
+              {hasMore && <Sentinel ref={sentinelRef} />}
+            </ScrollContainer>
+          </Fade>
         )}
       </Box>
-      <Box sx={{ flexGrow: 1, mx: 1 }}>
+    </TopBoughtContext.Provider>
+  );
+}
+
+/* ─────────────────── Cards ─────────────────── */
+const ProductCard = memo(function ProductCard({ product }) {
+  const router = useRouter();
+  const { imageUrl, outOfStock } = getDisplayImage(product);
+
+  const { singleCategoryCode, singleVariantCode } =
+    React.useContext(TopBoughtContext);
+
+  const thumb = useMemo(
+    () =>
+      imageUrl.startsWith('/')
+        ? `${baseImageUrl}${imageUrl}`
+        : `${baseImageUrl}/${imageUrl}`,
+    [imageUrl]
+  );
+
+  const cartPayload = useMemo(
+    () => ({ ...product, thumbnail: thumb }),
+    [product, thumb]
+  );
+
+  const showCategory = !singleCategoryCode && !singleVariantCode;
+
+  return (
+    <Card
+      sx={cardSx}
+      onClick={() =>
+        router.push(`/shop/${product.pageSlug || ''}`)
+      }
+    >
+      <CardMedia
+        sx={{
+          position: 'relative',
+          pt: '75%',
+          filter: outOfStock ? 'grayscale(100%)' : 'none',
+        }}
+      >
+        <Image
+          src={thumb}
+          alt={product.name || 'product'}
+          fill
+          sizes="200px"
+          style={{ objectFit: 'cover' }}
+        />
+      </CardMedia>
+      <CardContent sx={{ pt: 1.5, pb: 2 }}>
         <Typography
-          variant="subtitle1"
-          sx={{ fontWeight: 500, overflow: 'hidden', fontFamily: 'Jost', color: 'rgba(0, 0, 0, 0.5)' }}
+          variant="subtitle2"
+          sx={{ fontFamily: 'Jost', fontWeight: 500 }}
+          noWrap
         >
           {product.name}
         </Typography>
-        {product?.category?.name && (
+        {showCategory && (
           <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ overflow: 'hidden', fontFamily: 'Jost', color: 'rgba(0, 0, 0, 1)' }}
+            variant="caption"
+            sx={{ color: 'rgba(0,0,0,0.5)' }}
+            noWrap
           >
-            {product.category.name}
+            {product.category?.name || product.category}
           </Typography>
         )}
-        <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-          <Typography variant="body2" sx={{ color: 'rgba(0, 0, 0, 0.5)', fontSize: '1.4rem', mr: 0.5 }}>
-            ₹
-          </Typography>
-          <Typography variant="body1" sx={{ color: 'rgba(0, 0, 0, 0.5)', fontWeight: '600' }}>
-            {product.price}
-          </Typography>
-        </Box>
-        <Box
-          sx={{ mt: 1 }}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 600, mt: 0.5 }}
         >
-     
-
-          <AddToCartButton product={{...product,thumbnail }} />
-        </Box>
-      </Box>
-    </Box>
-  );
-}
-
-function LoadMoreCard({ onClick, loading }) {
-  return (
-    <Box
-      sx={{
-        minWidth: 200,
-        width: 200,
-        border: '2px dashed #aaa',
-        p: 2,
-        flexShrink: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
-        ':hover': { borderColor: '#555' },
-        backgroundColor: '#fafafa',
-        height: 300,
-      }}
-      onClick={onClick}
-    >
-      {loading ? (
-        <Skeleton variant="text" width="60%" height={24} />
-      ) : (
-        <Typography variant="button" color="text.secondary">
-          Load More
+          ₹{product.price}
         </Typography>
-      )}
-    </Box>
+        <AddToCartButton
+          fullWidth
+          product={cartPayload}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </CardContent>
+    </Card>
   );
-}
+});
 
-function ProductCardSkeleton() {
+const ProductCardSkeleton = memo(function ProductCardSkeleton() {
+  const { singleCategoryCode, singleVariantCode } =
+    React.useContext(TopBoughtContext);
+  const showCategory = !singleCategoryCode && !singleVariantCode;
+
   return (
-    <Box
-      sx={{
-        width: 200,
-        height: 300,
-        border: '1px solid #ddd',
-        backgroundColor: '#fff',
-        pt: '1rem',
-        flexShrink: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        py: 1,
-      }}
-    >
+    <Card sx={cardSx}>
       <Skeleton
         variant="rectangular"
-        sx={{
-          width: '100%',
-          height: '100%',
-          my: 1,
-          aspectRatio: '1.617523',
-        }}
+        animation="wave"
+        sx={{ pt: '75%' }}
       />
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, px: 1 }}>
+      <CardContent sx={{ pb: 2 }}>
         <Skeleton variant="text" width="80%" height={20} />
-        <Skeleton variant="text" width="60%" height={20} />
-        <Skeleton variant="text" width="60%" height={20} />
+        {showCategory && (
+          <Skeleton variant="text" width="60%" height={18} />
+        )}
         <Skeleton variant="text" width="40%" height={20} />
-        <Skeleton variant="text" width="40%" height={20} />
-      </Box>
-    </Box>
+        <Skeleton
+          variant="rectangular"
+          width="100%"
+          height={36}
+          sx={{ mt: 1 }}
+        />
+      </CardContent>
+    </Card>
+  );
+});
+
+/* ─────────────────── Memo optimisation ─────────────────── */
+function propsAreEqual(prev, next) {
+  const prevCats = Array.isArray(prev.subCategories)
+    ? prev.subCategories.join('|')
+    : '';
+  const nextCats = Array.isArray(next.subCategories)
+    ? next.subCategories.join('|')
+    : '';
+  return (
+    prevCats === nextCats &&
+    prev.currentProductId === next.currentProductId &&
+    prev.singleVariantCode === next.singleVariantCode &&
+    prev.singleCategoryCode === next.singleCategoryCode
   );
 }
 
+const TopBoughtProducts = memo(TopBoughtProductsBase, propsAreEqual);
+
+export { TopBoughtProducts };
 export default TopBoughtProducts;

@@ -3,7 +3,7 @@ import { styled } from '@mui/system';
 export const PaginationStyles = styled('div')({
   display: 'flex',
   justifyContent: 'center',
-  marginBottom: '2rem',
+  paddingBottom: '2rem',
   marginTop: '2rem',
   '& .MuiPaginationItem-root': {
     color: 'black',
@@ -45,7 +45,7 @@ export const PaginationStyles = styled('div')({
 export const PaginationStylesForPhone = styled('div')({
   display: 'flex',
   justifyContent: 'center',
-  marginBottom: '1.5rem',
+  paddingBottom: '1.5rem',
   marginTop: '1.5rem',
   '& .MuiPaginationItem-root': {
     color: 'black',
