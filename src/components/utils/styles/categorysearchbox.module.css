@@ -1,8 +1,17 @@
 .searchBoxContainer {
     display: flex;
-    justify-content: center;
-    margin: 40px auto;
-    overflow: hidden;
+    align-items: center;
+    border: 2px solid #000;
+    border-radius: 12px;
+    padding: 0.5rem 2rem;
+    width: 95%;
+    margin: 1rem auto;
+    background-color: #fff;
+    box-sizing: border-box;
+    transition: all 0.3s ease; /* smooth resizing */
+    position: sticky;
+    top: 0;
+    left: 0;
 }
 
 .searchBoxSubContainer {
@@ -11,12 +20,10 @@
     border-radius: 0.8rem;
     overflow: hidden;
     background-color: white;
-    border: 1px solid black;
-    padding:0.5rem 2rem;
-    width: 96%;
+    width: 100vw;
     margin: auto;
     max-width: 1000px;
-
+    margin-right: 30px;
 
 }
 
@@ -25,8 +32,8 @@ max-width: 900px;
 }
 
 .searchIcon {
-    margin-left: 5px;
-    margin-right: 20px;
+    margin-left:-10px;
+    margin-right: 10px;
     width: 1.5rem;
     height: auto;
     transform: translateY(10%);
@@ -72,7 +79,6 @@ max-width: 900px;
     .searchBoxSubContainer{
         padding: 1rem;
     }
-
 }
 
 

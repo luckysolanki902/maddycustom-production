@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Typewriter from 'typewriter-effect';
 import { useDispatch } from 'react-redux';
 import { openSearchDialog } from '@/store/slices/uiSlice';
+import { useMediaQuery } from '@mui/material';
 import searchStyles from './styles/categorysearchbox.module.css';
 
 export default function ChooseCategory() {
@@ -13,7 +14,12 @@ export default function ChooseCategory() {
 
   const [searchText, setSearchText] = useState('');
 
-  // Hard-code or omit if you want no placeholders:
+  // This hook returns true on screens up to 1000px wide
+  const isMobile = useMediaQuery("(max-width: 1000px)");
+
+  // Hide component on larger screens
+  if (!isMobile) return null;
+
   const typewriterStrings = [
     'Window Pillar Wraps',
     'Car Fresheners',
@@ -22,12 +28,10 @@ export default function ChooseCategory() {
     'Tank Wraps',
   ];
 
-  // On focus => open the dialog
   const handleFocus = () => {
     dispatch(openSearchDialog());
   };
 
-  // Just in case user types in it 
   const handleChange = (e) => {
     setSearchText(e.target.value);
   };
@@ -57,10 +61,6 @@ export default function ChooseCategory() {
               alignItems: 'center',
             }}
           >
-            {/**
-             * Show typewriter if user hasn't typed anything,
-             * i.e. searchText is empty
-             */}
             {searchText === '' && (
               <Typewriter
                 options={{
@@ -73,15 +73,9 @@ export default function ChooseCategory() {
               />
             )}
 
-            {/**
-             * Make it an <input> so it can truly focus/click,
-             * but we keep it visually “transparent”.
-             */}
             <div
               type="text"
               spellCheck="false"
-            //   onClick={handleFocus}
-            //   onChange={handleChange}
               value={searchText}
               className={`${searchStyles.inputField} ${searchStyles.nonDialogInputField}`}
               style={{

@@ -1,0 +1,96 @@
+/* ProductCategoryBox.module.css */
+
+.cardContainer {
+   width: 100vw;
+    overflow-x: hidden;
+    padding: 1rem;
+    margin: auto;
+    margin-top: 50px;
+    margin-bottom: 0;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+  .cardImg{
+    width: auto;
+    height: 40px;
+    margin-right: 0.5rem;
+  }
+  
+  .cardRow {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    overflow-x: auto;
+    align-items: center;
+    justify-content: flex-start;
+    width: fit-content;
+  }
+  .cardRow::-webkit-scrollbar{
+display: none;
+  }
+  .cardLink {
+    text-decoration: none;
+    color: inherit;
+  }
+  
+  .card {
+    width: fit-content;
+    height: 50px;
+    background-color: #555555;
+    color: #ffffff;
+    padding: 0.7rem 2rem;
+    border-radius: 3px;
+    font-size: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: sans-serif;
+    text-wrap: nowrap;
+    word-wrap: nowrap;
+    word-break: keep-all;
+  }
+  
+  .cardText {
+    font-size: 1rem;
+    padding: 0;
+    font-weight: 300;
+  }
+  
+  /* Mobile: Activate Swiper slider for screens up to 1000px */
+  @media (max-width: 1000px) {
+    .cardContainer {
+      align-items: center;
+    }
+    
+    .cardRow {
+      align-items: center;
+      width: 100%;
+    }
+    .cardText {
+      font-size: 1rem;
+      padding: 0;
+      font-weight: 300;
+    }
+  }
+  @media(max-width:768px){
+    .card {
+     padding: 0.7rem 0.7rem;
+    }
+    }
+  
+  
+  /* Extra media queries for very small screens (if needed) */
+  @media (max-width:480px) {
+   
+    .cardText {
+      font-size: 1rem;
+      padding: 0;
+      font-weight: 300;
+    }
+  }
+  
+

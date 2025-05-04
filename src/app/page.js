@@ -20,8 +20,7 @@ import ProductSlider from '@/components/showcase/sliders/ProductSlider';
 import FeaturedProducts from '@/components/page-sections/homepage/FeaturedProducts';
 import { Box, Typography } from '@mui/material';
 import KeychainImageGrid from '@/components/page-sections/homepage/KeychainImageGrid';
-import ProductCategoryBox from '@/components/page-sections/homepage/ProductCategoryBox';
-import MobileSearchBox from '@/components/page-sections/homepage/MobileSearchBox';
+import ProductCategorySlider from '@/components/page-sections/homepage/ProductCategorySlider';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -54,16 +53,16 @@ const HomePage = async () => {
     <>
 
       <main>
-        <MobileSearchBox/>
+        <div style={{position:'sticky',top:0,left:0}}><CategorySearchBox categories={categories} variants={variants} /></div>
+        
+        
      {/* Render ProductCategoryBox above HeroSection only on screens larger than 1200px */}
-     <ProductCategoryBox position="aboveHero" />
+     <ProductCategorySlider position="aboveHero" />
         {/* Logo and Main Carousel */}
         <HeroSection />
-        <ProductCategoryBox position="belowHero" />
+        <ProductCategorySlider position="belowHero" />
 
         {/* SearchBox */}
-        <div className={styles.chooseDiv}>CHOOSE</div>
-        <CategorySearchBox categories={categories} variants={variants} />
 
         {/* Category cards like Helmet, Tank, Bonnet to choose from */}
         <ChooseCategory />
