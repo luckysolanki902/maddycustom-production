@@ -32,6 +32,7 @@ import TopBoughtProducts from '@/components/showcase/products/TopBoughtProducts'
 /* Smooth “Top-Bought” fade-in/slide-up wrapper                        */
 /* (hoisted so it stays mounted across re-renders)                    */
 /* ------------------------------------------------------------------ */
+// eslint-disable-next-line react/display-name
 const AnimatedTopBought = memo(({ singleVariantCode }) => {
   const [isMounted, setIsMounted] = useState(false);
 
@@ -48,7 +49,9 @@ const AnimatedTopBought = memo(({ singleVariantCode }) => {
 
   return (
     <animated.div style={{ ...spring, willChange: 'transform, opacity' }}>
+      <div className={styles.topBoughtContainer}>
       <TopBoughtProducts singleVariantCode={singleVariantCode} />
+      </div>
     </animated.div>
   );
 });
