@@ -457,7 +457,7 @@ export default function ProductIdPage({
               <>
                 {product.specificCategory === '673aea6778c57ec01acae635' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
                   <Image
-                    src={`${imageBaseUrl}/assets/posters/bikebundlephone.png`}
+                    src={`${imageBaseUrl}/assets/posters/tankbundlephone.png`}
                     alt="Bike Bundle offer PC"
                     width={1024}
                     height={200}
@@ -490,7 +490,7 @@ export default function ProductIdPage({
               <>
                 {product.specificCategory === '673aea6778c57ec01acae635' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
                   <Image
-                    src={`${imageBaseUrl}/assets/posters/bikebundlepc.png`}
+                    src={`${imageBaseUrl}/assets/posters/tankbundlepc.png`}
                     alt="Bike Bundle offer PC"
                     width={1024}
                     height={200}
