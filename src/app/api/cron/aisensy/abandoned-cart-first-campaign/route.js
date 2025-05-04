@@ -79,7 +79,7 @@ export async function GET(req) {
 
       const result = await sendWhatsAppMessage({
         user: { _id: userId, name: userName, phoneNumber },
-        campaignName: 'abandonedcart_rem1',
+        campaignName: 'abandoned_rem',
         orderId,
         // templateParams: [userName || 'Friend'],
         media,
