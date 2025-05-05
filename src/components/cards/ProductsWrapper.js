@@ -67,6 +67,7 @@ const ProductsWrapper = ({
           hideCartButton={hideCartButton}
           hidePrice={hidePrice}
           offerTaglineText={offerTaglineText}
+          pageType={'products-list'}
         />
       ))}
     </div>

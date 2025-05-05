@@ -380,11 +380,12 @@ const OrderForm = ({
             name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
               ? item.productDetails.category?.name.slice(0, -1)
               : item.productDetails.category?.name
-              }`,
+            }`,
             quantity: item.quantity,
             priceAtPurchase: item.productDetails.price,
             sku: item.productDetails.selectedOption ? item.productDetails.selectedOption.sku : item.productDetails.sku,
             thumbnail: item.productDetails.thumbnail,
+            insertionDetails: item.insertionDetails || {} // Add insertion details
           })),
           paymentModeId: paymentModeConfig._id,
           address: {

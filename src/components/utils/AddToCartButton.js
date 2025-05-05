@@ -1,5 +1,3 @@
-
-
 // src/components/common-utils/AddToCartButton.js
 'use client';
 
@@ -17,7 +15,7 @@ import {
 } from '../../store/slices/cartSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
 
-export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, smaller = false }) {
+export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, smaller = false, insertionDetails = {} }) {
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
   const cartItem = cartItems.find((item) => item.productId === product._id);
@@ -77,7 +75,11 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     if (isLimited && (currentQuantity + 1) > maxAllowed) return;
 
     setLastAction('increment');
-    dispatch(addItem({ productId: product._id, productDetails: product }));
+    dispatch(addItem({ 
+      productId: product._id, 
+      productDetails: product,
+      insertionDetails 
+    }));
 
     // Track AddToCart event
     try {

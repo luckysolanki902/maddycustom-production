@@ -1,6 +1,3 @@
-
-
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -23,7 +20,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useMediaQuery } from '@mui/material';
 
-export default function AddToCartButton({ product, isBlackButton = false, isLarge = false }) {
+export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, insertionDetails = {} }) {
   const isSmallDevice = useMediaQuery('(max-width: 1000px)');
   const dispatch = useDispatch();
   const router = useRouter();
@@ -79,7 +76,11 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     if (isLimited && (currentQuantity + 1) > maxAllowed) return;
 
     setLastAction('increment');
-    dispatch(addItem({ productId: product._id, productDetails: product }));
+    dispatch(addItem({ 
+      productId: product._id, 
+      productDetails: product,
+      insertionDetails 
+    }));
 
     // Track AddToCart event
     try {
