@@ -81,6 +81,7 @@ function TopBoughtProductsBase({
   singleVariantCode = '',
   singleCategoryCode = '',
   pageType = '', // Added pageType prop
+  hideHeading = false,
 }) {
   const router = useRouter();
   const scrollRef = useRef(null);
@@ -234,17 +235,21 @@ function TopBoughtProductsBase({
     value={{ singleCategoryCode, singleVariantCode, insertionDetails }}
     >
       <Box sx={{ width: '100%', px: 1 }}>
-        {loadingInit && !specCatName ? (
-          <Skeleton
-            variant="text"
-            width={200}
-            height={32}
-            sx={{ mb: 1 }}
-          />
-        ) : (
-          <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
-            {sectionTitle}
-          </Typography>
+        {!hideHeading && (
+          <>
+            {loadingInit && !specCatName ? (
+              <Skeleton
+                variant="text"
+                width={200}
+                height={32}
+                sx={{ mb: 1 }}
+              />
+            ) : (
+              <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+                {sectionTitle}
+              </Typography>
+            )}
+          </>
         )}
 
         {loadingInit ? (
