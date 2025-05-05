@@ -66,6 +66,8 @@ export default function ProductsPage({
   uniqueTags,
 }) {
   /* ------------------------ state ------------------------ */
+  const SHOW_TOP_BOUGHT = category.specificCategoryCode !== 'tw'; // Controls visibility of TopBought section and product distribution
+
   const [tagFilter, setTagFilter] = useState(null);
   const [sortBy, setSortBy] = useState('default');
   const [currentPage, setCurrentPage] = useState(initialPage || 1);
@@ -138,7 +140,7 @@ export default function ProductsPage({
   );
 
   const [firstHalf, secondHalf] = useMemo(() => {
-    if (currentPage !== 1) return [currentProducts, []];
+    if (!SHOW_TOP_BOUGHT || currentPage !== 1) return [currentProducts, []];
     const mid = Math.ceil(currentProducts.length / 2);
     return [currentProducts.slice(0, mid), currentProducts.slice(mid)];
   }, [currentProducts, currentPage]);
@@ -259,16 +261,18 @@ export default function ProductsPage({
                 hideVideo={!showVideo}
               />
 
-              <AnimatedTopBought singleVariantCode={recommendedKey} />
+              {SHOW_TOP_BOUGHT && <AnimatedTopBought singleVariantCode={recommendedKey} />}
 
-              <ProductsWrapper
-                showLayout2={showLayout2}
-                variant={variant}
-                category={category}
-                products={secondHalf}
-                isLoading={isLoading}
-                hideVideo
-              />
+              {SHOW_TOP_BOUGHT && secondHalf.length > 0 && (
+                <ProductsWrapper
+                  showLayout2={showLayout2}
+                  variant={variant}
+                  category={category}
+                  products={secondHalf}
+                  isLoading={isLoading}
+                  hideVideo
+                />
+              )}
             </>
           ) : (
             <ProductsWrapper
@@ -315,7 +319,7 @@ export default function ProductsPage({
             </PaginationStyles>
           )}
 
-          {currentPage !== 1 && (
+          {currentPage !== 1 && SHOW_TOP_BOUGHT && (
             <AnimatedTopBought singleVariantCode={recommendedKey} />
           )}
 
