@@ -145,7 +145,7 @@ export default function ProductIdPage({
   useEffect(() => {
     if (['fbw', 'hel'].includes(category.specificCategoryCode)) {
       setIsDisabled(true);
-      router.push('/');
+      // router.push('/');
     }
     else {
     }
@@ -327,7 +327,7 @@ export default function ProductIdPage({
             width: '100vw',
             height: '100vh',
             backgroundColor: 'rgb(255, 255, 255)',
-            zIndex: 1000,
+            zIndex: 2,
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
@@ -346,10 +346,33 @@ export default function ProductIdPage({
             <span style={{ color: 'red' }}>Out of stock!</span>
             <br />
             But you might find something you <span style={{ color: '#ff69b4' }}>love!</span> <br />
-           
+
           </Typography>
-          <Typography>  <span style={{margin:'2rem'}}>redirecting to homepage</span></Typography>
+          <MemoizedTopBoughtProducts
+            hideHeading={true}
+            pageType='product-id-page'
+          />
+          <div>
+            or
+          </div>
+          <Link href={'/'} style={{ textDecoration: 'none' }}>
+            <Typography
+              variant="button"
+              sx={{
+                color: 'black',
+                fontSize: '1.1rem',
+                fontWeight: 600,
+                textTransform: 'none',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+              }}
+            >
+              Explore Homepage
+            </Typography>
+          </Link>
         </Box>}
+     { !isDisabled &&  <>
       <div className={styles.container}>
         <div
           className={styles.imageGallery}
@@ -609,6 +632,8 @@ export default function ProductIdPage({
         fetchReviewSource={category.reviewFetchSource}
         variant={variant}
       />
+        </>}
+
     </div>
   );
 }
