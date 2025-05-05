@@ -20,6 +20,7 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Box, Typography } from "@mui/material";
 
 // Memoize components that do not need to update on option change
 const MemoizedImageGallery = memo(ImageGallery);
@@ -76,7 +77,7 @@ export default function ProductIdPage({
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const pathname = usePathname();
   const router = useRouter();
-  const [isDisabled, setIsDisabled]  = useState(true);
+  const [isDisabled, setIsDisabled] = useState(false);
   // now remove the last slug that's product id, to get link to products list page
   const productListPageLink = pathname.split("/").slice(0, -1).join("/");
   // Memoize the product list page link to avoid unnecessary re-renders
@@ -143,10 +144,10 @@ export default function ProductIdPage({
 
   useEffect(() => {
     if (['fbw', 'hel'].includes(category.specificCategoryCode)) {
+      setIsDisabled(true);
       router.push('/');
     }
     else {
-      setIsDisabled(false);
     }
   }, [category, router]);
 
@@ -316,6 +317,39 @@ export default function ProductIdPage({
 
   return (
     <div style={{ paddingBottom: "6rem" }}>
+      {
+        isDisabled &&
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgb(255, 255, 255)',
+            zIndex: 1000,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            flexDirection: 'column',
+          }}
+        >
+          <Typography
+            variant="h5"
+            sx={{
+              textAlign: 'center',
+              padding: '1rem',
+              borderRadius: '10px',
+              height: 'fit-content',
+            }}
+          >
+            <span style={{ color: 'red' }}>Out of stock!</span>
+            <br />
+            But you might find something you <span style={{ color: '#ff69b4' }}>love!</span> <br />
+           
+          </Typography>
+          <Typography>  <span style={{margin:'2rem'}}>redirecting to homepage</span></Typography>
+        </Box>}
       <div className={styles.container}>
         <div
           className={styles.imageGallery}
