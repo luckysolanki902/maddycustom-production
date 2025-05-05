@@ -59,10 +59,10 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   let maxAllowed = Infinity;
   let isLimited = false;
   if (inventoryData) {
-    
+
     const { availableQuantity, reorderLevel } = inventoryData;
-    maxAllowed=Math.floor(availableQuantity/2);
-    isLimited=true
+    maxAllowed = Math.floor(availableQuantity / 2);
+    isLimited = true
     if (availableQuantity < reorderLevel) {
       isLimited = true;
       maxAllowed = Math.min(availableQuantity, Math.floor(0.1 * reorderLevel));
@@ -76,10 +76,10 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     if (isLimited && (currentQuantity + 1) > maxAllowed) return;
 
     setLastAction('increment');
-    dispatch(addItem({ 
-      productId: product._id, 
+    dispatch(addItem({
+      productId: product._id,
       productDetails: product,
-      insertionDetails 
+      insertionDetails
     }));
 
     // Track AddToCart event
@@ -114,6 +114,10 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     } else {
       dispatch(decrementQuantity({ productId: product._id }));
     }
+  };
+  const insertionDetailsForOrderNow = {
+    ...insertionDetails,
+    component: 'productDetails-buyNow'
   };
 
   const handleOrderNow = () => {
@@ -153,8 +157,8 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
               >
                 {cartItem.quantity}
               </animated.div>
-              <button 
-                onClick={handleIncrement} 
+              <button
+                onClick={handleIncrement}
                 className={styles.increment}
                 disabled={isLimited && currentQuantity >= maxAllowed}
                 title={isLimited && currentQuantity >= maxAllowed ? "" : ""}
@@ -168,8 +172,8 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
               )} */}
             </div>
           ) : (
-            <div 
-              onClick={handleAdd} 
+            <div
+              onClick={handleAdd}
               className={styles.addToCartButton}
               // Disable if in limited mode and adding one exceeds allowed (i.e. when maxAllowed is 0)
               style={isLimited && (currentQuantity + 1) > maxAllowed ? { opacity: 0.5, pointerEvents: 'none' } : {}}
