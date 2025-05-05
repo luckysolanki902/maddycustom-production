@@ -84,7 +84,7 @@ export default function ProductIdPage({
   const memoizedProductListPageLink = useMemo(() => productListPageLink, [productListPageLink]);
 
   const insertionDetails = {
-    component: 'productDetails',
+    component: 'productDetails-AddToCart',
     pageType: 'product-id-page'
   };
 
