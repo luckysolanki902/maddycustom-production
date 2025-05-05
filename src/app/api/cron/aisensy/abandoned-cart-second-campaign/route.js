@@ -1,4 +1,4 @@
-// src/app/api/cron/aisensy/abandoned-cart-second/route.js
+// src/app/api/cron/aisensy/abandoned-cart-second-campaign/route.js
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
@@ -98,7 +98,7 @@ export async function GET(req) {
         user: { _id: userId, name: userName, phoneNumber },
         campaignName: 'abandoned_rem2',
         orderId,
-        // templateParams: [userName || 'Friend'],
+        templateParams: [userName.split(' ')[0] || 'Friend'],
         buttons,
         media,
       });
