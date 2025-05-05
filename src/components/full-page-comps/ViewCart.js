@@ -14,15 +14,15 @@ import {
 } from '@/store/slices/orderFormSlice';
 
 /* ---------------- UI + util imports (unchanged) ------------------- */
-import styles            from './styles/viewcart.module.css';
-import ViewCartHeader    from '../page-sections/viewcart/ViewCartHeader';
-import CartList          from '../page-sections/viewcart/CartList';
-import PriceDetails      from '../page-sections/viewcart/PriceDetails';
-import PaymentModes      from '../page-sections/viewcart/PaymentModes';
-import Footer            from '../page-sections/viewcart/Footer';
-import ApplyCoupon       from '../dialogs/ApplyCoupon';
-import OrderForm         from '../dialogs/OrderForm';
-import CustomSnackbar    from '@/components/notifications/CustomSnackbar';
+import styles from './styles/viewcart.module.css';
+import ViewCartHeader from '../page-sections/viewcart/ViewCartHeader';
+import CartList from '../page-sections/viewcart/CartList';
+import PriceDetails from '../page-sections/viewcart/PriceDetails';
+import PaymentModes from '../page-sections/viewcart/PaymentModes';
+import Footer from '../page-sections/viewcart/Footer';
+import ApplyCoupon from '../dialogs/ApplyCoupon';
+import OrderForm from '../dialogs/OrderForm';
+import CustomSnackbar from '@/components/notifications/CustomSnackbar';
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
 import {
   calculateTotalQuantity,
@@ -31,10 +31,10 @@ import {
   calculateTotalCostAfterDiscount,
 } from '@/lib/utils/cartCalculations';
 import DiscountOutlinedIcon from '@mui/icons-material/DiscountOutlined';
-import CheckCircleIcon       from '@mui/icons-material/CheckCircle';
-import DiscountIcon          from '@mui/icons-material/Discount';
-import ChevronRightIcon      from '@mui/icons-material/ChevronRight';
-import Confetti              from 'react-confetti';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DiscountIcon from '@mui/icons-material/Discount';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import Confetti from 'react-confetti';
 
 /* ---------------- helper ------------------------------------------------ */
 const isOfferApplicable = (offer, totalCost, isFirstOrder = false) =>
@@ -42,107 +42,107 @@ const isOfferApplicable = (offer, totalCost, isFirstOrder = false) =>
     if (c.type === 'cart_value') {
       const v = totalCost, x = c.value;
       return (c.operator === '>=' && v >= x) || (c.operator === '>' && v > x)
-          || (c.operator === '<' && v < x) || (c.operator === '<=' && v <= x)
-          || (c.operator === '==' && v === x);
+        || (c.operator === '<' && v < x) || (c.operator === '<=' && v <= x)
+        || (c.operator === '==' && v === x);
     }
     if (c.type === 'first_order') return isFirstOrder === c.value;
     return true;
   });
 
 const flattenCart = cartItems => cartItems.map(i => ({
-  productId       : i.productId || i.productDetails._id,
-  quantity        : i.quantity,
-  price           : i.price ?? i.productDetails.price,
+  productId: i.productId || i.productDetails._id,
+  quantity: i.quantity,
+  price: i.price ?? i.productDetails.price,
   specificCategory: i.specificCategory ?? i.productDetails.specificCategory,
 }));
 
 /* ======================================================================= */
-export default function ViewCart () {
+export default function ViewCart() {
   const dispatch = useDispatch();
-  const router   = useRouter();
+  const router = useRouter();
 
   /* ---------- redux --------------------------------------------------- */
-  const cartItems   = useSelector(s => s.cart.items);
-  const orderForm   = useSelector(s => s.orderForm);
+  const cartItems = useSelector(s => s.cart.items);
+  const orderForm = useSelector(s => s.orderForm);
   const couponRedux = orderForm.couponApplied;
-
+  console.log('cartItems', cartItems);
   /* ---------- coupon local mirror ------------------------------------ */
   const [couponState, setCouponState] = useState({
-    couponApplied : false, couponName:'', couponDiscount:0, discountType:'', offer:null,
+    couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null,
   });
   useEffect(() => {
     if (couponRedux.couponCode) {
       setCouponState({
-        couponApplied : true,
-        couponName    : couponRedux.couponCode,
+        couponApplied: true,
+        couponName: couponRedux.couponCode,
         couponDiscount: couponRedux.discountAmount,
-        discountType  : couponRedux.discountType,
-        offer         : couponRedux.offer,
+        discountType: couponRedux.discountType,
+        offer: couponRedux.offer,
       });
     } else {
-      setCouponState(p => ({ ...p, couponApplied:false }));
+      setCouponState(p => ({ ...p, couponApplied: false }));
     }
   }, [couponRedux]);
 
   /* ---------- misc ui / state ---------------------------------------- */
-  const [snackbar,  setSnackbar]      = useState({ open:false, message:'', severity:'success' });
-  const [dlgCoupon, setDlgCoupon]     = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [dlgCoupon, setDlgCoupon] = useState(false);
   const [paymentModes, setPaymentModes] = useState([]);
-  const [selectedPM,  setSelectedPM]    = useState(null);
-  const [loadingPM,   setLoadingPM]     = useState(true);
-  const [dlgOrder,    setDlgOrder]      = useState(false);
+  const [selectedPM, setSelectedPM] = useState(null);
+  const [loadingPM, setLoadingPM] = useState(true);
+  const [dlgOrder, setDlgOrder] = useState(false);
 
   const [lockedCoupon, setLockedCoupon] = useState(null);
-  const [lockedShort , setLockedShort]  = useState(0);
-  const [nowCoupon,    setNowCoupon]    = useState(null);
+  const [lockedShort, setLockedShort] = useState(0);
+  const [nowCoupon, setNowCoupon] = useState(null);
 
-  const [confettiRun, setConfettiRun]   = useState(false);
-  const [viewport,    setViewport]      = useState({ w:0, h:0 });
+  const [confettiRun, setConfettiRun] = useState(false);
+  const [viewport, setViewport] = useState({ w: 0, h: 0 });
 
-  const lastAutoRef = useRef({ code:'', type:'' });
-  const FIVE_MIN    = 5*60*1000;
+  const lastAutoRef = useRef({ code: '', type: '' });
+  const FIVE_MIN = 5 * 60 * 1000;
   const isFirstOrder = false;  // hook into your user meta when ready
 
   /* ---------- window size for confetti ------------------------------- */
-  useEffect(() => { if (typeof window !== 'undefined') setViewport({ w:window.innerWidth, h:window.innerHeight }); }, []);
+  useEffect(() => { if (typeof window !== 'undefined') setViewport({ w: window.innerWidth, h: window.innerHeight }); }, []);
 
   /* ---------- cart totals ------------------------------------------- */
-  const qty    = calculateTotalQuantity(cartItems);
+  const qty = calculateTotalQuantity(cartItems);
   const subTot = calculateTotalCostBeforeDiscount(cartItems);
-  const disc   = calculateDiscountAmount(subTot, couponState);
-  const grand  = calculateTotalCostAfterDiscount(subTot, disc);
+  const disc = calculateDiscountAmount(subTot, couponState);
+  const grand = calculateTotalCostAfterDiscount(subTot, disc);
 
   const deliveryCost = 0;
-  const extraCharge  = selectedPM?.extraCharge || 0;
-  const totalPay     = grand + deliveryCost + extraCharge;
+  const extraCharge = selectedPM?.extraCharge || 0;
+  const totalPay = grand + deliveryCost + extraCharge;
 
-  const snack = (m,s='success') => setSnackbar({ open:true, message:m, severity:s });
+  const snack = (m, s = 'success') => setSnackbar({ open: true, message: m, severity: s });
   const dispatchCoupon = p => dispatch(setCouponApplied({ ...p }));
 
   /* ---------- coupon apply / remove --------------------------------- */
-  const applyCoupon = (code, amount, type, offer, fromAuto=false) => {
-    if (amount <= 0) { snack('Offer conditions are not met.','warning'); return; }
+  const applyCoupon = (code, amount, type, offer, fromAuto = false) => {
+    if (amount <= 0) { snack('Offer conditions are not met.', 'warning'); return; }
     if (type !== 'bundle' && !isOfferApplicable(offer, subTot, isFirstOrder)) {
-      snack('Offer conditions are not met.','warning'); return;
+      snack('Offer conditions are not met.', 'warning'); return;
     }
 
-    setCouponState({ couponApplied:true, couponName:code, couponDiscount:amount, discountType:type, offer });
-    dispatchCoupon({ couponCode:code, discountAmount:amount, discountType:type, offer });
+    setCouponState({ couponApplied: true, couponName: code, couponDiscount: amount, discountType: type, offer });
+    dispatchCoupon({ couponCode: code, discountAmount: amount, discountType: type, offer });
 
-    if (!fromAuto) dispatch(setManualCoupon({ couponCode:code }));
+    if (!fromAuto) dispatch(setManualCoupon({ couponCode: code }));
     dispatch(resetAutoApplyDisabled());
     if (fromAuto) lastAutoRef.current = { code, type };
 
     setConfettiRun(true);
-    setTimeout(()=>setConfettiRun(false),3500);
+    setTimeout(() => setConfettiRun(false), 3500);
     snack('Coupon applied successfully!');
   };
 
-  const removeCoupon = (showMsg=true) => {
-    setCouponState({ couponApplied:false, couponName:'', couponDiscount:0, discountType:'', offer:null });
-    dispatchCoupon({ couponCode:'', discountAmount:0, discountType:'', offer:null });
+  const removeCoupon = (showMsg = true) => {
+    setCouponState({ couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null });
+    dispatchCoupon({ couponCode: '', discountAmount: 0, discountType: '', offer: null });
     dispatch(setManualCoupon(null));
-    if (showMsg) snack('Coupon removed.','warning');
+    if (showMsg) snack('Coupon removed.', 'warning');
   };
 
   /* ---------- payment modes fetch ----------------------------------- */
@@ -153,7 +153,7 @@ export default function ViewCart () {
         setPaymentModes(data.data);
         setSelectedPM(data.data.find(m => m.name === 'online') || data.data[0]);
       } catch {
-        snack('Failed to fetch payment modes','error');
+        snack('Failed to fetch payment modes', 'error');
       } finally { setLoadingPM(false); }
     })();
   }, []);
@@ -163,35 +163,35 @@ export default function ViewCart () {
     if (!subTot) { setLockedCoupon(null); setNowCoupon(null); return; }
     (async () => {
       try {
-        const { data } = await axios.get('/api/checkout/bestcoupon',{ params:{ cartValue:subTot } });
+        const { data } = await axios.get('/api/checkout/bestcoupon', { params: { cartValue: subTot } });
         const { bestOffer, shortfall } = data;
         if (shortfall === 0) {
-          setNowCoupon(bestOffer);  setLockedCoupon(null);
+          setNowCoupon(bestOffer); setLockedCoupon(null);
         } else {
           setLockedCoupon(bestOffer); setLockedShort(shortfall); setNowCoupon(null);
         }
-      } catch {/* ignore */}
+      } catch {/* ignore */ }
     })();
   }, [subTot]);
 
   /* ---------- AUTO‑APPLY -------------------------------------------- */
   const { autoApplyDisabled, autoApplyDisabledAt, manualCoupon } = orderForm;
   const blocked = autoApplyDisabled && autoApplyDisabledAt &&
-                  Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
+    Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
 
   useEffect(() => {
     if (blocked || manualCoupon || couponState.couponApplied || !qty) return;
 
     (async () => {
       try {
-        const res = await fetch('/api/checkout/coupons/apply',{
-          method :'POST',
-          headers:{ 'Content-Type':'application/json' },
-          body   : JSON.stringify({
-            auto       : true,
-            totalCost  : subTot,
+        const res = await fetch('/api/checkout/coupons/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            auto: true,
+            totalCost: subTot,
             isFirstOrder,
-            cartItems  : flattenCart(cartItems),
+            cartItems: flattenCart(cartItems),
           }),
         });
         const data = await res.json();
@@ -206,35 +206,35 @@ export default function ViewCart () {
   }, [qty, subTot, cartItems, couponState.couponApplied, blocked, manualCoupon]); // eslint-disable-line
 
   /* ---------- RE‑VALIDATE on cart changes --------------------------- */
-  const revalidateCoupon = async (silent=false) => {
+  const revalidateCoupon = async (silent = false) => {
     if (!couponState.couponApplied) return true;
 
     try {
-      const res  = await fetch('/api/checkout/coupons/apply',{
-        method :'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body   : JSON.stringify({
-          code      : couponState.couponName,
-          totalCost : subTot,
+      const res = await fetch('/api/checkout/coupons/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: couponState.couponName,
+          totalCost: subTot,
           isFirstOrder,
-          cartItems : flattenCart(cartItems),
+          cartItems: flattenCart(cartItems),
         }),
       });
       const data = await res.json();
 
       if (!res.ok || !data.valid || data.discountValue <= 0) {
         removeCoupon(!silent);
-        if (!silent) snack(`Coupon ${couponState.couponName} no longer valid.`,'warning');
+        if (!silent) snack(`Coupon ${couponState.couponName} no longer valid.`, 'warning');
         return false;
       }
 
       if (data.discountValue !== couponState.couponDiscount) {
-        setCouponState(p => ({ ...p, couponDiscount:data.discountValue }));
-        dispatchCoupon({ ...couponRedux, discountAmount:data.discountValue });
+        setCouponState(p => ({ ...p, couponDiscount: data.discountValue }));
+        dispatchCoupon({ ...couponRedux, discountAmount: data.discountValue });
       }
       return true;
     } catch {
-      if (!silent) snack('Could not verify coupon.','error');
+      if (!silent) snack('Could not verify coupon.', 'error');
       return false;
     }
   };
@@ -249,22 +249,22 @@ export default function ViewCart () {
   };
 
   /* ---------- memo for suggestions ---------------------------------- */
-  const topSub = useMemo(()=>[...new Set(cartItems.map(i=>i.productDetails.subCategory))],[cartItems]);
-  const topIds = useMemo(()=>cartItems.map(i=>i.productDetails._id).join(','),[cartItems]);
+  const topSub = useMemo(() => [...new Set(cartItems.map(i => i.productDetails.subCategory))], [cartItems]);
+  const topIds = useMemo(() => cartItems.map(i => i.productDetails._id).join(','), [cartItems]);
 
   /* -------------------  JSX (UI unchanged)  ------------------------- */
   return (
     <>
       {/* confetti hidden for brevity */}
-      <div className={styles.container} style={{ position:'relative' }}>
+      <div className={styles.container} style={{ position: 'relative' }}>
         <header className={styles.headerCont0}>
-          <ViewCartHeader totalQuantity={qty} onBack={()=>router.back()}/>
+          <ViewCartHeader totalQuantity={qty} onBack={() => router.back()} />
         </header>
 
         {qty > 0 && (
           <div className={styles.maincomp}>
             <div className={styles.blueCont}>
-              <CartList cartItems={cartItems} onRemove={id=>dispatch(removeItem({ productId:id }))}/>
+              <CartList cartItems={cartItems} onRemove={id => dispatch(removeItem({ productId: id }))} />
             </div>
 
             <div className={styles.blueCont2}>
@@ -277,14 +277,14 @@ export default function ViewCart () {
                       : lockedCoupon.discountValue}{' '}
                     off coupon
                   </span>
-                  <DiscountOutlinedIcon sx={{ color:'#4dff68', fontSize:40 }}/>
+                  <DiscountOutlinedIcon sx={{ color: '#4dff68', fontSize: 40 }} />
                 </div>
               )}
 
               <div className={styles.currentAndAllCoupons}>
                 {couponState.couponApplied && (
                   <div className={styles.couponSaveBanner}>
-                    <CheckCircleIcon sx={{ color:'#1bde6a', fontSize:27 }}/>
+                    <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27 }} />
                     <span>
                       <strong>You saved</strong> ₹{couponState.couponDiscount}{' '}
                       {couponState.discountType === 'bundle'
@@ -297,7 +297,7 @@ export default function ViewCart () {
                 {!couponState.couponApplied && nowCoupon && (
                   <>
                     <div className={styles.couponSaveBanner}>
-                      <CheckCircleIcon sx={{ color:'#1bde6a', fontSize:27 }}/>
+                      <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27 }} />
                       <span>
                         You can now unlock{' '}
                         {nowCoupon.discountType === 'percentage'
@@ -305,21 +305,21 @@ export default function ViewCart () {
                           : nowCoupon.discountValue}{' '}
                         off coupon!
                       </span>
-                      <button className={styles.applyNowButton} onClick={()=>setDlgCoupon(true)}>
+                      <button className={styles.applyNowButton} onClick={() => setDlgCoupon(true)}>
                         Apply Now
                       </button>
                     </div>
-                    <div style={{ borderBottom:'1px dashed #cee2ff', margin:'0 1rem' }}/>
+                    <div style={{ borderBottom: '1px dashed #cee2ff', margin: '0 1rem' }} />
                   </>
                 )}
 
-                <div onClick={()=>setDlgCoupon(true)} className={styles.viewAllCouponsSection}>
+                <div onClick={() => setDlgCoupon(true)} className={styles.viewAllCouponsSection}>
                   <button className={styles.viewAllCouponsButton}>
-                    <DiscountIcon sx={{ color:'white', fontSize:15 }}/>
+                    <DiscountIcon sx={{ color: 'white', fontSize: 15 }} />
                   </button>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flex:1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
                     <span className={styles.viewAllCouponsText}>View all coupons</span>
-                    <ChevronRightIcon sx={{ color:'#616161', fontSize:22 }}/>
+                    <ChevronRightIcon sx={{ color: '#616161', fontSize: 22 }} />
                   </div>
                 </div>
               </div>
@@ -329,22 +329,22 @@ export default function ViewCart () {
                 couponState={couponState}
                 discountAmount={disc}
                 totalCostWithDelivery={totalPay}
-                onOpenCoupon={()=>setDlgCoupon(true)}
+                onOpenCoupon={() => setDlgCoupon(true)}
                 onRemoveCoupon={removeCoupon}
               />
               <PaymentModes
                 paymentModes={paymentModes}
                 isLoading={loadingPM}
                 selectedPaymentMode={selectedPM}
-                onChange={e=>setSelectedPM(paymentModes.find(m=>m.name===e.target.value))}
+                onChange={e => setSelectedPM(paymentModes.find(m => m.name === e.target.value))}
               />
             </div>
           </div>
         )}
 
 
-        <div style={{ margin:'0 .4rem', borderRadius:'1rem', background:'#fff', paddingTop: '0.5rem',}}>
-          <TopBoughtProducts  subCategories={topSub} currentProductId={topIds}/>
+        <div style={{ margin: '0 .4rem', borderRadius: '1rem', background: '#fff', paddingTop: '0.5rem', }}>
+          <TopBoughtProducts subCategories={topSub} currentProductId={topIds} pageType="viewcart" />
         </div>
 
         {qty > 0 && (
@@ -359,7 +359,7 @@ export default function ViewCart () {
 
         <ApplyCoupon
           open={dlgCoupon}
-          onClose={()=>setDlgCoupon(false)}
+          onClose={() => setDlgCoupon(false)}
           onApplyCoupon={applyCoupon}
           totalCost={subTot}
           isFirstOrder={isFirstOrder}
@@ -367,7 +367,7 @@ export default function ViewCart () {
         />
         <OrderForm
           open={dlgOrder}
-          onClose={()=>setDlgOrder(false)}
+          onClose={() => setDlgOrder(false)}
           paymentModeConfig={selectedPM}
           couponCode={couponState.couponApplied ? couponState.couponName : null}
           totalCost={totalPay}
@@ -381,7 +381,7 @@ export default function ViewCart () {
           open={snackbar.open}
           message={snackbar.message}
           severity={snackbar.severity}
-          handleClose={()=>setSnackbar(p=>({ ...p, open:false }))}
+          handleClose={() => setSnackbar(p => ({ ...p, open: false }))}
         />
       </div>
     </>

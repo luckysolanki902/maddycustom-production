@@ -80,11 +80,18 @@ function TopBoughtProductsBase({
   excludeProductIds = [],
   singleVariantCode = '',
   singleCategoryCode = '',
+  pageType = '', // Added pageType prop
 }) {
   const router = useRouter();
   const scrollRef = useRef(null);
   const sentinelRef = useRef(null);
   const skipRef = useRef(0);
+  
+  // Create insertion details object
+  const insertionDetails = {
+    component: 'topBoughtProducts',
+    pageType: pageType
+  };
 
   /* ---------- Normalise sub‑categories ---------- */
   // Guarantee an array, even when undefined/null is supplied
@@ -224,7 +231,7 @@ function TopBoughtProductsBase({
   /* ─────────────────── Render ─────────────────── */
   return (
     <TopBoughtContext.Provider
-      value={{ singleCategoryCode, singleVariantCode }}
+    value={{ singleCategoryCode, singleVariantCode, insertionDetails }}
     >
       <Box sx={{ width: '100%', px: 1 }}>
         {loadingInit && !specCatName ? (
@@ -270,7 +277,7 @@ const ProductCard = memo(function ProductCard({ product }) {
   const router = useRouter();
   const { imageUrl, outOfStock } = getDisplayImage(product);
 
-  const { singleCategoryCode, singleVariantCode } =
+  const { insertionDetails, singleCategoryCode, singleVariantCode } =
     React.useContext(TopBoughtContext);
 
   const thumb = useMemo(
@@ -337,6 +344,7 @@ const ProductCard = memo(function ProductCard({ product }) {
           fullWidth
           product={cartPayload}
           onClick={(e) => e.stopPropagation()}
+          insertionDetails={insertionDetails}
         />
       </CardContent>
     </Card>

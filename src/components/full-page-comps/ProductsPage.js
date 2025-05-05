@@ -50,7 +50,7 @@ const AnimatedTopBought = memo(({ singleVariantCode }) => {
   return (
     <animated.div style={{ ...spring, willChange: 'transform, opacity' }}>
       <div className={styles.topBoughtContainer}>
-      <TopBoughtProducts singleVariantCode={singleVariantCode} />
+        <TopBoughtProducts singleVariantCode={singleVariantCode} pageType="products-list" />
       </div>
     </animated.div>
   );

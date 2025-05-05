@@ -28,7 +28,11 @@ function getDisplayImage(product) {
   return { imageUrl: null, outOfStock: true };
 }
 
-const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, hidePrice = false, offerTaglineText }) => {
+const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, hidePrice = false, offerTaglineText, pageType }) => {
+  const insertionDetails = {
+    component: 'productCard',
+    pageType: pageType || 'unknown',
+  };
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const [isZoomed, setIsZoomed] = useState(false);
@@ -276,6 +280,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
                     ? product.variantDetails.availableBrands[0].brandBasePrice + product.price
                     : product.price,
                 }}
+                insertionDetails={insertionDetails}
               />
             </div>
           )}

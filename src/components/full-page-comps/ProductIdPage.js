@@ -80,6 +80,10 @@ export default function ProductIdPage({
   // Memoize the product list page link to avoid unnecessary re-renders
   const memoizedProductListPageLink = useMemo(() => productListPageLink, [productListPageLink]);
   
+  const insertionDetails = {
+    component: 'productDetails',
+    pageType: 'product-id-page'
+  };
 
   // Cloudfront URL for the icon (used when thumbnail is not provided)
   const moreImagesIconUrl = `${imageBaseUrl}/assets/icons/more-images-icon.jpg`;
@@ -523,6 +527,7 @@ export default function ProductIdPage({
                         : product.price,
                   }}
                   isLarge={true}
+                  insertionDetails={insertionDetails}
                 />
               </div>
             )}
