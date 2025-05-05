@@ -79,7 +79,7 @@ export default function ProductIdPage({
   const productListPageLink = pathname.split("/").slice(0, -1).join("/");
   // Memoize the product list page link to avoid unnecessary re-renders
   const memoizedProductListPageLink = useMemo(() => productListPageLink, [productListPageLink]);
-  
+
   const insertionDetails = {
     component: 'productDetails',
     pageType: 'product-id-page'
@@ -553,6 +553,7 @@ export default function ProductIdPage({
       <MemoizedTopBoughtProducts
         subCategories={[category?.subCategory]}
         excludeProductIds={[product?._id]}
+        pageType='product-id-page'
       />
       <MemoizedReviewFullComp
         productId={product._id}
