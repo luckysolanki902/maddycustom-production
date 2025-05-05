@@ -18,7 +18,7 @@ import { TopBoughtProducts } from "../showcase/products/TopBoughtProducts";
 import Footer from "../layouts/Footer";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 
 // Memoize components that do not need to update on option change
@@ -75,6 +75,8 @@ export default function ProductIdPage({
   const hasTracked = useRef(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const pathname = usePathname();
+  const router = useRouter();
+  const [isDisabled, setIsDisabled]  = useState(true);
   // now remove the last slug that's product id, to get link to products list page
   const productListPageLink = pathname.split("/").slice(0, -1).join("/");
   // Memoize the product list page link to avoid unnecessary re-renders
@@ -84,6 +86,8 @@ export default function ProductIdPage({
     component: 'productDetails',
     pageType: 'product-id-page'
   };
+
+
 
   // Cloudfront URL for the icon (used when thumbnail is not provided)
   const moreImagesIconUrl = `${imageBaseUrl}/assets/icons/more-images-icon.jpg`;
@@ -136,6 +140,15 @@ export default function ProductIdPage({
       }
     }
   }, [options, selectedOption]);
+
+  useEffect(() => {
+    if (['fbw', 'hel'].includes(category.specificCategoryCode)) {
+      router.push('/');
+    }
+    else {
+      setIsDisabled(false);
+    }
+  }, [category, router]);
 
   // --- MERGE IMAGES FROM DESCRIPTION TAB ---
   const productImages = product.images || [];
@@ -511,7 +524,7 @@ export default function ProductIdPage({
             )}
 
             {/* Render Add to Cart Button only if in stock */}
-            {!isOutOfStock && (
+            {!isOutOfStock && !isDisabled && (
               <div className={styles.buttonDiv}>
                 <MemoizedAddToCartButtonWithOrder
                   product={{
