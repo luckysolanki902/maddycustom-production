@@ -118,7 +118,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
 
   const handleOrderNow = () => {
     if (!cartItem) {
-      dispatch(addItem({ productId: product._id, productDetails: product }));
+      dispatch(addItem({ productId: product._id, productDetails: product, insertionDetails }));
     }
     router.push('/viewcart');
   };
