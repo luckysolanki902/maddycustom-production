@@ -94,6 +94,7 @@ const Topbar = () => {
             { text: 'Home', href: '/' },
             { text: 'Track Your Order', href: '/orders/track' },
             { text: 'Customer Support', href: '/faqs' },
+            { text: 'About Us', href: '/about-us' },
           ].map((item) => (
             <Link
               key={item.text}
