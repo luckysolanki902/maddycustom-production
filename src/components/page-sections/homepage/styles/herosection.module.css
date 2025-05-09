@@ -11,20 +11,23 @@
     width: 10rem;
     height: auto;
 }
-
+.heroSection {
+    position: relative;
+  width: 100%;
+  overflow: hidden; 
+}
 .carouseldiv {
-    margin: auto 1rem;
-    /* padding-bottom: 2;
-    margin-bottom: 20px; */
-    overflow: hidden;
-
-    /* border-radius: 0 0  50px 50px;  */
-    
+    /* width: 90vw;                     make it a percentage of the viewport */
+  max-width: 1600px;               /* optional hard cap */
+  margin: 0 auto;                  /* center */
+  overflow: hidden;                /* hide any edge-overflow if you’re doing a “full-bleed” look */
+  position: relative; 
 }
 .carouseldiv img {
-    width: 100%; 
-    height: auto;
-    display: block; /* Prevent extra gaps below images */
+    width: 100%;       /* makes each image fill its slide container */
+  height: 400px;     /* fixed height, or use auto */
+  object-fit: cover; /* crop/scale to fill without distortion */
+  display: block;    /* remove inline whitespace */
 }
 
 @media (min-width: 800px) {
@@ -38,7 +41,11 @@
         width: 200px;
         height: auto;
     }
-    
+    .carouseldiv img {
+        width: 10%; 
+        height: auto;
+        display: block; /* Prevent extra gaps below images */
+    }
 }
 
 @media (min-width: 1000px) {

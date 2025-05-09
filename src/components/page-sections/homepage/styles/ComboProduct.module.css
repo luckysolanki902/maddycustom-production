@@ -1,0 +1,75 @@
+.container {
+    display: grid;
+    gap: 26px;
+    padding-right: 65px;
+    padding-left: 65px;
+    margin-top: 72px;
+}
+
+.smallContainer {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 86px;
+ 
+}
+
+.small {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 7 / 3;
+    background: #f5f9fc;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.largeContainer {
+    grid-column: 1 / -1;
+}
+
+.large {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 1;
+    background: #e6f4ff;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.posterPlaceholder {
+    width: 80%;
+    height: 60%;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    color: #999;
+    font-size: 1rem;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding-right: 20px;
+        padding-left: 20px;
+    }
+
+    .smallContainer {
+        grid-template-columns: repeat(2, 1fr);
+        padding-right: 20px;
+        padding-left: 20px;
+        gap: 30px;
+    }
+
+    .small {
+        aspect-ratio: 1 / 1;
+    }
+
+    .large {
+        aspect-ratio: 2 / 1;
+    }
+}
+

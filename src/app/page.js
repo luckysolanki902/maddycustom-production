@@ -5,7 +5,7 @@ import ChooseCategory from '@/components/page-sections/homepage/ChoseCategory';
 import CategorySearchBox from '@/components/utils/CategorySearchBox';
 import OurUniqueProductCarousel from '@/components/showcase/carousels/OurUniqueProductCarousel';
 import FlexibleLargePoster from '@/components/showcase/posters/FlexibleLargePoster';
-import HalfBikes from '@/components/page-sections/homepage/halfBikes';
+// import HalfBikes from '@/components/page-sections/homepage/halfBikes';
 // import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
 import Image from 'next/image';
 import { createMetadata } from '@/lib/metadata/create-metadata';
@@ -16,11 +16,15 @@ import {
   fetchSearchCategories,
   fetchFeaturedproducts,
 } from '@/lib/utils/fetchutils';
-import ProductSlider from '@/components/showcase/sliders/ProductSlider';
-import FeaturedProducts from '@/components/page-sections/homepage/FeaturedProducts';
-import { Box, Typography } from '@mui/material';
-import KeychainImageGrid from '@/components/page-sections/homepage/KeychainImageGrid';
+// import ProductSlider from '@/components/showcase/sliders/ProductSlider';
+// import FeaturedProducts from '@/components/page-sections/homepage/FeaturedProducts';
+// import { Box, Typography } from '@mui/material';
+// import KeychainImageGrid from '@/components/page-sections/homepage/KeychainImageGrid';
 import ProductCategorySlider from '@/components/page-sections/homepage/ProductCategorySlider';
+import NewArrivalProduct from '@/components/page-sections/homepage/NewArrivalProduct';
+import ComboProduct from '@/components/page-sections/homepage/ComboProduct';
+import WhyMaddy from '@/components/page-sections/homepage/WhyMaddy';
+import VoiceOfOurCustomers from '@/components/page-sections/homepage/VoiceOfCustomers';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -66,36 +70,41 @@ const HomePage = async () => {
 
         {/* Category cards like Helmet, Tank, Bonnet to choose from */}
         <ChooseCategory />
-
-        <KeychainImageGrid />
-
+      <NewArrivalProduct/>
+        {/* <KeychainImageGrid /> */}
+        <div className={styles.trustedSection}>
+          <span className={styles.trustedBadge}>TRUSTED by</span>
+          <span className={styles.trustedCount}>1000+ Happy Customer</span>
+        </div>
         {/* Our Unique Products */}
         <OurUniqueProductCarousel products={ourUniqueProductsData} />
 
+    <ComboProduct/>
+
         <div className={styles.doubleGrid}>
-          <Image src={`${baseImageUrl}/assets/posters/first-brand-surprise-banner.png`} alt='doublegrid' width={1000} height={500}></Image>
+          <Image src={`${baseImageUrl}/assets/posters/first-brand-surprise-banner.png`} alt='doublegrid' width={1000} height={500} className={styles.nomorebanner}></Image>
           <Image src={`${baseImageUrl}/assets/posters/tank-cap-wrap-banner.png`} alt='doublegrid' width={1000} height={500}></Image>
         </div>
-        <ProductSlider slides={randomProductsData} />
+        {/* <ProductSlider slides={randomProductsData} /> */}
 
         {/* Bonnet Strip Wrap Poster */}
         <FlexibleLargePoster
           items={[
             {
-              pcImage: "bonnetstrippc.jpg",
-              phoneImage: "bonnetstripphone.jpg",
+              pcImage: "1d_bonnet_bottom-carousel-banner.png",
+              phoneImage: "1m_bonnet_bottom-carousel-banner.png",
               link: "/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps",
             },
             {
-              pcImage: "caf_pc.png",
-              phoneImage: "caf_phone.png",
+              pcImage: "2d_frag_bottom-carousel-banner.png",
+              phoneImage: "2m_frag_bottom-carousel-banner.png",
               link: "/shop/accessories/car-care/car-air-freshners/hanging-bottle-car-fresheners",
             },
           ]}
         />
-
+              <WhyMaddy/>
         {/* Featured Products */}
-        <FeaturedProducts data={featuredBikeWrapsData} />
+        {/* <FeaturedProducts data={featuredBikeWrapsData} /> */}
 
         {/* Happy Customers */}
         {/* <div className={styles.featuredHead} style={{marginBottom:'-2rem', marginTop:'1rem'}}>
@@ -109,8 +118,8 @@ const HomePage = async () => {
         {/* <HappyCustomers data={happyCustomersData} noHeading={true} noShadow={true} /> */}
 
         {/* Animated Half Bikes */}
-        <HalfBikes />
-
+        {/* <HalfBikes /> */}
+<VoiceOfOurCustomers/>
       </main>
     </>
   );

@@ -1,0 +1,120 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.heading {
+  font-size: 2.75rem;
+  margin-bottom: 44px;
+  color: #424242;
+  font-weight: 300;
+}
+
+.cardRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1000px) {
+  .cardRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* icon container floats above the content box */
+.imageWrapper {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  padding: 18px;
+  border-radius: 8px;
+  z-index: 1;
+  margin-top: 40px;
+}
+
+/* the dark rectangle containing title + details */
+.contentBox {
+  background: #424242;
+  color: #fff;
+  padding: 48px 16px 56px; /* top padding makes room for the icon */
+  border-radius: 3px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: start;
+  margin-top: 116px;
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+  font-weight: 350;
+  margin-left: 60px;
+
+}
+
+.text {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  font-weight: 250;
+  text-align: start;
+  margin-left:60px;
+}
+  
+
+@media(max-width: 768px) {
+  .cardRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .heading {
+    font-size: 2rem;
+    margin-bottom: 24px;
+  }
+
+  .contentBox {
+    margin-top: 110px;    /* less space needed above */
+    padding: 22px 2px 30px;
+    margin-bottom: 50px;
+    text-align: start;
+  }
+
+  .imageWrapper {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    padding: 8px;
+    border-radius: 8px;
+    z-index: 1;
+    margin-top: 40px;
+    
+  }
+
+  .title {
+    font-size: 1rem;
+    margin-left: 0;
+    text-align: start;
+    margin-left: 40px;
+  }
+
+  .text {
+    font-size: 0.8rem;
+    margin-left: 0;
+    text-align: start;
+    margin-left: 40px;
+
+  }
+}

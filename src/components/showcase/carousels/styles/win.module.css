@@ -14,7 +14,48 @@
 .price{
   font-size: 0.9rem
 }
+.paginationBoxes {
+  display: flex;
+  justify-content: center;
+  gap: 62px;
+  margin-bottom: 2px;
+  margin-top: 16px;
+}
 
+.paginationBox {
+  width: 120px;
+  height: 24px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.paginationBox.activeBox {
+  background: #424242;
+}
+
+
+.carouselBackground {
+  width: 100%;
+  aspect-ratio: 1482 / 537; /* adjust for screen size if needed */
+  background-color: #424242; /* your grey */
+  cursor: pointer;
+  position: relative;
+  margin-top: 3rem;
+  border-radius: 20px;
+  padding-bottom: 1rem;
+}
+
+.carouselHeading{
+  position: absolute;
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  color: white;
+  font-size: 2rem;
+  font-family: 'Krona One'
+}
 .swipercustom{
   box-sizing: border-box;
   position: absolute!important;
@@ -47,10 +88,40 @@
 
 @media (min-width: 769px) {
     .mainCarDiv {
-    padding: 0 3rem;
+    padding: 0 2rem;
   }
 }
-
+@media(max-width: 768px){
+  .carouselHeading{
+    font-size: 1.2rem;
+    margin-bottom: 122px;
+    text-wrap: nowrap;
+    word-wrap: nowrap;
+    word-break: keep-all;
+    top: 4%;
+    font-weight: 400;
+  }
+  .cardStyles{
+    border-radius: 19px;
+    width: 75vw;
+  }
+  .swipercustom{
+  bottom: 4%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  }
+  .carouselBackground{
+    aspect-ratio: 482 / 537;
+  }
+  .paginationBoxes{
+    gap: 20px;
+  }
+  .paginationBox{
+    width: 60px;
+    height: 12px;
+  }
+}
 @media (min-width: 769px) and (max-width: 1659px) {
   .swipercustom{
   bottom: 4%;
@@ -67,7 +138,6 @@
    .price{
      font-size: 0.7rem
    }
-   
 }
 
 @media (min-width: 769px) and (max-width: 899px) {
@@ -100,6 +170,8 @@
    .orderpng img{
 width: 4rem;
    }
-
+   .carouselBackground{
+    aspect-ratio: 1182 / 537;
+   }
    
 }

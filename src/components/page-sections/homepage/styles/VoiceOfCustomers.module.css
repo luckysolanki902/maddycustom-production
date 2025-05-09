@@ -1,0 +1,106 @@
+.container {
+    /* max-width: 1200px; */
+    margin: 0 ;
+    padding: 32px 69px;
+    text-align: center;
+  }
+  
+  .heading {
+    font-size: 2rem;
+    margin-bottom: 24px;
+    color: #424242;
+    font-weight: 300;
+  }
+  
+  /* Desktop: auto-fit grid */
+  .cardRow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+ /* custom scrollbar */
+ .cardRow::-webkit-scrollbar {
+    display: none;
+  }
+  /* Mobile: horizontal scroll + snap */
+  @media (max-width: 600px) {
+    .cardRow {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding-bottom: 8px; /* give space for scrollbar */
+    }
+    .card {
+      flex: 0 0 80%;
+      scroll-snap-align: center;
+    }
+    
+    .container{
+      padding: 32px 40px;
+      margin: 0;
+      max-width: 100%;
+    }
+    
+   
+  }
+  
+  .card {
+    background: #fff;
+    border: 2px solid #424242;
+    border-radius: 4px;
+    padding: 15px;
+    box-sizing: border-box;
+    text-align: center;
+  }
+  
+  /* Instagram icon + handle */
+  .iconRow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    margin-bottom: 12px;
+  }
+  
+  .handle {
+    font-size: 0.9rem;
+    color: #424242;
+  }
+  
+  /* Avatar */
+  .avatar {
+    margin-bottom: 12px;
+  }
+  .avatarImg {
+    border-radius: 3px;
+  }
+  
+  /* Comment text */
+  .comment {
+    font-size: 0.95rem;
+    color: #444;
+    line-height: 1.4;
+    margin: 0;
+  }
+  /* in VoiceOfCustomers.module.css */
+
+.iconRow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .instagramIcon {
+    color: #424242;      /* or whatever color */
+  }
+ .CompanyName{
+    font-size: 1.3rem;
+    color: #424242;
+    font-weight: 500;
+ } 
+
+
+ 

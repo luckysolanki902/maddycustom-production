@@ -26,7 +26,7 @@ const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
     const showTimer = now < launchDate;
     return (
         <Swiper
-            style={{ height: "auto", borderRadius: showTimer ? "1rem" : "2rem" }}
+            style={{ height: "auto", borderRadius: showTimer ? "1rem" : "0.5rem" }}
             loop={true}
             speed={500}
             simulateTouch={true}
@@ -42,6 +42,7 @@ const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
                         imageQuality={80}      // example quality
                         width={976}
                         height={406}
+                    
                     />
                 </SwiperSlide>
             ) : (
@@ -64,3 +65,4 @@ const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
 };
 
 export default FullWidthRoundCornerLandscapeCarousel;
+
