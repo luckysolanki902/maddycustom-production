@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { Container, Typography, Paper, Box, Divider, Grid, Link, Button, IconButton } from '@mui/material';
@@ -99,7 +97,7 @@ const AboutPage = () => {
         <Grid container spacing={2}>          <Grid item xs={12} md={6}>
             <Section 
               title="Our Journey" 
-              content="At Maddycustom, we started with a passion for automotive aesthetics and personalization. Our journey began with the vision to make premium vehicle customization accessible to every enthusiast, allowing you to express your unique style through your ride." 
+              content="At Maddycustom, we&apos;re riders and creators. Our passion led us to a simple idea – transforming helmets into personalized masterpieces that reflect your unique style and personality." 
             />
           </Grid>
           
@@ -350,7 +348,7 @@ const AboutPage = () => {
                 mx: 'auto'
               }}
             >
-              Ready to transform your ride? Explore our most popular designs that have captivated thousands of customers. Each product below represents the perfect blend of style, durability, and precision engineering. These bestsellers aren't just accessories—they're statements. Join the ranks of satisfied customers who've elevated their vehicles from ordinary to extraordinary with these signature Maddycustom pieces.
+              Ready to transform your ride? Explore our most popular designs that have captivated thousands of customers. Each product below represents the perfect blend of style, durability, and precision engineering. These bestsellers aren&apos;t just accessories—they&apos;re statements. Join the ranks of satisfied customers who&apos;ve elevated their vehicles from ordinary to extraordinary with these signature Maddycustom pieces.
             </Typography>
             
             <Box sx={{ mt: 2 }}>
