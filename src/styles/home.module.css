@@ -50,6 +50,15 @@
     height: auto;
     margin: 20px 0;
 }
+.bestSellers{
+    margin-right: 2rem;
+    margin-left: 4rem;
+}
+.bonnetwrap{
+    margin-right: 2rem;
+    margin-left: 4rem;
+    margin-top: 2rem;
+}
 
 @media (width < 600px) {
     .featuredHead img{
@@ -72,6 +81,8 @@
     margin: 2rem; /* margin around the grid */
     margin-top: 5rem;
     margin-bottom: 6rem;
+    margin-left: 4rem;
+    margin-right: 4rem;
   }
   
   .doubleGrid img {
@@ -111,6 +122,14 @@
     gap: 12px;
     margin-left: 12px;
     margin-right: 12px;
+}
+.bestSellers{
+    margin-right: 1rem;
+    margin-left: 1rem;
+}
+.bonnetwrap{
+    margin-right: 1rem;
+    margin-left: 1rem;
 }
 }
 

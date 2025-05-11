@@ -1,4 +1,4 @@
-// src/app/api/cron/aisensy/abandoned-cart-first/route.js
+// src/app/api/cron/aisensy/abandoned-cart-first-campaign/route.js
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
@@ -79,9 +79,9 @@ export async function GET(req) {
 
       const result = await sendWhatsAppMessage({
         user: { _id: userId, name: userName, phoneNumber },
-        campaignName: 'abandonedcart_rem1',
+        campaignName: 'abandoned_rem',
         orderId,
-        // templateParams: [userName || 'Friend'],
+        templateParams: [userName.split(' ')[0] || 'Friend'],
         media,
       });
 

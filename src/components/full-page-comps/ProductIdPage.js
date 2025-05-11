@@ -18,8 +18,9 @@ import { TopBoughtProducts } from "../showcase/products/TopBoughtProducts";
 import Footer from "../layouts/Footer";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Box, Typography } from "@mui/material";
 
 // Memoize components that do not need to update on option change
 const MemoizedImageGallery = memo(ImageGallery);
@@ -75,11 +76,19 @@ export default function ProductIdPage({
   const hasTracked = useRef(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const pathname = usePathname();
+  const router = useRouter();
+  const [isDisabled, setIsDisabled] = useState(false);
   // now remove the last slug that's product id, to get link to products list page
   const productListPageLink = pathname.split("/").slice(0, -1).join("/");
   // Memoize the product list page link to avoid unnecessary re-renders
   const memoizedProductListPageLink = useMemo(() => productListPageLink, [productListPageLink]);
-  
+
+  const insertionDetails = {
+    component: 'productDetails-AddToCart',
+    pageType: 'product-id-page'
+  };
+
+
 
   // Cloudfront URL for the icon (used when thumbnail is not provided)
   const moreImagesIconUrl = `${imageBaseUrl}/assets/icons/more-images-icon.jpg`;
@@ -132,6 +141,15 @@ export default function ProductIdPage({
       }
     }
   }, [options, selectedOption]);
+
+  useEffect(() => {
+    if (['fbw', 'hel'].includes(category.specificCategoryCode)) {
+      setIsDisabled(true);
+      // router.push('/');
+    }
+    else {
+    }
+  }, [category, router]);
 
   // --- MERGE IMAGES FROM DESCRIPTION TAB ---
   const productImages = product.images || [];
@@ -299,6 +317,62 @@ export default function ProductIdPage({
 
   return (
     <div style={{ paddingBottom: "6rem" }}>
+      {
+        isDisabled &&
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgb(255, 255, 255)',
+            zIndex: 2,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            flexDirection: 'column',
+          }}
+        >
+          <Typography
+            variant="h5"
+            sx={{
+              textAlign: 'center',
+              padding: '1rem',
+              borderRadius: '10px',
+              height: 'fit-content',
+            }}
+          >
+            <span style={{ color: 'red' }}>Out of stock!</span>
+            <br />
+            But you might find something you <span style={{ color: '#ff69b4' }}>love!</span> <br />
+
+          </Typography>
+          <MemoizedTopBoughtProducts
+            hideHeading={true}
+            pageType='product-id-page'
+          />
+          <div>
+            or
+          </div>
+          <Link href={'/'} style={{ textDecoration: 'none' }}>
+            <Typography
+              variant="button"
+              sx={{
+                color: 'black',
+                fontSize: '1.1rem',
+                fontWeight: 600,
+                textTransform: 'none',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+              }}
+            >
+              Explore Homepage
+            </Typography>
+          </Link>
+        </Box>}
+     { !isDisabled &&  <>
       <div className={styles.container}>
         <div
           className={styles.imageGallery}
@@ -507,7 +581,7 @@ export default function ProductIdPage({
             )}
 
             {/* Render Add to Cart Button only if in stock */}
-            {!isOutOfStock && (
+            {!isOutOfStock && !isDisabled && (
               <div className={styles.buttonDiv}>
                 <MemoizedAddToCartButtonWithOrder
                   product={{
@@ -523,6 +597,7 @@ export default function ProductIdPage({
                         : product.price,
                   }}
                   isLarge={true}
+                  insertionDetails={insertionDetails}
                 />
               </div>
             )}
@@ -548,6 +623,7 @@ export default function ProductIdPage({
       <MemoizedTopBoughtProducts
         subCategories={[category?.subCategory]}
         excludeProductIds={[product?._id]}
+        pageType='product-id-page'
       />
       <MemoizedReviewFullComp
         productId={product._id}
@@ -556,6 +632,8 @@ export default function ProductIdPage({
         fetchReviewSource={category.reviewFetchSource}
         variant={variant}
       />
+        </>}
+
     </div>
   );
 }

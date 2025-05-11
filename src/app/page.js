@@ -25,6 +25,7 @@ import NewArrivalProduct from '@/components/page-sections/homepage/NewArrivalPro
 import ComboProduct from '@/components/page-sections/homepage/ComboProduct';
 import WhyMaddy from '@/components/page-sections/homepage/WhyMaddy';
 import VoiceOfOurCustomers from '@/components/page-sections/homepage/VoiceOfCustomers';
+import TopBoughtProducts from '@/components/showcase/products/TopBoughtProducts';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -65,11 +66,11 @@ const HomePage = async () => {
         {/* Logo and Main Carousel */}
         <HeroSection />
         <ProductCategorySlider position="belowHero" />
-
+       <div className={styles.bestSellers}> <TopBoughtProducts overWriteHeading='Best Sellers' /></div>
         {/* SearchBox */}
 
         {/* Category cards like Helmet, Tank, Bonnet to choose from */}
-        <ChooseCategory />
+        {/* <ChooseCategory /> */}
       <NewArrivalProduct/>
         {/* <KeychainImageGrid /> */}
         <div className={styles.trustedSection}>
@@ -77,7 +78,7 @@ const HomePage = async () => {
           <span className={styles.trustedCount}>1000+ Happy Customer</span>
         </div>
         {/* Our Unique Products */}
-        <OurUniqueProductCarousel products={ourUniqueProductsData} />
+        <OurUniqueProductCarousel products={ourUniqueProductsData}  />
 
     <ComboProduct/>
 
@@ -102,6 +103,7 @@ const HomePage = async () => {
             },
           ]}
         />
+         <div className={styles.bonnetwrap}> <TopBoughtProducts singleCategoryCode='bw' /></div>
               <WhyMaddy/>
         {/* Featured Products */}
         {/* <FeaturedProducts data={featuredBikeWrapsData} /> */}
@@ -119,7 +121,7 @@ const HomePage = async () => {
 
         {/* Animated Half Bikes */}
         {/* <HalfBikes /> */}
-<VoiceOfOurCustomers/>
+        <VoiceOfOurCustomers/>
       </main>
     </>
   );

@@ -1,30 +1,60 @@
-"use client";
+/* ------------------------------------------------------------------ */
+/* components/page-sections/products-page/ProductsPage.jsx            */
+/* ------------------------------------------------------------------ */
+'use client';
 
-import React, { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
-import styles from "./styles/products.module.css";
-import ScrollToTop from "@/components/utils/scrolltotop";
-import style from "../cards/styles/productswrapper.module.css";
-import {
-  useMediaQuery,
-  Pagination,
-  // FormControl,
-  // InputLabel,
-  // Select,
-  // MenuItem
-} from "@mui/material";
-import ProductsWrapper from "../cards/ProductsWrapper";
-import Tags from "../page-sections/products-page/Tags";
-import ChangeVariantButton from "../page-sections/products-page/ChangeVariantButton";
-import { ITEMS_PER_PAGE } from "@/lib/constants/productsPageConsts";
-import {
-  PaginationStyles,
-  PaginationStylesForPhone
-} from "@/styles/PaginationStyles";
-import FullWidthRoundCornerLandscapeCarousel from "../showcase/carousels/FullWidthRoundCornerLandscapeCarousel";
-import herosectionStyles from "@/components/page-sections/homepage/styles/herosection.module.css";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  memo,
+} from 'react';
+import Image from 'next/image';
+import { useMediaQuery, Pagination } from '@mui/material';
+import { useSpring, animated } from 'react-spring';
 
-import VariantDialog from "../dialogs/VariantDialog";
+import styles from './styles/products.module.css';
+import wrapperStyles from '../cards/styles/productswrapper.module.css';
+
+import ProductsWrapper from '../cards/ProductsWrapper';
+import Tags from '../page-sections/products-page/Tags';
+import ChangeVariantButton from '../page-sections/products-page/ChangeVariantButton';
+import FullWidthRoundCornerLandscapeCarousel from '../showcase/carousels/FullWidthRoundCornerLandscapeCarousel';
+import VariantDialog from '../dialogs/VariantDialog';
+import ScrollToTop from '@/components/utils/scrolltotop';
+import { PaginationStyles, PaginationStylesForPhone } from '@/styles/PaginationStyles';
+import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
+import { recommendationMap } from '@/lib/constants/recommendationMap';
+import TopBoughtProducts from '@/components/showcase/products/TopBoughtProducts';
+
+/* ------------------------------------------------------------------ */
+/* Smooth “Top-Bought” fade-in/slide-up wrapper                        */
+/* (hoisted so it stays mounted across re-renders)                    */
+/* ------------------------------------------------------------------ */
+// eslint-disable-next-line react/display-name
+const AnimatedTopBought = memo(({ singleVariantCode }) => {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setIsMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const spring = useSpring({
+    from: { opacity: 0, transform: 'translateY(24px)' },
+    to:   { opacity: isMounted ? 1 : 0, transform: isMounted ? 'translateY(0)' : 'translateY(24px)' },
+    config: { tension: 250, friction: 22 },
+  });
+
+  return (
+    <animated.div style={{ ...spring, willChange: 'transform, opacity' }}>
+      <div className={styles.topBoughtContainer}>
+        <TopBoughtProducts singleVariantCode={singleVariantCode} pageType="products-list" />
+      </div>
+    </animated.div>
+  );
+});
 
 export default function ProductsPage({
   slug,
@@ -33,73 +63,59 @@ export default function ProductsPage({
   category,
   initialPage,
   totalPages,
-  uniqueTags
+  uniqueTags,
 }) {
-  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+  /* ------------------------ state ------------------------ */
+  const SHOW_TOP_BOUGHT = category.specificCategoryCode !== 'tw'; // Controls visibility of TopBought section and product distribution
 
-  // States for filters, pagination, etc.
   const [tagFilter, setTagFilter] = useState(null);
-  const [sortBy, setSortBy] = useState("default");
+  const [sortBy, setSortBy] = useState('default');
   const [currentPage, setCurrentPage] = useState(initialPage || 1);
   const [totalPageCount, setTotalPageCount] = useState(totalPages || 1);
   const [currentProducts, setCurrentProducts] = useState(initialProducts || []);
   const [isLoading, setIsLoading] = useState(false);
-
-  // State to control the dialog
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [showLayout2, setShowLayout2] = useState(variant?.listLayout === '2');
 
-  // Decide if we should open a popup immediately
+  /* ------------------------ effects ------------------------ */
   useEffect(() => {
-    if (variant?.popupDetails && variant?.popupDetails.length > 0) {
-      setDialogOpen(true);
-    }
+    if (variant?.popupDetails?.length) setDialogOpen(true);
   }, [variant?.popupDetails]);
 
-  // If layout2 for "non-wraps"
-  const [showLayout2, setShowLayout2] = useState(false);
   useEffect(() => {
-    if (variant && variant.listLayout === "2") {
-      setShowLayout2(true);
-    }
+    setShowLayout2(variant?.listLayout === '2');
   }, [variant]);
 
-  const isSmallDevice = useMediaQuery("(max-width: 600px)");
-  const isLargeDevice = useMediaQuery("(min-width: 1200px)");
-
-  // Function to fetch data if user changes page/tag/sort
+  /* ------------------------ queries ------------------------ */
   const fetchPageData = useCallback(
     async (page, tag, sort) => {
       try {
         setIsLoading(true);
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-          }/api/shop/products`,
+          `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/shop/products`,
           {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              slug: Array.isArray(slug) ? slug.join("/") : slug,
+              slug: Array.isArray(slug) ? slug.join('/') : slug,
               page,
               limit: ITEMS_PER_PAGE,
               tagFilter: tag,
-              sortBy: sort
-            })
+              sortBy: sort,
+            }),
           }
         );
 
-        if (!res.ok) {
-          console.error("Failed to fetch data");
-          return;
-        }
+        if (!res.ok) throw new Error('Fetch failed');
 
         const data = await res.json();
-        if (data.type === "variant") {
+        if (data.type === 'variant') {
           setCurrentProducts(data.products);
           setTotalPageCount(data.totalPages);
           setCurrentPage(data.currentPage);
         }
-      } catch (error) {
-        console.error("Error fetching page data:", error);
+      } catch (err) {
+        console.error('Error fetching page data:', err);
       } finally {
         setIsLoading(false);
       }
@@ -107,41 +123,42 @@ export default function ProductsPage({
     [slug]
   );
 
-  // Whenever tag or sort changes, reset to page 1 & refetch
   useEffect(() => {
-    const hasFiltersChanged = !!tagFilter || sortBy !== "default";
-    if (hasFiltersChanged) {
+    if (tagFilter || sortBy !== 'default') {
       fetchPageData(1, tagFilter, sortBy);
       setCurrentPage(1);
     }
   }, [tagFilter, sortBy, fetchPageData]);
 
-  const handlePageChange = (event, value) => {
-    setCurrentPage(value);
-    fetchPageData(value, tagFilter, sortBy);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  /* ------------------------ helpers ------------------------ */
+  const isSmallDevice  = useMediaQuery('(max-width: 600px)');
+  const isLargeDevice  = useMediaQuery('(min-width: 1200px)');
+  const showVideo      = currentPage === 1;
+  const recommendedKey = useMemo(
+    () => recommendationMap[variant?.variantCode] || 'win',
+    [variant?.variantCode]
+  );
 
-  /*
-  const handleSortChange = (event) => {
-    const newSort = event.target.value;
-    setSortBy(newSort);
-  };
-  */
+  const [firstHalf, secondHalf] = useMemo(() => {
+    if (!SHOW_TOP_BOUGHT || currentPage !== 1) return [currentProducts, []];
+    const mid = Math.ceil(currentProducts.length / 2);
+    return [currentProducts.slice(0, mid), currentProducts.slice(mid)];
+  }, [currentProducts, currentPage]);
 
+  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+
+  /* ------------------------ render ------------------------ */
   return (
     <>
-      {/* The image popup dialog */}
       <VariantDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        imageUrl={`${baseImageUrl}${variant?.popupDetails?.[0] || ""}`}
+        imageUrl={`${baseImageUrl}${variant?.popupDetails?.[0] || ''}`}
       />
 
-      <div style={{ backgroundColor: showLayout2 ? "#F1F3F6" : "white" }}>
-        <div style={{ maxWidth: showLayout2 ? "1200px" : "100%", margin: "auto" }}>
-          <div className={`${showLayout2 ? styles.layout2withpadding : ''}`}>
-
+      <div style={{ backgroundColor: showLayout2 ? '#F1F3F6' : 'white' }}>
+        <div style={{ maxWidth: showLayout2 ? '1200px' : '100%', margin: 'auto' }}>
+          <div className={showLayout2 ? styles.layout2withpadding : ''}>
             <header>
               <div className={styles.headContainer}>
                 <div className={styles.headingFlex}>
@@ -150,62 +167,59 @@ export default function ProductsPage({
                     style={{
                       fontSize: isLargeDevice
                         ? variant?.name.length > 15
-                          ? "2.5rem"
+                          ? '2.5rem'
                           : variant?.name.length > 20
-                            ? "2rem"
-                            : "3.5rem"
+                          ? '2rem'
+                          : '3.5rem'
                         : variant?.name.length > 15
-                          ? "1.8rem"
-                          : variant?.name.length > 20
-                            ? "1.5rem"
-                            : "2.2rem"
+                        ? '1.8rem'
+                        : variant?.name.length > 20
+                        ? '1.5rem'
+                        : '2.2rem',
                     }}
                   >
                     {variant?.name}
-                    {variant?.name?.toLowerCase().includes("tank") && (
+                    {variant?.name?.toLowerCase().includes('tank') && (
                       <button
                         className={styles.sizebutton}
-                        style={{ backgroundColor: "#d6fcff" }}
+                        style={{ backgroundColor: '#d6fcff' }}
                       >
-                        {variant?.name === "Slim Tank Wraps"
-                          ? "6.8 cm wide"
-                          : variant?.name === "Medium Tank Wraps"
-                            ? "7 cm wide"
-                            : variant?.name === "Wide Tank Wraps"
-                              ? "19.05 cm wide"
-                              : null}
+                        {variant?.name === 'Slim Tank Wraps'
+                          ? '6.8 cm wide'
+                          : variant?.name === 'Medium Tank Wraps'
+                          ? '7 cm wide'
+                          : variant?.name === 'Wide Tank Wraps'
+                          ? '19.05 cm wide'
+                          : null}
                       </button>
                     )}
                   </h1>
 
-                  {/* Subtitles or special text for helmets */}
-                  {variant?.subtitles?.length > 0 && variant?.subtitles[0] && (
-                    variant.variantCode === "hel" ? (
+                  {variant?.subtitles?.[0] &&
+                    (variant.variantCode === 'hel' ? (
                       <>
                         <h2 className={styles.helmetTagline}>
                           &quot;Best designed helmets of India <br /> with safety of&quot;
                         </h2>
                         <Image
                           className={styles.studds}
-                          src={`${baseImageUrl}${variant?.availableBrands?.[0]?.brandLogo || ""}`}
+                          src={`${baseImageUrl}${variant?.availableBrands?.[0]?.brandLogo || ''}`}
                           width={1103 / 5}
                           height={394 / 5}
-                          alt={"studds"}
+                          alt="studds"
                         />
                       </>
                     ) : (
                       <h2 className={styles.belowMainHeading}>
-                        {variant?.subtitles[0]}
+                        {variant.subtitles[0]}
                       </h2>
-                    )
-                  )}
+                    ))}
                 </div>
               </div>
             </header>
 
-            {/* Video Embed for Small Devices */}
-            {variant?.showCase?.[0]?.available && isSmallDevice && (
-              <div className={style.videoCard} aria-label="Product Video">
+            {variant?.showCase?.[0]?.available && isSmallDevice && showVideo && (
+              <div className={wrapperStyles.videoCard} aria-label="Product Video">
                 <iframe
                   width="100%"
                   height="100%"
@@ -213,66 +227,74 @@ export default function ProductsPage({
                   title="Product Video"
                   allow="autoplay; encrypted-media"
                   allowFullScreen
-                  style={{ pointerEvents: "none" }}
+                  style={{ pointerEvents: 'none' }}
                 />
                 <h1>Maddy Custom</h1>
               </div>
             )}
 
-            {/* If category is "tank wraps" and user is on a small device => show carousel */}
-            {category?.specificCategoryCode === "tw" && isSmallDevice && (
-              <div className={herosectionStyles.carouseldiv}>
+            {category?.specificCategoryCode === 'tw' && isSmallDevice && (
+              <div className={styles.carouseldiv}>
                 <FullWidthRoundCornerLandscapeCarousel
                   images={[
                     `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel1.jpg`,
                     `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel2.jpg`,
-                    `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel3.jpg`
+                    `${baseImageUrl}/assets/carousels/header-carousels/tank_carousel3.jpg`,
                   ]}
                 />
               </div>
             )}
 
-            {/* Filter by tags */}
             <Tags setTagFilter={setTagFilter} tags={uniqueTags} />
           </div>
-          {/* Example sort dropdown 
-          <FormControl variant="outlined" className={styles.sortSelect} size="small">
-            <InputLabel id="sort-select-label">Sort By</InputLabel>
-            <Select
-              labelId="sort-select-label"
-              id="sort-select"
-              value={sortBy}
-              onChange={handleSortChange}
-              label="Sort By"
-            >
-              <MenuItem value="default">Default</MenuItem>
-              <MenuItem value="priceLowToHigh">Price: Low to High</MenuItem>
-              <MenuItem value="priceHighToLow">Price: High to Low</MenuItem>
-              <MenuItem value="latestFirst">Latest First</MenuItem>
-              <MenuItem value="oldestFirst">Oldest First</MenuItem>
-            </Select>
-          </FormControl>
-          */}
 
-          {/* Button to switch variant */}
           <ChangeVariantButton category={category} />
 
-          {/* Products listing */}
-          <ProductsWrapper
-            showLayout2={showLayout2}
-            variant={variant}
-            products={currentProducts}
-            category={category}
-            isLoading={isLoading}
-          />
+          {currentPage === 1 ? (
+            <>
+              <ProductsWrapper
+                showLayout2={showLayout2}
+                variant={variant}
+                category={category}
+                products={firstHalf}
+                isLoading={isLoading}
+                hideVideo={!showVideo}
+              />
 
-          {/* Pagination */}
+              {SHOW_TOP_BOUGHT && <AnimatedTopBought singleVariantCode={recommendedKey} />}
+
+              {SHOW_TOP_BOUGHT && secondHalf.length > 0 && (
+                <ProductsWrapper
+                  showLayout2={showLayout2}
+                  variant={variant}
+                  category={category}
+                  products={secondHalf}
+                  isLoading={isLoading}
+                  hideVideo
+                />
+              )}
+            </>
+          ) : (
+            <ProductsWrapper
+              showLayout2={showLayout2}
+              variant={variant}
+              category={category}
+              products={currentProducts}
+              isLoading={isLoading}
+              hideVideo
+            />
+          )}
+
           {isSmallDevice ? (
             <PaginationStylesForPhone>
               <Pagination
                 count={totalPageCount}
                 page={currentPage}
-                onChange={handlePageChange}
+                onChange={(e, v) => {
+                  setCurrentPage(v);
+                  fetchPageData(v, tagFilter, sortBy);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 color="primary"
                 disabled={isLoading}
                 siblingCount={1}
@@ -284,7 +306,11 @@ export default function ProductsPage({
               <Pagination
                 count={totalPageCount}
                 page={currentPage}
-                onChange={handlePageChange}
+                onChange={(e, v) => {
+                  setCurrentPage(v);
+                  fetchPageData(v, tagFilter, sortBy);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 color="primary"
                 disabled={isLoading}
                 siblingCount={1}
@@ -293,16 +319,22 @@ export default function ProductsPage({
             </PaginationStyles>
           )}
 
+          {currentPage !== 1 && SHOW_TOP_BOUGHT && (
+            <AnimatedTopBought singleVariantCode={recommendedKey} />
+          )}
+
           <ScrollToTop />
         </div>
       </div>
 
-      {/* Global body background (optional) */}
-      <style jsx global>{`
-        body {
-          background-color: #f1f3f6;
-        }
-      `}</style>
+      {/* Global background (kept) */}
+      <style jsx global>
+        {`
+          body {
+            background-color: #f1f3f6;
+          }
+        `}
+      </style>
     </>
   );
 }

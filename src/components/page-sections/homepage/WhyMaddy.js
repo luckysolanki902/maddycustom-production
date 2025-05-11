@@ -8,24 +8,40 @@ const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '';
 
 const cardData = [
   {
-    title: 'Shipping',
-    image: `${baseImageUrl}/assets/icons/shipping.png`,
-    details: ['Free shipping', '3 Attempts', 'Tracking updates'],
+    title: 'Personal Touch',
+    image: `${baseImageUrl}/assets/icons/whymaddy-premiumtouch.png`,
+    details: [
+      'Unique vehicle customization',
+      'Reflects your personality',
+      'Tailored wrap designs',
+    ],
   },
   {
-    title: 'Payment Model',
-    image: `${baseImageUrl}/assets/icons/shipping.png`,
-    details: ['Secure payments', 'Multiple options', 'Easy refunds'],
+    title: 'Premium Build',
+    image: `${baseImageUrl}/assets/icons/whymaddy-premiumbuild.png`,
+    details: [
+      'High-quality materials',
+      'Water-resistant wraps',
+      'Long-lasting durability',
+    ],
   },
   {
-    title: 'Support',
-    image: `${baseImageUrl}/assets/icons/shipping.png`,
-    details: ['24/7 Help', 'Dedicated agent', 'Fast response'],
+    title: 'Value Choice',
+    image: `${baseImageUrl}/assets/icons/whymaddy-valuechoice.png`,
+    details: [
+      'Affordable styling option',
+      'Cost-effective ',
+      'Stylish look on a budget',
+    ],
   },
   {
-    title: 'Quality Check',
-    image: `${baseImageUrl}/assets/icons/shipping.png`,
-    details: ['Premium materials', 'Double inspection', 'Warranty included'],
+    title: 'Seamless Fit',
+    image: `${baseImageUrl}/assets/icons/whymaddy-seamlessfit.png`,
+    details: [
+      'Precision-designed wraps',
+      'Smooth look',
+      'Factory finish',
+    ],
   },
   // add more cards here as needed
 ];

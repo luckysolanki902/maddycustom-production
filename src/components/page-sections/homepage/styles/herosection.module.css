@@ -18,7 +18,7 @@
 }
 .carouseldiv {
     /* width: 90vw;                     make it a percentage of the viewport */
-  max-width: 1600px;               /* optional hard cap */
+  /* max-width: 1600px;               optional hard cap */
   margin: 0 auto;                  /* center */
   overflow: hidden;                /* hide any edge-overflow if you’re doing a “full-bleed” look */
   position: relative; 
@@ -46,11 +46,17 @@
         height: auto;
         display: block; /* Prevent extra gaps below images */
     }
+    .carouseldiv{
+        margin-left: 15px;
+        margin-right: 15px;
+    }
 }
 
 @media (min-width: 1000px) {
     .carouseldiv {
-        margin: auto 15rem;
+        margin-left: 40px;
+        margin-right: 40px;
+        margin-bottom: 100px;
     }
 
 }

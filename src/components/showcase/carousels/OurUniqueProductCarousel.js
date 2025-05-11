@@ -88,7 +88,7 @@ const OurUniqueProductCarousel = ({ products }) => {
       {/* ── ADD: wire onSwiper & onSlideChange here ── */}
       <Swiper
         onSwiper={(sw) => (swiperRef.current = sw)}
-        onSlideChange={(sw) => setActiveIdx(sw.realIndex%4)}
+        onSlideChange={(sw) => setActiveIdx(sw.realIndex % 4)}
         style={{ position: 'relative' }}
         className={styles.swipercustom}
         loop={true}

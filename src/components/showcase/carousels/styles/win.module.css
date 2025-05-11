@@ -72,7 +72,7 @@
   margin: auto;
   padding-bottom: 30px;
   background: #fff;
-  border-radius: 10px;
+  border-radius: 22px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   text-align: left;
   cursor: pointer;
@@ -102,7 +102,7 @@
     font-weight: 400;
   }
   .cardStyles{
-    border-radius: 19px;
+    border-radius: 20px;
     width: 75vw;
   }
   .swipercustom{
