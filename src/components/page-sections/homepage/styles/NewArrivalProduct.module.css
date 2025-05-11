@@ -3,7 +3,7 @@
 :root {
     --bg-dark: #424242;
     --card-bg: #fcfafa;
-    --card-radius: 8px;
+    --card-radius: 2px;
     --gap: 24px;
   }
   
@@ -53,7 +53,7 @@
   
   .card {
     flex: 0 0 180px;    /* fixed width on desktop + mobile scroll */
-    height: 220px;      /* adjust to taste */
+    height: 250px;      /* adjust to taste */
     background-color: var(--card-bg);
     border-radius: var(--card-radius);
     overflow: hidden;
@@ -64,7 +64,7 @@
   .imageContainer {
     position: relative;
     width: 100%;
-    height: 75%;        /* 75% of card height for the image */
+    height: 100%;        /* 75% of card height for the image */
 
   }
   
@@ -76,7 +76,7 @@
     }
   
     .card {
-      flex: 0 0 145px;
+      flex: 0 0 162px;
     }
     .title{
         text-align: left;

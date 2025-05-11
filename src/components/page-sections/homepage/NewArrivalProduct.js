@@ -6,11 +6,14 @@ import Image from "next/image";
 import { useMediaQuery } from "@mui/material";
 import styles from "./styles/NewArrivalProduct.module.css";
 
-const imageUrls = [
-  { image: "/assets/posters/keychain1.png" },
-  { image: "/assets/category-cards/win_wrap_category.jpg" },
-  { image: "/assets/icons/half_helmet.png" },
-  { image: "/assets/homepage/4.png" },
+const rawBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '';
+// ensure no trailing slash
+const baseImageUrl = rawBaseUrl.replace(/\/$/, '');
+const imagePaths = [
+  '/assets/posters/1newarrival.png',
+  '/assets/posters/2newarrival.png',
+  '/assets/posters/3newarrival.png',
+  '/assets/posters/4newarrival.png',
 ];
 
 export default function NewArrivalProduct() {
@@ -27,14 +30,14 @@ export default function NewArrivalProduct() {
             : `${styles.cardWrapper} ${styles.desktop}`
         }
       >
-        {imageUrls.map((src, idx) => (
+          {imagePaths.map((path, idx) => (
           <div key={idx} className={styles.card}>
             <div className={styles.imageContainer}>
               <Image
-                src={src.image}
+                src={`${baseImageUrl}${path}`}
                 alt={`New arrival ${idx + 1}`}
-                layout="fill"
-                objectFit="cover"
+                fill
+                style={{ objectFit: 'cover' }}
                 className={styles.cardImg}
                 unoptimized
               />
