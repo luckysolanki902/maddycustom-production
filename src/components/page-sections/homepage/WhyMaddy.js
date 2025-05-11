@@ -9,7 +9,7 @@ const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '';
 const cardData = [
   {
     title: 'Personal Touch',
-    image: `${baseImageUrl}/assets/icons/whymaddy-premiumtouch.png`,
+    image: `${baseImageUrl}/assets/icons/maddy-premiumtouch.png`,
     details: [
       'Unique customization',
       'Reflects your personality',
@@ -18,7 +18,7 @@ const cardData = [
   },
   {
     title: 'Premium Build',
-    image: `${baseImageUrl}/assets/icons/whymaddy-premiumbuild.png`,
+    image: `${baseImageUrl}/assets/icons/maddy-premiumbuild.png`,
     details: [
       'High-quality materials',
       'Water-resistant wraps',
@@ -27,7 +27,7 @@ const cardData = [
   },
   {
     title: 'Value Choice',
-    image: `${baseImageUrl}/assets/icons/whymaddy-valuechoice.png`,
+    image: `${baseImageUrl}/assets/icons/maddy-valuechoice.png`,
     details: [
       'Affordable styling option',
       'Cost-effective ',
@@ -36,7 +36,7 @@ const cardData = [
   },
   {
     title: 'Seamless Fit',
-    image: `${baseImageUrl}/assets/icons/whymaddy-seamlessfit.png`,
+    image: `${baseImageUrl}/assets/icons/maddy-seamlessfit.png`,
     details: [
       'Precision fit',
       'Smooth look',
