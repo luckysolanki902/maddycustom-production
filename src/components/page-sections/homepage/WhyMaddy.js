@@ -11,7 +11,7 @@ const cardData = [
     title: 'Personal Touch',
     image: `${baseImageUrl}/assets/icons/whymaddy-premiumtouch.png`,
     details: [
-      'Unique vehicle customization',
+      'Unique customization',
       'Reflects your personality',
       'Tailored wrap designs',
     ],
@@ -38,7 +38,7 @@ const cardData = [
     title: 'Seamless Fit',
     image: `${baseImageUrl}/assets/icons/whymaddy-seamlessfit.png`,
     details: [
-      'Precision-designed wraps',
+      'Precision fit',
       'Smooth look',
       'Factory finish',
     ],
