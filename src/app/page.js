@@ -26,6 +26,7 @@ import ComboProduct from '@/components/page-sections/homepage/ComboProduct';
 import WhyMaddy from '@/components/page-sections/homepage/WhyMaddy';
 import VoiceOfOurCustomers from '@/components/page-sections/homepage/VoiceOfCustomers';
 import TopBoughtProducts from '@/components/showcase/products/TopBoughtProducts';
+import ProductImageSlider from '@/components/page-sections/homepage/ProductImageSlider';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -122,6 +123,7 @@ const HomePage = async () => {
         {/* Animated Half Bikes */}
         {/* <HalfBikes /> */}
         <VoiceOfOurCustomers/>
+        <ProductImageSlider/>
       </main>
     </>
   );

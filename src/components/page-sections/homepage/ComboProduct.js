@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useMediaQuery } from '@mui/material';
 import styles from './styles/ComboProduct.module.css';
-// import Link from 'next/link';
+
 export default function ComboProduct({
   smallPosters = [],    // optional array of full AWS URLs
   largePoster = '',     // optional single AWS URL
@@ -27,7 +27,7 @@ export default function ComboProduct({
     : isSmallScreen
       ? [
           `${base}/assets/posters/1mobile_combo-offer.png`,   
-          `${base}/assets/posters/1mobile_combo-offer.png`,  
+          `${base}/assets/posters/2mobile_combo-offer.png`, 
         ]
       : [
           `${base}/assets/posters/1desktop_combo-offer.png`,   

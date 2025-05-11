@@ -93,4 +93,14 @@ display: none;
     }
   }
   
+@media(min-width:768px){
+.cardContainer{
 
+  justify-content: center;
+  align-items: center;
+}
+.cardRow{
+  justify-content: center;
+  align-items: center;
+}
+}

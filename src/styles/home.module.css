@@ -336,6 +336,12 @@
         border-radius: 100px;
     }
 }
+@media (width< 1000px) {
+       .doubleGrid{
+        margin-left: 1.7rem;
+        margin-right: 1.7rem;
+    }
+}
 
 
 
