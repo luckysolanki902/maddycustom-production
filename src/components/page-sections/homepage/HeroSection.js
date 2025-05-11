@@ -24,12 +24,18 @@ import { useRouter } from 'next/navigation';
          `${baseUrl}/assets/carousels/homepage-main/3m_tank-wrap.png`,
        ]
      
+       // same links for both desktop & mobile
+        const links = [
+          '/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps',
+          '/shop/wraps/car-wraps/window-pillar-wraps/win-wraps',
+          '/shop/wraps/bike-wraps/tank-wraps/wide-tank-wraps',
+        ];
        const images = isDesktop ? desktopImages : mobileImages
      
        return (
          <div id="searchyourbikeinput" className={styles.heroSection}>
            <div className={styles.carouseldiv}>
-             <FullWidthRoundCornerLandscapeCarousel images={images} pagination />
+             <FullWidthRoundCornerLandscapeCarousel images={images} links={links} pagination />
            </div>
          </div>
        )

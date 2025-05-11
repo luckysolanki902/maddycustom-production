@@ -5,7 +5,7 @@ import "swiper/css/pagination";
 import "swiper/css/navigation";
 import { register } from "swiper/element/bundle";
 import Image from "next/image";
-
+import Link from "next/link";
 // Import the new Timer component
 import TimerOverBg from "../launch/TimerOverBg";
 import { useMediaQuery } from "@mui/material";
@@ -14,7 +14,7 @@ import { useMediaQuery } from "@mui/material";
 register();
 
 
-const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
+const FullWidthRoundCornerLandscapeCarousel = ({ images ,links }) => {
     const isSmallDevice = useMediaQuery('(max-width: 600px)');
     const isBetweenSmallAndMedium = useMediaQuery('(min-width: 601px) and (max-width: 1424px)');
     // Example: environment-based URL for timer background
@@ -48,6 +48,7 @@ const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
             ) : (
                 images.map((url, index) => (
                     <SwiperSlide key={index}>
+                        <Link href={links?.[index] ?? "#"} passHref>
                         <Image
                             priority={true}
                             src={url}
@@ -55,7 +56,8 @@ const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
                             width={1242 * 2}
                             height={547 * 2}
                             style={{ width: "100%", height: "auto", cursor: "pointer" }}
-                        />
+                        />  
+                        </Link>
                     </SwiperSlide>
                 ))
             )}
