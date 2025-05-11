@@ -15,6 +15,7 @@ import ReportProblemRoundedIcon from '@mui/icons-material/ReportProblemRounded';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import EmailIcon from '@mui/icons-material/Email';
 import InstagramIcon from '@mui/icons-material/Instagram';
+import InfoIcon from '@mui/icons-material/Info';
 import Image from 'next/image';
 
 export default function Sidebar({ categories = [], variants = [] }) {
@@ -37,6 +38,9 @@ export default function Sidebar({ categories = [], variants = [] }) {
         return <SearchIcon sx={{ color: 'rgb(85,85,85)', fontSize: '1.3rem' }} />;
       case 3:
         return <LocalShippingIcon sx={{ color: 'rgb(85,85,85)', fontSize: '1.3rem' }} />;
+      case 4:
+        // about us simple persuasive icon
+        return <InfoIcon sx={{ color: 'rgb(85,85,85)', fontSize: '1.3rem' }} />;
       default:
         return <ReportProblemRoundedIcon sx={{ color: 'rgb(85,85,85)', fontSize: '1.3rem' }} />;
     }
@@ -48,6 +52,7 @@ export default function Sidebar({ categories = [], variants = [] }) {
     { text: 'Customer Support', href: '/faqs' },
     { text: 'Search Categories', action: () => dispatch(openSearchDialog()) },
     { text: 'Track Your Order', href: '/orders/track' },
+    { text: 'About Us', href: '/about-us' },
   ];
 
   return (
