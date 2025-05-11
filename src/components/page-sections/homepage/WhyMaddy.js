@@ -59,8 +59,8 @@ export default function WhyMaddy() {
               <Image
                 src={card.image}
                 alt={card.title}
-                width={120}
-                height={80}
+                width={110}
+                height={110}
                 priority
               />
             </div>

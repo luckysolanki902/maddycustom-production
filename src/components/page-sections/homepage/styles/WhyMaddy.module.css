@@ -53,7 +53,8 @@
   width: 100%;
   box-sizing: border-box;
   text-align: start;
-  margin-top: 106px;
+  margin-top: 100px;
+  z-index: 10;
 }
 
 .title {
@@ -84,7 +85,7 @@
   }
 
   .contentBox {
-    margin-top: 110px;    /* less space needed above */
+    margin-top: 100px;    /* less space needed above */
     padding: 22px 2px 30px;
     margin-bottom: 50px;
     text-align: start;
