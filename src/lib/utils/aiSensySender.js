@@ -10,7 +10,7 @@ import CampaignLog from '@/models/CampaignLog';
  * @param {String} options.campaignName - The AiSensy campaign name (e.g. "order_confirmed").
  * @param {ObjectId} [options.orderId] - The related order ID, if applicable.
  * @param {String[]} [options.templateParams] - AiSensy template placeholders.
- * @param {Array} [options.carouselCards] - AiSensy carousel card objects.
+ * @param {Array} [options.carouselCards] - AiSensy carousel cards in proper format.
  * @param {Object} [options.media] - AiSensy media object (e.g. { url, filename }).
  * @param {Array} [options.buttons] - AiSensy buttons array.
  * @param {String} [options.countryCode='91'] - Default country code for phone number.
@@ -65,7 +65,6 @@ export async function sendWhatsAppMessage({
     const AISENSY_API_KEY = process.env.AISENSY_API_KEY;
 
     if (!AISENSY_API_KEY) {
-      console.error('AiSensy API Key is missing!');
       return {
         success: false,
         message: 'AiSensy API key is missing. Check your environment config.',
@@ -84,7 +83,7 @@ export async function sendWhatsAppMessage({
       templateParams,
     };
 
-    if (carouselCards?.length) {
+    if (carouselCards && carouselCards.length > 0) {
       payload.carouselCards = carouselCards;
     }
     if (media) {
@@ -103,7 +102,6 @@ export async function sendWhatsAppMessage({
 
     // If the HTTP status indicates "unauthorized", handle separately
     if (response.status === 401) {
-      console.error('Unauthorized: Invalid API Key or permission issue (AiSensy).');
       campaignLog.totalCount += 1;
       campaignLog.failedCount += 1;
       campaignLog.lastSentAt = new Date();
@@ -120,7 +118,6 @@ export async function sendWhatsAppMessage({
     try {
       result = await response.json();
     } catch (parseErr) {
-      console.error('Failed to parse AiSensy response:', parseErr);
       campaignLog.totalCount += 1;
       campaignLog.failedCount += 1;
       campaignLog.lastSentAt = new Date();
@@ -135,7 +132,6 @@ export async function sendWhatsAppMessage({
     // 6. Check if AiSensy indicated success in the JSON
     //    - "AiSensy" might return "success: false" but still give a 2xx status.
     if (!response.ok || !result?.success) {
-      console.error('AiSensy API reported an error:', result);
       campaignLog.totalCount += 1;
       campaignLog.failedCount += 1;
       campaignLog.lastSentAt = new Date();
@@ -160,9 +156,6 @@ export async function sendWhatsAppMessage({
       data: result,
     };
   } catch (error) {
-    console.error('Error in sendWhatsAppMessage:', error);
-
-    // In case of runtime errors
     if (campaignLog) {
       campaignLog.totalCount += 1;
       campaignLog.failedCount += 1;
