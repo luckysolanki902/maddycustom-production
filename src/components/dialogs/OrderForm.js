@@ -52,7 +52,8 @@ const OrderForm = ({
   couponsDetails,
   deliveryCost,
   discountAmountFinal,
-  items
+  items,
+  subTotal
 }) => {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -274,7 +275,7 @@ const OrderForm = ({
       try {
         const validateRes = await axios.post('/api/checkout/coupons/apply', {
           code: couponCode,
-          totalCost,
+          totalCost: subTotal,
           isFirstOrder: false,
           cartItems: items,
         });
