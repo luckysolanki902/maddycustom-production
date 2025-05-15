@@ -6,8 +6,8 @@ import { useTransition, animated } from '@react-spring/web';
 import { Typography, Divider } from '@mui/material';
 import styles from './styles/viewcart.module.css';
 import BlackButtonWithOnClick from '@/components/utils/BlackButtonWithOnClick';
-const Footer = ({ totalCost, originalTotal, onCheckout,  onlinePercentage, codPercentage }) => {
-
+const Footer = ({ totalCost, originalTotal, onCheckout,  onlinePercentage, codPercentage, isRevalidatingCoupons }) => {
+console.log('revalidating')
   const onlineAmount = Math.floor((totalCost * onlinePercentage) / 100);
   const codAmount = Math.ceil((totalCost * codPercentage) / 100);
 
@@ -65,7 +65,7 @@ const Footer = ({ totalCost, originalTotal, onCheckout,  onlinePercentage, codPe
 
       {/* Right Section: Total Cost and Checkout Button */}
       <div className={styles.rightSection}>
-        <BlackButtonWithOnClick isLoading={false} buttonText="ORDER" onClick={onCheckout} />
+        <BlackButtonWithOnClick isLoading={false} buttonText={isRevalidatingCoupons ? 'Validating...' : 'Checkout'} onClick={onCheckout} isDisabled={isRevalidatingCoupons}  />
       </div>
     </footer>
   );

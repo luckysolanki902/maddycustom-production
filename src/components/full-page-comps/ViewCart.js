@@ -102,6 +102,8 @@ export default function ViewCart() {
   const lastAutoRef = useRef({ code: '', type: '' });
   const FIVE_MIN = 5 * 60 * 1000;
   const isFirstOrder = false;  // hook into your user meta when ready
+  const [revalidatingCoupons, setRevalidatingCoupons] = useState(false);
+  
 
   /* ---------- window size for confetti ------------------------------- */
   useEffect(() => { if (typeof window !== 'undefined') setViewport({ w: window.innerWidth, h: window.innerHeight }); }, []);
@@ -236,6 +238,7 @@ export default function ViewCart() {
     } catch {
       if (!silent) snack('Could not verify coupon.', 'error');
       return false;
+    } finally {
     }
   };
 
@@ -244,8 +247,10 @@ export default function ViewCart() {
 
   /* ---------- validate before checkout ------------------------------ */
   const handleCheckout = async () => {
+    setRevalidatingCoupons(true);
     if (!(await revalidateCoupon())) return;
     setDlgOrder(true);
+    setRevalidatingCoupons(false);
   };
 
   /* ---------- memo for suggestions ---------------------------------- */
@@ -354,6 +359,7 @@ export default function ViewCart() {
             onCheckout={handleCheckout}
             onlinePercentage={selectedPM?.configuration?.onlinePercentage}
             codPercentage={selectedPM?.configuration?.codPercentage}
+            isRevalidatingCoupons={revalidatingCoupons}
           />
         )}
 
@@ -375,6 +381,7 @@ export default function ViewCart() {
           deliveryCost={deliveryCost}
           discountAmountFinal={disc}
           items={cartItems}
+          subTotal={subTot}
         />
 
         <CustomSnackbar
