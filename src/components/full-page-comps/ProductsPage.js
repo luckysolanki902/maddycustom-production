@@ -139,6 +139,39 @@ export default function ProductsPage({
     [variant?.variantCode]
   );
 
+  // Enhanced scroll to top function with better reliability
+  const enhancedScrollToTop = useCallback(() => {
+    // Start with requestAnimationFrame to ensure we're in the next paint cycle
+    requestAnimationFrame(() => {
+      // Add a small delay to ensure page content has rendered
+      setTimeout(() => {
+        // Try smooth scroll first
+        try {
+          window.scrollTo({
+            top: 0,
+            behavior: 'smooth',
+          });
+        } catch (error) {
+          // Fallback for older browsers
+          window.scrollTo(0, 0);
+        }
+        
+        // Double-check that we're at the top after animation completes
+        setTimeout(() => {
+          if (window.pageYOffset > 0) {
+            window.scrollTo(0, 0);
+          }
+        }, 500); // After expected scroll animation
+      }, 10);
+    });
+  }, []);
+
+  const handlePageChange = useCallback((event, newPage) => {
+    setCurrentPage(newPage);
+    fetchPageData(newPage, tagFilter, sortBy);
+    enhancedScrollToTop();
+  }, [fetchPageData, tagFilter, sortBy, enhancedScrollToTop]);
+
   const [firstHalf, secondHalf] = useMemo(() => {
     if (!SHOW_TOP_BOUGHT || currentPage !== 1) return [currentProducts, []];
     const mid = Math.ceil(currentProducts.length / 2);
@@ -290,11 +323,7 @@ export default function ProductsPage({
               <Pagination
                 count={totalPageCount}
                 page={currentPage}
-                onChange={(e, v) => {
-                  setCurrentPage(v);
-                  fetchPageData(v, tagFilter, sortBy);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
+                onChange={handlePageChange}
                 color="primary"
                 disabled={isLoading}
                 siblingCount={1}
@@ -306,11 +335,7 @@ export default function ProductsPage({
               <Pagination
                 count={totalPageCount}
                 page={currentPage}
-                onChange={(e, v) => {
-                  setCurrentPage(v);
-                  fetchPageData(v, tagFilter, sortBy);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
+                onChange={handlePageChange}
                 color="primary"
                 disabled={isLoading}
                 siblingCount={1}
