@@ -83,7 +83,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     }));
 
     // Optionally show cart drawer on add
-    goToCart();
+    // goToCart();
 
     // Track AddToCart event
     try {
