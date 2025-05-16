@@ -34,6 +34,10 @@ import DiscountOutlinedIcon from '@mui/icons-material/DiscountOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DiscountIcon from '@mui/icons-material/Discount';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import { motion, AnimatePresence } from 'framer-motion';
+import SplitPayment from '../page-sections/viewcart/SplitPayment';
 
 /* ---------------- helper ------------------------------------------------ */
 const isOfferApplicable = (offer, totalCost, isFirstOrder = false) =>
@@ -82,6 +86,20 @@ export default function ViewCart({ isDrawer = false }) {
     }
   }, [couponRedux]);
 
+  /* ---------- animation variants ------------------------------------ */
+  const fadeIn = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.4 } }
+  };
+  
+  const couponAnimation = {
+    applied: { 
+      scale: [1, 1.05, 1],
+      backgroundColor: ['#ffffff', '#e6fff0', '#ffffff'],
+      transition: { duration: 0.8 }
+    }
+  };
+
   /* ---------- misc ui / state ---------------------------------------- */
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [dlgCoupon, setDlgCoupon] = useState(false);
@@ -112,6 +130,16 @@ export default function ViewCart({ isDrawer = false }) {
   const extraCharge = selectedPM?.extraCharge || 0;
   const totalPay = grand + deliveryCost + extraCharge;
 
+  // Determine if this is a split payment based on payment mode configuration
+  const isSplitPayment = selectedPM?.name === 'split' || 
+                      (selectedPM?.configuration?.onlinePercentage > 0 && 
+                       selectedPM?.configuration?.onlinePercentage < 100);
+
+  // Calculate split amounts if applicable
+  const onlineAmount = isSplitPayment ? 
+    Math.round((totalPay * (selectedPM?.configuration?.onlinePercentage || 50)) / 100) : 0;
+  const codAmount = isSplitPayment ? totalPay - onlineAmount : 0;
+
   const snack = (m, s = 'success') => setSnackbar({ open: true, message: m, severity: s });
   const dispatchCoupon = p => dispatch(setCouponApplied({ ...p }));
 
@@ -128,8 +156,8 @@ export default function ViewCart({ isDrawer = false }) {
     if (!fromAuto) dispatch(setManualCoupon({ couponCode: code }));
     dispatch(resetAutoApplyDisabled());
     if (fromAuto) lastAutoRef.current = { code, type };
-
-    snack('Coupon applied successfully!');
+    
+    // Don't show snackbar, use the animation in the coupon section instead
   };
 
   const removeCoupon = (showMsg = true) => {
@@ -265,115 +293,218 @@ export default function ViewCart({ isDrawer = false }) {
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        backgroundColor: '#f8f9fa'
       }}
     >
-      <header className={styles.headerCont0} style={{ flexShrink: 0 }}>
+      <header className={styles.headerCont}>
         <ViewCartHeader 
           totalQuantity={qty} 
           onBack={isDrawer ? handleBackClick : undefined} 
         />
       </header>
 
-      <div style={{ flexGrow: 1, overflow: 'auto', paddingBottom: qty > 0 ? '80px' : '0' }}>
-        {qty > 0 && (
-          <div className={styles.maincomp}>
-            <div className={styles.blueCont}>
-              <CartList cartItems={cartItems} onRemove={id => dispatch(removeItem({ productId: id }))} />
-            </div>
+      <div className={styles.scrollableContent}>
+        {qty > 0 ? (
+          <motion.div 
+            className={styles.mainContent}
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+          >
+            <section className={styles.cartSection}>
+              <div className={styles.sectionHeader}>
+                <ShoppingBagIcon className={styles.sectionIcon} />
+                <h2 className={styles.sectionTitle}>Your Cart ({qty})</h2>
+              </div>
+              
+              <CartList 
+                cartItems={cartItems} 
+                onRemove={id => dispatch(removeItem({ productId: id }))} 
+              />
+            </section>
 
-            <div className={styles.blueCont2}>
+            <section className={styles.detailsSection}>
+              {/* Locked/Active Coupon Banners */}
               {lockedCoupon && (
-                <div className={styles.lockedOfferContainer}>
-                  <span className={styles.lockedOfferText}>
-                    Add ₹{lockedShort} more to unlock{' '}
-                    {lockedCoupon.discountType === 'percentage'
-                      ? `${lockedCoupon.discountValue}%`
-                      : lockedCoupon.discountValue}{' '}
-                    off coupon
-                  </span>
-                  <DiscountOutlinedIcon sx={{ color: '#4dff68', fontSize: 40 }} />
-                </div>
+                <motion.div 
+                  className={styles.lockedOfferContainer}
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                  <div className={styles.lockedOfferContent}>
+                    <DiscountOutlinedIcon className={styles.discountIcon} />
+                    <div className={styles.lockedOfferMessage}>
+                      <span className={styles.lockedOfferHeading}>Unlock Special Offer!</span>
+                      <span className={styles.lockedOfferText}>
+                        Add <strong>₹{lockedShort}</strong> more to get
+                        {lockedCoupon.discountType === 'percentage'
+                          ? <strong> {lockedCoupon.discountValue}% </strong>
+                          : <strong> ₹{lockedCoupon.discountValue} </strong>}
+                        off your order
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
               )}
 
-              <div className={styles.currentAndAllCoupons}>
+              {/* Applied Coupon Section with enhanced animation */}
+              <AnimatePresence>
                 {couponState.couponApplied && (
-                  <div className={styles.couponSaveBanner}>
-                    <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27 }} />
-                    <span>
-                      <strong>You saved</strong> ₹{couponState.couponDiscount}{' '}
-                      {couponState.discountType === 'bundle'
-                        ? 'on the bundle'
-                        : `on ${couponState.couponName}`}
+                  <motion.div 
+                    className={styles.appliedCouponBanner}
+                    initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                    animate={{ 
+                      opacity: 1, 
+                      y: 0, 
+                      scale: 1,
+                      transition: { duration: 0.4 }
+                    }}
+                    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.3 } }}
+                  >
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ 
+                        scale: [0, 1.2, 1],
+                        transition: { duration: 0.5, delay: 0.2 }
+                      }}
+                      className={styles.successIconContainer}
+                    >
+                      <CheckCircleIcon className={styles.successIcon} />
+                    </motion.div>
+                    <div className={styles.appliedCouponContent}>
+                      <span className={styles.appliedCouponHeading}>Discount Applied!</span>
+                      <motion.span 
+                        className={styles.appliedCouponText}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1, transition: { delay: 0.3 } }}
+                      >
+                        You saved <strong>₹{couponState.couponDiscount}</strong>{' '}
+                        {couponState.discountType === 'bundle'
+                          ? 'on your bundle'
+                          : `with ${couponState.couponName}`}
+                      </motion.span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Available Coupon Banner */}
+              {!couponState.couponApplied && nowCoupon && (
+                <motion.div 
+                  className={styles.availableCouponBanner}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <LocalOfferIcon className={styles.offerIcon} />
+                  <div className={styles.availableCouponContent}>
+                    <span className={styles.availableCouponHeading}>Special Offer Available!</span>
+                    <span className={styles.availableCouponText}>
+                      Get {nowCoupon.discountType === 'percentage'
+                        ? `${nowCoupon.discountValue}%`
+                        : `₹${nowCoupon.discountValue}`}{' '}
+                      off on your order
                     </span>
                   </div>
-                )}
+                  <motion.button 
+                    className={styles.applyNowButton} 
+                    onClick={() => setDlgCoupon(true)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Apply
+                  </motion.button>
+                </motion.div>
+              )}
 
-                {!couponState.couponApplied && nowCoupon && (
-                  <>
-                    <div className={styles.couponSaveBanner}>
-                      <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27 }} />
-                      <span>
-                        You can now unlock{' '}
-                        {nowCoupon.discountType === 'percentage'
-                          ? `${nowCoupon.discountValue}%`
-                          : nowCoupon.discountValue}{' '}
-                        off coupon!
-                      </span>
-                      <button className={styles.applyNowButton} onClick={() => setDlgCoupon(true)}>
-                        Apply Now
-                      </button>
-                    </div>
-                    <div style={{ borderBottom: '1px dashed #cee2ff', margin: '0 1rem' }} />
-                  </>
-                )}
-
-                <div onClick={() => setDlgCoupon(true)} className={styles.viewAllCouponsSection}>
-                  <button className={styles.viewAllCouponsButton}>
-                    <DiscountIcon sx={{ color: 'white', fontSize: 15 }} />
-                  </button>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
-                    <span className={styles.viewAllCouponsText}>View all coupons</span>
-                    <ChevronRightIcon sx={{ color: '#616161', fontSize: 22 }} />
-                  </div>
+              {/* View All Coupons Button */}
+              <div onClick={() => setDlgCoupon(true)} className={styles.viewAllCouponsSection}>
+                <div className={styles.viewAllCouponsContent}>
+                  <DiscountIcon className={styles.couponIcon} />
+                  <span className={styles.viewAllCouponsText}>View all available offers</span>
                 </div>
+                <ChevronRightIcon className={styles.arrowIcon} />
               </div>
 
+              {/* Price Details */}
               <PriceDetails
                 deliveryCost={deliveryCost}
                 couponState={couponState}
                 discountAmount={disc}
+                subtotal={subTot}
                 totalCostWithDelivery={totalPay}
                 onOpenCoupon={() => setDlgCoupon(true)}
                 onRemoveCoupon={removeCoupon}
+                extraCharge={extraCharge}
               />
+
+
+
+              {/* Payment Modes */}
               <PaymentModes
                 paymentModes={paymentModes}
                 isLoading={loadingPM}
                 selectedPaymentMode={selectedPM}
                 onChange={e => setSelectedPM(paymentModes.find(m => m.name === e.target.value))}
               />
+            </section>
+
+            {/* Recommended Products */}
+            <section className={styles.recommendedSection}>
+              <h2 className={styles.recommendedTitle}>You might also like</h2>
+              <TopBoughtProducts 
+                subCategories={topSub} 
+                currentProductId={topIds} 
+                pageType="viewcart" 
+              />
+            </section>
+          </motion.div>
+        ) : (
+          <motion.div 
+            className={styles.emptyCartContainer}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className={styles.emptyCartContent}>
+              <div className={styles.emptyCartIcon}>
+                <ShoppingBagIcon style={{ fontSize: 80, color: '#d1d1d1' }} />
+              </div>
+              <h2 className={styles.emptyCartTitle}>Your cart is empty</h2>
+              <p className={styles.emptyCartSubtitle}>Add items to begin shopping</p>
+              <motion.button 
+                className={styles.continueShopping}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => dispatch(closeCartDrawer())}
+              >
+                Continue Shopping
+              </motion.button>
             </div>
-          </div>
+            <div className={styles.recommendedForYou}>
+              <h3 className={styles.recommendedTitle}>Recommended For You</h3>
+              <TopBoughtProducts pageType="viewcart" />
+            </div>
+          </motion.div>
         )}
-
-
-        <div style={{ margin: '0 .4rem', borderRadius: '1rem', background: '#fff', paddingTop: '0.5rem' }}>
-          <TopBoughtProducts subCategories={topSub} currentProductId={topIds} pageType="viewcart" />
-        </div>
       </div>
 
       {qty > 0 && (
-        <div style={{ position: isDrawer ? 'sticky' : 'fixed', bottom: 0, width: '100%', flexShrink: 0, zIndex: 10 }}>
+        <motion.div 
+          className={styles.checkoutFooter}
+          initial={{ y: 100 }}
+          animate={{ y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        >
           <Footer
             totalCost={totalPay}
             originalTotal={subTot + deliveryCost + extraCharge}
             onCheckout={handleCheckout}
-            onlinePercentage={selectedPM?.configuration?.onlinePercentage}
-            codPercentage={selectedPM?.configuration?.codPercentage}
+            onlinePercentage={selectedPM?.configuration?.onlinePercentage || 0}
+            codPercentage={selectedPM?.configuration?.codPercentage || 0}
             isRevalidatingCoupons={revalidatingCoupons}
+            discount={disc}
           />
-        </div>
+        </motion.div>
       )}
 
       <ApplyCoupon

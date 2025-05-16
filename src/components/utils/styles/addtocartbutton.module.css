@@ -2,8 +2,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* max-width: 200px; */
-  /* Adjusted for better layout */
   font-family: Jost, sans-serif;
   background-color: #424242;
   color: white;
@@ -17,17 +15,42 @@
   width: 130px;
   min-width: 130px;
   transition: all 0.3s ease;
-  /* Smooth transition for style changes */
-  font-family: Jost, sans-serif;
   margin-top: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.smaller{
-  font-size: 0.9rem;
+.main::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.3), transparent);
+  transform: skewX(-25deg);
+  animation: buttonShine 3s infinite;
+}
+
+@keyframes buttonShine {
+  0% {
+    left: -100%;
+  }
+  30% {
+    left: 100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.smaller {
+  font-size: 0.85rem;
   height: 1.6rem;
-  padding: 0.4 0;
+  padding: 0.3rem 0;
   width: 100px;
   min-width: 100px;
+  border-radius: 0.3rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 /* New class for black button */
@@ -39,30 +62,28 @@
 /* New class for large button */
 .largeButton {
   width: 180px;
-  /* Twice the original width */
   min-width: 180px;
   height: 4rem;
-  /* Twice the original height */
-  font-size: 2rem;
-  /* Increase font size */
+  font-size: 1.8rem;
   font-weight: 700;
   letter-spacing: 0.1rem;
+  border-radius: 0.5rem;
 }
 
 /* Ensure text inside the button inherits the color correctly */
 .addToCart {
   justify-content: center;
   cursor: pointer;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-family: Jost, sans-serif;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   min-width: 150px;
 }
 
 .largeButton:hover {
-  scale: 0.95;
-  opacity: 0.9;
-  letter-spacing: 0.3rem;
+  scale: 0.98;
+  opacity: 0.95;
+  letter-spacing: 0.15rem;
 }
 
 .blackButton .addToCart {
@@ -76,40 +97,61 @@
   outline: none;
   border: none;
   cursor: pointer;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   padding: 0.8rem;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.2s ease;
   min-width: 15%;
   display: flex;
   justify-content: center;
   align-items: center;
 }
-.increment:disabled{
+
+.increment:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.decrement:hover,
-.increment:hover {
-  /* background-color: #424242; */
+.decrement:hover, .increment:hover {
+  background-color: #353535;
+}
+
+.decrement:active, .increment:active {
+  transform: scale(0.9);
 }
 
 .blackButton .decrement,
 .blackButton .increment {
   color: white;
-  /* background-color: black; */
 }
 
 .quantity {
   cursor: default;
   font-size: 1rem;
-  /* margin: 0 0.5rem; */
   min-width: 20px;
   text-align: center;
   color: white;
+  font-weight: 600;
 }
 
 .blackButton .quantity {
   color: white;
+}
+
+/* Add a pulsing animation for the Add to Cart button */
+.addToCart {
+  animation: softPulse 2s infinite ease-in-out;
+}
+
+@keyframes softPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @media (max-width: 400px) {
@@ -120,8 +162,42 @@
   }
   
   .main {
-    padding: 0.5rem 0;
+    padding: 0.4rem 0;
     width: 110px;
     min-width: 110px;
+  }
+  
+  .smaller {
+    font-size: 0.8rem;
+    height: 1.5rem;
+    width: 90px;
+    min-width: 90px;
+  }
+  
+  .decrement,
+  .increment {
+    padding: 0.6rem;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 350px) {
+  .addToCart {
+    font-size: 0.85rem;
+    min-width: 120px;
+    width: 120px;
+  }
+  
+  .main {
+    padding: 0.3rem 0;
+    width: 100px;
+    min-width: 100px;
+  }
+  
+  .smaller {
+    font-size: 0.75rem;
+    height: 1.4rem;
+    width: 85px;
+    min-width: 85px;
   }
 }

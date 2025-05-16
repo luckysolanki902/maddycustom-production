@@ -1,0 +1,143 @@
+.splitPaymentContainer {
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 16px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
+}
+
+.splitHeader {
+  margin-bottom: 16px;
+}
+
+.splitTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d2d2d;
+  margin: 0 0 4px;
+}
+
+.splitSubtitle {
+  font-size: 14px;
+  color: #666666;
+  margin: 0;
+}
+
+.paymentFlow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.paymentStep {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.paymentIconContainer {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+}
+
+.paymentIcon {
+  font-size: 20px !important;
+}
+
+.paymentStepDetails {
+  display: flex;
+  flex-direction: column;
+}
+
+.paymentLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d2d2d;
+}
+
+.paymentAmount {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d2d2d;
+}
+
+.paymentTiming {
+  font-size: 12px;
+  color: #666666;
+}
+
+.paymentDivider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+}
+
+.arrowIcon {
+  color: #999999;
+}
+
+.splitBarContainer {
+  margin-bottom: 16px;
+}
+
+.splitBarLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666666;
+  margin-bottom: 4px;
+}
+
+.splitBar {
+  height: 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+}
+
+.onlinePortion {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.codPortion {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.splitNote {
+  background-color: #f9f9f9;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.splitNote p {
+  margin: 0;
+  font-size: 13px;
+  color: #555555;
+  line-height: 1.4;
+}
+
+@media (max-width: 480px) {
+  .splitPaymentContainer {
+    padding: 12px;
+  }
+  
+  .paymentFlow {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .paymentDivider {
+    transform: rotate(90deg);
+  }
+}
