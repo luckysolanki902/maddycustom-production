@@ -18,6 +18,7 @@ const LoginDialog = () => {
   // Access Redux state
   const userExists = useSelector((state) => state.orderForm.userExists);
   const loginDialogShown = useSelector((state) => state.orderForm.loginDialogShown);
+  const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
   const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector((state) => state.userBehavior);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const { control, handleSubmit, reset, formState: { errors } } = useForm({
@@ -79,16 +80,25 @@ const LoginDialog = () => {
       !loginDialogShown &&
       !isUserPhoneNumberValid &&
       !userExists &&
-      pathname !== '/viewcart'
-      && !pathname.startsWith('/orders/myorder/')
+      !isCartDrawerOpen && // Don't show if cart drawer is open
+      !pathname.startsWith('/orders/myorder/')
     ) {
       setOpen(true);
       dispatch(setLoginDialogShown(true)); // Prevent showing again
     }
-  }, [timeSpentOnWebsite, scrolledMoreThan60Percent, loginDialogShown, userExists, pathname, dispatch, isUserPhoneNumberValid]);
+  }, [
+    timeSpentOnWebsite, 
+    scrolledMoreThan60Percent, 
+    loginDialogShown, 
+    userExists, 
+    pathname, 
+    dispatch, 
+    isUserPhoneNumberValid, 
+    isCartDrawerOpen
+  ]);
 
-  // Prevent rendering on /viewcart
-  if (pathname === '/viewcart') return null;
+  // Prevent rendering if cart drawer is open
+  if (isCartDrawerOpen) return null;
 
   return (
     <>

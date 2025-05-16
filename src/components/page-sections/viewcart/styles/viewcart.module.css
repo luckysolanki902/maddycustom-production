@@ -95,7 +95,7 @@
 @media screen and (min-width: 768px) {
   .freeShippingBanner {
     position: sticky;
-    top: 0;
+    top: 0.6rem;
     border-radius: 0;
   }
 

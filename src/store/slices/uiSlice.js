@@ -5,6 +5,7 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
   isSidebarOpen: false,
   isSearchDialogOpen: false,
+  isCartDrawerOpen: false, // New state for cart drawer
 };
 
 const uiSlice = createSlice({
@@ -29,6 +30,16 @@ const uiSlice = createSlice({
     closeSearchDialog(state) {
       state.isSearchDialogOpen = false;
     },
+    // New reducers for cart drawer
+    toggleCartDrawer(state) {
+      state.isCartDrawerOpen = !state.isCartDrawerOpen;
+    },
+    openCartDrawer(state) {
+      state.isCartDrawerOpen = true;
+    },
+    closeCartDrawer(state) {
+      state.isCartDrawerOpen = false;
+    },
   },
 });
 
@@ -39,6 +50,9 @@ export const {
   toggleSearchDialog,
   openSearchDialog,
   closeSearchDialog,
+  toggleCartDrawer,
+  openCartDrawer,
+  closeCartDrawer,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

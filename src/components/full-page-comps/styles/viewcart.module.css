@@ -2,12 +2,14 @@
 .container {
   background-color: white;
   min-height: 100vh;
-  padding-top: 0.6rem;
+  padding-top: 4.4rem;
   margin: 0;
-  padding-bottom: 6rem;
-  max-width: 1200px;
   margin: auto;
   position: relative;
+  padding-bottom: 6rem;
+  width: 100%;
+  max-width: 1200px;
+  overflow-x: hidden
 
 }
 
@@ -101,11 +103,8 @@
   gap: 0.5rem;
 }
 
-@media screen and (max-width: 7680px) {
-  .container {
-    /* padding: 0; */
-    padding-bottom: 6rem;
-  }
+@media screen and (max-width: 768px) {
+
 
   .blueCont {
     padding-top: 20px;
@@ -114,7 +113,7 @@
 
 }
 
- /* Locked offer container: "Add ₹XYZ more to unlock X% off coupon" */ 
+ /* Locked offers: "Add ₹XYZ more to unlock X% off coupon" */ 
 .lockedOfferContainer {
   display: flex;
   align-items: center;
@@ -179,11 +178,12 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  
 }
 
 @media (width> 768px) {
   .maincomp {
-    /* margin-top: 6rem; */
+    /* margin-top: 4rem; */
   }
 }
 

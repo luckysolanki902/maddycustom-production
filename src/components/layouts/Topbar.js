@@ -3,17 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import styles from './styles/topbar.module.css';
 import { ShoppingCart, Search, Menu } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import Badge from '@mui/material/Badge';
 import { useSpring, animated } from 'react-spring';
 
-import { toggleSidebar, openSearchDialog } from '@/store/slices/uiSlice';
+import { toggleSidebar, openSearchDialog, openCartDrawer } from '@/store/slices/uiSlice';
 
 const Topbar = () => {
-  const router = useRouter();
   const pathname = usePathname();
   const dispatch = useDispatch();
   const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -57,10 +56,6 @@ const Topbar = () => {
     config: { tension: 210, friction: 20 },
   });
 
-  
-  // If pathname is /viewcart, don't render the topbar
-  if (pathname === '/viewcart') return null;
-
   return (
     <animated.nav style={animationProps} className={styles.topbar}>
       {/* Left Section: hamburger (mobile) + logo + links (desktop) */}
@@ -83,7 +78,7 @@ const Topbar = () => {
             width={150}
             height={70}
             priority
-            onClick={() => router.push('/')}
+            onClick={() => window.location.href = '/'}
             style={{ cursor: 'pointer' }}
           />
         </div>
@@ -130,7 +125,7 @@ const Topbar = () => {
         {/* Cart Icon with Badge */}
         <div
           className={styles.cartContainer}
-          onClick={() => router.push('/viewcart')}
+          onClick={() => dispatch(openCartDrawer())}
         >
           <Badge badgeContent={totalQuantity} color="info">
             <ShoppingCart className={styles.cartIcon} />
