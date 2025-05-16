@@ -12,7 +12,8 @@ const CartInitializer = () => {
   useEffect(() => {
     // Check if we need to open the cart drawer
     if (searchParams.get('openCart') === 'true') {
-      dispatch(openCartDrawer());
+      // For direct URL access, open from bottom
+      dispatch(openCartDrawer({ source: 'bottom' }));
       
       // Clean up the URL by removing the query parameter (optional)
       if (typeof window !== 'undefined') {

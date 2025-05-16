@@ -59,7 +59,7 @@ const flattenCart = cartItems => cartItems.map(i => ({
 export default function ViewCart({ isDrawer = false }) {
   const dispatch = useDispatch();
 
-  /* ---------- redux --------------------------------------------------- */
+  /* ---------- redux and state (unchanged) ---------------------------- */
   const cartItems = useSelector(s => s.cart.items);
   const orderForm = useSelector(s => s.orderForm);
   const couponRedux = orderForm.couponApplied;
@@ -144,7 +144,7 @@ export default function ViewCart({ isDrawer = false }) {
     dispatch(closeCartDrawer());
   };
 
-  /* ---------- payment modes fetch ----------------------------------- */
+  /* ---------- payment modes fetch (unchanged) ----------------------- */
   useEffect(() => {
     (async () => {
       try {
@@ -157,7 +157,7 @@ export default function ViewCart({ isDrawer = false }) {
     })();
   }, []);
 
-  /* ---------- locked / now banner ----------------------------------- */
+  /* ---------- locked / now banner (unchanged) ----------------------- */
   useEffect(() => {
     if (!subTot) { setLockedCoupon(null); setNowCoupon(null); return; }
     (async () => {
@@ -173,7 +173,7 @@ export default function ViewCart({ isDrawer = false }) {
     })();
   }, [subTot]);
 
-  /* ---------- AUTO‑APPLY -------------------------------------------- */
+  /* ---------- AUTO‑APPLY (unchanged) -------------------------------- */
   const { autoApplyDisabled, autoApplyDisabledAt, manualCoupon } = orderForm;
   const blocked = autoApplyDisabled && autoApplyDisabledAt &&
     Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
@@ -204,7 +204,7 @@ export default function ViewCart({ isDrawer = false }) {
     })();
   }, [qty, subTot, cartItems, couponState.couponApplied, blocked, manualCoupon]); // eslint-disable-line
 
-  /* ---------- RE‑VALIDATE on cart changes --------------------------- */
+  /* ---------- RE‑VALIDATE on cart changes (unchanged) --------------- */
   const revalidateCoupon = async (silent = false) => {
     if (!couponState.couponApplied) return true;
 
@@ -241,7 +241,7 @@ export default function ViewCart({ isDrawer = false }) {
   /* run on cart changes */
   useEffect(() => { revalidateCoupon(true); }, [cartItems, subTot]); // eslint-disable-line
 
-  /* ---------- validate before checkout ------------------------------ */
+  /* ---------- validate before checkout (unchanged) ------------------ */
   const handleCheckout = async () => {
     setRevalidatingCoupons(true);
     if (!(await revalidateCoupon())) return;
@@ -249,23 +249,33 @@ export default function ViewCart({ isDrawer = false }) {
     setRevalidatingCoupons(false);
   };
 
-  /* ---------- memo for suggestions ---------------------------------- */
+  /* ---------- memo for suggestions (unchanged) ---------------------- */
   const topSub = useMemo(() => [...new Set(cartItems.map(i => i.productDetails.subCategory))], [cartItems]);
   const topIds = useMemo(() => cartItems.map(i => i.productDetails._id).join(','), [cartItems]);
 
 
 
-  /* -------------------  JSX (UI unchanged)  ------------------------- */
+  /* -------------------  JSX (UI with fixes)  ------------------------- */
   return (
-    <>
-      <div className={styles.container} style={{ position: 'relative' }}>
-        <header className={styles.headerCont0}>
-          <ViewCartHeader 
-            totalQuantity={qty} 
-            onBack={isDrawer ? handleBackClick : undefined} 
-          />
-        </header>
+    <div 
+      className={styles.container} 
+      style={{ 
+        position: 'relative',
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
+    >
+      <header className={styles.headerCont0} style={{ flexShrink: 0 }}>
+        <ViewCartHeader 
+          totalQuantity={qty} 
+          onBack={isDrawer ? handleBackClick : undefined} 
+        />
+      </header>
 
+      <div style={{ flexGrow: 1, overflow: 'auto', paddingBottom: qty > 0 ? '80px' : '0' }}>
         {qty > 0 && (
           <div className={styles.maincomp}>
             <div className={styles.blueCont}>
@@ -351,8 +361,10 @@ export default function ViewCart({ isDrawer = false }) {
         <div style={{ margin: '0 .4rem', borderRadius: '1rem', background: '#fff', paddingTop: '0.5rem' }}>
           <TopBoughtProducts subCategories={topSub} currentProductId={topIds} pageType="viewcart" />
         </div>
+      </div>
 
-        {qty > 0 && (
+      {qty > 0 && (
+        <div style={{ position: isDrawer ? 'sticky' : 'fixed', bottom: 0, width: '100%', flexShrink: 0, zIndex: 10 }}>
           <Footer
             totalCost={totalPay}
             originalTotal={subTot + deliveryCost + extraCharge}
@@ -361,36 +373,36 @@ export default function ViewCart({ isDrawer = false }) {
             codPercentage={selectedPM?.configuration?.codPercentage}
             isRevalidatingCoupons={revalidatingCoupons}
           />
-        )}
+        </div>
+      )}
 
-        <ApplyCoupon
-          open={dlgCoupon}
-          onClose={() => setDlgCoupon(false)}
-          onApplyCoupon={applyCoupon}
-          totalCost={subTot}
-          isFirstOrder={isFirstOrder}
-          cartItems={cartItems}
-        />
-        <OrderForm
-          open={dlgOrder}
-          onClose={() => setDlgOrder(false)}
-          paymentModeConfig={selectedPM}
-          couponCode={couponState.couponApplied ? couponState.couponName : null}
-          totalCost={totalPay}
-          couponsDetails={couponRedux}
-          deliveryCost={deliveryCost}
-          discountAmountFinal={disc}
-          items={cartItems}
-          subTotal={subTot}
-        />
+      <ApplyCoupon
+        open={dlgCoupon}
+        onClose={() => setDlgCoupon(false)}
+        onApplyCoupon={applyCoupon}
+        totalCost={subTot}
+        isFirstOrder={isFirstOrder}
+        cartItems={cartItems}
+      />
+      <OrderForm
+        open={dlgOrder}
+        onClose={() => setDlgOrder(false)}
+        paymentModeConfig={selectedPM}
+        couponCode={couponState.couponApplied ? couponState.couponName : null}
+        totalCost={totalPay}
+        couponsDetails={couponRedux}
+        deliveryCost={deliveryCost}
+        discountAmountFinal={disc}
+        items={cartItems}
+        subTotal={subTot}
+      />
 
-        <CustomSnackbar
-          open={snackbar.open}
-          message={snackbar.message}
-          severity={snackbar.severity}
-          handleClose={() => setSnackbar(p => ({ ...p, open: false }))}
-        />
-      </div>
-    </>
+      <CustomSnackbar
+        open={snackbar.open}
+        message={snackbar.message}
+        severity={snackbar.severity}
+        handleClose={() => setSnackbar(p => ({ ...p, open: false }))}
+      />
+    </div>
   );
 }

@@ -9,8 +9,8 @@
   padding-bottom: 6rem;
   width: 100%;
   max-width: 1200px;
-  overflow-x: hidden
-
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 

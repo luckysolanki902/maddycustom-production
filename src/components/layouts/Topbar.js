@@ -56,6 +56,11 @@ const Topbar = () => {
     config: { tension: 210, friction: 20 },
   });
 
+  // Update the cart click handler to specify 'top' source
+  const handleCartClick = () => {
+    dispatch(openCartDrawer({ source: 'top' }));
+  };
+
   return (
     <animated.nav style={animationProps} className={styles.topbar}>
       {/* Left Section: hamburger (mobile) + logo + links (desktop) */}
@@ -125,7 +130,7 @@ const Topbar = () => {
         {/* Cart Icon with Badge */}
         <div
           className={styles.cartContainer}
-          onClick={() => dispatch(openCartDrawer())}
+          onClick={handleCartClick}
         >
           <Badge badgeContent={totalQuantity} color="info">
             <ShoppingCart className={styles.cartIcon} />
