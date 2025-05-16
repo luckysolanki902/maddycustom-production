@@ -141,7 +141,6 @@ async function runCatalogueUpdate() {
   // 5) If fewer raw products fetched than batch, we’re done
   if (rawProducts.length < PRODUCT_BATCH_SIZE) {
     cycle.status = 'completed';
-    console.log('Cycle completed.');
   }
   await cycle.save();
 }

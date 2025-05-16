@@ -7,7 +7,6 @@ import { Typography, Divider } from '@mui/material';
 import styles from './styles/viewcart.module.css';
 import BlackButtonWithOnClick from '@/components/utils/BlackButtonWithOnClick';
 const Footer = ({ totalCost, originalTotal, onCheckout,  onlinePercentage, codPercentage, isRevalidatingCoupons }) => {
-console.log('revalidating')
   const onlineAmount = Math.floor((totalCost * onlinePercentage) / 100);
   const codAmount = Math.ceil((totalCost * codPercentage) / 100);
 
