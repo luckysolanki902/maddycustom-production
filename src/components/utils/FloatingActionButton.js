@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useSpring, useTransition, animated } from "react-spring";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./styles/floatingactionbar.module.css";
 import Image from "next/image";
@@ -21,6 +20,12 @@ const FloatingActionBar = () => {
   useEffect(() => {
     if (totalQuantity > 0 && !firstItemAdded) setFirstItemAdded(true);
   }, [totalQuantity, firstItemAdded]);
+
+  // Handle cart click - open from bottom
+  const handleCartClick = (e) => {
+    e.preventDefault();
+    dispatch(openCartDrawer({ source: "bottom" }));
+  };
 
   // Cart animation
   const cartAnimation = useSpring({
@@ -53,12 +58,6 @@ const FloatingActionBar = () => {
     config: { mass: 0.8, tension: 400, friction: 30 }, // faster with minimal bounce
   });
 
-  // Handle cart click
-  const handleCartClick = (e) => {
-    e.preventDefault();
-    dispatch(openCartDrawer());
-  };
-
   return transitions(
     (style, item) =>
       item && (
@@ -68,9 +67,9 @@ const FloatingActionBar = () => {
             <animated.div
               style={firstItemAdded ? cartAnimation : {}}
               className={styles.iconButton}
-              onClick={handleCartClick}
             >
               <div
+                onClick={handleCartClick}
                 className={`${styles.iconButton} ${
                   totalQuantity > 0 ? styles.cartButtonActive : ""
                 }`}
@@ -92,7 +91,7 @@ const FloatingActionBar = () => {
             <div className={styles.divider} />
 
             {/* Home button */}
-            <Link href="/" passHref>
+            <a href="/">
               <div
                 className={`${styles.iconButton} ${
                   pathname === "/" ? styles.cartButtonActive : ""
@@ -107,7 +106,7 @@ const FloatingActionBar = () => {
                 />
                 <span>Home</span>
               </div>
-            </Link>
+            </a>
           </div>
         </animated.div>
       )

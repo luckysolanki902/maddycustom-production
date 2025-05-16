@@ -34,6 +34,8 @@ const OrderSpecifications = ({ features = [], borderUrl, justContStart }) => {
                         width={500} 
                         height={500} 
                         alt={feature.name} 
+                        priority={true}
+                        loading="eager"
                     />
                     <div className={styles.word}>{feature.name}</div>
                 </div>

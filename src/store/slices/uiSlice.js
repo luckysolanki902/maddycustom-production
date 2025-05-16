@@ -5,7 +5,8 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
   isSidebarOpen: false,
   isSearchDialogOpen: false,
-  isCartDrawerOpen: false, // New state for cart drawer
+  isCartDrawerOpen: false,
+  cartDrawerSource: 'bottom', // 'top' or 'bottom'
 };
 
 const uiSlice = createSlice({
@@ -34,8 +35,10 @@ const uiSlice = createSlice({
     toggleCartDrawer(state) {
       state.isCartDrawerOpen = !state.isCartDrawerOpen;
     },
-    openCartDrawer(state) {
+    openCartDrawer(state, action) {
       state.isCartDrawerOpen = true;
+      // Set the source based on the passed parameter or default to 'bottom'
+      state.cartDrawerSource = action.payload?.source || 'bottom';
     },
     closeCartDrawer(state) {
       state.isCartDrawerOpen = false;
