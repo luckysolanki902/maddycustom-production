@@ -23,6 +23,7 @@
   /* padding-right:10px ; */
   margin-bottom: 60px;
 }
+
 /* 'My Cart' heading container */
 .header {
   display: flex;
@@ -36,6 +37,7 @@
   max-width: 1200px;
   justify-content: flex-start;
 }
+
 /* My Cart heading */
 .heading {
   margin: 0;
@@ -49,7 +51,7 @@
 }
 
 
-@media (width < 768px) {  
+@media (width < 768px) {
   .heading {
     font-size: 1.3rem;
   }
@@ -94,28 +96,56 @@
 .freeShippingBanner {
   position: fixed;
   top: 4rem;
+  height: 3rem;
+  border-radius: 0;
   width: 100%;
   left: 0;
   background-color: #CBFFCE;
-  padding: 1rem;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
   gap: 0.5rem;
   font-weight: 600;
-  border-radius: 0.6rem;
   z-index: 3;
-  height: 3rem;
   font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.freeShippingBannerTopBg {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  min-height: 0.6rem;
+  background-color: #eaf4fe;
+}
+
+.freeShippingBannerContent{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+
+
+}
+
+@media (width < 768px) {
+  .freeShippingBannerTopBg {
+    display: none;
+  }
 }
 
 
 @media screen and (min-width: 768px) {
   .freeShippingBanner {
     position: sticky;
-    top: 0.6rem;
+    top: 0rem;
     border-radius: 0;
+    height: 3.6rem;
+
   }
+
 
 }
 
@@ -174,13 +204,14 @@
 .rupee {
   font-size: 0.7rem;
 }
-.productImageContainer{
+
+.productImageContainer {
   min-width: 150px;
   display: flex;
 }
 
 .productImage {
-  height:80px;
+  height: 80px;
   width: auto;
   object-fit: cover;
   border-radius: 5px;
@@ -286,9 +317,9 @@
 @media (width < 768px) {
   .rightSection {
     width: 50vw;
-  padding-right: 0rem;
+    padding-right: 0rem;
 
-    
+
   }
 }
 

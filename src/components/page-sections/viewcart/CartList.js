@@ -12,17 +12,22 @@ const CartList = ({ cartItems, onRemove }) => (
   <div className={styles.cartList}
   >
     <div className={styles.freeShippingBanner}>
-      {/* <Image src="/Free Shipping.png" alt="Free Shipping" width={40} height={40}></Image> */}
-      <span style={{ fontSize: '1.6rem' }}>
-        🥳
-      </span>
-      <span>You saved ₹100 on FREE shipping</span>
+      <div className={styles.freeShippingBannerTopBg}>
+      </div>
+      <div className={styles.freeShippingBannerContent}>
+        {/* <Image src="/Free Shipping.png" alt="Free Shipping" width={40} height={40}></Image> */}
+        <span style={{ fontSize: '1.6rem' }}>
+          🥳
+        </span>
+        <span>You saved ₹100 on FREE shipping</span>
+      </div>
     </div>
+
     {cartItems.map((item) => (
       <CartItem key={item.productId} item={item} onRemove={onRemove} />
     ))}
 
-      <Features extraMargin={true} features={cartItems[0]?.productDetails.variantDetails.features} />
+    <Features extraMargin={true} features={cartItems[0]?.productDetails.variantDetails.features} />
   </div>
 );
 
