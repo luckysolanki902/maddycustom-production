@@ -13,6 +13,7 @@ import {
   decrementQuantity,
   removeItem,
 } from '../../store/slices/cartSlice';
+import { openCartDrawer } from '../../store/slices/uiSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
 
 export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, smaller = false, insertionDetails = {} }) {
@@ -28,11 +29,6 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     // Animate scale and color based on lastAction
     scale: lastAction === 'increment' || lastAction === 'decrement' ? 1.1 : 1,
     color: '#fff',
-      // lastAction === 'increment'
-      //   ? '#28a745' // Green
-      //   : lastAction === 'decrement'
-      //     ? '#dc3545' // Red
-      //     : isBlackButton ? '#fff' : '#fff',
     opacity: cartItem ? 1 : 0,
     config: {
       tension: 300,
@@ -69,6 +65,11 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   // For convenience, get the current quantity from the cart (or zero)
   const currentQuantity = cartItem ? cartItem.quantity : 0;
 
+  // Function to navigate to cart or show cart drawer
+  const goToCart = () => {
+    dispatch(openCartDrawer());
+  };
+
   const handleAdd = async (e) => {
     e.stopPropagation(); // Prevent parent onClick
     // Check: if limited and adding one would exceed maxAllowed, do nothing.
@@ -80,6 +81,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       productDetails: product,
       insertionDetails 
     }));
+
+    // Optionally show cart drawer on add
+    goToCart();
 
     // Track AddToCart event
     try {
@@ -127,8 +131,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
 
   if (cartItem) {
     return (
-      <div className={mainClasses} onClick={(e) => e.stopPropagation()}
-       >
+      <div className={mainClasses} onClick={(e) => e.stopPropagation()}>
         <button onClick={handleDecrement} className={styles.decrement}>
           <RemoveIcon fontSize='1rem'/>
         </button>
@@ -152,12 +155,6 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
         >
           <AddIcon fontSize='1rem'/>
         </button>
-        {/* Optionally display a "limited stocks" message if at max */}
-        {/* {isLimited && currentQuantity >= maxAllowed && 
-          <span style={{ fontSize: '0.8rem', color: '#dc3545', marginLeft: '0.5rem' }}>
-            limited stocks
-          </span>
-        } */}
       </div>
     );
   }

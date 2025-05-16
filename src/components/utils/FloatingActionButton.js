@@ -1,14 +1,16 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useSpring, useTransition, animated } from "react-spring";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./styles/floatingactionbar.module.css";
 import Image from "next/image";
 import Badge from "@mui/material/Badge";
+import { openCartDrawer } from "@/store/slices/uiSlice";
 
 const FloatingActionBar = () => {
+  const dispatch = useDispatch();
   const pathname = usePathname();
   const items = useSelector((state) => state.cart.items);
   const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
@@ -20,49 +22,43 @@ const FloatingActionBar = () => {
     if (totalQuantity > 0 && !firstItemAdded) setFirstItemAdded(true);
   }, [totalQuantity, firstItemAdded]);
 
-  /* ─────────────────────────────────────────────────────────
-     1.  Your existing per-button spring (kept as-is)
-  ──────────────────────────────────────────────────────────*/
+  // Cart animation
   const cartAnimation = useSpring({
     opacity: 1,
     transform: "translateY(0px)",
     config: { tension: 200, friction: 20 },
   });
 
-  /* ─────────────────────────────────────────────────────────
-     2.  Decide whether the bar should be shown
-  ──────────────────────────────────────────────────────────*/
+  // Determine whether to show the bar
   const pathParts = pathname.split("/").filter(Boolean);
   const hideForProductPage = pathParts[0] === "shop" && pathParts.length === 6;
+  const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
 
-  const showBar =
-    !hideForProductPage && pathname !== "/viewcart" && totalQuantity > 0;
+  const showBar = !hideForProductPage && !isCartDrawerOpen && totalQuantity > 0;
 
-  /* ─────────────────────────────────────────────────────────
-     3.  useTransition for mount / unmount *of the whole bar*
-  ──────────────────────────────────────────────────────────*/
+  // Faster, cleaner transitions
   const transitions = useTransition(showBar, {
     from: {
       opacity: 0,
-      transform: "translateY(120%) scale(0.95)",
-      scale: "0.1",
+      transform: "translateY(100%)",
     },
     enter: {
       opacity: 1,
-      transform: "translateY(0%) scale(1)",
-      scale: "1",
+      transform: "translateY(0%)",
     },
     leave: {
       opacity: 0,
-      transform: "translateY(120%) scale(0.95)",
-      scale: "0.1",
+      transform: "translateY(100%)",
     },
-    config: { mass: 1, tension: 280, friction: 26 }, // snappy but professional
+    config: { mass: 0.8, tension: 400, friction: 30 }, // faster with minimal bounce
   });
 
-  /* ─────────────────────────────────────────────────────────
-     4.  Render
-  ──────────────────────────────────────────────────────────*/
+  // Handle cart click
+  const handleCartClick = (e) => {
+    e.preventDefault();
+    dispatch(openCartDrawer());
+  };
+
   return transitions(
     (style, item) =>
       item && (
@@ -72,25 +68,24 @@ const FloatingActionBar = () => {
             <animated.div
               style={firstItemAdded ? cartAnimation : {}}
               className={styles.iconButton}
+              onClick={handleCartClick}
             >
-              <Link href="/viewcart" passHref>
-                <div
-                  className={`${styles.iconButton} ${
-                    totalQuantity > 0 ? styles.cartButtonActive : ""
-                  }`}
-                >
-                  <Badge badgeContent={totalQuantity} color="info">
-                    <Image
-                      src={`${baseImageUrl}/assets/icons/cart.png`}
-                      className={styles.icon}
-                      width={200}
-                      height={200}
-                      alt="Cart Icon"
-                    />
-                  </Badge>
-                  <span>Cart</span>
-                </div>
-              </Link>
+              <div
+                className={`${styles.iconButton} ${
+                  totalQuantity > 0 ? styles.cartButtonActive : ""
+                }`}
+              >
+                <Badge badgeContent={totalQuantity} color="info">
+                  <Image
+                    src={`${baseImageUrl}/assets/icons/cart.png`}
+                    className={styles.icon}
+                    width={200}
+                    height={200}
+                    alt="Cart Icon"
+                  />
+                </Badge>
+                <span>Cart</span>
+              </div>
             </animated.div>
 
             {/* Divider */}

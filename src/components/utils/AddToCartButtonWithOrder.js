@@ -14,8 +14,8 @@ import {
   decrementQuantity,
   removeItem,
 } from '../../store/slices/cartSlice';
+import { openCartDrawer } from '../../store/slices/uiSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useMediaQuery } from '@mui/material';
@@ -23,7 +23,6 @@ import { useMediaQuery } from '@mui/material';
 export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, insertionDetails = {} }) {
   const isSmallDevice = useMediaQuery('(max-width: 1000px)');
   const dispatch = useDispatch();
-  const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
   const cartItem = cartItems.find((item) => item.productId === product._id);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -115,6 +114,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       dispatch(decrementQuantity({ productId: product._id }));
     }
   };
+  
   const insertionDetailsForOrderNow = {
     ...insertionDetails,
     component: 'productDetails-buyNow'
@@ -124,7 +124,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     if (!cartItem) {
       dispatch(addItem({ productId: product._id, productDetails: product, insertionDetailsForOrderNow }));
     }
-    router.push('/viewcart');
+    dispatch(openCartDrawer());
   };
 
   // Combine classes for the main container

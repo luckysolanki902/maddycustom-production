@@ -3,10 +3,10 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useRouter } from 'next/navigation';
 import axios from 'axios';
 
 import { removeItem } from '@/store/slices/cartSlice';
+import { closeCartDrawer } from '@/store/slices/uiSlice';
 import {
   setCouponApplied,
   setManualCoupon,
@@ -34,7 +34,6 @@ import DiscountOutlinedIcon from '@mui/icons-material/DiscountOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DiscountIcon from '@mui/icons-material/Discount';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import Confetti from 'react-confetti';
 
 /* ---------------- helper ------------------------------------------------ */
 const isOfferApplicable = (offer, totalCost, isFirstOrder = false) =>
@@ -57,15 +56,14 @@ const flattenCart = cartItems => cartItems.map(i => ({
 }));
 
 /* ======================================================================= */
-export default function ViewCart() {
+export default function ViewCart({ isDrawer = false }) {
   const dispatch = useDispatch();
-  const router = useRouter();
 
   /* ---------- redux --------------------------------------------------- */
   const cartItems = useSelector(s => s.cart.items);
   const orderForm = useSelector(s => s.orderForm);
   const couponRedux = orderForm.couponApplied;
-  console.log('cartItems', cartItems);
+  
   /* ---------- coupon local mirror ------------------------------------ */
   const [couponState, setCouponState] = useState({
     couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null,
@@ -96,8 +94,6 @@ export default function ViewCart() {
   const [lockedShort, setLockedShort] = useState(0);
   const [nowCoupon, setNowCoupon] = useState(null);
 
-  const [confettiRun, setConfettiRun] = useState(false);
-  const [viewport, setViewport] = useState({ w: 0, h: 0 });
 
   const lastAutoRef = useRef({ code: '', type: '' });
   const FIVE_MIN = 5 * 60 * 1000;
@@ -105,9 +101,7 @@ export default function ViewCart() {
   const [revalidatingCoupons, setRevalidatingCoupons] = useState(false);
   
 
-  /* ---------- window size for confetti ------------------------------- */
-  useEffect(() => { if (typeof window !== 'undefined') setViewport({ w: window.innerWidth, h: window.innerHeight }); }, []);
-
+ 
   /* ---------- cart totals ------------------------------------------- */
   const qty = calculateTotalQuantity(cartItems);
   const subTot = calculateTotalCostBeforeDiscount(cartItems);
@@ -135,8 +129,6 @@ export default function ViewCart() {
     dispatch(resetAutoApplyDisabled());
     if (fromAuto) lastAutoRef.current = { code, type };
 
-    setConfettiRun(true);
-    setTimeout(() => setConfettiRun(false), 3500);
     snack('Coupon applied successfully!');
   };
 
@@ -145,6 +137,11 @@ export default function ViewCart() {
     dispatchCoupon({ couponCode: '', discountAmount: 0, discountType: '', offer: null });
     dispatch(setManualCoupon(null));
     if (showMsg) snack('Coupon removed.', 'warning');
+  };
+
+  // Handler for the back button in the drawer to close it
+  const handleBackClick = () => {
+    dispatch(closeCartDrawer());
   };
 
   /* ---------- payment modes fetch ----------------------------------- */
@@ -238,7 +235,6 @@ export default function ViewCart() {
     } catch {
       if (!silent) snack('Could not verify coupon.', 'error');
       return false;
-    } finally {
     }
   };
 
@@ -257,13 +253,17 @@ export default function ViewCart() {
   const topSub = useMemo(() => [...new Set(cartItems.map(i => i.productDetails.subCategory))], [cartItems]);
   const topIds = useMemo(() => cartItems.map(i => i.productDetails._id).join(','), [cartItems]);
 
+
+
   /* -------------------  JSX (UI unchanged)  ------------------------- */
   return (
     <>
-      {/* confetti hidden for brevity */}
       <div className={styles.container} style={{ position: 'relative' }}>
         <header className={styles.headerCont0}>
-          <ViewCartHeader totalQuantity={qty} onBack={() => router.back()} />
+          <ViewCartHeader 
+            totalQuantity={qty} 
+            onBack={isDrawer ? handleBackClick : undefined} 
+          />
         </header>
 
         {qty > 0 && (
@@ -348,7 +348,7 @@ export default function ViewCart() {
         )}
 
 
-        <div style={{ margin: '0 .4rem', borderRadius: '1rem', background: '#fff', paddingTop: '0.5rem', }}>
+        <div style={{ margin: '0 .4rem', borderRadius: '1rem', background: '#fff', paddingTop: '0.5rem' }}>
           <TopBoughtProducts subCategories={topSub} currentProductId={topIds} pageType="viewcart" />
         </div>
 
