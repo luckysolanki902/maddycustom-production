@@ -2,15 +2,16 @@
 import React, { useEffect, useState } from "react";
 import { useSpring, animated } from "react-spring";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-
+import { useSelector } from "react-redux";
 const ScrollToTop = () => {
   const [isVisible, setIsVisible] = useState(false); // For button visibility
   const [triggerAnimation, setTriggerAnimation] = useState(false); // Animation trigger
+  const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
 
   // Listen for scroll changes to control button visibility
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 500) {
+      if (window.scrollY > 500 && !isCartDrawerOpen) {
         setIsVisible(true);
       } else {
         setIsVisible(false);
@@ -21,7 +22,7 @@ const ScrollToTop = () => {
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
-  }, []);
+  }, [isCartDrawerOpen]);
 
   const springProps = useSpring({
     transform: triggerAnimation ? "translateY(-40px)" : "translateY(0px)",
@@ -35,7 +36,7 @@ const ScrollToTop = () => {
   };
 
   // Hide button if not visible
-  if (!isVisible) return null;
+if (!isVisible || isCartDrawerOpen) return null;
 
   return (
     <animated.div
