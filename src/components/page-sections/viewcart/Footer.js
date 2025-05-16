@@ -65,7 +65,7 @@ console.log('revalidating')
 
       {/* Right Section: Total Cost and Checkout Button */}
       <div className={styles.rightSection}>
-        <BlackButtonWithOnClick isLoading={false} buttonText={isRevalidatingCoupons ? 'Validating...' : 'Checkout'} onClick={onCheckout} isDisabled={isRevalidatingCoupons}  />
+        <BlackButtonWithOnClick isLoading={false} buttonText={isRevalidatingCoupons ? 'Validating...' : 'Order'} onClick={onCheckout} isDisabled={isRevalidatingCoupons}  />
       </div>
     </footer>
   );
