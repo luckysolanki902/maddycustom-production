@@ -1,0 +1,129 @@
+.paymentModesContainer {
+  padding: 16px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  margin-top: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.headerIcon {
+  color: #2d2d2d;
+  font-size: 20px !important;
+  margin-right: 10px;
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d2d2d;
+}
+
+.radioGroupContainer {
+  width: 100%;
+}
+
+.paymentOption {
+  border: 1px solid #eeeeee;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  overflow: hidden;
+}
+
+.paymentOption:last-child {
+  margin-bottom: 0;
+}
+
+.paymentOption.selected {
+  border-color: #2979ff;
+  box-shadow: 0 0 0 1px #2979ff;
+}
+
+.paymentOptionContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 4px 0;
+}
+
+.paymentOptionLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.paymentTypeIcon {
+  color: #616161;
+  font-size: 20px !important;
+}
+
+.paymentOptionInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.paymentOptionName {
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d2d2d;
+}
+
+.paymentOptionDescription {
+  font-size: 12px;
+  color: #757575;
+}
+
+.extraCharge {
+  font-size: 14px;
+  color: #e53935;
+  font-weight: 500;
+}
+
+.formControlLabel {
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px;
+}
+
+/* Loading state */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  margin-top: 16px;
+}
+
+.loadingText {
+  margin-top: 12px;
+  color: #757575;
+  font-size: 14px;
+}
+
+@media (max-width: 480px) {
+  .paymentModesContainer {
+    padding: 12px;
+  }
+  
+  .headerTitle {
+    font-size: 15px;
+  }
+  
+  .paymentOptionName {
+    font-size: 13px;
+  }
+}

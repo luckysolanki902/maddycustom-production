@@ -1,0 +1,247 @@
+.footerContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background-color: #ffffff;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Standard price summary styles */
+.priceSummary {
+  display: flex;
+  align-items: center;
+}
+
+.priceDetails {
+  display: flex;
+  flex-direction: column;
+}
+
+.totalText {
+  font-size: 14px;
+  color: #757575;
+  margin-bottom: 2px;
+}
+
+.priceStack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.originalPrice {
+  font-size: 14px;
+  color: #757575;
+  text-decoration: line-through;
+  margin-bottom: 2px;
+}
+
+.finalPrice {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d2d2d;
+}
+
+.savingsBadge {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 4px 8px;
+  margin-left: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Split payment styles */
+.splitPaymentFooter {
+  flex: 1;
+  max-width: 20%; /* Leave space for button */
+}
+
+.splitInfo {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.splitAmount {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.amountWithIcon {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1;
+  position: relative;
+}
+
+.payNowLabel, .payLaterLabel {
+  font-size: 12px;
+  color: #757575;
+  margin-bottom: 2px;
+}
+
+.splitAmountValue {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d2d2d;
+  display: flex;
+  align-items: center;
+}
+
+.paymentIcon {
+  font-size: 16px !important;
+  margin-right: 4px;
+  color: #555555;
+  vertical-align: middle;
+}
+
+.splitDivider {
+  margin: 0 12px;
+  color: #757575;
+  font-size: 14px;
+}
+
+.splitVisual {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background-color: #f0f0f0;
+  width: 100%;
+}
+
+.onlinePortion {
+  height: 100%;
+  background-color: #3182CE;
+  position: relative;
+  min-width: 20px;
+}
+
+.codPortion {
+  height: 100%;
+  background-color: #38A169;
+  position: relative;
+  min-width: 20px;
+}
+
+.percentLabel {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #757575;
+  white-space: nowrap;
+}
+
+/* Checkout button */
+.checkoutButton {
+  background: linear-gradient(45deg, #2d2d2d, #424242);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  min-width: 140px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.checkoutButton:disabled {
+  background: #9e9e9e;
+  cursor: not-allowed;
+}
+
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Animation for shine effect */
+.shineEffect::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shine 3s infinite;
+}
+
+@keyframes shine {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Responsive styles */
+@media (max-width: 480px) {
+  .footerContainer {
+    padding: 12px;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .splitPaymentFooter {
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  .checkoutButton {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+  
+  .finalPrice {
+    font-size: 18px;
+  }
+  
+  .splitAmount {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .splitDivider {
+    display: none;
+  }
+  
+  .amountWithIcon {
+    padding: 6px 8px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    min-width: 120px;
+    flex-grow: 1;
+  }
+}
+
+@media (max-width: 360px) {
+  .splitVisual {
+    margin-top: 16px;
+  }
+}
