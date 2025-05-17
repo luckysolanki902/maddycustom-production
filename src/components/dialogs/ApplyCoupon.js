@@ -16,6 +16,7 @@ import LockOpenIcon from '@mui/icons-material/LockOpen';
 import styles from './styles/applycoupon.module.css';
 import CouponCard from '../cards/CouponCard';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
+import useHistoryState from '@/hooks/useHistoryState';
 
 /* ---------- helpers (unchanged) -------------------------------------------------- */
 const calculateEffectiveDiscount = (offer, totalCost, cartItems = []) => {
@@ -72,6 +73,9 @@ const ApplyCoupon = ({
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [activeTab, setActiveTab] = useState(0); // For tabbed interface
   
+  // Add history state management with higher priority than cart drawer
+  useHistoryState(open, onClose, 'couponDialog', 10); // Higher priority number
+
   /* map cart items for server */
   const flatCart = cartItems.map(i => ({
     productId: i.productId || i.productDetails._id,
@@ -227,6 +231,8 @@ const ApplyCoupon = ({
           margin: '16px'
         }
       }}
+      // Don't let Dialog handle its own back button, our hook will handle it
+      disableEscapeKeyDown={true}
     >
       {/* Dialog Header */}
       <motion.div 
