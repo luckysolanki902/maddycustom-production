@@ -5,14 +5,10 @@
   max-width: 100%;
   position: relative;
   color: #2d2d2d;
-  padding-bottom: 5rem;
+
 }
 
-@media (width < 768px){
-  .container {
-    padding-bottom: 10rem;
-  }
-}
+
 /* Header styles */
 .headerCont {
   background-color: #ffffff;
@@ -41,6 +37,7 @@
   padding: 12px;
   max-width: 800px;
   margin: 0 auto;
+  padding-bottom: 10rem;
 }
 
 /* Section styling */
@@ -546,6 +543,7 @@
   .mainContent {
     padding: 20px;
     gap: 24px;
+    padding-bottom: 7rem;
   }
   
   .cartSection, 

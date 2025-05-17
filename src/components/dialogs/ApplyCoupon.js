@@ -261,7 +261,7 @@ const ApplyCoupon = ({
         transition={{ duration: 0.3, delay: 0.1 }}
       >
         <TextField
-          autoFocus
+          // autoFocus
           placeholder="Enter coupon code"
           value={couponCode}
           onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
