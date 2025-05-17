@@ -390,31 +390,6 @@ const ApplyCoupon = ({
                   transition={{ duration: 0.3 }}
                   className={styles.tabPanel}
                 >
-                  {/* Best deal banner */}
-                  <AnimatePresence>
-                    {bestDealId && applicableCoupons.length > 0 && !appliedCoupons.length && (
-                      <motion.div 
-                        className={styles.bestDealBanner}
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.4 }}
-                      >
-                        <div className={styles.bestDealIconWrap}>
-                          <LocalOfferIcon className={styles.bestDealIcon} />
-                        </div>
-                        <div className={styles.bestDealContent}>
-                          <Typography variant="subtitle1" className={styles.bestDealTitle}>
-                            Best Offer For You
-                          </Typography>
-                          <Typography variant="body2" className={styles.bestDealDescription}>
-                            Save ₹{applicableCoupons[0].actualDiscount} with code <b>{applicableCoupons[0].couponCodes[0]}</b>
-                          </Typography>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
                   {loading ? (
                     <motion.div 
                       className={styles.couponCardsSection}
@@ -464,6 +439,30 @@ const ApplyCoupon = ({
                           />
                         </motion.div>
                       ))}
+                      
+                      {/* Persuasive button to navigate to Tab 2 - only shown when coupons are loaded */}
+                      {!loading && unapplicableCoupons.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.5, duration: 0.4 }}
+                          className={styles.unlockMoreButtonContainer}
+                        >
+                          <Button
+                            variant="outlined"
+                            className={styles.unlockMoreButton}
+                            onClick={() => setActiveTab(1)}
+                            endIcon={<LocalOfferIcon />}
+                          >
+                            <div className={styles.unlockMoreContent}>
+                              <Typography variant="subtitle2" className={styles.unlockMoreTitle}>
+                                Unlock More Offers
+                              </Typography>
+                 
+                            </div>
+                          </Button>
+                        </motion.div>
+                      )}
                     </motion.div>
                   ) : (
                     <motion.div 
@@ -564,7 +563,7 @@ const ApplyCoupon = ({
                         All offers available!
                       </Typography>
                       <Typography variant="body2">
-                        You've unlocked all available offers.
+                        You&apos;ve unlocked all available offers.
                       </Typography>
                       <Button 
                         variant="contained" 

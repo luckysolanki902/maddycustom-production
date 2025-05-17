@@ -388,6 +388,73 @@
   }
 }
 
+/* Unlock More Button - New persuasive button styling */
+.unlockMoreButtonContainer {
+  grid-column: 1 / -1;
+  padding: 16px 0 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.unlockMoreButton {
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 10px 20px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2) !important;
+  transition: all 0.3s ease !important;
+  position: relative;
+  overflow: hidden !important;
+  min-width: 250px !important;
+}
+
+.unlockMoreButton:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(13, 148, 136, 0.3) !important;
+}
+
+.unlockMoreButton:active {
+  transform: translateY(1px) !important;
+}
+
+.unlockMoreButton::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 20px;
+  height: 200%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(30deg);
+  transition: all 0.8s;
+}
+
+.unlockMoreButton:hover::after {
+  left: 120%;
+}
+
+.unlockMoreContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.unlockMoreTitle {
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  margin-bottom: 2px !important;
+}
+
+.unlockMoreSubtitle {
+  opacity: 0.9;
+  font-size: 12px !important;
+}
+
 /* Responsive adjustments */
 @media (min-width: 768px) {
   .couponCardsSection {
@@ -414,6 +481,11 @@
   .tab {
     font-size: 13px !important;
     padding: 0 8px !important;
+  }
+  
+  .unlockMoreButton {
+    min-width: 200px !important;
+    padding: 8px 16px !important;
   }
 }
 

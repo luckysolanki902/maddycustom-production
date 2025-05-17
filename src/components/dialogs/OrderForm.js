@@ -1043,7 +1043,7 @@ const OrderForm = ({
                           <BlackButton
                             extraClass="lg"
                             isLoading={isLoading}
-                            buttonText="Continue to Shipping"
+                            buttonText="Next"
                             onClick={handleSubmit(onSubmitUserDetails)}
                             disabled={isPaymentProcessing || isLoading}
                             sx={{ 
