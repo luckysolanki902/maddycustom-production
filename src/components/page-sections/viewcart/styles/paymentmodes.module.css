@@ -44,8 +44,8 @@
 }
 
 .paymentOption.selected {
-  border-color: #2979ff;
-  box-shadow: 0 0 0 1px #2979ff;
+  border-color: #2d2d2d;
+  box-shadow: 0 0 0 1px #2d2d2d;
 }
 
 .paymentOptionContent {
@@ -84,6 +84,7 @@
 }
 
 .extraCharge {
+  margin-left: 0.5rem;
   font-size: 14px;
   color: #e53935;
   font-weight: 500;

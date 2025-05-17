@@ -17,17 +17,23 @@ const PriceDetails = ({
   totalCostWithDelivery,
   onOpenCoupon,
   onRemoveCoupon,
-  extraCharge
+  extraCharge,
+  totalMrp,
+  originalTotal
 }) => {
   const hasCoupon = couponState?.couponApplied;
   const hasDiscount = discountAmount > 0;
   const hasDelivery = deliveryCost > 0;
   const hasExtraCharge = extraCharge > 0;
+  const isFreeDelivery = deliveryCost === 0;
 
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0 }
   };
+
+  // Check if we have an original total to show
+  const showOriginalTotal = originalTotal && originalTotal > totalCostWithDelivery;
 
   return (
     <div className={styles.priceDetailsContainer}>
@@ -35,9 +41,9 @@ const PriceDetails = ({
         <ReceiptIcon className={styles.headerIcon} />
         <h3 className={styles.headerTitle}>Price Details</h3>
       </div>
-      
+
       <div className={styles.priceBreakdown}>
-        <motion.div 
+        <motion.div
           className={styles.priceRow}
           variants={itemVariants}
           initial="hidden"
@@ -45,11 +51,16 @@ const PriceDetails = ({
           transition={{ duration: 0.3, delay: 0.1 }}
         >
           <span className={styles.priceLabel}>Item Total</span>
-          <span className={styles.priceValue}>₹{subtotal.toFixed(0)}</span>
+          <div className={styles.priceValueContainer}>
+            {totalMrp > subtotal && (
+              <span className={styles.originalPrice}>₹{totalMrp.toFixed(0)}</span>
+            )}
+            <span className={styles.priceValue}>₹{subtotal.toFixed(0)}</span>
+          </div>
         </motion.div>
-        
+
         {hasDiscount && (
-          <motion.div 
+          <motion.div
             className={`${styles.priceRow} ${styles.discountRow}`}
             variants={itemVariants}
             initial="hidden"
@@ -61,7 +72,7 @@ const PriceDetails = ({
               {hasCoupon && (
                 <div className={styles.appliedCoupon}>
                   <span className={styles.couponCode}>{couponState.couponName}</span>
-                  <button 
+                  <button
                     className={styles.removeCouponBtn}
                     onClick={onRemoveCoupon}
                   >
@@ -73,9 +84,9 @@ const PriceDetails = ({
             <span className={styles.discountValue}>-₹{discountAmount.toFixed(0)}</span>
           </motion.div>
         )}
-        
+
         {!hasCoupon && (
-          <motion.div 
+          <motion.div
             className={styles.applyCouponRow}
             variants={itemVariants}
             initial="hidden"
@@ -86,7 +97,7 @@ const PriceDetails = ({
               <LocalOfferOutlinedIcon className={styles.couponIcon} />
               <span className={styles.couponText}>Apply Coupon</span>
             </div>
-            <button 
+            <button
               className={styles.applyCouponBtn}
               onClick={onOpenCoupon}
             >
@@ -94,22 +105,11 @@ const PriceDetails = ({
             </button>
           </motion.div>
         )}
-        
-        {hasDelivery && (
-          <motion.div 
-            className={styles.priceRow}
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            transition={{ duration: 0.3, delay: 0.4 }}
-          >
-            <span className={styles.priceLabel}>Delivery Fee</span>
-            <span className={styles.priceValue}>₹{deliveryCost.toFixed(0)}</span>
-          </motion.div>
-        )}
-        
+
+
+
         {hasExtraCharge && (
-          <motion.div 
+          <motion.div
             className={styles.priceRow}
             variants={itemVariants}
             initial="hidden"
@@ -121,8 +121,26 @@ const PriceDetails = ({
           </motion.div>
         )}
       </div>
-      
-      <motion.div 
+
+      <motion.div
+        className={styles.priceRow}
+        variants={itemVariants}
+        initial="hidden"
+        animate="visible"
+        transition={{ duration: 0.3, delay: 0.4 }}
+      >
+        <span className={styles.priceLabel}>Delivery Fee</span>
+        {isFreeDelivery ? (
+          <div className={styles.deliveryValueContainer}>
+            <span className={styles.originalDeliveryPrice}>₹99</span>
+            <span className={styles.freeDelivery}>Free</span>
+          </div>
+        ) : (
+          <span className={styles.priceValue}>₹{deliveryCost.toFixed(0)}</span>
+        )}
+      </motion.div>
+
+      <motion.div
         className={styles.totalRow}
         variants={itemVariants}
         initial="hidden"
@@ -130,11 +148,16 @@ const PriceDetails = ({
         transition={{ duration: 0.3, delay: 0.6 }}
       >
         <span className={styles.totalLabel}>Total Amount</span>
-        <span className={styles.totalValue}>₹{totalCostWithDelivery.toFixed(0)}</span>
+        <div className={styles.totalValueContainer}>
+          {showOriginalTotal && (
+            <span className={styles.originalTotalPrice}>₹{originalTotal.toFixed(0)}</span>
+          )}
+          <span className={styles.totalValue}>₹{totalCostWithDelivery.toFixed(0)}</span>
+        </div>
       </motion.div>
-      
+
       {hasDiscount && (
-        <motion.div 
+        <motion.div
           className={styles.savingRow}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -146,6 +169,7 @@ const PriceDetails = ({
         </motion.div>
       )}
     </div>
-)};
+  )
+};
 
 export default PriceDetails;

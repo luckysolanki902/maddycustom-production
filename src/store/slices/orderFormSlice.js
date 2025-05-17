@@ -62,6 +62,11 @@ const orderFormSlice = createSlice({
       s.autoApplyDisabledAt = null;
     },
 
+    // Save best deal coupon for display purposes
+    setBestDealCoupon: (s, a) => { 
+      s.bestDealCoupon = a.payload; 
+    },
+
     // -------------------------------------------------- misc
     setLastOrderId: (s, a) => { s.lastOrderId = a.payload; },
     setExtraFields: (s, a) => { s.extraFields = { ...s.extraFields, ...a.payload }; },
@@ -79,6 +84,7 @@ export const {
   setCouponApplied,
   setManualCoupon,
   resetAutoApplyDisabled,
+  setBestDealCoupon,
   setLastOrderId,
   setExtraFields,
   setLoginDialogShown,

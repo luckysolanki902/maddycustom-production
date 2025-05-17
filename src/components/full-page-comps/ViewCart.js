@@ -6,7 +6,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
 
 import { removeItem } from '@/store/slices/cartSlice';
-import { closeCartDrawer } from '@/store/slices/uiSlice';
+import { closeCartDrawer, expireShippingTimer } from '@/store/slices/uiSlice';
 import {
   setCouponApplied,
   setManualCoupon,
@@ -29,6 +29,7 @@ import {
   calculateTotalCostBeforeDiscount,
   calculateDiscountAmount,
   calculateTotalCostAfterDiscount,
+  calcluateTotalMrp,
 } from '@/lib/utils/cartCalculations';
 import DiscountOutlinedIcon from '@mui/icons-material/DiscountOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -36,6 +37,7 @@ import DiscountIcon from '@mui/icons-material/Discount';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import { motion, AnimatePresence } from 'framer-motion';
 import SplitPayment from '../page-sections/viewcart/SplitPayment';
 
@@ -67,7 +69,8 @@ export default function ViewCart({ isDrawer = false }) {
   const cartItems = useSelector(s => s.cart.items);
   const orderForm = useSelector(s => s.orderForm);
   const couponRedux = orderForm.couponApplied;
-  
+  const shippingTimer = useSelector(s => s.ui.shippingTimer);
+
   /* ---------- coupon local mirror ------------------------------------ */
   const [couponState, setCouponState] = useState({
     couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null,
@@ -91,12 +94,41 @@ export default function ViewCart({ isDrawer = false }) {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { duration: 0.4 } }
   };
-  
+
   const couponAnimation = {
-    applied: { 
+    applied: {
       scale: [1, 1.05, 1],
       backgroundColor: ['#ffffff', '#e6fff0', '#ffffff'],
       transition: { duration: 0.8 }
+    }
+  };
+
+  // New shipping banner animation variants
+  const shippingBannerVariants = {
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: "spring",
+        stiffness: 400,
+        damping: 20,
+        duration: 0.6
+      }
+    },
+    pulse: {
+      scale: [1, 1.03, 1],
+      boxShadow: [
+        "0 4px 16px rgba(12, 206, 107, 0.3)",
+        "0 6px 20px rgba(12, 206, 107, 0.5)",
+        "0 4px 16px rgba(12, 206, 107, 0.3)"
+      ],
+      transition: {
+        duration: 2,
+        repeat: Infinity,
+        repeatDelay: 3
+      }
     }
   };
 
@@ -107,36 +139,79 @@ export default function ViewCart({ isDrawer = false }) {
   const [selectedPM, setSelectedPM] = useState(null);
   const [loadingPM, setLoadingPM] = useState(true);
   const [dlgOrder, setDlgOrder] = useState(false);
-
+  
   const [lockedCoupon, setLockedCoupon] = useState(null);
   const [lockedShort, setLockedShort] = useState(0);
   const [nowCoupon, setNowCoupon] = useState(null);
 
+  // Add state for timer countdown
+  const [timeRemaining, setTimeRemaining] = useState({
+    hours: 0,
+    minutes: 0,
+    seconds: 0
+  });
+
+  // Format time for display - Adding the missing function
+  const formatTime = (value) => {
+    return value < 10 ? `0${value}` : `${value}`;
+  };
+
+  // Timer calculation effect
+  useEffect(() => {
+    if (!shippingTimer?.isActive) return;
+
+    const calculateTimeRemaining = () => {
+      const now = Date.now();
+      const difference = shippingTimer.expiryTime - now;
+
+      if (difference <= 0) {
+        dispatch(expireShippingTimer());
+        setTimeRemaining({ hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((difference / (1000 * 60)) % 60);
+      const seconds = Math.floor((difference / 1000) % 60);
+
+      setTimeRemaining({ hours, minutes, seconds });
+    };
+
+    // Initial calculation
+    calculateTimeRemaining();
+
+    // Update every second
+    const timerInterval = setInterval(calculateTimeRemaining, 1000);
+    
+    return () => clearInterval(timerInterval);
+  }, [shippingTimer?.expiryTime, shippingTimer?.isActive, dispatch]);
 
   const lastAutoRef = useRef({ code: '', type: '' });
   const FIVE_MIN = 5 * 60 * 1000;
   const isFirstOrder = false;  // hook into your user meta when ready
   const [revalidatingCoupons, setRevalidatingCoupons] = useState(false);
-  
 
- 
+
+
   /* ---------- cart totals ------------------------------------------- */
   const qty = calculateTotalQuantity(cartItems);
   const subTot = calculateTotalCostBeforeDiscount(cartItems);
+  const MrpTotal = calcluateTotalMrp(cartItems);
   const disc = calculateDiscountAmount(subTot, couponState);
   const grand = calculateTotalCostAfterDiscount(subTot, disc);
 
-  const deliveryCost = 0;
+  const deliveryCost = 0; // If delivery is free
+  const standardDeliveryCost = 99; // Standard delivery fee that is being waived
   const extraCharge = selectedPM?.extraCharge || 0;
   const totalPay = grand + deliveryCost + extraCharge;
 
-  // Determine if this is a split payment based on payment mode configuration
-  const isSplitPayment = selectedPM?.name === 'split' || 
-                      (selectedPM?.configuration?.onlinePercentage > 0 && 
-                       selectedPM?.configuration?.onlinePercentage < 100);
+  // Determine if this is a split payment based on payment mode configuration, 
+  const isSplitPayment = selectedPM?.name === 'split' ||
+    (selectedPM?.configuration?.onlinePercentage > 0 &&
+      selectedPM?.configuration?.onlinePercentage < 100);
 
   // Calculate split amounts if applicable
-  const onlineAmount = isSplitPayment ? 
+  const onlineAmount = isSplitPayment ?
     Math.round((totalPay * (selectedPM?.configuration?.onlinePercentage || 50)) / 100) : 0;
   const codAmount = isSplitPayment ? totalPay - onlineAmount : 0;
 
@@ -156,7 +231,7 @@ export default function ViewCart({ isDrawer = false }) {
     if (!fromAuto) dispatch(setManualCoupon({ couponCode: code }));
     dispatch(resetAutoApplyDisabled());
     if (fromAuto) lastAutoRef.current = { code, type };
-    
+
     // Don't show snackbar, use the animation in the coupon section instead
   };
 
@@ -281,13 +356,13 @@ export default function ViewCart({ isDrawer = false }) {
   const topSub = useMemo(() => [...new Set(cartItems.map(i => i.productDetails.subCategory))], [cartItems]);
   const topIds = useMemo(() => cartItems.map(i => i.productDetails._id).join(','), [cartItems]);
 
-
+const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 ? 99 : 0);
 
   /* -------------------  JSX (UI with fixes)  ------------------------- */
   return (
-    <div 
-      className={styles.container} 
-      style={{ 
+    <div
+      className={styles.container}
+      style={{
         position: 'relative',
         height: '100%',
         width: '100%',
@@ -298,15 +373,15 @@ export default function ViewCart({ isDrawer = false }) {
       }}
     >
       <header className={styles.headerCont}>
-        <ViewCartHeader 
-          totalQuantity={qty} 
-          onBack={isDrawer ? handleBackClick : undefined} 
+        <ViewCartHeader
+          totalQuantity={qty}
+          onBack={isDrawer ? handleBackClick : undefined}
         />
       </header>
 
       <div className={styles.scrollableContent}>
         {qty > 0 ? (
-          <motion.div 
+          <motion.div
             className={styles.mainContent}
             initial="hidden"
             animate="visible"
@@ -317,17 +392,66 @@ export default function ViewCart({ isDrawer = false }) {
                 <ShoppingBagIcon className={styles.sectionIcon} />
                 <h2 className={styles.sectionTitle}>Your Cart ({qty})</h2>
               </div>
-              
-              <CartList 
-                cartItems={cartItems} 
-                onRemove={id => dispatch(removeItem({ productId: id }))} 
+
+              <CartList
+                cartItems={cartItems}
+                onRemove={id => dispatch(removeItem({ productId: id }))}
               />
             </section>
 
             <section className={styles.detailsSection}>
+              {/* Free Shipping Banner - Show when qty > 0 and delivery is free */}
+              {qty > 0 && deliveryCost === 0 && shippingTimer.isActive && (
+                <AnimatePresence>
+                  <motion.div
+                    className={styles.freeShippingBanner}
+                    variants={shippingBannerVariants}
+                    initial="hidden"
+                    animate={["visible", "pulse"]}
+                  >
+                    <div className={styles.shippingIconWrapper}>
+                      <LocalShippingIcon className={styles.shippingIcon} />
+                    </div>
+                    <motion.div
+                      className={styles.shippingBannerContent}
+                      initial={{ opacity: 0 }}
+                      animate={{
+                        opacity: 1,
+                        transition: { delay: 0.2, duration: 0.4 }
+                      }}
+                    >
+                      <span className={styles.shippingBannerHeading}>
+                        FREE DELIVERY
+                        <motion.div 
+                          className={styles.timerContainer}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ 
+                            opacity: 1, 
+                            scale: 1,
+                            transition: { delay: 0.4, duration: 0.3 }
+                          }}
+                        >
+                          <span className={styles.timerLabel}>Ends in:</span>
+                          <span className={styles.timerDigits}>
+                            {formatTime(timeRemaining.hours)}
+                            <span className={styles.timerSeparator}>:</span>
+                            {formatTime(timeRemaining.minutes)}
+                            <span className={styles.timerSeparator}>:</span>
+                            {formatTime(timeRemaining.seconds)}
+                          </span>
+                        </motion.div>
+                      </span>
+                      <span className={styles.shippingBannerText}>
+                        You saved <strong>₹{standardDeliveryCost}</strong> on shipping
+                      </span>
+                    </motion.div>
+                  </motion.div>
+                </AnimatePresence>
+              )}
+
               {/* Locked/Active Coupon Banners */}
               {lockedCoupon && (
-                <motion.div 
+                <motion.div
                   className={styles.lockedOfferContainer}
                   whileHover={{ scale: 1.02 }}
                   transition={{ type: "spring", stiffness: 400, damping: 10 }}
@@ -351,12 +475,12 @@ export default function ViewCart({ isDrawer = false }) {
               {/* Applied Coupon Section with enhanced animation */}
               <AnimatePresence>
                 {couponState.couponApplied && (
-                  <motion.div 
+                  <motion.div
                     className={styles.appliedCouponBanner}
                     initial={{ opacity: 0, y: -20, scale: 0.95 }}
-                    animate={{ 
-                      opacity: 1, 
-                      y: 0, 
+                    animate={{
+                      opacity: 1,
+                      y: 0,
                       scale: 1,
                       transition: { duration: 0.4 }
                     }}
@@ -364,7 +488,7 @@ export default function ViewCart({ isDrawer = false }) {
                   >
                     <motion.div
                       initial={{ scale: 0 }}
-                      animate={{ 
+                      animate={{
                         scale: [0, 1.2, 1],
                         transition: { duration: 0.5, delay: 0.2 }
                       }}
@@ -374,7 +498,7 @@ export default function ViewCart({ isDrawer = false }) {
                     </motion.div>
                     <div className={styles.appliedCouponContent}>
                       <span className={styles.appliedCouponHeading}>Discount Applied!</span>
-                      <motion.span 
+                      <motion.span
                         className={styles.appliedCouponText}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1, transition: { delay: 0.3 } }}
@@ -391,7 +515,7 @@ export default function ViewCart({ isDrawer = false }) {
 
               {/* Available Coupon Banner */}
               {!couponState.couponApplied && nowCoupon && (
-                <motion.div 
+                <motion.div
                   className={styles.availableCouponBanner}
                   whileHover={{ scale: 1.02 }}
                 >
@@ -405,8 +529,8 @@ export default function ViewCart({ isDrawer = false }) {
                       off on your order
                     </span>
                   </div>
-                  <motion.button 
-                    className={styles.applyNowButton} 
+                  <motion.button
+                    className={styles.applyNowButton}
                     onClick={() => setDlgCoupon(true)}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -435,6 +559,9 @@ export default function ViewCart({ isDrawer = false }) {
                 onOpenCoupon={() => setDlgCoupon(true)}
                 onRemoveCoupon={removeCoupon}
                 extraCharge={extraCharge}
+                totalMrp={MrpTotal}
+                originalTotal={originalTotal}
+
               />
 
 
@@ -451,15 +578,16 @@ export default function ViewCart({ isDrawer = false }) {
             {/* Recommended Products */}
             <section className={styles.recommendedSection}>
               <h2 className={styles.recommendedTitle}>You might also like</h2>
-              <TopBoughtProducts 
-                subCategories={topSub} 
-                currentProductId={topIds} 
-                pageType="viewcart" 
+              <TopBoughtProducts
+                subCategories={topSub}
+                currentProductId={topIds}
+                pageType="viewcart"
+                hideHeading={true}
               />
             </section>
           </motion.div>
         ) : (
-          <motion.div 
+          <motion.div
             className={styles.emptyCartContainer}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -471,7 +599,7 @@ export default function ViewCart({ isDrawer = false }) {
               </div>
               <h2 className={styles.emptyCartTitle}>Your cart is empty</h2>
               <p className={styles.emptyCartSubtitle}>Add items to begin shopping</p>
-              <motion.button 
+              <motion.button
                 className={styles.continueShopping}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -489,7 +617,7 @@ export default function ViewCart({ isDrawer = false }) {
       </div>
 
       {qty > 0 && (
-        <motion.div 
+        <motion.div
           className={styles.checkoutFooter}
           initial={{ y: 100 }}
           animate={{ y: 0 }}
@@ -497,7 +625,7 @@ export default function ViewCart({ isDrawer = false }) {
         >
           <Footer
             totalCost={totalPay}
-            originalTotal={subTot + deliveryCost + extraCharge}
+            originalTotal={originalTotal}
             onCheckout={handleCheckout}
             onlinePercentage={selectedPM?.configuration?.onlinePercentage || 0}
             codPercentage={selectedPM?.configuration?.codPercentage || 0}
@@ -514,6 +642,7 @@ export default function ViewCart({ isDrawer = false }) {
         totalCost={subTot}
         isFirstOrder={isFirstOrder}
         cartItems={cartItems}
+        appliedCoupon={couponState.couponName}
       />
       <OrderForm
         open={dlgOrder}
@@ -537,3 +666,5 @@ export default function ViewCart({ isDrawer = false }) {
     </div>
   );
 }
+
+

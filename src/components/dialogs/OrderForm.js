@@ -4,15 +4,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
-  Tabs,
-  Tab,
   Box,
   TextField,
   Autocomplete,
-  IconButton,
   Typography,
+  useMediaQuery,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlackButton from '../utils/BlackButton';
 import { useForm, Controller } from 'react-hook-form';
@@ -36,12 +33,12 @@ import { makePayment } from '../../lib/payments/makePayment';
 import { useRouter } from 'next/navigation';
 import CustomSnackbar from '../notifications/CustomSnackbar';
 import { getPaymentButtonText } from '../../lib/utils/orderFormUtils';
-import { styled } from '@mui/material/styles';
-import theme from '@/styles/theme';
 import { ThemeProvider } from '@mui/material';
+import theme from '@/styles/theme';
 import { initiateCheckout, purchase } from '@/lib/metadata/facebookPixels';
 import { v4 as uuidv4 } from 'uuid';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const OrderForm = ({
   open,
@@ -61,8 +58,9 @@ const OrderForm = ({
   const orderForm = useSelector((state) => state.orderForm);
   const utmDetails = useSelector((state) => state.utm);
   const { userDetails, addressDetails, userExists, prefilledAddress } = orderForm;
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Local Tab Index State
+  // Local Tab Index State - memoize to prevent rerenders
   const [tabIndex, setTabIndex] = useState(0);
 
   // Snackbar state
@@ -74,7 +72,7 @@ const OrderForm = ({
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
-  // Extract and aggregate unique extraFields from cart items
+  // Extract and aggregate unique extraFields from cart items - memoized
   const aggregatedExtraFields = useMemo(() => {
     const fieldsMap = new Map();
     items.forEach((item) => {
@@ -90,6 +88,26 @@ const OrderForm = ({
     return Array.from(fieldsMap.values());
   }, [items]);
 
+  // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
+  const defaultValues = useMemo(() => ({
+    name: userDetails.name || '',
+    phoneNumber: userDetails.phoneNumber || '',
+    email: userDetails.email || '',
+    addressLine1: addressDetails.addressLine1 || '',
+    addressLine2: addressDetails.addressLine2 || '',
+    city: addressDetails.city || '',
+    state: addressDetails.state || '',
+    pincode: addressDetails.pincode || '',
+    country: addressDetails.country || 'India',
+    ...aggregatedExtraFields.reduce((acc, field) => {
+      acc[field.fieldName] = '';
+      return acc;
+    }, {}),
+  }), [userDetails.name, userDetails.phoneNumber, userDetails.email, 
+       addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city, 
+       addressDetails.state, addressDetails.pincode, addressDetails.country, 
+       aggregatedExtraFields]);
+
   // Initialize extraFields in Redux store when dialog opens
   useEffect(() => {
     if (open && aggregatedExtraFields.length > 0) {
@@ -101,7 +119,6 @@ const OrderForm = ({
     }
   }, [open, aggregatedExtraFields, dispatch]);
 
-  // Setup react-hook-form
   const {
     control,
     handleSubmit,
@@ -109,21 +126,9 @@ const OrderForm = ({
     reset,
     formState: { errors },
   } = useForm({
-    defaultValues: {
-      name: userDetails.name || '',
-      phoneNumber: userDetails.phoneNumber || '',
-      email: userDetails.email || '', // NEW: email field
-      addressLine1: addressDetails.addressLine1 || '',
-      addressLine2: addressDetails.addressLine2 || '',
-      city: addressDetails.city || '',
-      state: addressDetails.state || '',
-      pincode: addressDetails.pincode || '',
-      country: addressDetails.country || 'India',
-      ...aggregatedExtraFields.reduce((acc, field) => {
-        acc[field.fieldName] = '';
-        return acc;
-      }, {}),
-    },
+    defaultValues,
+    mode: 'onChange',
+    shouldUnregister: false // Prevents field unregistration which helps with focus issues
   });
 
   // Prevent multiple form submissions
@@ -150,7 +155,9 @@ const OrderForm = ({
       setValue('pincode', addressDetails.pincode || '');
       setValue('country', addressDetails.country || 'India');
     }
-  }, [userDetails, addressDetails, setValue, open]);
+  }, [open, setValue, userDetails.name, userDetails.phoneNumber, userDetails.email, 
+      addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city, 
+      addressDetails.state, addressDetails.pincode, addressDetails.country]);
 
   // Handle Prefilled Address
   useEffect(() => {
@@ -175,45 +182,96 @@ const OrderForm = ({
     }
   }, [userExists, prefilledAddress, dispatch, addressDetails]);
 
-  // Sync Redux store address details with form
-  useEffect(() => {
-    if (open) {
-      setValue('addressLine1', addressDetails.addressLine1 || '');
-      setValue('addressLine2', addressDetails.addressLine2 || '');
-      setValue('city', addressDetails.city || '');
-      setValue('state', addressDetails.state || '');
-      setValue('pincode', addressDetails.pincode || '');
-      setValue('country', addressDetails.country || 'India');
-    }
-  }, [addressDetails, setValue, open]);
-
-  const handleTabChange = (event, newValue) => {
+  const handleTabChange = useCallback((newValue) => {
     setTabIndex(newValue);
-  };
+  }, []);
 
-  const showSnackbar = (message, severity = 'success') => {
+  const showSnackbar = useCallback((message, severity = 'success') => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
-  };
+  }, []);
 
-  const onSubmitUserDetails = async (data) => {
+  // State for formatted phone number display - memoized
+  const [formattedPhone, setFormattedPhone] = useState('');
+  const [showPhoneConfirmation, setShowPhoneConfirmation] = useState(false);
+  const [originalPhone, setOriginalPhone] = useState('');
+
+  // Function to format phone number - memoized to prevent rerenders
+  const formatPhoneNumber = useCallback((phone) => {
+    // Keep only digits
+    let digitsOnly = phone.replace(/\D/g, '');
+    
+    // Handle common Indian prefixes
+    if (digitsOnly.length > 10) {
+      // Remove leading 0
+      if (digitsOnly.startsWith('0')) {
+        digitsOnly = digitsOnly.substring(1);
+      }
+      
+      // Remove country code +91 or 91
+      if (digitsOnly.startsWith('91') && digitsOnly.length > 10) {
+        digitsOnly = digitsOnly.substring(2);
+      }
+    }
+    
+    // Return the last 10 digits if longer
+    if (digitsOnly.length > 10) {
+      digitsOnly = digitsOnly.substring(digitsOnly.length - 10);
+    }
+    
+    return digitsOnly;
+  }, []);
+
+  // Handle phone formatting and confirmation - memoized to prevent rerenders
+  const handlePhoneChange = useCallback((e, onChange) => {
+    const inputValue = e.target.value;
+    onChange(inputValue); // Update the raw input in the form
+    
+    // If already valid 10-digit number, no need for formatting
+    if (/^\d{10}$/.test(inputValue)) {
+      setShowPhoneConfirmation(false);
+      return;
+    }
+    
+    const formatted = formatPhoneNumber(inputValue);
+    
+    // Only show confirmation if input isn't valid but formatted version is
+    if (formatted !== inputValue && /^\d{10}$/.test(formatted)) {
+      setFormattedPhone(formatted);
+      setOriginalPhone(inputValue);
+      setShowPhoneConfirmation(true);
+    } else {
+      setShowPhoneConfirmation(false);
+    }
+  }, [formatPhoneNumber]);
+
+  const acceptFormattedPhone = useCallback(() => {
+    setValue('phoneNumber', formattedPhone, { shouldValidate: true });
+    dispatch(setUserDetails({ phoneNumber: formattedPhone }));
+    setShowPhoneConfirmation(false);
+  }, [formattedPhone, setValue, dispatch]);
+
+  const onSubmitUserDetails = useCallback(async (data) => {
+    // Format phone number for submission if needed
+    const phoneToUse = formatPhoneNumber(data.phoneNumber);
+    
     setIsLoading(true);
     try {
       // Update Redux store with user details
       dispatch(
         setUserDetails({
           name: data.name,
-          phoneNumber: data.phoneNumber,
-          email: data.email, // also store email in Redux
+          phoneNumber: phoneToUse,
+          email: data.email,
         })
       );
 
       // If your API routes handle email, you can send email below:
       const response = await axios.patch('/api/user/check', {
-        phoneNumber: data.phoneNumber,
+        phoneNumber: phoneToUse, // Use the formatted phone number
         name: data.name,
-        email: data.email, // pass email if your API supports it
+        email: data.email,
       });
 
       if (response.data.exists) {
@@ -247,7 +305,7 @@ const OrderForm = ({
         const createResponse = await axios.post('/api/user/create', {
           name: data.name,
           phoneNumber: data.phoneNumber,
-          email: data.email, // pass email if your API supports it
+          email: data.email,
           source: 'order-form',
         });
         dispatch(setUserExists(false));
@@ -263,9 +321,9 @@ const OrderForm = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [formatPhoneNumber, dispatch, addressDetails, showSnackbar]);
 
-  const onSubmitAddressDetails = async (data) => {
+  const onSubmitAddressDetails = useCallback(async (data) => {
     if (purchaseInitiated) return; // Prevent multiple submissions
     setPurchaseInitiated(true);
     setIsLoading(true);
@@ -289,7 +347,6 @@ const OrderForm = ({
         return;
       }
     }
-
 
     try {
       // Before creating the order or processing payment, check serviceability
@@ -328,7 +385,7 @@ const OrderForm = ({
             state: data.state,
             pincode: data.pincode,
             country: data.country || 'India',
-            ...orderForm.extraFields, // include extra fields
+            ...orderForm.extraFields,
           },
         });
         if (addAddressResponse.data.message === 'Address added successfully.') {
@@ -356,7 +413,7 @@ const OrderForm = ({
             numItems: cartItems.length,
           },
           {
-            email: orderForm.userDetails.email || '', // send email if available
+            email: orderForm.userDetails.email || '',
             phoneNumber: orderForm.userDetails.phoneNumber,
           }
         );
@@ -413,7 +470,7 @@ const OrderForm = ({
             },
           ],
           utmDetails: utmDetails.utmDetails || null,
-          extraFields: orderForm.extraFields, // include extra fields
+          extraFields: orderForm.extraFields,
         });
 
         const { orderId: createdOrderId, message, paymentDetails: createdPaymentDetails } =
@@ -428,46 +485,44 @@ const OrderForm = ({
         throw error;
       }
 
+      // 4) Process Payment (if amountDueOnline > 0)
+      if (paymentDetails.amountDueOnline > 0) {
+        try {
+          const paymentInitResponse = await axios.post(
+            '/api/checkout/order/payment/create-razorpay-order',
+            { orderId }
+          );
+          const { order: razorpayOrder, msg } = paymentInitResponse.data;
 
-// 4) Process Payment (if amountDueOnline > 0)
-if (paymentDetails.amountDueOnline > 0) {
-  try {
-    const paymentInitResponse = await axios.post(
-      '/api/checkout/order/payment/create-razorpay-order',
-      { orderId }
-    );
-    const { order: razorpayOrder, msg } = paymentInitResponse.data;
+          if (msg !== 'success') {
+            console.error('Failed to initiate payment:', msg);
+            showSnackbar('Failed to initiate payment.', 'error');
+            throw new Error('Payment initiation failed.');
+          }
 
-    if (msg !== 'success') {
-      console.error('Failed to initiate payment:', msg);
-      showSnackbar('Failed to initiate payment.', 'error');
-      throw new Error('Payment initiation failed.');
-    }
+          const paymentResult = await makePayment({
+            customerName: orderForm.userDetails.name || '',
+            customerMobile: orderForm.userDetails.phoneNumber,
+            orderId,
+            razorpayOrder,
+          });
 
-    const paymentResult = await makePayment({
-      customerName: orderForm.userDetails.name || '',
-      customerMobile: orderForm.userDetails.phoneNumber,
-      orderId,
-      razorpayOrder,
-    });
+          // user simply closed the Razorpay modal?
+          if (paymentResult.cancelled) {
+            // stop processing, do not navigate or show any snackbar
+            setIsPaymentProcessing(false);
+            setPurchaseInitiated(false);
+            return;
+          }
 
-    // user simply closed the Razorpay modal?
-    if (paymentResult.cancelled) {
-      // stop processing, do not navigate or show any snackbar
-      setIsPaymentProcessing(false);
-      setPurchaseInitiated(false);
-      return;
-    }
-
-    // otherwise we have a real payment
-    showSnackbar('Payment Successful!', 'success');
-  } catch (error) {
-    console.error('Error processing payment:', error.message);
-    showSnackbar(error.message || 'Payment failed. Please try again.', 'error');
-    throw error;
-  }
-}
-
+          // otherwise we have a real payment
+          showSnackbar('Payment Successful!', 'success');
+        } catch (error) {
+          console.error('Error processing payment:', error.message);
+          showSnackbar(error.message || 'Payment failed. Please try again.', 'error');
+          throw error;
+        }
+      }
 
       // 5) Send Purchase Event to FB Pixel
       try {
@@ -510,7 +565,7 @@ if (paymentDetails.amountDueOnline > 0) {
       setIsPaymentProcessing(false);
       setPurchaseInitiated(false);
     }
-  };
+  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar, totalCost, deliveryCost, utmDetails.utmDetails, cartItems, paymentModeConfig, discountAmountFinal, couponsDetails]);
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
@@ -541,574 +596,806 @@ if (paymentDetails.amountDueOnline > 0) {
     }
   }, [open, handleClose]);
 
+  // Animation variants for form transitions - UPDATED for performance
+  const formVariants = useMemo(() => ({
+    initial: (direction) => ({
+      x: direction > 0 ? 300 : -300,
+      opacity: 0,
+      position: 'relative',
+      zIndex: 1,
+    }),
+    animate: {
+      x: 0,
+      opacity: 1,
+      position: 'relative',
+      zIndex: 2,
+      transition: {
+        x: { type: "spring", stiffness: 300, damping: 30 },
+        opacity: { duration: 0.4 }
+      }
+    },
+    exit: (direction) => ({
+      x: direction > 0 ? -300 : 300,
+      opacity: 0,
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 0,
+      transition: {
+        x: { type: "spring", stiffness: 300, damping: 30 },
+        opacity: { duration: 0.2 }
+      }
+    })
+  }), []);
+
+  const fadeInUp = useMemo(() => ({
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.4, ease: "easeInOut" }
+  }), []);
+
+  // Custom styled text field component with memoization to prevent rerenders
+  const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, type = "text", maxWidth }) => (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }} 
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: field.name === 'name' ? 0.1 : field.name === 'email' ? 0.2 : field.name === 'phoneNumber' ? 0.3 : 0.1 * parseInt(field.name.replace(/\D/g, '')) }}
+    >
+      <TextField
+        variant="outlined"
+        {...field}
+        label={label}
+        fullWidth
+        type={type}
+        error={!!error}
+        helperText={helperText}
+        disabled={disabled}
+        onChange={onChange}
+        InputLabelProps={{
+          style: {
+            fontFamily: 'Jost, sans-serif',
+            fontSize: '0.9rem',
+          },
+        }}
+        InputProps={{
+          style: {
+            fontFamily: 'Jost, sans-serif',
+            fontSize: '1rem',
+          },
+        }}
+        sx={{
+          marginBottom: '1rem',
+          maxWidth: maxWidth,
+          '& .MuiOutlinedInput-root': {
+            borderRadius: '8px',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            '&:hover': {
+              boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
+            },
+            '&.Mui-focused': {
+              transform: 'translateY(-2px)',
+              boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
+            }
+          },
+          '& .MuiInputLabel-shrink': {
+            transform: 'translate(14px, -12px) scale(0.75)',
+          }
+        }}
+      />
+    </motion.div>
+  ), []);
+
   return (
     <ThemeProvider theme={theme}>
       <Dialog
         open={open}
         onClose={handleClose}
+        maxWidth="sm"
         fullWidth
         disableEscapeKeyDown={isPaymentProcessing}
         PaperProps={{
-          style: {
-            borderRadius: '1rem',
+          sx: {
+            borderRadius: '1.5rem',
+            overflow: 'hidden',
+            maxHeight: '88vh',
           },
         }}
       >
-        <DialogContent sx={{ padding: '2rem 2rem' }}>
-          {/* Logo & optional back arrow */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            {tabIndex === 1 && (
-              <Box
-                onClick={() => setTabIndex(0)}
-                sx={{ position: 'absolute', left: '2rem', cursor: 'pointer' }}
-              >
-                <ArrowBackIcon sx={{ fontSize: '2rem' }} />
-              </Box>
-            )}
-            <Image
-              loading="eager"
-              src={`${baseImageUrl}/assets/logos/md_nothing_else.png`}
-              width={70}
-              height={70}
-              alt="Small Logo"
-              style={{ width: '70px', height: 'auto' }}
-            />
-          </Box>
-
-          <Box
-            component="form"
-            sx={{ margin: '2rem auto', maxWidth: '400px' }}
-            onSubmit={
-              tabIndex === 0
-                ? handleSubmit(onSubmitUserDetails)
-                : handleSubmit(onSubmitAddressDetails)
-            }
-          >
-            {tabIndex === 0 && (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <Controller
-                  name="name"
-                  control={control}
-                  rules={{
-                    required: 'Name is required',
-                    minLength: {
-                      value: 3,
-                      message: 'Name must be at least 3 characters',
-                    },
-                  }}
-                  render={({ field }) => (
-                    <TextField
-                      variant="standard"
-                      {...field}
-                      label="Name"
-                      fullWidth
-                      margin="normal"
-                      error={!!errors.name}
-                      helperText={errors.name ? errors.name.message : ''}
-                      disabled={isLoading || isPaymentProcessing}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        dispatch(setUserDetails({ name: e.target.value }));
-                      }}
-                      InputLabelProps={{
-                        style: {
-                          fontSize: '0.75rem',
-                          color: '#9e9e9e',
-                        },
-                      }}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          fontSize: '1rem',
-                          fontWeight: '400',
-                          color: '#575252',
-                        },
-                        margin: { xs: '0px 0', sm: 'normal' },
-                        '& .MuiInputLabel-root': {
-                          lineHeight: '2',
-                        },
-                      }}
-                    />
-                  )}
-                />
-
-                {/* NEW: Optional Email Field */}
-                <Controller
-                  name="email"
-                  control={control}
-                  rules={{
-                    pattern: {
-                      // Basic email validation
-                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: 'Enter a valid email address',
-                    },
-                  }}
-                  render={({ field }) => (
-                    <TextField
-                      variant="standard"
-                      {...field}
-                      label="Email (Optional)"
-                      fullWidth
-                      margin="normal"
-                      error={!!errors.email}
-                      helperText={errors.email ? errors.email.message : ''}
-                      disabled={isLoading || isPaymentProcessing}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        dispatch(setUserDetails({ email: e.target.value }));
-                      }}
-                      InputLabelProps={{
-                        style: {
-                          fontSize: '0.75rem',
-                          color: '#9e9e9e',
-                        },
-                      }}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          fontSize: '1rem',
-                          fontWeight: '400',
-                          color: '#575252',
-                        },
-                        margin: { xs: '0px 0', sm: 'normal' },
-                        '& .MuiInputLabel-root': {
-                          lineHeight: '2',
-                        },
-                      }}
-                    />
-                  )}
-                />
-
-                <Controller
-                  name="phoneNumber"
-                  control={control}
-                  rules={{
-                    required: 'Mobile number is required',
-                    pattern: {
-                      value: /^\d{10}$/,
-                      message: 'Mobile number must be exactly 10 digits',
-                    },
-                  }}
-                  render={({ field }) => (
-                    <TextField
-                      variant="standard"
-                      {...field}
-                      label="Mobile Number"
-                      fullWidth
-                      margin="normal"
-                      error={!!errors.phoneNumber}
-                      helperText={errors.phoneNumber ? errors.phoneNumber.message : ''}
-                      disabled={isLoading || isPaymentProcessing}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        dispatch(setUserDetails({ phoneNumber: e.target.value }));
-                      }}
-                      InputLabelProps={{
-                        style: {
-                          fontSize: '0.75rem',
-                          color: '#9e9e9e',
-                        },
-                      }}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          fontSize: '1rem',
-                          fontWeight: '400',
-                          color: '#575252',
-                        },
-                        margin: { xs: '0px 0', sm: 'normal' },
-                        '& .MuiInputLabel-root': {
-                          lineHeight: '2',
-                        },
-                      }}
-                    />
-                  )}
-                />
-
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                  <BlackButton
-                    extraClass="lg"
-                    isLoading={isLoading}
-                    buttonText="Next"
-                    onClick={handleSubmit(onSubmitUserDetails)}
-                    disabled={isPaymentProcessing || isLoading}
-                  />
-                </Box>
-              </Box>
-            )}
-
-            {tabIndex === 1 && (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <Controller
-                  name="addressLine1"
-                  control={control}
-                  rules={{ required: 'Address is required' }}
-                  render={({ field }) => (
-                    <TextField
-                      variant="standard"
-                      {...field}
-                      label="Address Line 1"
-                      fullWidth
-                      margin="normal"
-                      error={!!errors.addressLine1}
-                      helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
-                      disabled={isLoading || isPaymentProcessing}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        dispatch(setAddressDetails({ addressLine1: e.target.value }));
-                      }}
-                      InputLabelProps={{
-                        style: {
-                          fontSize: '0.75rem',
-                          color: '#9e9e9e',
-                        },
-                      }}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          fontSize: '1rem',
-                          fontWeight: '400',
-                          color: '#575252',
-                        },
-                        margin: { xs: '0px 0', sm: 'normal' },
-                        '& .MuiInputLabel-root': {
-                          lineHeight: '2',
-                        },
-                      }}
-                    />
-                  )}
-                />
-
-                {/* For brevity, addressLine2 omitted or optional */}
-                <Controller
-                  name="city"
-                  control={control}
-                  rules={{ required: 'City is required' }}
-                  render={({ field }) => (
-                    <TextField
-                      variant="standard"
-                      {...field}
-                      label="City"
-                      fullWidth
-                      margin="normal"
-                      error={!!errors.city}
-                      helperText={errors.city ? errors.city.message : ''}
-                      disabled={isLoading || isPaymentProcessing}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        dispatch(setAddressDetails({ city: e.target.value }));
-                      }}
-                      InputLabelProps={{
-                        style: {
-                          fontSize: '0.75rem',
-                          color: '#9e9e9e',
-                        },
-                      }}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          fontSize: '1rem',
-                          fontWeight: '400',
-                          color: '#575252',
-                        },
-                        margin: { xs: '0px 0', sm: 'normal' },
-                        '& .MuiInputLabel-root': {
-                          lineHeight: '2',
-                        },
-                      }}
-                    />
-                  )}
-                />
-
-                <Controller
-                  name="state"
-                  control={control}
-                  rules={{ required: 'State is required' }}
-                  render={({ field }) => (
-                    <Autocomplete
-                      {...field}
-                      options={indianStates}
-                      getOptionLabel={(option) => option}
-                      onChange={(event, newValue) => {
-                        field.onChange(newValue);
-                        dispatch(setAddressDetails({ state: newValue }));
-                      }}
-                      value={field.value || ''}
-                      renderInput={(params) => (
-                        <TextField
-                          variant="standard"
-                          {...params}
-                          label="State"
-                          margin="normal"
-                          error={!!errors.state}
-                          helperText={errors.state ? errors.state.message : ''}
-                          disabled={isLoading || isPaymentProcessing}
-                          InputLabelProps={{
-                            style: {
-                              fontSize: '0.75rem',
-                              color: '#9e9e9e',
-                            },
-                          }}
-                          sx={{
-                            '& .MuiInputBase-root': {
-                              fontSize: '1rem',
-                              fontWeight: '400',
-                              color: '#575252',
-                            },
-                            margin: { xs: '0px 0', sm: 'normal' },
-                            '& .MuiInputLabel-root': {
-                              lineHeight: '2',
-                            },
-                          }}
-                        />
-                      )}
-                    />
-                  )}
-                />
-
-                <Controller
-                  name="pincode"
-                  control={control}
-                  rules={{
-                    required: 'Pincode is required',
-                    pattern: {
-                      value: /^\d{6}$/,
-                      message: 'Invalid pincode format (6 digits)',
-                    },
-                  }}
-                  render={({ field }) => (
-                    <TextField
-                      variant="standard"
-                      {...field}
-                      label="Pincode"
-                      fullWidth
-                      margin="normal"
-                      error={!!errors.pincode}
-                      helperText={errors.pincode ? errors.pincode.message : ''}
-                      disabled={isLoading || isPaymentProcessing}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        dispatch(setAddressDetails({ pincode: e.target.value }));
-                      }}
-                      InputLabelProps={{
-                        style: {
-                          fontSize: '0.75rem',
-                          color: '#9e9e9e',
-                        },
-                      }}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          fontSize: '1rem',
-                          fontWeight: '400',
-                          color: '#575252',
-                        },
-                        margin: { xs: '0px 0', sm: 'normal' },
-                        '& .MuiInputLabel-root': {
-                          lineHeight: '2',
-                        },
-                      }}
-                    />
-                  )}
-                />
-
-                <Controller
-                  name="country"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      variant="standard"
-                      {...field}
-                      label="Country"
-                      fullWidth
-                      margin="normal"
-                      disabled={isLoading || isPaymentProcessing}
-                      value={field.value || 'India'}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        dispatch(setAddressDetails({ country: e.target.value }));
-                      }}
-                      InputLabelProps={{
-                        style: {
-                          fontSize: '0.75rem',
-                          color: '#9e9e9e',
-                        },
-                      }}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          fontSize: '1rem',
-                          fontWeight: '400',
-                          color: '#575252',
-                        },
-                        margin: { xs: '0px 0', sm: 'normal' },
-                        '& .MuiInputLabel-root': {
-                          lineHeight: '2',
-                        },
-                      }}
-                    />
-                  )}
-                />
-
-                {/* Additional ExtraFields if any */}
-                {/* aggregatedExtraFields.map(...) etc. as needed */}
-
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                  <BlackButton
-                    isLoading={isLoading}
-                    buttonText={getPaymentButtonText(paymentModeConfig)}
-                    type="submit"
-                    disabled={isPaymentProcessing || isLoading || purchaseInitiated}
-                  />
-                </Box>
-              </Box>
-            )}
-          </Box>
-
-          {/* Some optional icons or disclaimers */}
-          <Box sx={{ mt: 4 }}>
-            <Box
-              sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0rem', height: '90px' }}
+        <DialogContent 
+          sx={{ 
+            padding: { xs: '1.2rem', md: '1.5rem' }, 
+            paddingTop: { xs: '0.8rem', md: '1.2rem' },
+            background: 'linear-gradient(to bottom, #f9f9f9, #ffffff)',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            overflow: 'hidden', // Hide overflow on the DialogContent
+          }}
+        >
+          {/* Logo and Stepper - Made more compact */}
+          <Box sx={{ 
+            position: 'relative', 
+            mb: 0.5,
+            flexShrink: 0, // Prevent shrinking
+          }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, type: 'spring', stiffness: 200 }}
             >
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'flex-start',
-                  width: '100px',
-                  height: '100%',
-                  gap: '0.3rem',
-                }}
-              >
-                <Image
-                  loading="eager"
-                  style={{ opacity: '0.4', width: '35px', height: 'auto' }}
-                  src={`${baseImageUrl}/assets/icons/happiness.png`}
-                  width={50}
-                  height={50}
-                  alt="Happy Customers"
-                />
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'black',
-                    opacity: '0.5',
-                    textAlign: 'center',
-                    lineHeight: '0.8rem',
-                    fontSize: '0.6rem',
-                    marginBottom: '0.2rem',
-                    fontFamily: 'Jost',
-                  }}
-                >
-                  2000+ Happy
-                  <br />
-                  Customers
-                </Typography>
-              </Box>
-
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'flex-start',
-                  width: '100px',
-                  height: '100%',
-                  gap: '0.3rem',
-                }}
-              >
-                <Image
-                  loading="eager"
-                  style={{ opacity: '0.4', width: '35px', height: 'auto' }}
-                  src={`${baseImageUrl}/assets/icons/shield.png`}
-                  width={50}
-                  height={50}
-                  alt="Shield"
-                />
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'black',
-                    opacity: '0.5',
-                    textAlign: 'center',
-                    lineHeight: '0.8rem',
-                    fontSize: '0.6rem',
-                    marginBottom: '0.2rem',
-                    fontFamily: 'Jost',
-                  }}
-                >
-                  Payment
-                  <br />
-                  secured by
-                </Typography>
-                <Image
-                  loading="eager"
-                  style={{ opacity: '0.6', width: '55px', height: 'auto' }}
-                  src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`}
-                  width={150}
-                  height={50}
-                  alt="Razorpay Logo"
-                />
-              </Box>
-
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'flex-start',
-                  width: '100px',
-                  height: '100%',
-                  gap: '0.3rem',
-                }}
-              >
-                <Image
-                  loading="eager"
-                  style={{ opacity: '0.4', width: '35px', height: 'auto', transform: 'scale(1.2)' }}
-                  src={`${baseImageUrl}/assets/icons/fast-delivery.png`}
-                  width={50}
-                  height={50}
-                  alt="Fast Delivery"
-                />
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'black',
-                    opacity: '0.5',
-                    textAlign: 'center',
-                    lineHeight: '0.8rem',
-                    fontSize: '0.6rem',
-                    marginBottom: '0.2rem',
-                    fontFamily: 'Jost',
-                  }}
-                >
-                  On time
-                  <br />
-                  shipping
-                </Typography>
-              </Box>
-            </Box>
-
-            <Box
-              sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.3rem', marginTop: '2rem' }}
-            >
-              <Typography
-                variant="caption"
-                sx={{
-                  color: 'black',
-                  opacity: '0.5',
-                  textAlign: 'center',
-                  lineHeight: '0.8rem',
-                  fontSize: '0.7rem',
-                  fontFamily: 'Jost',
-                }}
-              >
-                Shipping via
-              </Typography>
               <Image
                 loading="eager"
-                style={{ opacity: '0.6', width: '55px', height: 'auto' }}
-                src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`}
-                width={150}
-                height={50}
-                alt="Shiprocket Logo"
+                src={`${baseImageUrl}/assets/logos/md_nothing_else.png`}
+                width={60} // Reduced from 80
+                height={60} // Reduced from 80
+                alt="Logo"
+                style={{ 
+                  width: '60px', // Reduced from 80px
+                  height: 'auto', 
+                  margin: '0 auto',
+                  display: 'block',
+                }}
               />
+            </motion.div>
+            
+            {/* Custom Stepper - Made more compact */}
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              mt: 1.5, // Reduced from 3
+              position: 'relative',
+              height: '30px' // Reduced from 40px
+            }}>
+              <Box sx={{ 
+                position: 'absolute', 
+                left: '50%', 
+                width: '60px', 
+                height: '2px', 
+                backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
+                transform: 'translateX(-30px)',
+                transition: 'background-color 0.5s'
+              }} />
+              
+              <motion.div
+                animate={{ scale: tabIndex === 0 ? 1.1 : 0.9, x: tabIndex === 0 ? -40 : -40 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              >
+                <Box 
+                  sx={{ 
+                    width: '25px', // Reduced from 30px
+                    height: '25px', // Reduced from 30px
+                    borderRadius: '50%', 
+                    backgroundColor: '#000', 
+                    color: 'white',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    fontFamily: 'Jost, sans-serif',
+                    fontWeight: 600,
+                    fontSize: '0.8rem', // Added smaller font
+                    zIndex: 1,
+                    boxShadow: tabIndex === 0 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'box-shadow 0.3s',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => tabIndex !== 0 && handleTabChange(0)}
+                >
+                  1
+                </Box>
+              </motion.div>
+              
+              <motion.div
+                animate={{ scale: tabIndex === 1 ? 1.1 : 0.9, x: tabIndex === 1 ? 40 : 40 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              >
+                <Box 
+                  sx={{ 
+                    width: '25px', // Reduced from 30px
+                    height: '25px', // Reduced from 30px
+                    borderRadius: '50%', 
+                    backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
+                    color: tabIndex === 1 ? 'white' : '#999',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    fontFamily: 'Jost, sans-serif',
+                    fontWeight: 600,
+                    fontSize: '0.8rem', // Added smaller font
+                    zIndex: 1,
+                    boxShadow: tabIndex === 1 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'box-shadow 0.3s, background-color 0.3s, color 0.3s',
+                    cursor: tabIndex === 1 ? 'pointer' : 'default'
+                  }}
+                >
+                  2
+                </Box>
+              </motion.div>
+            </Box>
+            
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+            >
+              <Typography 
+                variant="h6" 
+                align="center" 
+                sx={{ 
+                  mt: 0.5, // Reduced from 1
+                  mb: 1, // Reduced from 3
+                  fontFamily: 'Jost, sans-serif',
+                  fontWeight: 500,
+                  fontSize: '1rem', // Reduced from 1.25rem (h6)
+                  color: '#333'
+                }}
+              >
+                {tabIndex === 0 ? "Let's get to know you" : "Where should we deliver?"}
+              </Typography>
+            </motion.div>
+
+            {tabIndex === 1 && (
+              <Box
+                onClick={() => handleTabChange(0)}
+                sx={{ 
+                  position: 'absolute', 
+                  left: '0.5rem', // Reduced from 1rem
+                  top: '0.5rem', // Reduced from 1rem
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#555',
+                  transition: 'color 0.2s',
+                  zIndex: 10,
+                  '&:hover': {
+                    color: '#000',
+                  }
+                }}
+              >
+                <motion.div whileHover={{ x: -3 }} whileTap={{ scale: 0.9 }}>
+                  <ArrowBackIcon sx={{ fontSize: '1.3rem' }} /> {/* Reduced from 1.5rem */}
+                </motion.div>
+              </Box>
+            )}
+          </Box>
+
+          {/* Form Container - Made scrollable */}
+          <Box
+            component="div"
+            sx={{ 
+              margin: '0 auto', 
+              maxWidth: '400px',
+              position: 'relative',
+              overflow: 'auto', // Add scroll to form area only
+              flexGrow: 1, // Let this box take available space
+              width: '100%',
+              '&::-webkit-scrollbar': {
+                width: '5px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: '#e0e0e0',
+                borderRadius: '5px',
+              },
+            }}
+          >
+            <Box
+              component="form"
+              onSubmit={
+                tabIndex === 0
+                  ? handleSubmit(onSubmitUserDetails)
+                  : handleSubmit(onSubmitAddressDetails)
+              }
+              sx={{ 
+                position: 'relative',
+                width: '100%', 
+                height: '100%',
+              }}
+            >
+              <AnimatePresence mode="wait" initial={false} custom={tabIndex}>
+                {tabIndex === 0 && (
+                  <motion.div
+                    key="personalInfo"
+                    custom={0}
+                    variants={formVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    style={{ width: '100%', height: '100%' }}
+                  >
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', paddingTop: '0.5rem' }}>
+                      {/* Name field */}
+                      <Controller
+                        name="name"
+                        control={control}
+                        rules={{
+                          required: 'Name is required',
+                          minLength: {
+                            value: 3,
+                            message: 'Name must be at least 3 characters',
+                          },
+                        }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="Your Name"
+                            error={errors.name}
+                            helperText={errors.name ? errors.name.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              dispatch(setUserDetails({ name: e.target.value }));
+                            }}
+                          />
+                        )}
+                      />
+
+                      {/* Email field */}
+                      <Controller
+                        name="email"
+                        control={control}
+                        rules={{
+                          pattern: {
+                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                            message: 'Enter a valid email address',
+                          },
+                        }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="Email (Optional)"
+                            error={errors.email}
+                            helperText={errors.email ? errors.email.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              dispatch(setUserDetails({ email: e.target.value }));
+                            }}
+                          />
+                        )}
+                      />
+
+                      {/* Phone number field with enhanced validation */}
+                      <Controller
+                        name="phoneNumber"
+                        control={control}
+                        rules={{
+                          required: 'Mobile number is required',
+                          validate: value => {
+                            // Allow raw inputs that format to valid numbers
+                            const formatted = formatPhoneNumber(value);
+                            return /^\d{10}$/.test(formatted) || 'Please enter a valid 10-digit mobile number';
+                          }
+                        }}
+                        render={({ field }) => (
+                          <Box sx={{ position: 'relative', marginBottom: showPhoneConfirmation ? '2.5rem' : '0' }}>
+                            <StyledTextField
+                              field={field}
+                              label="Mobile Number"
+                              type="tel"
+                              error={!!errors.phoneNumber}
+                              helperText={errors.phoneNumber ? errors.phoneNumber.message : ''}
+                              disabled={isLoading || isPaymentProcessing}
+                              onChange={(e) => handlePhoneChange(e, field.onChange)}
+                            />
+                            
+                            {/* Phone number format confirmation message */}
+                            <AnimatePresence>
+                              {showPhoneConfirmation && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: -10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -10 }}
+                                  transition={{ duration: 0.2 }}
+                                  style={{ 
+                                    position: 'absolute', 
+                                    width: '100%', 
+                                    top: '100%',
+                                    zIndex: 5 // Added to ensure it appears on top
+                                  }}
+                                >
+                                  <Box sx={{
+                                    mt: '5px',
+                                    p: '8px 12px',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#f1f9f5',
+                                    border: '1px solid #b2ffc6',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                  }}>
+                                    <Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#333', fontFamily: 'Jost, sans-serif', fontWeight: 500 }}>
+                                      Is <strong>{formattedPhone}</strong> the correct 10-digit number?
+                                    </Typography>
+                                    <motion.button
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={acceptFormattedPhone}
+                                      type="button"
+                                      style={{
+                                        backgroundColor: '#b2ffc6',
+                                        color: '#333',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '3px 8px',
+                                        fontSize: '0.7rem',
+                                        cursor: 'pointer',
+                                        fontFamily: 'Jost, sans-serif',
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      Yes
+                                    </motion.button>
+                                  </Box>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </Box>
+                        )}
+                      />
+
+                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1.5 }}>
+                        <motion.div
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <BlackButton
+                            extraClass="lg"
+                            isLoading={isLoading}
+                            buttonText="Continue to Shipping"
+                            onClick={handleSubmit(onSubmitUserDetails)}
+                            disabled={isPaymentProcessing || isLoading}
+                            sx={{ 
+                              borderRadius: '50px', 
+                              px: 3,
+                              py: 0.5, // Added to make button smaller
+                              boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                              fontFamily: 'Jost, sans-serif',
+                              fontSize: '0.9rem' // Reduced from default
+                            }}
+                          />
+                        </motion.div>
+                      </Box>
+                    </Box>
+                  </motion.div>
+                )}
+
+                {tabIndex === 1 && (
+                  <motion.div
+                    key="shippingInfo"
+                    custom={1}
+                    variants={formVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    style={{ width: '100%', height: '100%' }}
+                  >
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem' }}>
+                      <Controller
+                        name="addressLine1"
+                        control={control}
+                        rules={{ required: 'Address is required' }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="Address"
+                            error={errors.addressLine1}
+                            helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              dispatch(setAddressDetails({ addressLine1: e.target.value }));
+                            }}
+                          />
+                        )}
+                      />
+
+                      <Controller
+                        name="city"
+                        control={control}
+                        rules={{ required: 'City is required' }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="City"
+                            error={errors.city}
+                            helperText={errors.city ? errors.city.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              dispatch(setAddressDetails({ city: e.target.value }));
+                            }}
+                          />
+                        )}
+                      />
+
+                      <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
+                        <Box sx={{ flex: 2 }}>
+                          <Controller
+                            name="state"
+                            control={control}
+                            rules={{ required: 'State is required' }}
+                            render={({ field }) => (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, delay: 0.3 }}
+                              >
+                                <Autocomplete
+                                  options={indianStates}
+                                  getOptionLabel={(option) => option}
+                                  value={field.value || ''}
+                                  onChange={(event, newValue) => {
+                                    field.onChange(newValue);
+                                    dispatch(setAddressDetails({ state: newValue }));
+                                  }}
+                                  disableClearable
+                                  renderInput={(params) => (
+                                    <TextField
+                                      {...params}
+                                      label="State"
+                                      error={!!errors.state}
+                                      helperText={errors.state ? errors.state.message : ''}
+                                      variant="outlined"
+                                      sx={{
+                                        marginBottom: '1rem',
+                                        '& .MuiOutlinedInput-root': {
+                                          borderRadius: '8px',
+                                          fontFamily: 'Jost, sans-serif',
+                                          transition: 'transform 0.2s, box-shadow 0.2s',
+                                          '&:hover': {
+                                            boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
+                                          },
+                                          '&.Mui-focused': {
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
+                                          }
+                                        },
+                                      }}
+                                      InputLabelProps={{
+                                        style: {
+                                          fontFamily: 'Jost, sans-serif',
+                                          fontSize: '0.9rem',
+                                        },
+                                      }}
+                                      InputProps={{
+                                        ...params.InputProps,
+                                        style: {
+                                          fontFamily: 'Jost, sans-serif',
+                                          fontSize: '1rem',
+                                        },
+                                      }}
+                                    />
+                                  )}
+                                  disabled={isLoading || isPaymentProcessing}
+                                />
+                              </motion.div>
+                            )}
+                          />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Controller
+                            name="pincode"
+                            control={control}
+                            rules={{
+                              required: 'Pincode is required',
+                              pattern: {
+                                value: /^\d{6}$/,
+                                message: 'Invalid pincode',
+                              },
+                            }}
+                            render={({ field }) => (
+                              <StyledTextField
+                                field={field}
+                                label="Pincode"
+                                error={errors.pincode}
+                                helperText={errors.pincode ? errors.pincode.message : ''}
+                                disabled={isLoading || isPaymentProcessing}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  dispatch(setAddressDetails({ pincode: e.target.value }));
+                                }}
+                                type="tel"
+                                maxWidth="100%"
+                              />
+                            )}
+                          />
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1.5 }}>
+                        <motion.div
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <BlackButton
+                            extraClass="lg"
+                            isLoading={isLoading}
+                            buttonText={getPaymentButtonText(paymentModeConfig)}
+                            type="submit"
+                            disabled={isPaymentProcessing || isLoading || purchaseInitiated}
+                            sx={{ 
+                              borderRadius: '50px', 
+                              px: 3,
+                              py: 0.5, // Added to make button smaller
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                              fontFamily: 'Jost, sans-serif',
+                              fontSize: '0.9rem' // Reduced from 1.1rem
+                            }}
+                          />
+                        </motion.div>
+                      </Box>
+                    </Box>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </Box>
           </Box>
+          
+          {/* Trust indicators - Made more compact */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+          >
+            <Box
+              sx={{
+                mt: 1, // Reduced from 5
+                pt: 1,
+                borderTop: '1px solid #f0f0f0',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 1, // Reduced from 2
+                flexShrink: 0, // Prevent shrinking
+              }}
+            >
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontFamily: 'Jost, sans-serif',
+                  color: '#666',
+                  fontSize: '0.8rem', // Reduced from 0.9rem
+                  textAlign: 'center',
+                }}
+              >
+                Trusted by 50,000+ happy customers
+              </Typography>
+              
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: { xs: 2, sm: 3 }, // Reduced from { xs: 2, sm: 4 }
+                  width: '100%',
+                }}
+              >
+                <motion.div whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 0.5, // Reduced from 1
+                    }}
+                  >
+                    <Image
+                      loading="eager"
+                      src={`${baseImageUrl}/assets/icons/shield.png`}
+                      width={24} // Reduced from 32
+                      height={24} // Reduced from 32
+                      alt="Secure Payment"
+                      style={{ opacity: 0.7 }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontFamily: 'Jost, sans-serif',
+                        color: '#666',
+                        textAlign: 'center',
+                        fontSize: '0.6rem', // Reduced from 0.7rem
+                      }}
+                    >
+                      Secure Payment
+                    </Typography>
+                  </Box>
+                </motion.div>
+                
+                <motion.div whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 0.5, // Reduced from 1
+                    }}
+                  >
+                    <Image
+                      loading="eager"
+                      src={`${baseImageUrl}/assets/icons/fast-delivery.png`}
+                      width={24} // Reduced from 32
+                      height={24} // Reduced from 32
+                      alt="Fast Shipping"
+                      style={{ opacity: 0.7 }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontFamily: 'Jost, sans-serif',
+                        color: '#666',
+                        textAlign: 'center',
+                        fontSize: '0.6rem', // Reduced from 0.7rem
+                      }}
+                    >
+                      Fast Shipping
+                    </Typography>
+                  </Box>
+                </motion.div>
+                
+                <motion.div whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 0.5, // Reduced from 1
+                    }}
+                  >
+                    <Image
+                      loading="eager"
+                      src={`${baseImageUrl}/assets/icons/happiness.png`}
+                      width={24} // Reduced from 32
+                      height={24} // Reduced from 32
+                      alt="Customer Satisfaction"
+                      style={{ opacity: 0.7 }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontFamily: 'Jost, sans-serif',
+                        color: '#666',
+                        textAlign: 'center',
+                        fontSize: '0.6rem', // Reduced from 0.7rem
+                      }}
+                    >
+                      100% Satisfaction
+                    </Typography>
+                  </Box>
+                </motion.div>
+              </Box>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Image
+                  loading="eager"
+                  src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`}
+                  width={50} // Reduced from 60
+                  height={15} // Reduced from 18
+                  alt="Razorpay"
+                  style={{ opacity: 0.7 }}
+                />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontFamily: 'Jost, sans-serif',
+                    color: '#666',
+                    fontSize: '0.6rem', // Reduced from 0.7rem
+                  }}
+                >
+                  |
+                </Typography>
+                <Image
+                  loading="eager" 
+                  src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`}
+                  width={50} // Reduced from 60
+                  height={15} // Reduced from 18
+                  alt="Shiprocket"
+                  style={{ opacity: 0.7 }}
+                />
+              </Box>
+            </Box>
+          </motion.div>
         </DialogContent>
       </Dialog>
 
@@ -1123,4 +1410,4 @@ if (paymentDetails.amountDueOnline > 0) {
   );
 };
 
-export default OrderForm;
+export default React.memo(OrderForm); // Prevent unnecessary rerenders

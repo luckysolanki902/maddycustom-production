@@ -169,6 +169,67 @@
   font-weight: 500;
 }
 
+.priceValueContainer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.originalPrice {
+  text-decoration: line-through;
+  color: #999;
+  font-size: 0.9em;
+  margin-right: 4px;
+}
+
+.deliveryValueContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.freeDelivery {
+  color: #43a047;
+  font-weight: 600;
+  position: relative;
+  animation: pulse 2s infinite;
+}
+
+.originalDeliveryPrice {
+  text-decoration: line-through;
+  color: #999;
+  font-size: 0.9em;
+  margin-right: 4px;
+}
+
+.totalValueContainer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.originalTotalPrice {
+  text-decoration: line-through;
+  color: #999;
+  font-size: 0.85em;
+  margin-right: 4px;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 480px) {
   .priceDetailsContainer {
     padding: 12px;
