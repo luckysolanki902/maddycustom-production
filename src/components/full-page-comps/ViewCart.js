@@ -632,8 +632,8 @@ const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 
             isRevalidatingCoupons={revalidatingCoupons}
             discount={disc}
           />
-        </motion.div>
-      )}
+        </motion.div>)
+      }
 
       <ApplyCoupon
         open={dlgCoupon}

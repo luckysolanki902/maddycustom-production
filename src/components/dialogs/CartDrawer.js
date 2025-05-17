@@ -6,11 +6,16 @@ import { Drawer, Box } from '@mui/material';
 import { closeCartDrawer } from '@/store/slices/uiSlice';
 import ViewCart from '@/components/full-page-comps/ViewCart';
 import { useSpring, animated } from '@react-spring/web';
+import useHistoryState from '@/hooks/useHistoryState';
 
 const CartDrawer = () => {
   const dispatch = useDispatch();
   const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
   const drawerSource = useSelector((state) => state.ui.cartDrawerSource);
+  
+  // Add history state management with lower priority than coupon dialog
+  const handleClose = () => dispatch(closeCartDrawer());
+  useHistoryState(isCartDrawerOpen, handleClose, 'cartDrawer', 5); // Lower priority number
   
   // Determine transition properties based on source
   const isTopSource = drawerSource === 'top';
@@ -65,7 +70,9 @@ const CartDrawer = () => {
     <Drawer
       {...drawerProps}
       open={isCartDrawerOpen}
-      onClose={() => dispatch(closeCartDrawer())}
+      onClose={handleClose}
+      // Don't let Drawer handle its own back button
+      disableEscapeKeyDown={true}
       SlideProps={{
         appear: true,
         direction: isTopSource ? 'down' : 'up',

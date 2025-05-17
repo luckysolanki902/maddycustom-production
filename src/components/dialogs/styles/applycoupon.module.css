@@ -462,6 +462,21 @@
   }
 }
 
+/* Mobile view - one card per row for devices up to 480px */
+@media (max-width: 480px) {
+  .couponCardsSection {
+    grid-template-columns: 1fr; /* Single column layout */
+    gap: 12px;
+    padding: 0 4px;
+  }
+  
+  /* Center the card */
+  .couponCardsSection > div {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+}
+
 @media (max-width: 600px) {
   .bestDealBanner {
     flex-direction: column;
@@ -490,10 +505,8 @@
 }
 
 @media (max-width: 400px) {
-  .couponCardsSection {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-  }
+  /* Maintain the single column from the 480px breakpoint */
+  /* Other styles unchanged */
   
   .dialogHeader, .searchContainer, .tabsContainer, .tabContent {
     padding-left: 12px;
