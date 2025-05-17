@@ -7,6 +7,11 @@ const initialState = {
   isSearchDialogOpen: false,
   isCartDrawerOpen: false,
   cartDrawerSource: 'bottom', // 'top' or 'bottom'
+  // Add shipping timer state
+  shippingTimer: {
+    expiryTime: Date.now() + (9 * 60 * 60 * 1000) + (13 * 60 * 1000), // 9 hours 13 minutes from now
+    isActive: true
+  }
 };
 
 const uiSlice = createSlice({
@@ -31,7 +36,7 @@ const uiSlice = createSlice({
     closeSearchDialog(state) {
       state.isSearchDialogOpen = false;
     },
-    // New reducers for cart drawer
+    // Cart drawer reducers
     toggleCartDrawer(state) {
       state.isCartDrawerOpen = !state.isCartDrawerOpen;
     },
@@ -43,6 +48,19 @@ const uiSlice = createSlice({
     closeCartDrawer(state) {
       state.isCartDrawerOpen = false;
     },
+    
+    // New shipping timer reducers
+    setShippingTimer: (state, action) => {
+      state.shippingTimer.expiryTime = action.payload;
+      state.shippingTimer.isActive = true;
+    },
+    expireShippingTimer: (state) => {
+      state.shippingTimer.isActive = false;
+    },
+    resetShippingTimer: (state) => {
+      state.shippingTimer.expiryTime = Date.now() + (9 * 60 * 60 * 1000) + (13 * 60 * 1000);
+      state.shippingTimer.isActive = true;
+    }
   },
 });
 
@@ -56,6 +74,9 @@ export const {
   toggleCartDrawer,
   openCartDrawer,
   closeCartDrawer,
+  setShippingTimer,
+  expireShippingTimer,
+  resetShippingTimer
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

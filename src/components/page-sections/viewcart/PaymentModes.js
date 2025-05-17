@@ -78,18 +78,23 @@ const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange }
               >
                 <FormControlLabel
                   value={mode.name}
-                  control={<Radio color="primary" size="small" />}
+                  control={<Radio sx={{ color: '#2d2d2d', '&.Mui-checked': { color: '#2d2d2d' } }} size="small" />}
                   label={
                     <div className={styles.paymentOptionContent}>
                       <div className={styles.paymentOptionLeft}>
                         {getPaymentIcon(mode.name)}
                         <div className={styles.paymentOptionInfo}>
                           <span className={styles.paymentOptionName}>
-                            {mode?.displayName?.toUpperCase() || mode?.name?.toUpperCase()}
+                            {mode?.caption?.toUpperCase() || mode?.caption?.toUpperCase()}
                           </span>
                           {mode.description && (
                             <span className={styles.paymentOptionDescription}>
-                              {mode.description}
+                              {mode.description.split(/\.\s/).map((s, i) => (
+                                <React.Fragment key={i}>
+                                  {s}
+                                  <br />
+                                </React.Fragment>
+                              ))}
                             </span>
                           )}
                         </div>
@@ -112,3 +117,4 @@ const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange }
 };
 
 export default PaymentModes;
+

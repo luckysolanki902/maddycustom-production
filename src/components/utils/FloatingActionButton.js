@@ -7,6 +7,7 @@ import styles from "./styles/floatingactionbar.module.css";
 import Image from "next/image";
 import Badge from "@mui/material/Badge";
 import { openCartDrawer } from "@/store/slices/uiSlice";
+import Link from "next/link";
 
 const FloatingActionBar = () => {
   const dispatch = useDispatch();
@@ -70,9 +71,8 @@ const FloatingActionBar = () => {
             >
               <div
                 onClick={handleCartClick}
-                className={`${styles.iconButton} ${
-                  totalQuantity > 0 ? styles.cartButtonActive : ""
-                }`}
+                className={`${styles.iconButton} ${totalQuantity > 0 ? styles.cartButtonActive : ""
+                  }`}
               >
                 <Badge badgeContent={totalQuantity} color="info">
                   <Image
@@ -81,6 +81,8 @@ const FloatingActionBar = () => {
                     width={200}
                     height={200}
                     alt="Cart Icon"
+                    priority
+                    loading="eager"
                   />
                 </Badge>
                 <span>Cart</span>
@@ -91,11 +93,10 @@ const FloatingActionBar = () => {
             <div className={styles.divider} />
 
             {/* Home button */}
-            <a href="/">
+            <Link href="/">
               <div
-                className={`${styles.iconButton} ${
-                  pathname === "/" ? styles.cartButtonActive : ""
-                }`}
+                className={`${styles.iconButton} ${pathname === "/" ? styles.cartButtonActive : ""
+                  }`}
               >
                 <Image
                   src={`${baseImageUrl}/assets/icons/roundedhome.png`}
@@ -103,10 +104,12 @@ const FloatingActionBar = () => {
                   width={200}
                   height={200}
                   alt="Home Icon"
+                  priority
+                  loading="eager"
                 />
                 <span>Home</span>
               </div>
-            </a>
+            </Link>
           </div>
         </animated.div>
       )

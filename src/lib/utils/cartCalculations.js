@@ -11,6 +11,12 @@ export const calculateTotalCostBeforeDiscount = (cartItems) =>
     return acc + price * item.quantity;
   }, 0);
 
+export const calcluateTotalMrp = (cartItems) =>
+  cartItems.reduce((acc, item) => {
+    const MRP = item.productDetails.MRP;
+    return acc + MRP * item.quantity;
+  }, 0);
+
 export const calculateDiscountAmount = (totalCost, couponState) => {
   if (!couponState.couponApplied) return 0;
   const { discountType, couponDiscount, isDbCoupon, offer } = couponState;

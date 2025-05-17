@@ -5,8 +5,6 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { CircularProgress } from '@mui/material';
 import styles from './styles/footer.module.css';
-import CreditCardIcon from '@mui/icons-material/CreditCard';
-import LocalAtmIcon from '@mui/icons-material/LocalAtm';
 
 const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = false, discount = 0, onlinePercentage, codPercentage }) => {
   const handleCheckout = () => {
@@ -29,75 +27,81 @@ const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = 
 
   return (
     <div className={styles.footerContainer}>
-      {isSplitPayment ? (
-        <div className={styles.splitPaymentFooter}>
-          <div className={styles.splitInfo}>
-            <div className={styles.splitAmount}>
-              <div className={styles.amountWithIcon}>
-                <span className={styles.payNowLabel}>Pay now</span>
-                <span className={styles.splitAmountValue}>₹{onlineAmount}</span>
-              </div>
-              <div className={styles.splitDivider}>+</div>
-              <div className={styles.amountWithIcon}>
-                <span className={styles.payLaterLabel}>Pay on delivery</span>
-                <span className={styles.splitAmountValue}>₹{codAmount}</span>
+      <div className={styles.priceContainer}>
+        {isSplitPayment ? (
+          <div className={styles.splitWrapper}>
+            <div className={styles.totalAmount}>
+              <span className={styles.totalText}>Total</span>
+              <div className={styles.priceStack}>
+                <span className={styles.finalPrice}>₹{totalCost.toFixed(0)}</span>
+                {hasSavings && (
+                  <span className={styles.originalPrice}>₹{originalTotal.toFixed(0)}</span>
+                )}
               </div>
             </div>
-            <div className={styles.splitVisual}>
-              <div 
-                className={styles.onlinePortion} 
-                style={{width: `${onlinePercentage}%`}}
-              >
-                <span className={styles.percentLabel}>{onlinePercentage}%</span>
+            
+            <div className={styles.paymentSplitContainer}>
+              <div className={styles.paymentOption}>
+                <div>
+                  <span className={styles.paymentLabel}>Pay Online</span>
+                  <span className={styles.paymentAmount}>₹{onlineAmount}</span>
+                </div>
               </div>
-              <div 
-                className={styles.codPortion} 
-                style={{width: `${codPercentage || (100 - onlinePercentage)}%`}}
-              >
-                <span className={styles.percentLabel}>{codPercentage || (100 - onlinePercentage)}%</span>
+              
+              <div className={styles.divider}>+</div>
+              
+              <div className={styles.paymentOption}>
+                <div>
+                  <span className={styles.paymentLabel}>Pay on Delivery</span>
+                  <span className={styles.paymentAmount}>₹{codAmount}</span>
+                </div>
               </div>
             </div>
+            
+            {/* {hasSavings && (
+              <div className={styles.savingsBadge}>
+                <span>Save {savingsPercent}%</span>
+              </div>
+            )} */}
           </div>
-        </div>
-      ) : (
-        <div className={styles.priceSummary}>
-          <div className={styles.priceDetails}>
-            <span className={styles.totalText}>Total</span>
-            <div className={styles.priceStack}>
-              {hasSavings && (
-                <span className={styles.originalPrice}>
-                  ₹{originalTotal.toFixed(0)}
+        ) : (
+          <div className={styles.priceSummary}>
+            <div className={styles.priceDetails}>
+              <span className={styles.totalText}>Total Amount</span>
+              <div className={styles.priceStack}>
+                <span className={styles.finalPrice}>
+                  ₹{totalCost.toFixed(0)}
                 </span>
-              )}
-              <span className={styles.finalPrice}>
-                ₹{totalCost.toFixed(0)}
-              </span>
+                <span className={styles.originalPrice}>
+                  ₹{originalTotal > totalCost ? originalTotal.toFixed(0) : (totalCost * 1.2).toFixed(0)}
+                </span>
+              </div>
             </div>
+            
+            {/* {hasSavings && (
+              <div className={styles.savingsBadge}>
+                <span>Save {savingsPercent}%</span>
+              </div>
+            )} */}
           </div>
-          
-          {hasSavings && (
-            <div className={styles.savingsBadge}>
-              <span>Save {savingsPercent}%</span>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
       
       <motion.button
         className={`${styles.checkoutButton} ${styles.shineEffect}`}
         onClick={handleCheckout}
         disabled={isRevalidatingCoupons}
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.97 }}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
         transition={{ type: "spring", stiffness: 400, damping: 8 }}
       >
         {isRevalidatingCoupons ? (
           <div className={styles.loadingContainer}>
-            <CircularProgress size={24} color="inherit" />
+            <CircularProgress size={20} color="inherit" />
             <span>Preparing...</span>
           </div>
         ) : (
-          <span>Place Order {isSplitPayment ? `(₹${totalCost})` : ''}</span>
+          <span>Place Order</span>
         )}
       </motion.button>
     </div>
