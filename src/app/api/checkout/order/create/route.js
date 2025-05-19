@@ -6,7 +6,6 @@ import Order from '@/models/Order';
 import User from '@/models/User';
 import Offer from '@/models/Offer';
 import ModeOfPayment from '@/models/ModeOfPayment';
-import mongoose from 'mongoose';
 import moment from 'moment-timezone';
 
 export async function POST(request) {
@@ -17,7 +16,7 @@ export async function POST(request) {
       items,
       paymentModeId,
       address,
-      couponCode, // This now refers to an offer code
+      couponCode,
       totalAmount,
       discountAmount,
       extraCharges,
@@ -25,7 +24,7 @@ export async function POST(request) {
       extraFields,
     } = await request.json();
 
-    // Validate input
+    // Basic validation
     if ((!userId && !phoneNumber) || !items || !paymentModeId || !address || totalAmount == null) {
       return NextResponse.json(
         { message: 'Missing required fields' },
@@ -36,49 +35,71 @@ export async function POST(request) {
     const isTestingOrder = process.env.isTestingOrder || false;
     await connectToDatabase();
 
-    // Find or create user
-    let user = null;
+    // Prepare parallel database queries for better performance
+    const promises = [];
+    
+    // Find payment mode (essential for order creation)
+    const paymentModePromise = ModeOfPayment.findById(paymentModeId, { 
+      name: 1, 
+      isActive: 1, 
+      configuration: 1 
+    }).lean();
+    promises.push(paymentModePromise);
+    
+    // Find or create user (if needed)
+    let userPromise;
     if (userId) {
-      user = await User.findById(userId);
+      userPromise = User.findById(userId, { _id: 1 }).lean();
     } else if (phoneNumber) {
-      user = await User.findOne({ phoneNumber });
-      if (!user) {
-        user = new User({ phoneNumber });
-        await user.save();
-      }
-      userId = user._id.toString();
+      userPromise = User.findOne({ phoneNumber }, { _id: 1 }).lean();
     }
-
-    if (!user) {
-      return NextResponse.json(
-        { message: 'User not found' },
-        { status: 404 }
-      );
+    promises.push(userPromise);
+    
+    // Find offer (if coupon code provided)
+    let offerPromise = null;
+    if (couponCode) {
+      offerPromise = Offer.findOne({
+        couponCodes: couponCode.toUpperCase(),
+        isActive: true,
+      }, { 
+        _id: 1, 
+        validFrom: 1, 
+        validUntil: 1 
+      }).lean();
+      promises.push(offerPromise);
     }
-
-    // Find payment mode
-    const paymentMode = await ModeOfPayment.findById(paymentModeId);
+    
+    // Wait for all database queries to complete
+    const results = await Promise.all(promises);
+    
+    // Extract results
+    const paymentMode = results[0];
+    let user = results[1];
+    let offer = offerPromise ? results[2] : null;
+    
+    // Validate payment mode
     if (!paymentMode || !paymentMode.isActive) {
       return NextResponse.json(
         { message: 'Invalid or inactive payment mode' },
         { status: 400 }
       );
     }
-
-    // Handle offer (previously coupon)
-    let offer = null;
-    if (couponCode) {
-      offer = await Offer.findOne({
-        couponCodes: couponCode.toUpperCase(),
-        isActive: true,
-      });
-      if (!offer) {
-        return NextResponse.json(
-          { message: 'Invalid or inactive offer code' },
-          { status: 400 }
-        );
-      }
-
+    
+    // Handle user creation if needed
+    if (!user && phoneNumber) {
+      const newUser = new User({ phoneNumber });
+      user = await newUser.save();
+    }
+    
+    if (!user) {
+      return NextResponse.json(
+        { message: 'User not found or could not be created' },
+        { status: 404 }
+      );
+    }
+    
+    // If we have an offer, verify it's valid
+    if (couponCode && offer) {
       // Get current time in IST
       const currentDateIST = moment().tz('Asia/Kolkata').toDate();
       if (currentDateIST < offer.validFrom || currentDateIST > offer.validUntil) {
@@ -87,11 +108,9 @@ export async function POST(request) {
           { status: 400 }
         );
       }
-
-      // Additional checks such as usage limits or condition evaluation can be added here.
     }
-
-    // Calculate payment splits based on payment mode configuration
+    
+    // Calculate payment splits
     let amountPaidOnline = 0;
     let amountDueOnline = 0;
     let amountDueCod = 0;
@@ -101,33 +120,29 @@ export async function POST(request) {
     if (paymentMode.configuration) {
       const onlinePercentage = paymentMode.configuration.onlinePercentage || 0;
       const codPercentage = paymentMode.configuration.codPercentage || 0;
-      const totalPercentage = onlinePercentage + codPercentage;
-      if (totalPercentage !== 100) {
-        return NextResponse.json(
-          { message: 'Payment mode percentages do not sum up to 100' },
-          { status: 400 }
-        );
-      }
-      amountPaidOnline = 0; // As per requirement
-      amountDueOnline = Math.floor((totalAmount * onlinePercentage) / 100);
-      amountDueCod = Math.ceil((totalAmount * codPercentage) / 100);
-      amountPaidCod = 0;
-      if (paymentMode.name.toLowerCase() === 'cod') {
-        amountDueCod = totalAmount;
+      
+      // Fast path for common cases
+      if (paymentMode.name && paymentMode.name.toLowerCase() === 'cod') {
         amountDueOnline = 0;
+        amountDueCod = totalAmount;
         paymentStatus = 'allToBePaidCod';
+      } else if (onlinePercentage === 100) {
+        amountDueOnline = totalAmount;
+        amountDueCod = 0;
+      } else {
+        // Mixed payment mode
+        amountDueOnline = Math.floor((totalAmount * onlinePercentage) / 100);
+        amountDueCod = Math.ceil((totalAmount * codPercentage) / 100);
       }
     } else {
-      amountPaidOnline = 0;
-      amountDueOnline = 0;
+      // Default to COD if no configuration
       amountDueCod = totalAmount;
-      amountPaidCod = 0;
       paymentStatus = 'allToBePaidCod';
     }
 
-    // Create new order
-    const newOrder = new Order({
-      user: userId,
+    // Create new order document
+    const newOrder = {
+      user: user._id,
       items: items,
       totalAmount: totalAmount,
       totalDiscount: discountAmount || 0,
@@ -136,7 +151,7 @@ export async function POST(request) {
         ? [{
             couponCode: couponCode.toUpperCase(),
             discountAmount: discountAmount || 0,
-            incrementedCouponUsage: false, // Initialize as false
+            incrementedCouponUsage: false,
           }]
         : [],
       paymentDetails: {
@@ -162,12 +177,21 @@ export async function POST(request) {
       deliveryStatus: 'pending',
       utmDetails: utmDetails,
       extraFields: extraFields,
-    });
+    };
 
-    await newOrder.save();
+    const order = new Order(newOrder);
+    await order.save();
 
+    // Return minimal data needed for the next steps
     return NextResponse.json(
-      { message: 'Order created successfully', orderId: newOrder._id, paymentDetails: newOrder.paymentDetails },
+      { 
+        message: 'Order created successfully', 
+        orderId: order._id, 
+        paymentDetails: {
+          amountDueOnline: amountDueOnline,
+          amountDueCod: amountDueCod
+        }
+      },
       { status: 201 }
     );
   } catch (error) {

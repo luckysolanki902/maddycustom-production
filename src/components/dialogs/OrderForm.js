@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,8 @@ import {
   Autocomplete,
   Typography,
   useMediaQuery,
+  CircularProgress,
+  alpha
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlackButton from '../utils/BlackButton';
@@ -39,6 +41,10 @@ import { initiateCheckout, purchase } from '@/lib/metadata/facebookPixels';
 import { v4 as uuidv4 } from 'uuid';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'; // Added
+import { debounce } from 'lodash';
+import useHistoryState from '@/hooks/useHistoryState';
 
 const OrderForm = ({
   open,
@@ -59,6 +65,18 @@ const OrderForm = ({
   const utmDetails = useSelector((state) => state.utm);
   const { userDetails, addressDetails, userExists, prefilledAddress } = orderForm;
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Performance optimization - serviceability cache
+  const serviceabilityCache = useRef({});
+  const [isPincodeValid, setIsPincodeValid] = useState(false);
+  const [pincodeCheckInProgress, setPincodeCheckInProgress] = useState(false);
+  
+  // Background processing refs and state
+  const pendingOperationsRef = useRef({
+    userCheck: null,
+    addressAdd: null,
+    couponValidation: null,
+  });
 
   // Local Tab Index State - memoize to prevent rerenders
   const [tabIndex, setTabIndex] = useState(0);
@@ -125,11 +143,27 @@ const OrderForm = ({
     setValue,
     reset,
     formState: { errors },
+    watch,
   } = useForm({
     defaultValues,
     mode: 'onChange',
     shouldUnregister: false // Prevents field unregistration which helps with focus issues
   });
+
+  // Watch pincode for immediate validation
+  const watchedPincode = watch('pincode');
+
+  // Effect for early pincode validation
+  useEffect(() => {
+    if (watchedPincode?.length === 6 && /^\d{6}$/.test(watchedPincode)) {
+      // Check if we've already validated this pincode
+      if (serviceabilityCache.current[watchedPincode] !== undefined) {
+        setIsPincodeValid(serviceabilityCache.current[watchedPincode]);
+      } else {
+        validatePincode(watchedPincode);
+      }
+    }
+  }, [watchedPincode]);
 
   // Prevent multiple form submissions
   const [purchaseInitiated, setPurchaseInitiated] = useState(false);
@@ -154,6 +188,11 @@ const OrderForm = ({
       setValue('state', addressDetails.state || '');
       setValue('pincode', addressDetails.pincode || '');
       setValue('country', addressDetails.country || 'India');
+      
+      // Pre-validate pincode if it exists
+      if (addressDetails.pincode && addressDetails.pincode.length === 6) {
+        validatePincode(addressDetails.pincode);
+      }
     }
   }, [open, setValue, userDetails.name, userDetails.phoneNumber, userDetails.email, 
       addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city, 
@@ -166,6 +205,11 @@ const OrderForm = ({
       dispatch(setUserExists(false));
       dispatch(setPrefilledAddress(null));
       setTabIndex(1);
+      
+      // Pre-validate pincode from prefilled address
+      if (prefilledAddress.pincode && prefilledAddress.pincode.length === 6) {
+        validatePincode(prefilledAddress.pincode);
+      }
     } else if (userExists && !prefilledAddress) {
       // If there's already an address in Redux, skip to tab 1
       const reduxAddress = addressDetails;
@@ -178,6 +222,11 @@ const OrderForm = ({
         reduxAddress.country
       ) {
         setTabIndex(1);
+        
+        // Pre-validate pincode from redux address
+        if (reduxAddress.pincode && reduxAddress.pincode.length === 6) {
+          validatePincode(reduxAddress.pincode);
+        }
       }
     }
   }, [userExists, prefilledAddress, dispatch, addressDetails]);
@@ -252,154 +301,305 @@ const OrderForm = ({
     setShowPhoneConfirmation(false);
   }, [formattedPhone, setValue, dispatch]);
 
+  // Enhanced pincode validation with proactive serviceability check
+  const validatePincode = useCallback(
+    debounce(async (pincode) => {
+      if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
+        setPincodeCheckInProgress(true);
+        
+        // Check cache first
+        if (serviceabilityCache.current[pincode] !== undefined) {
+          setPincodeCheckInProgress(false);
+          setIsPincodeValid(serviceabilityCache.current[pincode]);
+          return;
+        }
+
+        try {
+          const response = await axios.get(
+            `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${pincode}`
+          );
+          
+          const isValid = response.data.serviceable;
+          serviceabilityCache.current[pincode] = isValid;
+          setIsPincodeValid(isValid);
+          
+          if (!isValid) {
+            showSnackbar(`Pincode ${pincode} is not serviceable. Please try a different one.`, 'warning');
+          }
+        } catch (error) {
+          console.error('Error checking pincode:', error);
+        } finally {
+          setPincodeCheckInProgress(false);
+        }
+      } else {
+        setIsPincodeValid(false);
+      }
+    }, 300),
+    [showSnackbar]
+  );
+
+  // Pre-validate coupon in background as soon as form opens
+  useEffect(() => {
+    if (open && couponCode && subTotal > 0) {
+      // Start coupon validation in background
+      pendingOperationsRef.current.couponValidation = axios.post('/api/checkout/coupons/apply', {
+        code: couponCode,
+        totalCost: subTotal,
+        isFirstOrder: false,
+        cartItems: items,
+      }).catch(error => {
+        console.error('Background coupon validation failed:', error);
+      });
+    }
+  }, [open, couponCode, subTotal, items]);
+
+  // Optimistic user details submission - further optimized
   const onSubmitUserDetails = useCallback(async (data) => {
     // Format phone number for submission if needed
     const phoneToUse = formatPhoneNumber(data.phoneNumber);
     
-    setIsLoading(true);
-    try {
-      // Update Redux store with user details
-      dispatch(
-        setUserDetails({
-          name: data.name,
-          phoneNumber: phoneToUse,
-          email: data.email,
-        })
-      );
-
-      // If your API routes handle email, you can send email below:
-      const response = await axios.patch('/api/user/check', {
-        phoneNumber: phoneToUse, // Use the formatted phone number
+    // Client-side validation to avoid unnecessary API calls
+    if (phoneToUse.length !== 10 || !/^\d{10}$/.test(phoneToUse)) {
+      showSnackbar('Please enter a valid 10-digit mobile number', 'error');
+      return;
+    }
+    
+    // Optimistically update Redux store with user details before API call
+    dispatch(
+      setUserDetails({
         name: data.name,
+        phoneNumber: phoneToUse,
         email: data.email,
-      });
+      })
+    );
 
+    // Immediately move to the next tab for better UX
+    setTabIndex(1);
+    
+    // Perform user check in background without blocking UI
+    pendingOperationsRef.current.userCheck = axios.patch('/api/user/check', {
+      phoneNumber: phoneToUse,
+      name: data.name,
+      email: data.email,
+    })
+    .then(response => {
       if (response.data.exists) {
         const latestAddress = response.data.latestAddress;
-        const userId = response.data.userId;
-        dispatch(setUserDetails({ userId }));
+        dispatch(setUserDetails({ userId: response.data.userId }));
 
         if (latestAddress) {
-          dispatch(setUserExists(true));
-          dispatch(setPrefilledAddress(latestAddress));
-        } else {
-          // If no address found in DB, see if Redux has one
-          const reduxAddress = addressDetails;
-          if (
-            reduxAddress.addressLine1 ||
-            reduxAddress.addressLine2 ||
-            reduxAddress.city ||
-            reduxAddress.state ||
-            reduxAddress.pincode ||
-            reduxAddress.country
-          ) {
-            dispatch(setUserExists(true));
-            dispatch(setPrefilledAddress(reduxAddress));
-          } else {
-            dispatch(setUserExists(false));
-            dispatch(setPrefilledAddress(null));
+          // Update form with existing address
+          Object.entries(latestAddress).forEach(([key, value]) => {
+            if (setValue && key !== '_id') {
+              setValue(key, value || '');
+            }
+          });
+          
+          dispatch(setAddressDetails(latestAddress));
+          
+          // Pre-validate pincode
+          if (latestAddress.pincode && latestAddress.pincode.length === 6) {
+            validatePincode(latestAddress.pincode);
           }
         }
       } else {
-        // Create new user
-        const createResponse = await axios.post('/api/user/create', {
+        // Create user in background (non-blocking)
+        return axios.post('/api/user/create', {
           name: data.name,
-          phoneNumber: data.phoneNumber,
+          phoneNumber: phoneToUse,
           email: data.email,
           source: 'order-form',
+        })
+        .then(createResponse => {
+          dispatch(setUserDetails({ userId: createResponse.data.userId || createResponse.data.user?.userId }));
+          return createResponse;
         });
-        dispatch(setUserExists(false));
-        dispatch(setPrefilledAddress(null));
-        dispatch(setUserDetails({ userId: createResponse.data.userId }));
-        setTabIndex(1);
       }
-    } catch (error) {
-      console.error('Error checking/creating user:', error.message);
-      const errorMessage =
-        error.response?.data?.message || 'An error occurred while processing your details.';
-      showSnackbar(errorMessage, 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [formatPhoneNumber, dispatch, addressDetails, showSnackbar]);
+      return response;
+    })
+    .catch(error => {
+      console.error('Error in background user check/create:', error);
+    });
+  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode]);
 
+  // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
     if (purchaseInitiated) return; // Prevent multiple submissions
     setPurchaseInitiated(true);
     setIsLoading(true);
     setIsPaymentProcessing(true);
 
-    if (couponCode) {
-      try {
-        const validateRes = await axios.post('/api/checkout/coupons/apply', {
+    // Performance timing logs
+    const startTime = performance.now();
+    console.log('🔍 Checkout process started');
+
+    try {
+      // Create a single array for all initial validation promises
+      const initialValidationPromises = [];
+      
+      // 1. Check if we need to validate serviceability
+      if (!isPincodeValid && data.pincode && !serviceabilityCache.current[data.pincode]) {
+        const serviceabilityPromise = axios.get(
+          `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${data.pincode}`
+        ).then(response => {
+          const isValid = response.data.serviceable;
+          serviceabilityCache.current[data.pincode] = isValid;
+          setIsPincodeValid(isValid);
+          
+          if (!isValid) {
+            throw new Error(`The pincode ${data.pincode} is either invalid or we don't deliver to this location!`);
+          }
+        });
+        initialValidationPromises.push(serviceabilityPromise);
+      }
+      
+      // 2. Check if we need to validate coupon
+      let couponPromise;
+      if (couponCode && !pendingOperationsRef.current.couponValidation) {
+        couponPromise = axios.post('/api/checkout/coupons/apply', {
           code: couponCode,
           totalCost: subTotal,
           isFirstOrder: false,
           cartItems: items,
+        }).then(response => {
+          const couponValidation = response.data;
+          if (!couponValidation.valid) {
+            throw new Error('Your offer is no longer valid. Please update your cart.');
+          }
+          return couponValidation;
         });
-        if (!validateRes.data.valid) {
-          showSnackbar('Your offer is no longer valid. Please update your cart.', 'warning');
-          return;
-        }
-      } catch (e) {
-        console.error('Error validating coupon before order:', e);
-        showSnackbar('Failed to validate coupon. Please try again.', 'error');
-        return;
-      }
-    }
-
-    try {
-      // Before creating the order or processing payment, check serviceability
-      let serviceability;
-      try {
-        const response = await axios.get(
-          `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${data.pincode}`
-        );
-        serviceability = response.data;
-        // Adjust condition based on your API's response
-        if (!serviceability.serviceable) {
-          showSnackbar(
-            `The pincode ${data.pincode} is either invalid or we don't deliver to this location!`,
-            'warning'
-          );
-          return;
-        }
-      } catch (error) {
-        showSnackbar(
-          error.response?.data?.error || error.message || 'Serviceability check failed',
-          'warning'
-        );
-        return;
+        initialValidationPromises.push(couponPromise);
+      } else if (pendingOperationsRef.current.couponValidation) {
+        initialValidationPromises.push(pendingOperationsRef.current.couponValidation);
       }
 
-      // 1) Add/Update Address
-      try {
-        const addAddressResponse = await axios.post('/api/user/add-address', {
-          phoneNumber: orderForm.userDetails.phoneNumber,
-          address: {
-            receiverName: orderForm.userDetails.name || '',
-            receiverPhoneNumber: orderForm.userDetails.phoneNumber,
-            addressLine1: data.addressLine1,
-            addressLine2: data.addressLine2,
-            city: data.city,
-            state: data.state,
-            pincode: data.pincode,
-            country: data.country || 'India',
-            ...orderForm.extraFields,
+      // 3. Check if we need to finish user check/creation (this sets/confirms userId)
+      if (pendingOperationsRef.current.userCheck) {
+        initialValidationPromises.push(pendingOperationsRef.current.userCheck);
+      }
+      
+      // 4. Start address addition - initiate early.
+      // This promise will be awaited later, in parallel with order creation.
+      const addAddressPayload = {
+        phoneNumber: orderForm.userDetails.phoneNumber,
+        address: {
+          receiverName: orderForm.userDetails.name || '',
+          receiverPhoneNumber: orderForm.userDetails.phoneNumber,
+          addressLine1: data.addressLine1,
+          addressLine2: data.addressLine2,
+          city: data.city,
+          state: data.state,
+          pincode: data.pincode,
+          country: data.country || 'India',
+          ...orderForm.extraFields,
+        },
+      };
+      
+      // Re-assign to a new const for clarity in Promise.all later
+      const addressAddPromise = axios.post('/api/user/add-address', addAddressPayload)
+        .then(response => {
+          if (response.data.message === 'Address added successfully.' || 
+              response.data.message === 'Using existing address.') {
+            dispatch(setAddressDetails(response.data.latestAddress));
+          }
+          console.log(`⏱️ Address add/update completed`);
+          return response.data;
+        }).catch(error => {
+            console.error("Error during address addition (in parallel task):", error);
+            // Propagate error to be caught by main try-catch
+            throw new Error(error.response?.data?.message || "Failed to update address details.");
+        });
+      pendingOperationsRef.current.addressAdd = addressAddPromise; // Keep ref if needed elsewhere, though direct use of addressAddPromise is clearer
+
+      // 5. Wait for all initial critical validations to complete
+      // This ensures userId is populated in Redux store via userCheck promise if it was pending.
+      if (initialValidationPromises.length > 0) {
+        console.log('⏱️ Waiting for initial validation promises (serviceability, coupon, user check)...');
+        const validationStartTime = performance.now();
+        await Promise.all(initialValidationPromises).catch(error => {
+          throw error; // Re-throw to be caught by the main try-catch block
+        });
+        console.log(`⏱️ Initial validation promises completed in ${((performance.now() - validationStartTime) / 1000).toFixed(2)}s`);
+      } else {
+        console.log('⏱️ No initial validation promises needed - all data likely pre-validated or available.');
+      }
+      
+      // 6. Prepare order payload *after* initial validations (especially userCheck) have completed.
+      // This ensures orderForm.userDetails.userId is correctly populated.
+      const finalOrderPayload = {
+        userId: orderForm.userDetails.userId, // Now confirmed
+        phoneNumber: orderForm.userDetails.phoneNumber,
+        items: cartItems.map((item) => ({
+          product: item.productId,
+          itemSource: item.productDetails.source || 'inhouse',
+          brand: item.productDetails.brand || null,
+          option: item.productDetails.selectedOption?._id || null,
+          name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+            ? item.productDetails.category?.name.slice(0, -1)
+            : item.productDetails.category?.name
+          }`,
+          quantity: item.quantity,
+          priceAtPurchase: item.productDetails.price,
+          sku: item.productDetails.selectedOption ? item.productDetails.selectedOption.sku : item.productDetails.sku,
+          thumbnail: item.productDetails.thumbnail,
+          insertionDetails: item.insertionDetails || {}
+        })),
+        paymentModeId: paymentModeConfig._id,
+        address: { // Using form data directly for the order's address snapshot
+          receiverName: orderForm.userDetails.name || '',
+          receiverPhoneNumber: orderForm.userDetails.phoneNumber,
+          addressLine1: data.addressLine1,
+          addressLine2: data.addressLine2,
+          city: data.city,
+          state: data.state,
+          pincode: data.pincode,
+          country: data.country || 'India',
+        },
+        totalAmount: totalCost,
+        discountAmount: discountAmountFinal || 0,
+        couponCode: couponsDetails?.couponCode || '',
+        extraCharges: [
+          {
+            chargesName: 'MOP Charges',
+            chargesAmount: paymentModeConfig.extraCharge || 0,
           },
-        });
-        if (addAddressResponse.data.message === 'Address added successfully.') {
-          dispatch(setAddressDetails(addAddressResponse.data.latestAddress));
-        }
-      } catch (error) {
-        console.error('Error adding/updating address:', error.message);
-        showSnackbar('Failed to add/update address. Please try again.', 'error');
-        throw error;
-      }
+          {
+            chargesName: 'Delivery Charges',
+            chargesAmount: deliveryCost || 0,
+          },
+        ],
+        utmDetails: utmDetails.utmDetails || null,
+        extraFields: orderForm.extraFields,
+      };
 
-      // 2) Initiate Checkout (for FB Pixel)
-      try {
-        await initiateCheckout(
+      // 7. Start creating the order and await its completion alongside address addition.
+      console.log('⏱️ Starting order creation (in parallel with address addition completion)...');
+      const orderCreateStartTime = performance.now();
+      
+      const orderCreatePromise = axios.post('/api/checkout/order/create', finalOrderPayload)
+        .then(response => {
+            console.log(`⏱️ Order created in ${((performance.now() - orderCreateStartTime) / 1000).toFixed(2)}s`);
+            return response;
+        }).catch(error => {
+            console.error("Error during order creation (in parallel task):", error);
+            throw new Error(error.response?.data?.message || "Failed to create order.");
+        });
+
+      // Wait for both order creation and address addition to complete.
+      // Order creation is essential for the next step (payment).
+      // Address addition is important for user profile data integrity.
+      const [orderResponse] = await Promise.all([orderCreatePromise, addressAddPromise]);
+      // Note: result of addressAddPromise is not directly used here, but its completion is awaited.
+      
+      console.log(`⏱️ Order creation and address addition parallel block completed in ${((performance.now() - orderCreateStartTime) / 1000).toFixed(2)}s`);
+      
+      const { orderId: createdOrderId, paymentDetails: createdPaymentDetails } = orderResponse.data;
+      dispatch(setLastOrderId(createdOrderId));
+
+      // 8. Start preparing payment in parallel with pixel events
+      if (createdPaymentDetails.amountDueOnline > 0) {
+        // Start FB pixel tracking in parallel with payment preparation
+        const pixelPromise = initiateCheckout(
           {
             eventID: uuidv4(),
             totalValue: totalCost,
@@ -416,185 +616,117 @@ const OrderForm = ({
             email: orderForm.userDetails.email || '',
             phoneNumber: orderForm.userDetails.phoneNumber,
           }
+        ).catch(error => {
+          console.error('FB pixel tracking error (non-critical):', error);
+        });
+        
+        // Start payment initialization in parallel
+        console.log('⏱️ Starting payment initialization...');
+        const paymentStartTime = performance.now();
+        
+        const paymentPromise = axios.post(
+          '/api/checkout/order/payment/create-razorpay-order',
+          { orderId: createdOrderId }
         );
-      } catch (error) {
-        console.error('Error initiating checkout:', error.message);
-        showSnackbar('Failed to initiate checkout. Please try again.', 'error');
-        throw error;
+        
+        // Wait for payment initialization (this must complete)
+        const paymentInitResponse = await paymentPromise;
+        console.log(`⏱️ Payment initialized in ${((performance.now() - paymentStartTime) / 1000).toFixed(2)}s`);
+        
+        const { order: razorpayOrder, msg } = paymentInitResponse.data;
+
+        if (msg !== 'success') {
+          console.error('Failed to initiate payment:', msg);
+          showSnackbar('Failed to initiate payment.', 'error');
+          throw new Error('Payment initiation failed.');
+        }
+
+        console.log(`⏱️ TOTAL TIME BEFORE PAYMENT WINDOW: ${((performance.now() - startTime) / 1000).toFixed(2)}s`);
+        console.log('🚀 Now opening payment window...');
+        
+        const paymentResult = await makePayment({
+          customerName: orderForm.userDetails.name || '',
+          customerMobile: orderForm.userDetails.phoneNumber,
+          orderId: createdOrderId,
+          razorpayOrder,
+        });
+
+        // User closed the Razorpay modal
+        if (paymentResult.cancelled) {
+          setIsPaymentProcessing(false);
+          setPurchaseInitiated(false);
+          return;
+        }
+
+        showSnackbar('Payment Successful!', 'success');
       }
 
-      // 3) Create Order
-      let orderId = null;
-      let paymentDetails = null;
-      try {
-        const orderResponse = await axios.post('/api/checkout/order/create', {
-          userId: orderForm.userDetails.userId,
-          phoneNumber: orderForm.userDetails.phoneNumber,
+      // 9. Clean up and navigate (non-blocking)
+      purchase(
+        {
+          orderId: createdOrderId,
+          totalAmount: totalCost,
           items: cartItems.map((item) => ({
             product: item.productId,
-            itemSource: item.productDetails.source || 'inhouse',
-            brand: item.productDetails.brand || null,
-            option: item.productDetails.selectedOption?._id || null,
             name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
               ? item.productDetails.category?.name.slice(0, -1)
               : item.productDetails.category?.name
-            }`,
+              }`,
             quantity: item.quantity,
-            priceAtPurchase: item.productDetails.price,
-            sku: item.productDetails.selectedOption ? item.productDetails.selectedOption.sku : item.productDetails.sku,
-            thumbnail: item.productDetails.thumbnail,
-            insertionDetails: item.insertionDetails || {} // Add insertion details
+            priceAtPurchase: item.priceAtPurchase,
           })),
-          paymentModeId: paymentModeConfig._id,
-          address: {
-            receiverName: orderForm.userDetails.name || '',
-            receiverPhoneNumber: orderForm.userDetails.phoneNumber,
-            addressLine1: data.addressLine1,
-            addressLine2: data.addressLine2,
-            city: data.city,
-            state: data.state,
-            pincode: data.pincode,
-            country: data.country || 'India',
-          },
-          totalAmount: totalCost,
-          discountAmount: discountAmountFinal || 0,
-          couponCode: couponsDetails?.couponCode || '',
-          extraCharges: [
-            {
-              chargesName: 'MOP Charges',
-              chargesAmount: paymentModeConfig.extraCharge || 0,
-            },
-            {
-              chargesName: 'Delivery Charges',
-              chargesAmount: deliveryCost || 0,
-            },
-          ],
-          utmDetails: utmDetails.utmDetails || null,
-          extraFields: orderForm.extraFields,
-        });
-
-        const { orderId: createdOrderId, message, paymentDetails: createdPaymentDetails } =
-          orderResponse.data;
-        dispatch(setLastOrderId(createdOrderId));
-
-        orderId = createdOrderId;
-        paymentDetails = createdPaymentDetails;
-      } catch (error) {
-        console.error('Error creating order:', error.message);
-        showSnackbar('Failed to create order. Please try again.', 'error');
-        throw error;
-      }
-
-      // 4) Process Payment (if amountDueOnline > 0)
-      if (paymentDetails.amountDueOnline > 0) {
-        try {
-          const paymentInitResponse = await axios.post(
-            '/api/checkout/order/payment/create-razorpay-order',
-            { orderId }
-          );
-          const { order: razorpayOrder, msg } = paymentInitResponse.data;
-
-          if (msg !== 'success') {
-            console.error('Failed to initiate payment:', msg);
-            showSnackbar('Failed to initiate payment.', 'error');
-            throw new Error('Payment initiation failed.');
-          }
-
-          const paymentResult = await makePayment({
-            customerName: orderForm.userDetails.name || '',
-            customerMobile: orderForm.userDetails.phoneNumber,
-            orderId,
-            razorpayOrder,
-          });
-
-          // user simply closed the Razorpay modal?
-          if (paymentResult.cancelled) {
-            // stop processing, do not navigate or show any snackbar
-            setIsPaymentProcessing(false);
-            setPurchaseInitiated(false);
-            return;
-          }
-
-          // otherwise we have a real payment
-          showSnackbar('Payment Successful!', 'success');
-        } catch (error) {
-          console.error('Error processing payment:', error.message);
-          showSnackbar(error.message || 'Payment failed. Please try again.', 'error');
-          throw error;
+        },
+        {
+          email: orderForm.userDetails.email || '',
+          phoneNumber: orderForm.userDetails.phoneNumber,
         }
-      }
+      ).catch(error => {
+        console.error('FB pixel purchase event error (non-critical):', error);
+      });
 
-      // 5) Send Purchase Event to FB Pixel
-      try {
-        await purchase(
-          {
-            orderId,
-            totalAmount: totalCost,
-            items: cartItems.map((item) => ({
-              product: item.productId,
-              name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-                ? item.productDetails.category?.name.slice(0, -1)
-                : item.productDetails.category?.name
-                }`,
-              quantity: item.quantity,
-              priceAtPurchase: item.priceAtPurchase,
-            })),
-          },
-          {
-            email: orderForm.userDetails.email || '',
-            phoneNumber: orderForm.userDetails.phoneNumber,
-          }
-        );
-      } catch (error) {
-        console.error('Error sending purchase event to FB Pixel:', error.message);
-        // Even if this fails, we don't stop the flow
-      }
-
-      // 6) Final Cleanup
+      console.log(`⏱️ COMPLETE CHECKOUT PROCESS TOOK: ${((performance.now() - startTime) / 1000).toFixed(2)}s`);
+      
+      // Reset all refs to clean up memory
+      pendingOperationsRef.current = {
+        userCheck: null,
+        addressAdd: null, // Clear the promise from the ref
+        couponValidation: null,
+      };
+      
+      // Clean up and navigate
       dispatch(clearUTMDetails());
       dispatch(clearCart());
       reset();
       handleClose();
-      router.push(`/orders/myorder/${orderId}`);
+      router.push(`/orders/myorder/${createdOrderId}`);
       showSnackbar('Order placed successfully!', 'success');
     } catch (error) {
-      console.error('Error during purchase process:', error.message);
-      showSnackbar('An error occurred during the purchase process. Please try again.', 'error');
+      console.error('Error during purchase process:', error);
+      showSnackbar(error.message || 'An error occurred during the purchase process. Please try again.', 'error');
     } finally {
       setIsLoading(false);
       setIsPaymentProcessing(false);
       setPurchaseInitiated(false);
     }
-  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar, totalCost, deliveryCost, utmDetails.utmDetails, cartItems, paymentModeConfig, discountAmountFinal, couponsDetails]);
+  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar, 
+      totalCost, deliveryCost, utmDetails.utmDetails, cartItems, paymentModeConfig, 
+      discountAmountFinal, couponsDetails, isPincodeValid]);
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
-    if (isPaymentProcessing) {
-      return;
-    }
-    setTabIndex(0);
-    onClose();
-    // Remove the history entry added when dialog was opened
-    if (window.history.state && window.history.state.modal) {
-      window.history.back();
-    }
-  }, [isPaymentProcessing, onClose]);
+    if (isPaymentProcessing) return;
 
-  // Handle browser back button
-  useEffect(() => {
-    if (open) {
-      window.history.pushState({ modal: true }, '');
-      const onPopState = () => {
-        if (open) {
-          handleClose();
-        }
-      };
-      window.addEventListener('popstate', onPopState);
-      return () => {
-        window.removeEventListener('popstate', onPopState);
-      };
+    // if on shipping tab (index 1), go back to user details (index 0)
+    if (tabIndex === 1) {
+      setTabIndex(0);
+    } else {
+      // otherwise close the dialog
+      onClose();
     }
-  }, [open, handleClose]);
+  }, [isPaymentProcessing, onClose, tabIndex]);
+
+  // push history entry for this dialog (priority higher than drawer)
+  useHistoryState(open, handleClose, 'orderForm', 10);
 
   // Animation variants for form transitions - UPDATED for performance
   const formVariants = useMemo(() => ({
@@ -629,18 +761,12 @@ const OrderForm = ({
     })
   }), []);
 
-  const fadeInUp = useMemo(() => ({
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.4, ease: "easeInOut" }
-  }), []);
-
   // Custom styled text field component with memoization to prevent rerenders
-  const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, type = "text", maxWidth }) => (
+  const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, type = "text", maxWidth, InputProps }) => (
     <motion.div 
       initial={{ opacity: 0, y: 10 }} 
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: field.name === 'name' ? 0.1 : field.name === 'email' ? 0.2 : field.name === 'phoneNumber' ? 0.3 : 0.1 * parseInt(field.name.replace(/\D/g, '')) }}
+      transition={{ duration: 0.3, delay: field.name === 'name' ? 0.1 : field.name === 'email' ? 0.2 : field.name === 'phoneNumber' ? 0.3 : 0.1 * parseInt(field.name.replace(/\D/g, '') || '0') }}
     >
       <TextField
         variant="outlined"
@@ -663,6 +789,7 @@ const OrderForm = ({
             fontFamily: 'Jost, sans-serif',
             fontSize: '1rem',
           },
+          ...InputProps
         }}
         sx={{
           marginBottom: '1rem',
@@ -690,7 +817,13 @@ const OrderForm = ({
     <ThemeProvider theme={theme}>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={(event, reason) => {
+          if (reason === 'backdropClick') {
+            onClose();
+          } else {
+            handleClose();
+          }
+        }}
         maxWidth="sm"
         fullWidth
         disableEscapeKeyDown={isPaymentProcessing}
@@ -710,8 +843,8 @@ const OrderForm = ({
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
-            height: '100%',
-            overflow: 'hidden', // Hide overflow on the DialogContent
+            height: '100%', // Ensure DialogContent takes up height for flex children
+            overflow: 'hidden', 
           }}
         >
           {/* Logo and Stepper - Made more compact */}
@@ -861,36 +994,33 @@ const OrderForm = ({
             )}
           </Box>
 
-          {/* Form Container - Made scrollable */}
+          {/* Form Wrapper - Handles submission and layout (scrollable fields + fixed buttons) */}
           <Box
-            component="div"
-            sx={{ 
-              margin: '0 auto', 
-              maxWidth: '400px',
-              position: 'relative',
-              overflow: 'auto', // Add scroll to form area only
-              flexGrow: 1, // Let this box take available space
+            component="form"
+            onSubmit={handleSubmit(tabIndex === 0 ? onSubmitUserDetails : onSubmitAddressDetails)}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              flexGrow: 1,
+              overflow: 'hidden',
               width: '100%',
-              '&::-webkit-scrollbar': {
-                width: '5px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                backgroundColor: '#e0e0e0',
-                borderRadius: '5px',
-              },
+              maxWidth: '400px',
+              margin: '0 auto', // Center the form content area
             }}
           >
+            {/* Scrollable Fields Area */}
             <Box
-              component="form"
-              onSubmit={
-                tabIndex === 0
-                  ? handleSubmit(onSubmitUserDetails)
-                  : handleSubmit(onSubmitAddressDetails)
-              }
-              sx={{ 
+              sx={{
+                flexGrow: 1,
+                overflowY: 'auto',
+                overflowX: 'hidden',
                 position: 'relative',
-                width: '100%', 
-                height: '100%',
+                width: '100%',
+                // Hide scrollbar styles
+                '&::-webkit-scrollbar': { display: 'none' },
+                '-ms-overflow-style': 'none',
+                'scrollbar-width': 'none',
+                pb: '2rem',    // extra bottom padding
               }}
             >
               <AnimatePresence mode="wait" initial={false} custom={tabIndex}>
@@ -902,9 +1032,9 @@ const OrderForm = ({
                     initial="initial"
                     animate="animate"
                     exit="exit"
-                    style={{ width: '100%', height: '100%' }}
+                    style={{ width: '100%' }} // Removed height: '100%'
                   >
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', paddingTop: '0.5rem' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1} }}> {/* Added horizontal padding */}
                       {/* Name field */}
                       <Controller
                         name="name"
@@ -988,75 +1118,60 @@ const OrderForm = ({
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: -10 }}
                                   transition={{ duration: 0.2 }}
-                                  style={{ 
-                                    position: 'absolute', 
-                                    width: '100%', 
+                                  style={{
+                                    position: 'absolute',
+                                    width: '100%',
                                     top: '100%',
-                                    zIndex: 5 // Added to ensure it appears on top
+                                    zIndex: 5
                                   }}
                                 >
                                   <Box sx={{
-                                    mt: '5px',
-                                    p: '8px 12px',
-                                    borderRadius: '8px',
-                                    backgroundColor: '#f1f9f5',
-                                    border: '1px solid #b2ffc6',
+                                    mt: '8px',
+                                    p: '12px',
+                                    borderRadius: '12px',
+                                    backgroundColor: '#e8f5e9',         // softer green
+                                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                   }}>
-                                    <Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#333', fontFamily: 'Jost, sans-serif', fontWeight: 500 }}>
-                                      Is <strong>{formattedPhone}</strong> the correct 10-digit number?
-                                    </Typography>
-                                    <motion.button
-                                      whileHover={{ scale: 1.05 }}
-                                      whileTap={{ scale: 0.95 }}
-                                      onClick={acceptFormattedPhone}
-                                      type="button"
-                                      style={{
-                                        backgroundColor: '#b2ffc6',
-                                        color: '#333',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        padding: '3px 8px',
-                                        fontSize: '0.7rem',
-                                        cursor: 'pointer',
-                                        fontFamily: 'Jost, sans-serif',
-                                        fontWeight: 600,
-                                      }}
-                                    >
-                                      Yes
-                                    </motion.button>
-                                  </Box>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{
+                                          fontSize: '0.8rem',
+                                          fontWeight: 500,
+                                          color: '#2e7d32'           // dark green text
+                                        }}
+                                      >
+                                        Is <strong>{formattedPhone}</strong> the correct 10-digit number?
+                                      </Typography>
+                                      <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={acceptFormattedPhone}
+                                        type="button"
+                                        style={{
+                                          backgroundColor: '#66bb6a',
+                                          color: '#fff',
+                                          border: 'none',
+                                          borderRadius: '6px',
+                                          padding: '6px 12px',
+                                          fontSize: '0.75rem',
+                                          cursor: 'pointer',
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        Yes
+                                      </motion.button>
+                                    </Box>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                           </Box>
                         )}
                       />
 
-                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1.5 }}>
-                        <motion.div
-                          whileHover={{ scale: 1.03 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <BlackButton
-                            extraClass="lg"
-                            isLoading={isLoading}
-                            buttonText="Next"
-                            onClick={handleSubmit(onSubmitUserDetails)}
-                            disabled={isPaymentProcessing || isLoading}
-                            sx={{ 
-                              borderRadius: '50px', 
-                              px: 3,
-                              py: 0.5, // Added to make button smaller
-                              boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
-                              fontFamily: 'Jost, sans-serif',
-                              fontSize: '0.9rem' // Reduced from default
-                            }}
-                          />
-                        </motion.div>
-                      </Box>
+                      {/* Removed Button from here, will be in fixed footer */}
                     </Box>
                   </motion.div>
                 )}
@@ -1069,9 +1184,9 @@ const OrderForm = ({
                     initial="initial"
                     animate="animate"
                     exit="exit"
-                    style={{ width: '100%', height: '100%' }}
+                    style={{ width: '100%' }} // Removed height: '100%'
                   >
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1} }}> {/* Added horizontal padding */}
                       <Controller
                         name="addressLine1"
                         control={control}
@@ -1190,7 +1305,6 @@ const OrderForm = ({
                                 field={field}
                                 label="Pincode"
                                 error={errors.pincode}
-                                helperText={errors.pincode ? errors.pincode.message : ''}
                                 disabled={isLoading || isPaymentProcessing}
                                 onChange={(e) => {
                                   field.onChange(e);
@@ -1203,35 +1317,112 @@ const OrderForm = ({
                           />
                         </Box>
                       </Box>
-
-                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1.5 }}>
-                        <motion.div
-                          whileHover={{ scale: 1.03 }}
-                          whileTap={{ scale: 0.98 }}
+                      {/* Pincode non-serviceable message */}
+                      {watchedPincode?.length === 6 && !isPincodeValid && !pincodeCheckInProgress && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 5 }} 
+                          animate={{ opacity: 1, y: 0 }} 
+                          transition={{ duration: 0.2 }}
                         >
-                          <BlackButton
-                            extraClass="lg"
-                            isLoading={isLoading}
-                            buttonText={getPaymentButtonText(paymentModeConfig)}
-                            type="submit"
-                            disabled={isPaymentProcessing || isLoading || purchaseInitiated}
-                            sx={{ 
-                              borderRadius: '50px', 
-                              px: 3,
-                              py: 0.5, // Added to make button smaller
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                              fontFamily: 'Jost, sans-serif',
-                              fontSize: '0.9rem' // Reduced from 1.1rem
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              p: '12px',
+                              backgroundColor: alpha(theme.palette.error.main, 0.1),
+                              border: `1px solid ${alpha(theme.palette.error.dark, 0.2)}`,
+                              borderRadius: '8px',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                              mt: 1
                             }}
-                          />
+                          >
+                            <WarningAmberIcon sx={{ color: theme.palette.error.dark, fontSize: '1.2rem' }} />
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                fontFamily: 'Jost, sans-serif',
+                                color: theme.palette.error.dark,
+                                fontSize: '0.8rem',
+                                fontWeight: 500
+                              }}
+                            >
+                              We don&apos;t deliver to this pincode yet.
+                            </Typography>
+                          </Box>
                         </motion.div>
-                      </Box>
+                      )}
+                      {/* Removed Button from here, will be in fixed footer */}
                     </Box>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </Box>
-          </Box>
+            </Box> {/* End Scrollable Fields Area */}
+            
+            {/* Fixed Button Area */}
+            <Box
+              sx={{
+                flexShrink: 0,
+                pt: 1.5,
+                pb: { xs: 1, sm: 1.5 },
+                mt: 'auto',
+                borderTop: `1px solid ${theme.palette.divider}`,
+                backgroundColor: '#ffffff',
+                width: '100%',
+                boxShadow: '0 -2px 5px rgba(0,0,0,0.05)' // Subtle shadow for separation
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                {tabIndex === 0 && (
+                  <motion.div
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <BlackButton
+                      type="submit" // Changed from onClick
+                      extraClass="lg"
+                      isLoading={isLoading} // This isLoading is general; consider specific state if needed for UX
+                      buttonText="Next"
+                      disabled={isPaymentProcessing || isLoading}
+                      sx={{ 
+                        borderRadius: '50px', 
+                        px: 3,
+                        py: 0.5,
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                        fontFamily: 'Jost, sans-serif',
+                        fontSize: '0.9rem'
+                      }}
+                    />
+                  </motion.div>
+                )}
+                {tabIndex === 1 && (
+                  <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+                    <BlackButton
+                      extraClass="lg"
+                      isLoading={isLoading}
+                      buttonText={getPaymentButtonText(paymentModeConfig)}
+                      type="submit"
+                      disabled={
+                        isPaymentProcessing ||
+                        isLoading ||
+                        purchaseInitiated ||
+                        pincodeCheckInProgress ||  // disable while checking
+                        !isPincodeValid             // disable until valid
+                      }
+                      sx={{
+                        borderRadius: '50px',
+                        px: 3,
+                        py: 0.5,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                        fontFamily: 'Jost, sans-serif',
+                        fontSize: '0.9rem'
+                      }}
+                    />
+                  </motion.div>
+                )}
+              </Box>
+            </Box> {/* End Fixed Button Area */}
+          </Box> {/* End Form Wrapper */}
           
           {/* Trust indicators - Made more compact */}
           <motion.div 
