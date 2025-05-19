@@ -29,6 +29,7 @@
     "googleapis": "^144.0.0",
     "js2xmlparser": "^5.0.0",
     "json2csv": "^6.0.0-alpha.2",
+    "lodash": "^4.17.21",
     "micro": "^10.0.1",
     "moment-timezone": "^0.5.46",
     "mongodb": "^6.10.0",
