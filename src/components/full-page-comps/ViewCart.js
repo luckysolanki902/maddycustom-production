@@ -346,10 +346,7 @@ export default function ViewCart({ isDrawer = false }) {
 
   /* ---------- validate before checkout (unchanged) ------------------ */
   const handleCheckout = async () => {
-    setRevalidatingCoupons(true);
-    if (!(await revalidateCoupon())) return;
     setDlgOrder(true);
-    setRevalidatingCoupons(false);
   };
 
   /* ---------- memo for suggestions (unchanged) ---------------------- */
