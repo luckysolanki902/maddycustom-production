@@ -607,7 +607,9 @@ const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 
             </div>
             <div className={styles.recommendedForYou}>
               <h3 className={styles.recommendedTitle}>Recommended For You</h3>
-              <TopBoughtProducts pageType="viewcart" />
+              <TopBoughtProducts 
+                hideHeading={true}
+              pageType="viewcart" />
             </div>
           </motion.div>
         )}

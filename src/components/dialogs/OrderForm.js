@@ -431,7 +431,6 @@ const OrderForm = ({
 
     // Performance timing logs
     const startTime = performance.now();
-    console.log('🔍 Checkout process started');
 
     try {
       // Create a single array for all initial validation promises
@@ -502,7 +501,6 @@ const OrderForm = ({
               response.data.message === 'Using existing address.') {
             dispatch(setAddressDetails(response.data.latestAddress));
           }
-          console.log(`⏱️ Address add/update completed`);
           return response.data;
         }).catch(error => {
             console.error("Error during address addition (in parallel task):", error);
@@ -514,14 +512,11 @@ const OrderForm = ({
       // 5. Wait for all initial critical validations to complete
       // This ensures userId is populated in Redux store via userCheck promise if it was pending.
       if (initialValidationPromises.length > 0) {
-        console.log('⏱️ Waiting for initial validation promises (serviceability, coupon, user check)...');
         const validationStartTime = performance.now();
         await Promise.all(initialValidationPromises).catch(error => {
           throw error; // Re-throw to be caught by the main try-catch block
         });
-        console.log(`⏱️ Initial validation promises completed in ${((performance.now() - validationStartTime) / 1000).toFixed(2)}s`);
       } else {
-        console.log('⏱️ No initial validation promises needed - all data likely pre-validated or available.');
       }
       
       // 6. Prepare order payload *after* initial validations (especially userCheck) have completed.
@@ -573,12 +568,10 @@ const OrderForm = ({
       };
 
       // 7. Start creating the order and await its completion alongside address addition.
-      console.log('⏱️ Starting order creation (in parallel with address addition completion)...');
       const orderCreateStartTime = performance.now();
       
       const orderCreatePromise = axios.post('/api/checkout/order/create', finalOrderPayload)
         .then(response => {
-            console.log(`⏱️ Order created in ${((performance.now() - orderCreateStartTime) / 1000).toFixed(2)}s`);
             return response;
         }).catch(error => {
             console.error("Error during order creation (in parallel task):", error);
@@ -591,7 +584,6 @@ const OrderForm = ({
       const [orderResponse] = await Promise.all([orderCreatePromise, addressAddPromise]);
       // Note: result of addressAddPromise is not directly used here, but its completion is awaited.
       
-      console.log(`⏱️ Order creation and address addition parallel block completed in ${((performance.now() - orderCreateStartTime) / 1000).toFixed(2)}s`);
       
       const { orderId: createdOrderId, paymentDetails: createdPaymentDetails } = orderResponse.data;
       dispatch(setLastOrderId(createdOrderId));
@@ -621,7 +613,6 @@ const OrderForm = ({
         });
         
         // Start payment initialization in parallel
-        console.log('⏱️ Starting payment initialization...');
         const paymentStartTime = performance.now();
         
         const paymentPromise = axios.post(
@@ -631,7 +622,6 @@ const OrderForm = ({
         
         // Wait for payment initialization (this must complete)
         const paymentInitResponse = await paymentPromise;
-        console.log(`⏱️ Payment initialized in ${((performance.now() - paymentStartTime) / 1000).toFixed(2)}s`);
         
         const { order: razorpayOrder, msg } = paymentInitResponse.data;
 
@@ -641,8 +631,6 @@ const OrderForm = ({
           throw new Error('Payment initiation failed.');
         }
 
-        console.log(`⏱️ TOTAL TIME BEFORE PAYMENT WINDOW: ${((performance.now() - startTime) / 1000).toFixed(2)}s`);
-        console.log('🚀 Now opening payment window...');
         
         const paymentResult = await makePayment({
           customerName: orderForm.userDetails.name || '',
@@ -684,7 +672,6 @@ const OrderForm = ({
         console.error('FB pixel purchase event error (non-critical):', error);
       });
 
-      console.log(`⏱️ COMPLETE CHECKOUT PROCESS TOOK: ${((performance.now() - startTime) / 1000).toFixed(2)}s`);
       
       // Reset all refs to clean up memory
       pendingOperationsRef.current = {
