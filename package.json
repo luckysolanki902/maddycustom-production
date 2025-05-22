@@ -24,6 +24,7 @@
     "crypto": "^1.0.1",
     "facebook-nodejs-business-sdk": "^21.0.3",
     "firebase": "^11.0.1",
+    "firebase-admin": "^13.3.0",
     "framer-motion": "^12.6.2",
     "googleapis": "^144.0.0",
     "js2xmlparser": "^5.0.0",

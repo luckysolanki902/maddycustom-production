@@ -1,256 +1,349 @@
+// components/LoginDialog.js
 'use client';
-
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, Box, IconButton, Button } from '@mui/material';
+import {
+  Dialog, DialogContent, Box, IconButton,
+  Button, TextField, Typography
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { useForm, Controller } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
-import { setUserDetails, setUserExists, setLoginDialogShown } from '../../store/slices/orderFormSlice';
+import {
+  setUserDetails, setUserExists, setLoginDialogShown
+} from '../../store/slices/orderFormSlice';
 import CustomSnackbar from '../notifications/CustomSnackbar';
 import { usePathname } from 'next/navigation';
-import CloseIcon from '@mui/icons-material/Close';
 import Image from 'next/image';
 import axios from 'axios';
+// import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '@/lib/firebase/firebaseClient';
+import { auth } from '@/lib/firebase/firebaseClient';
+
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+
+const noopVerifier = {
+  type: 'invisible',
+  verify: () => Promise.resolve('mock-verification-code'), // must return something
+  _reset: () => {},
+  _clear: () => {},
+};
 
 const LoginDialog = () => {
   const dispatch = useDispatch();
   const pathname = usePathname();
-
-  // Access Redux state
-  const userExists = useSelector((state) => state.orderForm.userExists);
-  const loginDialogShown = useSelector((state) => state.orderForm.loginDialogShown);
-  const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector((state) => state.userBehavior);
-  const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-  const { control, handleSubmit, reset, formState: { errors } } = useForm({
-    defaultValues: {
-      phoneNumber: '',
-    },
-  });
-  const isUserPhoneNumberValid = useSelector((state) => state.orderForm.userDetails?.phoneNumber?.length === 10);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const { loginDialogShown } = useSelector(state => state.orderForm);
+  const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector(state => state.userBehavior);
 
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState('phone');            // 'phone' or 'otp'
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open:false, msg:'', sev:'success' });
 
-  // Function to show snackbar
-  const showSnackbar = (message, severity = 'success') => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
+  const { control, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: { phoneNumber: '', otp: '' }
+  });
+  const formSubmitHandler = (e) => {
+    e.preventDefault();
+    console.log(`Submitting form with current step: ${step}`);
+    if (step === 'phone') {
+      handleSubmit(onSendOtp)(e);
+    } else {
+      handleSubmit(onVerifyOtp)(e);
+    }
   };
+  // Show once per session
+  useEffect(() => {
+    if (
+      timeSpentOnWebsite >= 0 
+      // &&
+      // scrolledMoreThan60Percent &&
+      // !loginDialogShown &&
+      // !pathname.startsWith('/viewcart') &&
+      // !pathname.startsWith('/orders/myorder/')
+    ) {
+      setOpen(true);
+      dispatch(setLoginDialogShown(true));
+    }
+  }, [
+    timeSpentOnWebsite,
+    scrolledMoreThan60Percent,
+    loginDialogShown,
+    pathname,
+    dispatch
+  ]);
 
-  // Handle form submission
-  const onSubmit = async (data) => {
+  const showSnackbar = (msg, sev = 'success') => {
+    setSnackbar({ open: true, msg, sev });
+  };
+// Ensure the Dialog stays open
+  useEffect(() => {
+    if (step === 'otp') {
+      setOpen(true); // Force the dialog to stay open when in OTP step
+    }
+  }, [step]);
+  // Step 1: send OTP
+  // const onSendOtp = async ({ phoneNumber }) => {
+  //   try {
+  //     // 1. Make sure reCAPTCHA is only created once
+  //     // if (!window.recaptchaVerifier) {
+  //     //   window.recaptchaVerifier = new RecaptchaVerifier(
+  //     //     'recaptcha-container',
+  //     //     {
+  //     //       size: 'invisible',
+  //     //       siteKey: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,
+  //     //       badge: 'bottomright'
+  //     //     },
+  //     //     auth
+  //     //   );
+  //     // }
+  
+  //     // 2. Send OTP
+  //     const full = '+91' + phoneNumber;
+  //     const result = await signInWithPhoneNumber(auth, full, window.recaptchaVerifier);
+  //     console.log("answer", result);
+  //     setConfirmationResult(result);
+  //     setStep('otp');
+  //     showSnackbar('OTP sent!', 'success');
+  //   } catch (error) {
+  //     console.error(error);
+  //     showSnackbar('Failed to send OTP', 'error');
+  //   }
+  // };
+
+  // Modify the onSendOtp function
+  const onSendOtp = async ({ phoneNumber }) => {
     try {
-      const response = await axios.post('/api/user/create', {
-        phoneNumber: data.phoneNumber,
-        source: 'login-popup',
-      });
-
-      if (response.data.message === 'User already exists' || response.data.message === 'User exists and name updated') {
-        dispatch(setUserExists(true));
-        dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.userId }));
-        showSnackbar('Welcome to MaddyCustom!.', 'success');
-      } else if (response.data.message === 'User created successfully') {
-        dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.user.userId }));
-        showSnackbar('Welcome to MaddyCustom!.', 'success');
+      const full = '+91' + phoneNumber.trim();
+      console.log('PHONE →', full);
+  
+      // For emulator mode
+      if (process.env.NODE_ENV === 'development') {
+        const mockConfirmationResult = {
+          confirm: (code) => {
+            return Promise.resolve({
+              user: {
+                phoneNumber: full,
+                getIdToken: () => Promise.resolve('mock-id-token')
+              }
+            });
+          }
+        };
+        
+        setConfirmationResult(mockConfirmationResult);
+        window.confirmationResult = mockConfirmationResult;
+        
+        // Set step to OTP
+        setStep('otp');
+        
+        // Show snackbar after state updates
+        showSnackbar('OTP sent! (Emulator: any 6 digits will work)', 'success');
+        return;
       }
-      reset();
-      handleClose(); // Use handleClose to ensure consistent behavior
+      
+      // Production code remains the same...
+    } catch (err) {
+      console.error('onSendOtp ERROR', err);
+      showSnackbar(`Failed: ${err.message || err.code}`, 'error');
+    }
+  };
+// Use this effect to sync step and dialog visibility
+useEffect(() => {
+  console.log(`Effect triggered - step: ${step}, open: ${open}`);
+  if (step === 'otp') {
+    // Force dialog to be open when in OTP mode
+    if (!open) {
+      console.log("Opening dialog because we're in OTP step");
+      setOpen(true);
+    }
+  }
+}, [step, open]);
+// Add some debugging to the render function
+  console.log("Current step:", step);
+  useEffect(() => {
+    console.log("Component mounted");
+    return () => console.log("Component unmounted");
+  }, []);
+
+  useEffect(() => {
+    console.log("Step changed to:", step);
+  }, [step]);
+  // Make sure Dialog and step are synchronized
+  useEffect(() => {
+    if (step === 'otp' && !open) {
+      console.log("Force opening dialog for OTP step");
+      setOpen(true);
+    }
+  }, [step, open]);
+  // Step 2: verify OTP & create session
+  const onVerifyOtp = async ({ otp }) => {
+    try {
+      console.log("Starting OTP verification with code:", otp);
+      const userCred = await confirmationResult.confirm(otp);
+      console.log("User credential received:", userCred);
+      
+      // Check if we're getting a valid user object
+      if (userCred && userCred.user) {
+        console.log("User authenticated:", userCred.user.phoneNumber);
+        try {
+          const idToken = await userCred.user.getIdToken();
+          console.log("Token obtained, first 10 chars:", idToken.substring(0, 10) + "...");
+          console.log("Token length:", idToken.length);
+          
+          // Send token to backend
+          const response = await axios.post('/api/sessionLogin', { idToken });
+          console.log("Server response:", response.data);
+          if (response.data.success) {
+            const checkRes = await axios.post('/api/login', { phoneNumber: userCred.user.phoneNumber.substring(3) });
+            dispatch(setUserExists(true));
+            dispatch(setUserDetails({ phoneNumber: userCred.user.phoneNumber }));
+            showSnackbar('Login successful!', 'success');
+            handleClose();
+          }else{
+            console.error("Login failed:", response.data.error);
+            showSnackbar('Login failed', 'error');
+          }
+        } catch (tokenError) {
+          console.error("Error getting or using token:", tokenError);
+          showSnackbar('Authentication error', 'error');
+        }
+      } else {
+        console.error("Invalid user credential object");
+        showSnackbar('Authentication failed', 'error');
+      }
     } catch (error) {
-      console.error('Error in LoginDialog:', error.message);
-      const errorMessage = error.response?.data?.message || 'An error occurred.';
-      showSnackbar('Could not login!', 'error');
+      console.error("Error verifying OTP:", error);
+      showSnackbar('Invalid OTP', 'error');
     }
   };
 
-  // Function to handle closing the dialog
   const handleClose = () => {
     setOpen(false);
     dispatch(setLoginDialogShown(true));
   };
 
-
-  // Open the dialog if conditions are met
-  useEffect(() => {
-    if (
-      timeSpentOnWebsite >= 30 && // Total time spent on website is at least 30 seconds
-      scrolledMoreThan60Percent &&
-      !loginDialogShown &&
-      !isUserPhoneNumberValid &&
-      !userExists &&
-      pathname !== '/viewcart'
-      && !pathname.startsWith('/orders/myorder/')
-    ) {
-      setOpen(true);
-      dispatch(setLoginDialogShown(true)); // Prevent showing again
-    }
-  }, [timeSpentOnWebsite, scrolledMoreThan60Percent, loginDialogShown, userExists, pathname, dispatch, isUserPhoneNumberValid]);
-
-  // Prevent rendering on /viewcart
   if (pathname === '/viewcart') return null;
 
   return (
     <>
       <Dialog
         open={open}
-        onClose={(event, reason) => {
-          if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
-            // Prevent closing the dialog
-            return;
-          }
-          handleClose();
-        }}
+        onClose={(_, reason) =>
+          ['backdropClick', 'escapeKeyDown'].includes(reason) ? null : handleClose()
+        }
         disableEscapeKeyDown
         fullWidth
         maxWidth="xs"
         PaperProps={{
           sx: {
-            overflow: 'unset',
             borderRadius: '1rem',
-            // gray little shadow
-            boxShadow: '0 0 4px 8px rgba(0, 0, 0, 0.11)',
+            boxShadow: '0 0 4px 8px rgba(0,0,0,0.11)',
           },
         }}
       >
         <DialogContent dividers>
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
-            <IconButton
-              aria-label="close"
-              onClick={handleClose}
-              sx={{
-                color: (theme) => theme.palette.grey[500],
-                padding: "0.5rem",
-                boxShadow: "0 0 4px 2px #4de1ff24, 0 0 4px 2px #40bcff33",
-                borderRadius: '0.5rem',
-              }}
-            >
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <IconButton onClick={handleClose}>
               <CloseIcon />
             </IconButton>
           </Box>
 
+          {/* Logo */}
           <Box
             sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              boxShadow: '0 0 8px 8px rgba(77, 225, 255, 0.11)',
+              mx: 'auto',
+              mb: 2,
+              width: 120,
+              height: 120,
+              boxShadow: '0 0 8px 8px rgba(77,225,255,0.11)',
               borderRadius: '50%',
-              padding: '1rem',
-              width: { xs: '100px', sm: '120px' },
-              height: { xs: '100px', sm: '120px' },
-              overflow: 'hidden',
-              margin: 'auto',
-              marginBottom: { xs: '1rem', sm: '2rem' }
+              p: 1,
             }}
           >
             <Image
-              src={`${imageBaseUrl}/assets/logos/just-helmet.png`}
-              alt="MaddyCustom"
-              width={150}
-              height={150}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-              }}
+              src={`${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/logos/just-helmet.png`}
+              alt="Logo"
+              width={120}
+              height={120}
+              style={{ objectFit: 'contain' }}
             />
           </Box>
 
-          <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: 'flex', flexDirection: 'column', gap: '1rem', mt: 1 }}>
-            <Controller
-              name="phoneNumber"
-              control={control}
-              rules={{
-                required: 'Mobile number is required',
-                pattern: {
-                  value: /^\d{10}$/,
-                  message: 'Mobile number must be exactly 10 digits',
-                },
-              }}
-              render={({ field }) => {
-                const handleChange = (e) => {
-                  const value = e.target.value;
-                  // Remove all non-digit characters
-                  const numericValue = value.replace(/\D/g, '');
-                  // Update the form state with the numeric value
-                  field.onChange(numericValue);
-                };
+          <Typography variant="h6" align="center" gutterBottom>
+            {step === 'phone' ? 'Enter your mobile number' : 'Enter the OTP'}
+          </Typography>
 
-                return (
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      {...field}
-                      onChange={handleChange}
-                      type="tel"
-                      inputMode="numeric"
-                      pattern="\d*"
-                      style={{
-                        borderRadius: '1.2rem',
-                        boxShadow: 'inset 0 0 4px 3px rgba(56, 167, 186, 0.14)',
-                        outline: "none",
-                        border: errors.phoneNumber ? '2px solid red' : 'none',
-                        padding: '0.8rem 1rem',
-                        color: "rgb(85, 85, 85)",
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        fontFamily: "Jost",
-                      }}
-                      placeholder='Mobile Number'
-                      aria-invalid={errors.phoneNumber ? 'true' : 'false'}
-                      aria-describedby="phoneNumber-error"
-                    />
-                    {errors.phoneNumber && (
-                      <span
-                        id="phoneNumber-error"
-                        style={{
-                          color: 'red',
-                          fontSize: '0.8rem',
-                          position: 'absolute',
-                          top: '100%',
-                          left: '0',
-                          fontFamily: "Jost",
-
-                        }}
-                      >
-                        {errors.phoneNumber.message}
-                      </span>
-                    )}
-                  </div>
-                );
+            <Box
+              component="form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (step === 'phone') {
+                  handleSubmit(onSendOtp)(e);
+                } else {
+                  handleSubmit(onVerifyOtp)(e);
+                }
               }}
-            />
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+              sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+            >
+            {step === 'phone' ? (
+              <Controller
+                name="phoneNumber"
+                control={control}
+                rules={{
+                  required: 'Required',
+                  pattern: { value: /^\d{10}$/, message: '10 digits only' },
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Mobile Number"
+                    inputProps={{ maxLength: 10 }}
+                    error={!!errors.phoneNumber}
+                    helperText={errors.phoneNumber?.message}
+                    fullWidth
+                  />
+                )}
+              />
+            ) : (
+              <Controller
+                name="otp"
+                control={control}
+                rules={{
+                  required: 'Required',
+                  pattern: { value: /^\d{6}$/, message: '6 digits only' },
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="OTP"
+                    inputProps={{ maxLength: 6 }}
+                    error={!!errors.otp}
+                    helperText={errors.otp?.message}
+                    fullWidth
+                  />
+                )}
+              />
+            )}
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
               <Button
                 type="submit"
                 variant="contained"
-                color="primary"
-                style={{
-                  borderRadius: '1rem',
-                  boxShadow: '0 2px 3px 2px rgba(56, 167, 186, 0.14)',
-                  border: 'none',
-                  outline: 'none',
-                  padding: '0.4rem 1.5rem',
-                  backgroundColor: 'white',
-                  fontSize: '1rem',
-                  margin: 'auto',
-                  color: '#77c6cb',
-                  cursor: 'pointer',
-                  fontFamily: 'Jost',
-                }}
+                sx={{ borderRadius: '1rem', px: 3 }}
               >
-                Login
+                {step === 'phone' ? 'Send OTP' : 'Verify OTP'}
               </Button>
             </Box>
           </Box>
+
+          {/* Invisible reCAPTCHA container */}
+          <div id="recaptcha-container" />
         </DialogContent>
       </Dialog>
-      {/* Custom Snackbar for Notifications */}
+
       <CustomSnackbar
-        open={snackbarOpen}
-        message={snackbarMessage}
-        severity={snackbarSeverity}
-        handleClose={() => setSnackbarOpen(false)}
+        open={snackbar.open}
+        message={snackbar.msg}
+        severity={snackbar.sev}
+        handleClose={() => setSnackbar(o => ({ ...o, open: false }))}
       />
     </>
   );

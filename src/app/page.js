@@ -20,6 +20,8 @@ import ProductSlider from '@/components/showcase/sliders/ProductSlider';
 import FeaturedProducts from '@/components/page-sections/homepage/FeaturedProducts';
 import { Box, Typography } from '@mui/material';
 import KeychainImageGrid from '@/components/page-sections/homepage/KeychainImageGrid';
+import Script from 'next/script'
+
 
 export async function generateMetadata() {
   return createMetadata({
@@ -51,7 +53,10 @@ const HomePage = async () => {
 
   return (
     <>
-
+      <Script
+        src="https://www.google.com/recaptcha/api.js"
+        strategy="beforeInteractive"
+      />
       <main>
         {/* Logo and Main Carousel */}
         <HeroSection />
