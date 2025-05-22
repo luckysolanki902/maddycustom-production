@@ -1,11 +1,6 @@
-import ViewCart from '@/components/full-page-comps/ViewCart'
-import Sidebar from '@/components/layouts/Sidebar'
-import React from 'react'
+import { redirect } from 'next/navigation';
 
-export default function page() {
-    return (
-        <>    
-            <ViewCart />
-        </>
-    )
+export default function ViewCartPage() {
+  // Redirect to home page with the cart drawer open parameter
+  redirect('/?openCart=true');
 }

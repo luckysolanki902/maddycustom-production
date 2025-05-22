@@ -1,6 +1,3 @@
-
-
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -17,16 +14,15 @@ import {
   decrementQuantity,
   removeItem,
 } from '../../store/slices/cartSlice';
+import { openCartDrawer } from '../../store/slices/uiSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useMediaQuery } from '@mui/material';
 
-export default function AddToCartButton({ product, isBlackButton = false, isLarge = false }) {
+export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, insertionDetails = {} }) {
   const isSmallDevice = useMediaQuery('(max-width: 1000px)');
   const dispatch = useDispatch();
-  const router = useRouter();
   const cartItems = useSelector((state) => state.cart.items);
   const cartItem = cartItems.find((item) => item.productId === product._id);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -62,10 +58,10 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   let maxAllowed = Infinity;
   let isLimited = false;
   if (inventoryData) {
-    
+
     const { availableQuantity, reorderLevel } = inventoryData;
-    maxAllowed=Math.floor(availableQuantity/2);
-    isLimited=true
+    maxAllowed = Math.floor(availableQuantity / 2);
+    isLimited = true
     if (availableQuantity < reorderLevel) {
       isLimited = true;
       maxAllowed = Math.min(availableQuantity, Math.floor(0.1 * reorderLevel));
@@ -79,7 +75,11 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     if (isLimited && (currentQuantity + 1) > maxAllowed) return;
 
     setLastAction('increment');
-    dispatch(addItem({ productId: product._id, productDetails: product }));
+    dispatch(addItem({
+      productId: product._id,
+      productDetails: product,
+      insertionDetails
+    }));
 
     // Track AddToCart event
     try {
@@ -114,12 +114,17 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       dispatch(decrementQuantity({ productId: product._id }));
     }
   };
+  
+  const insertionDetailsForOrderNow = {
+    ...insertionDetails,
+    component: 'productDetails-buyNow'
+  };
 
   const handleOrderNow = () => {
     if (!cartItem) {
-      dispatch(addItem({ productId: product._id, productDetails: product }));
+      dispatch(addItem({ productId: product._id, productDetails: product, insertionDetailsForOrderNow }));
     }
-    router.push('/viewcart');
+    dispatch(openCartDrawer());
   };
 
   // Combine classes for the main container
@@ -152,8 +157,8 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
               >
                 {cartItem.quantity}
               </animated.div>
-              <button 
-                onClick={handleIncrement} 
+              <button
+                onClick={handleIncrement}
                 className={styles.increment}
                 disabled={isLimited && currentQuantity >= maxAllowed}
                 title={isLimited && currentQuantity >= maxAllowed ? "" : ""}
@@ -167,8 +172,8 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
               )} */}
             </div>
           ) : (
-            <div 
-              onClick={handleAdd} 
+            <div
+              onClick={handleAdd}
               className={styles.addToCartButton}
               // Disable if in limited mode and adding one exceeds allowed (i.e. when maxAllowed is 0)
               style={isLimited && (currentQuantity + 1) > maxAllowed ? { opacity: 0.5, pointerEvents: 'none' } : {}}

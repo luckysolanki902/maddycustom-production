@@ -4,7 +4,7 @@
 .productsGrid {
   margin-top: 2rem;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   /* 2 columns for desktop and tablet */
   row-gap: 6rem;
   column-gap: 2rem;

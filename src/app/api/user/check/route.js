@@ -28,46 +28,53 @@ export async function PATCH(request) {
     // Connect to the database
     await connectToDatabase();
 
-    // Find the user by phone number
-    const user = await User.findOne({ phoneNumber });
+    // Lean query for better performance - only fetch necessary fields
+    const user = await User.findOne(
+      { phoneNumber }, 
+      { name: 1, email: 1, addresses: 1 } // Only get these fields
+    ).lean();
 
     if (!user) {
       // User does not exist
       return NextResponse.json({ exists: false }, { status: 200 });
     }
 
-
-    let saveNeeded = false;
+    // Check if we need to update the user
+    const updateFields = {};
+    let needsUpdate = false;
+    
     // Check if the 'name' field is missing or empty
     if (!user.name || user.name.trim() === '') {
-      user.name = name.trim();
-      saveNeeded = true;
+      updateFields.name = name.trim();
+      needsUpdate = true;
     }
-    // checki if the 'email' field is missing or empty
-    if (!user.email || user.email.trim() === '') {
-      user.email = email.trim();
-      saveNeeded = true;
+    
+    // Check if the 'email' field is missing or empty
+    if (email && (!user.email || user.email.trim() === '')) {
+      updateFields.email = email.trim();
+      needsUpdate = true;
     }
-    if (saveNeeded) {
-      await user.save();
+    
+    // Use updateOne for better performance if an update is needed
+    if (needsUpdate) {
+      await User.updateOne({ phoneNumber }, { $set: updateFields });
     }
 
-    // Retrieve the latest address
-    const latestAddress =
-      user.addresses && user.addresses.length > 0
-        ? user.addresses[user.addresses.length - 1]
-        : null;
+    // Get latest address efficiently
+    const latestAddress = user.addresses && user.addresses.length > 0
+      ? user.addresses[user.addresses.length - 1]
+      : null;
 
-    // Respond with user details
+    // Return minimal data
     return NextResponse.json({
       exists: true,
       latestAddress,
       userId: user._id.toString(),
-      name: user.name,
+      name: user.name || name, // Return the name even if we just updated it
     }, { status: 200 });
 
   } catch (error) {
-    console.error('Error updating user name:', error.message);
+    console.error('Error checking user:', error.message);
     return NextResponse.json(
       { message: 'Internal Server Error' },
       { status: 500 }

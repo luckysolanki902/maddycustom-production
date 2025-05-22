@@ -1,85 +1,307 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '@mui/material';
+import { Button, Typography, Box } from '@mui/material';
+import { motion, useAnimation } from 'framer-motion';
+import StarIcon from '@mui/icons-material/Star';
+import LockIcon from '@mui/icons-material/Lock';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import styles from './styles/couponcard.module.css';
 
-// Array of darker gradient backgrounds that look cool in any combination.
-const darkerGradients = [
-  'linear-gradient(135deg, #F02FC2, #6094EA)',
-  'linear-gradient(135deg, #F5D020, #F53803)',
-  'linear-gradient(135deg, #00C9FF, #92FE9D)',
-  'linear-gradient(135deg, #FBAB7E, #F7CE68)',
-  'linear-gradient(135deg, #EB3349, #F45C43)',
-  'linear-gradient(135deg, #FFC107, #FF9900)',
-  'linear-gradient(135deg, #45B3FA, #4183D7)',
-  'linear-gradient(135deg, #6A6BD1, #7356B8)',
-];
+// Beautiful, cohesive color scheme
+const cardThemes = {
+  default: {
+    background: 'linear-gradient(145deg, #ffffff, #f8f9fa)',
+    color: '#2d2d2d'
+  },
+  applied: {
+    background: 'linear-gradient(145deg, #dcfce7, #d1fae5)',
+    color: '#22c55e'
+  },
+  bestDeal: {
+    background: 'linear-gradient(145deg, #ccfbf1, #d1faf5)',
+    color: '#0d9488'
+  },
+  inactive: {
+    background: 'linear-gradient(145deg, #f9fafb, #f3f4f6)',
+    color: '#757575'
+  }
+};
 
 const CouponCard = ({
-  discount,
-  discountType, // 'percentage' or 'fixed'
-  validity,
-  name,
+  discount = 0,
+  discountType = 'percentage', // 'percentage', 'fixed', or 'bundle'
+  validity = new Date(),
+  name = 'COUPON',
+  description = '',
   onApply,
   applicable = true,
-  conditionMessage,
+  conditionMessage = '',
+  isBestDeal = false,
+  shortfall = 0,
+  cartTotal = 0,
+  isApplied = false,
+  actualDiscount = 0, // The actual amount to be saved
 }) => {
-  // Persist the selected background color
-  const [background, setBackground] = useState('');
+  const [theme, setTheme] = useState(cardThemes.default);
+  
+  // Animation controls for the badge
+  const badgeAnimation = useAnimation();
+  const cardAnimation = useAnimation();
 
   useEffect(() => {
-    const selected = darkerGradients[Math.floor(Math.random() * darkerGradients.length)];
-    setBackground(selected);
-  }, []);
+    // Set theme based on coupon status
+    if (isApplied) {
+      setTheme(cardThemes.applied);
+    } else if (!applicable) {
+      setTheme(cardThemes.inactive);
+    } else if (isBestDeal) {
+      setTheme(cardThemes.bestDeal);
+    } else {
+      setTheme(cardThemes.default);
+    }
+    
+    // Animate the best deal badge
+    if (isBestDeal) {
+      // Initial swing animation
+      badgeAnimation.start({
+        rotateY: [0, 25, -10, 5, 0],
+        rotateZ: [0, -5, 10, -3, 0],
+        transition: { 
+          duration: 2, 
+          ease: "easeInOut",
+          delay: 0.5
+        }
+      });
+      
+      // Continuous subtle swing
+      setTimeout(() => {
+        badgeAnimation.start({
+          rotateY: [0, 5, 0, -5, 0],
+          rotateZ: [0, -2, 0, 2, 0],
+          transition: {
+            repeat: Infinity,
+            repeatType: "loop",
+            duration: 3,
+            ease: "easeInOut"
+          }
+        });
+      }, 2500);
+      
+      // Highlight animation for best deal card
+      cardAnimation.start({
+        scale: [1, 1.02, 1],
+        transition: {
+          repeat: 2,
+          repeatType: "reverse",
+          duration: 1.5,
+        }
+      });
+    }
+    
+    // Applied coupon gets a special highlight
+    if (isApplied) {
+      cardAnimation.start({
+        y: [0, -5, 0],
+        boxShadow: [
+          "0 4px 12px rgba(12, 206, 107, 0.1)", 
+          "0 8px 24px rgba(12, 206, 107, 0.2)", 
+          "0 4px 12px rgba(12, 206, 107, 0.1)"
+        ],
+        transition: {
+          duration: 1.5,
+          ease: "easeInOut"
+        }
+      });
+    }
+  }, [isBestDeal, isApplied, applicable, badgeAnimation, cardAnimation]);
 
-  const handleApplyClick = () => {
-    if (onApply) {
-      onApply(name, discount, discountType);
+  const handleApplyClick = (e) => {
+    e.stopPropagation(); // Prevent card click from triggering
+    if (applicable && onApply) {
+      onApply(name);
     }
   };
+  
+  const handleCardClick = () => {
+    if (applicable && onApply && !isApplied) {
+      onApply(name);
+    }
+  };
+  
+  // Calculate displayed savings
+  const displaySavings = actualDiscount || (discountType === 'percentage' ? 
+    Math.round((discount / 100) * cartTotal) : discount);
 
   return (
-    <div
-      className={`${styles.card} ${!applicable ? styles.notApplicable : ''}`}
-      style={{ background: background }}
+    <motion.div
+      className={`${styles.card} ${!applicable ? styles.notApplicable : ''} 
+                  ${isBestDeal ? styles.bestDealCard : ''} 
+                  ${isApplied ? styles.appliedCard : ''}`}
+      style={{ 
+        background: theme.background,
+        color: theme.color
+      }}
+      animate={cardAnimation}
+      onClick={handleCardClick}
+      whileHover={{ y: -3 }}
     >
-      {/* Background overlay with big discount text */}
-      <div className={styles.overlay}>
-        <div className={styles.bigDiscount}>
-          {discountType === 'percentage'
-            ? `${discount}% OFF`
-            : `₹${discount} OFF`}
-        </div>
-      </div>
-      <div className={styles.dashedLine}></div>
+      {/* Dashed line */}
+      <div className={styles.dashedLine} style={{ borderColor: `${theme.color}40` }}></div>
+      
+      {/* Best deal badge */}
+      {isBestDeal && !isApplied && (
+        <motion.div 
+          className={styles.bestDealBadge}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        >
+          <motion.div 
+            className={styles.bestDealBadgeContent}
+            animate={badgeAnimation}
+          >
+            <StarIcon className={styles.starIcon} />
+            <span>BEST</span>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Applied badge */}
+      {isApplied && (
+        <motion.div 
+          className={styles.appliedBadge}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.3, type: "spring" }}
+        >
+          <CheckCircleIcon className={styles.appliedIcon} />
+          <span>APPLIED</span>
+        </motion.div>
+      )}
+
+      {/* Lock overlay for inapplicable coupons */}
+      {!applicable && (
+        <motion.div 
+          className={styles.lockOverlay}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <LockIcon className={styles.lockIcon} />
+          {shortfall > 0 && (
+            <motion.div 
+              className={styles.shortfallMessage}
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <ShoppingCartIcon className={styles.cartIcon} />
+              <span>Add ₹{shortfall} more</span>
+            </motion.div>
+          )}
+        </motion.div>
+      )}
 
       {/* Main content */}
       <div className={styles.content}>
         <div className={styles.header}>
-          <h3 className={styles.couponName}>{name}</h3>
+          <Typography variant="subtitle2" className={styles.couponName} style={{ 
+            background: `${theme.color}15`, 
+            color: theme.color 
+          }}>
+            {name}
+          </Typography>
         </div>
-        <div className={styles.discountSection}>
-          <span className={styles.discountValue}>
+        
+        <Box className={styles.discountSection}>
+          <Typography variant="h4" className={styles.discountValue}>
             {discountType === 'percentage'
               ? `${discount}%`
+              : discountType === 'bundle'
+              ? 'Bundle'
               : `₹${discount}`}
-          </span>
-          <span className={styles.offText}>OFF</span>
-        </div>
-        <div className={styles.validity}>
-          Valid till {new Date(validity).toLocaleDateString()}
-        </div>
-        {!applicable && conditionMessage && (
-          <div className={styles.conditionMessage}>{conditionMessage}</div>
+          </Typography>
+          <Typography variant="body2" className={styles.offText}>
+            {discountType === 'bundle' ? 'DEAL' : 'OFF'}
+          </Typography>
+          
+          {/* Show actual savings */}
+          {applicable && (
+            <Typography variant="caption" className={styles.savingsText} style={{ 
+              background: `${theme.color}15`, 
+              color: theme.color 
+            }}>
+              Save ₹{displaySavings}
+            </Typography>
+          )}
+        </Box>
+        
+        {/* Description */}
+        {description && (
+          <Typography variant="caption" className={styles.description}>
+            {description}
+          </Typography>
         )}
-        {applicable && (
-          <div className={styles.applyButton}>
-            <Button variant="contained" onClick={handleApplyClick}>
+        
+        <Typography variant="caption" className={styles.validity} style={{ 
+          background: `${theme.color}15`,
+          color: theme.color
+        }}>
+          Valid till {new Date(validity).toLocaleDateString()}
+        </Typography>
+        
+        {/* Show condition message for locked coupons */}
+        {!applicable && conditionMessage && (
+          <Typography variant="caption" className={styles.conditionMessage} style={{ 
+            background: `${theme.color}15`,
+            color: theme.color
+          }}>
+            {conditionMessage}
+          </Typography>
+        )}
+        
+        {/* Apply button */}
+        {applicable && !isApplied && (
+          <motion.div 
+            className={styles.applyButton}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button 
+              variant="contained" 
+              onClick={handleApplyClick}
+              style={{ 
+                background: theme.color,
+                color: '#ffffff'
+              }}
+              fullWidth
+            >
               Apply
             </Button>
-          </div>
+          </motion.div>
+        )}
+        
+        {/* Applied status */}
+        {isApplied && (
+          <motion.div 
+            className={styles.applyButton}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <Button 
+              variant="contained"
+              fullWidth
+              style={{ 
+                background: `${theme.color}20`,
+                color: theme.color,
+                fontWeight: '600'
+              }}
+              disabled
+            >
+              Applied
+            </Button>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

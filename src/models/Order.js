@@ -77,9 +77,18 @@ const OrderSchema = new mongoose.Schema(
           min: 0,
         },
 
-        thumbnail:{
-      type:String,
-      
+        thumbnail: {
+          type: String,
+        },
+        insertionDetails: {
+          component: {
+            type: String,
+            default: '',
+          },
+          pageType: {
+            type: String,
+            default: ''
+          }
         }
       },
     ],

@@ -1,4 +1,4 @@
-// src/app/api/cron/aisensy/abandoned-cart-second/route.js
+// src/app/api/cron/aisensy/abandoned-cart-second-campaign/route.js
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
@@ -54,6 +54,7 @@ export async function GET(req) {
     ];
 
     const abandonedOrders = await Order.aggregate(pipeline).exec();
+
     if (!abandonedOrders.length) {
       return NextResponse.json({ message: 'No abandoned orders in [12-14 hrs] window' });
     }
@@ -62,46 +63,69 @@ export async function GET(req) {
     for (const order of abandonedOrders) {
       const { userId, userName, phoneNumber, orderId, firstItem } = order;
 
-      // Build media object instead of carouselCards
-      let media = null;
+      // Build carousel cards based on the official AiSensy format
+      let carouselCards = [];
       if (firstItem && firstItem.product) {
         const product = await Product.findById(firstItem.product).lean();
         if (product && product.images && product.images.length > 0) {
-          media = {
-            url: firstItem?.thumbnail
-              ? (firstItem.thumbnail.startsWith('/')
-                ? `${imageBaseUrl}${firstItem.thumbnail}`
-                : `${imageBaseUrl}/${firstItem.thumbnail}`)
-              : (product.images[0].startsWith('/')
-                ? `${imageBaseUrl}${product.images[0]}`
-                : `${imageBaseUrl}/${product.images[0]}`),
-            filename: 'product-image'
-          };
+          // Get product images - max 5
+          const imagesToUse = [...product.images].slice(0, 5);
+          
+          // If there's a thumbnail, prioritize it
+          if (firstItem.thumbnail) {
+            const thumbnailUrl = firstItem.thumbnail.startsWith('/')
+              ? `${imageBaseUrl}${firstItem.thumbnail}`
+              : `${imageBaseUrl}/${firstItem.thumbnail}`;
+              
+            imagesToUse[0] = firstItem.thumbnail;
+          }
+          
+          // Create carousel cards in proper format (max 5)
+          carouselCards = imagesToUse.map((image, index) => {
+            const imageUrl = image.startsWith('/')
+              ? `${imageBaseUrl}${image}`
+              : `${imageBaseUrl}/${image}`;
+            
+            return {
+              card_index: index,
+              components: [
+                {
+                  type: "HEADER",
+                  parameters: [
+                    {
+                      type: "image",
+                      image: {
+                        link: imageUrl
+                      }
+                    }
+                  ]
+                },
+                {
+                  type: "BUTTON",
+                  sub_type: "URL",
+                  index: 0,
+                  parameters: [
+                    {
+                      type: "text",
+                      text: `https://maddycustom.in/product/${product._id}`
+                    }
+                  ]
+                }
+              ]
+            };
+          });
         }
       }
 
-      const buttons = [
-        {
-          type: 'button',
-          sub_type: 'COPY_CODE',
-          index: '0',
-          parameters: [
-            {
-              type: 'coupon_code',
-              coupon_code: `RIDE15`,
-            },
-          ],
-        },
-      ];
-
-      const result = await sendWhatsAppMessage({
+      const payload = {
         user: { _id: userId, name: userName, phoneNumber },
-        campaignName: 'abandonedcart_rem2',
+        campaignName: 'ac2',
         orderId,
-        // templateParams: [userName || 'Friend'],
-        buttons,
-        media,
-      });
+        templateParams: [userName.split(' ')[0] || 'Friend'],
+        carouselCards,
+      };
+
+      const result = await sendWhatsAppMessage(payload);
 
       if (result.success) sentCount++;
     }

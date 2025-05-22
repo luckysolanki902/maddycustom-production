@@ -4,11 +4,11 @@ import { CircularProgress } from '@mui/material';
 import React from 'react';
 import styles from './styles/blackbutton.module.css';
 
-export default function BlackButtonWithOnClick({ isLoading, buttonText, onClick, type }) {
+export default function BlackButtonWithOnClick({ isLoading, buttonText, onClick, type, isDisabled }) {
   return (
     <button
       className={styles.submitButton}
-      disabled={isLoading}
+      disabled={isLoading || isDisabled}
       onClick={onClick}
       type={type}
       style={{ cursor: isLoading ? 'not-allowed' : 'pointer' }}

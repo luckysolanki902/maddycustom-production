@@ -40,7 +40,7 @@ const categories = [
 
 const usefulLinks = [
   { href: "/about-us", label: "About Us" },
-  { href: "/termsandconditions", label: "Terms And Conditions" },
+  { href: "/termsandconditions", label: "Refunds and Replacements" },
   { href: "/orders/track", label: "Track Your Order" },
   { href: "/faqs", label: "FAQs and Support" },
   { href: "/contact-us", label: "Contact Us" },

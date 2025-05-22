@@ -1,43 +1,23 @@
 .card {
   position: relative;
-  width: 180px; /* Smaller width */
-  min-height: 260px; /* Smaller height */
-  border-radius: 0.8rem;
-  color: #fff;
-  /* box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); */
-  overflow: hidden;
-  margin: 0.5rem;
-  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  width: 100%;
+  min-height: 220px;
+  border-radius: 12px;
+  overflow: visible;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  z-index: 1;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  margin-bottom: 0.5rem;
 }
 
-/* Hover effect */
 .card:hover {
-  transform: translateY(-6px);
-  /* box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); */
-}
-
-/* "Ticket" cut-out circles */
-.card::before,
-.card::after {
-  content: "";
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  background: #fff;
-  border-radius: 50%;
-  z-index: 2;
-}
-
-.card::before {
-  top: 50%;
-  left: 0;
-  transform: translate(-50%, -50%);
-}
-
-.card::after {
-  top: 50%;
-  right: 0;
-  transform: translate(50%, -50%);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
 /* Dashed line across the middle */
@@ -46,165 +26,303 @@
   left: 0;
   right: 0;
   top: 50%;
-  border-top: 1px dashed #fff;
+  transform: translateY(-50%);
+  border-top: 1px dashed rgba(0, 0, 0, 0.12);
   z-index: 2;
 }
 
-/* Background overlay with big discount text */
-.overlay {
+/* Left and right circular cutouts */
+.card::before,
+.card::after {
+  content: "";
   position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  z-index: 1;
-}
-
-.bigDiscount {
-  position: absolute;
-  font-size: 3rem; /* Smaller font size */
-  font-weight: bold;
-  color: rgba(255, 255, 255, 0.1);
+  width: 16px;
+  height: 16px;
+  background: #f8f9fa;
+  border-radius: 50%;
+  z-index: 2;
   top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(-15deg);
+  transform: translateY(-50%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
-/* Main content on top */
+.card::before {
+  left: -8px;
+}
+
+.card::after {
+  right: -8px;
+}
+
+/* Main content */
 .content {
   position: relative;
   z-index: 3;
-  padding: 0.6rem;
-  text-align: center;
+  padding: 1.2rem 1rem;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: space-between;
   height: 100%;
+  gap: 0.5rem;
 }
 
 .header {
-  margin-bottom: 0.4rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  position: relative;
 }
 
 .couponName {
-  font-size: 0.9rem;
-  font-weight: bold;
-  margin: 0;
-  margin-bottom: 0.4rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 0 !important;
 }
 
 .discountSection {
-  margin: 0.4rem 0;
+  text-align: center;
+  margin: 0.5rem 0;
+  position: relative;
+  z-index: 2;
 }
 
 .discountValue {
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-right: 0.2rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.5px;
+  margin: 0 !important;
+  line-height: 1 !important;
 }
 
 .offText {
-  font-size: 0.8rem;
-  vertical-align: middle;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 0.7rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px !important;
+  font-weight: 500 !important;
+}
+
+.savingsText {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-top: 6px !important;
+  display: inline-block;
+  font-size: 0.7rem !important;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.description {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  text-align: center;
+  font-size: 0.75rem !important;
+  margin: 0.5rem 0 !important;
+  display: block;
+  line-height: 1.4 !important;
+  word-wrap: break-word;
+  max-height: unset;
+  overflow: visible;
+  color: #757575;
 }
 
 .validity {
-  font-size: 0.75rem;
-  margin-bottom: 0.4rem;
-  color: #f0f0f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 0.65rem !important;
+  text-align: center;
+  border-radius: 20px;
+  padding: 3px 10px;
+  display: inline-block;
+  margin: 0 auto !important;
 }
 
 .conditionMessage {
-  font-size: 0.7rem;
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  padding: 0.3rem;
-  border-radius: 0.3rem;
-  margin-bottom: 0.4rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 0.7rem !important;
+  text-align: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin: 0 !important;
+  display: block;
+  line-height: 1.3 !important;
 }
 
 .applyButton {
-  margin-top: 0.4rem;
+  margin-top: auto;
+  text-align: center;
+  z-index: 5;
+  padding: 0 0.5rem;
 }
 
 .applyButton button {
-  background: #fff !important;
-  color: #000 !important;
-  font-size: 0.7rem !important;
-  padding: 0.3rem 0.6rem !important;
-  border-radius: 0.3rem !important;
-  text-transform: uppercase !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  padding: 6px 0 !important;
+  font-size: 0.8rem !important;
+  transition: all 0.2s ease !important;
+  border-radius: 6px !important;
+  letter-spacing: 0.5px;
+  height: 32px;
 }
 
-/* Darken & grayscale when not applicable */
-.notApplicable {
-  filter: grayscale(100%) brightness(0.6);
+.applyButton button:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-1px);
 }
 
-/* Additional media queries */
-
-/* For screens smaller than 768px */
-@media screen and (max-width: 768px) {
-  .card {
-    width: 160px;
-    min-height: 240px;
-  }
-  .bigDiscount {
-    font-size: 2.5rem;
-  }
-  .couponName {
-    font-size: 0.85rem;
-  }
-  .discountValue {
-    font-size: 1.4rem;
-  }
-  .offText {
-    font-size: 0.75rem;
-  }
-  .validity {
-    font-size: 0.7rem;
-  }
-  .conditionMessage {
-    font-size: 0.65rem;
-  }
+/* Applied coupon styling */
+.appliedCard {
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.15) !important;
 }
 
-/* For very small screens (e.g., mobile) */
-@media screen and (max-width: 480px) {
-  .card {
-    width: 140px;
-    min-height: 220px;
-    margin: 0.3rem;
-  }
-  .bigDiscount {
-    font-size: 2rem;
-  }
-  .couponName {
-    font-size: 0.8rem;
-  }
-  .discountValue {
-    font-size: 1.3rem;
-  }
-  .offText {
-    font-size: 0.7rem;
-  }
-  .validity {
-    font-size: 0.65rem;
-  }
-  .conditionMessage {
-    font-size: 0.6rem;
-  }
-}
-
-/* Container styling (for example usage) to show two cards per row on smaller screens */
-.container {
+.appliedBadge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #22c55e;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  z-index: 10;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
 }
 
-.container > * {
-  flex: 1 0 45%; /* Approximately 2 per row */
-  max-width: 45%;
-  box-sizing: border-box;
+.appliedIcon {
+  font-size: 0.75rem !important;
 }
+
+/* Best deal styling with hinged badge - Beautiful teal color palette */
+.bestDealCard {
+  box-shadow: 0 6px 16px rgba(20, 184, 166, 0.15) !important;
+}
+
+.bestDealBadge {
+  position: absolute;
+  top: 0;
+  right: 10px;
+  z-index: 10;
+  perspective: 800px;
+}
+
+.bestDealBadgeContent {
+  background: linear-gradient(135deg, #0d9488, #14b8a6);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 0 0 20px 20px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.25);
+  transform-origin: top;
+  will-change: transform;
+}
+
+.starIcon {
+  font-size: 0.75rem !important;
+}
+
+/* Not applicable styling */
+.notApplicable {
+  opacity: 0.85;
+}
+
+.lockOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: 12px;
+}
+
+.lockIcon {
+  font-size: 1.5rem !important;
+  color: #757575;
+  opacity: 0.7;
+  margin-bottom: 0.5rem;
+}
+
+.shortfallMessage {
+  background: rgba(20, 184, 166, 0.1);
+  padding: 5px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
+  color: #0d9488;
+}
+
+.cartIcon {
+  font-size: 0.85rem !important;
+  color: #0d9488;
+}
+
+/* Animation for highlighting a coupon */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.highlight {
+  animation: pulse 2s infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 500px) {
+  .discountValue {
+    font-size: 1.75rem !important;
+  }
+  
+  .couponName {
+    font-size: 0.7rem !important;
+  }
+  
+  .validity, .conditionMessage {
+    font-size: 0.65rem !important;
+  }
+  
+  .bestDealBadgeContent, .appliedBadge {
+    font-size: 0.6rem;
+    padding: 2px 8px;
+  }
+  
+  .content {
+    padding: 1rem 0.75rem;
+  }
+}
+

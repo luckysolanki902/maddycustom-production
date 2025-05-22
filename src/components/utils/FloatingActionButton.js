@@ -1,87 +1,118 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { useSpring, animated } from 'react-spring';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import styles from './styles/floatingactionbar.module.css';
-import Image from 'next/image';
-import Badge from '@mui/material/Badge'; // Import MUI Badge
+import React, { useState, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { useSpring, useTransition, animated } from "react-spring";
+import { usePathname } from "next/navigation";
+import styles from "./styles/floatingactionbar.module.css";
+import Image from "next/image";
+import Badge from "@mui/material/Badge";
+import { openCartDrawer } from "@/store/slices/uiSlice";
+import Link from "next/link";
 
 const FloatingActionBar = () => {
+  const dispatch = useDispatch();
   const pathname = usePathname();
   const items = useSelector((state) => state.cart.items);
-  const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0); // Calculate total quantity
-  
-  // Check if the pathname is a product page based on the URL pattern
-  // The expected product page URL is: /shop/category/subcategory/specificategory/specificcategoryvariant/product
-
+  const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
 
   const [firstItemAdded, setFirstItemAdded] = useState(false);
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   useEffect(() => {
-    if (totalQuantity > 0 && !firstItemAdded) {
-      setFirstItemAdded(true);
-    }
+    if (totalQuantity > 0 && !firstItemAdded) setFirstItemAdded(true);
   }, [totalQuantity, firstItemAdded]);
 
+  // Handle cart click - open from bottom
+  const handleCartClick = (e) => {
+    e.preventDefault();
+    dispatch(openCartDrawer({ source: "bottom" }));
+  };
+
+  // Cart animation
   const cartAnimation = useSpring({
-    opacity: totalQuantity > 0 ? 1 : 1, // Always visible, adjust opacity if needed
-    transform: totalQuantity > 0 ? 'translateY(0px)' : 'translateY(0px)', // No movement
+    opacity: 1,
+    transform: "translateY(0px)",
     config: { tension: 200, friction: 20 },
   });
 
-  const pathParts = pathname.split('/').filter(Boolean);
-  if (pathParts[0] === 'shop' && pathParts.length === 6) {
-    return null;
-  }
+  // Determine whether to show the bar
+  const pathParts = pathname.split("/").filter(Boolean);
+  const hideForProductPage = pathParts[0] === "shop" && pathParts.length === 6;
+  const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
 
-  if (pathname === '/viewcart') return null;
-  if (totalQuantity < 1) return null;
+  const showBar = !hideForProductPage && !isCartDrawerOpen && totalQuantity > 0;
 
-  return (
-    <div className={styles.container}>
-      <div className={styles.actionBar}>
-        {/* Cart Button with Badge */}
-        <animated.div
-          style={firstItemAdded ? cartAnimation : {}}
-          className={styles.iconButton}
-        >
-          <Link href="/viewcart" passHref>
-            <div className={`${styles.iconButton} ${totalQuantity > 0 ? styles.cartButtonActive : ''}`}>
-              <Badge badgeContent={totalQuantity} color="info">
+  // Faster, cleaner transitions
+  const transitions = useTransition(showBar, {
+    from: {
+      opacity: 0,
+      transform: "translateY(100%)",
+    },
+    enter: {
+      opacity: 1,
+      transform: "translateY(0%)",
+    },
+    leave: {
+      opacity: 0,
+      transform: "translateY(100%)",
+    },
+    config: { mass: 0.8, tension: 400, friction: 30 }, // faster with minimal bounce
+  });
+
+  return transitions(
+    (style, item) =>
+      item && (
+        <animated.div style={style} className={styles.container}>
+          <div className={styles.actionBar}>
+            {/* Cart button with badge */}
+            <animated.div
+              style={firstItemAdded ? cartAnimation : {}}
+              className={styles.iconButton}
+            >
+              <div
+                onClick={handleCartClick}
+                className={`${styles.iconButton} ${totalQuantity > 0 ? styles.cartButtonActive : ""
+                  }`}
+              >
+                <Badge badgeContent={totalQuantity} color="info">
+                  <Image
+                    src={`${baseImageUrl}/assets/icons/cart.png`}
+                    className={styles.icon}
+                    width={200}
+                    height={200}
+                    alt="Cart Icon"
+                    priority
+                    loading="eager"
+                  />
+                </Badge>
+                <span>Cart</span>
+              </div>
+            </animated.div>
+
+            {/* Divider */}
+            <div className={styles.divider} />
+
+            {/* Home button */}
+            <Link href="/">
+              <div
+                className={`${styles.iconButton} ${pathname === "/" ? styles.cartButtonActive : ""
+                  }`}
+              >
                 <Image
-                  src={`${baseImageUrl}/assets/icons/cart.png`}
+                  src={`${baseImageUrl}/assets/icons/roundedhome.png`}
                   className={styles.icon}
                   width={200}
                   height={200}
-                  alt='Cart Icon'
+                  alt="Home Icon"
+                  priority
+                  loading="eager"
                 />
-              </Badge>
-              <span>Cart</span>
-            </div>
-          </Link>
-        </animated.div>
-
-        {/* Divider */}
-        <div className={styles.divider}></div>
-
-        {/* Home Button */}
-        <Link href="/" passHref>
-          <div className={`${styles.iconButton} ${pathname === '/' ? styles.cartButtonActive : ''}`}>
-            <Image
-              src={`${baseImageUrl}/assets/icons/roundedhome.png`}
-              className={styles.icon}
-              width={200}
-              height={200}
-              alt='Home Icon'
-            />
-            <span>Home</span>
+                <span>Home</span>
+              </div>
+            </Link>
           </div>
-        </Link>
-      </div>
-    </div>
+        </animated.div>
+      )
   );
 };
 

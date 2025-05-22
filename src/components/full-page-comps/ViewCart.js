@@ -1,10 +1,19 @@
+// components/ViewCart.jsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useRouter } from 'next/navigation';
 import axios from 'axios';
+
 import { removeItem } from '@/store/slices/cartSlice';
+import { closeCartDrawer, expireShippingTimer } from '@/store/slices/uiSlice';
+import {
+  setCouponApplied,
+  setManualCoupon,
+  resetAutoApplyDisabled,
+} from '@/store/slices/orderFormSlice';
+
+/* ---------------- UI + util imports (unchanged) ------------------- */
 import styles from './styles/viewcart.module.css';
 import ViewCartHeader from '../page-sections/viewcart/ViewCartHeader';
 import CartList from '../page-sections/viewcart/CartList';
@@ -12,527 +21,649 @@ import PriceDetails from '../page-sections/viewcart/PriceDetails';
 import PaymentModes from '../page-sections/viewcart/PaymentModes';
 import Footer from '../page-sections/viewcart/Footer';
 import ApplyCoupon from '../dialogs/ApplyCoupon';
-import CustomSnackbar from '@/components/notifications/CustomSnackbar';
 import OrderForm from '../dialogs/OrderForm';
+import CustomSnackbar from '@/components/notifications/CustomSnackbar';
+import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
 import {
   calculateTotalQuantity,
   calculateTotalCostBeforeDiscount,
   calculateDiscountAmount,
   calculateTotalCostAfterDiscount,
+  calcluateTotalMrp,
 } from '@/lib/utils/cartCalculations';
-import HappyCustomersClient from '../showcase/sliders/HappyCustomerClient';
-import { setCouponApplied } from '@/store/slices/orderFormSlice';
-import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
-import Image from 'next/image';
-import Confetti from 'react-confetti';
-import { ChevronRight } from '@mui/icons-material';
 import DiscountOutlinedIcon from '@mui/icons-material/DiscountOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DiscountIcon from '@mui/icons-material/Discount';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import { motion, AnimatePresence } from 'framer-motion';
+import SplitPayment from '../page-sections/viewcart/SplitPayment';
 
-const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
-  let applicable = true;
-  offer.conditions.forEach((condition) => {
-    if (condition.type === 'cart_value') {
-      switch (condition.operator) {
-        case '>=':
-          if (!(totalCost >= condition.value)) applicable = false;
-          break;
-        case '<=':
-          if (!(totalCost <= condition.value)) applicable = false;
-          break;
-        case '>':
-          if (!(totalCost > condition.value)) applicable = false;
-          break;
-        case '<':
-          if (!(totalCost < condition.value)) applicable = false;
-          break;
-        case '==':
-          if (!(totalCost === condition.value)) applicable = false;
-          break;
-        default:
-          applicable = false;
-      }
-    } else if (condition.type === 'first_order') {
-      if (isFirstOrder !== condition.value) applicable = false;
+/* ---------------- helper ------------------------------------------------ */
+const isOfferApplicable = (offer, totalCost, isFirstOrder = false) =>
+  offer.conditions.every(c => {
+    if (c.type === 'cart_value') {
+      const v = totalCost, x = c.value;
+      return (c.operator === '>=' && v >= x) || (c.operator === '>' && v > x)
+        || (c.operator === '<' && v < x) || (c.operator === '<=' && v <= x)
+        || (c.operator === '==' && v === x);
     }
+    if (c.type === 'first_order') return isFirstOrder === c.value;
+    return true;
   });
-  return applicable;
-};
 
-const ViewCart = () => {
+const flattenCart = cartItems => cartItems.map(i => ({
+  productId: i.productId || i.productDetails._id,
+  quantity: i.quantity,
+  price: i.price ?? i.productDetails.price,
+  specificCategory: i.specificCategory ?? i.productDetails.specificCategory,
+}));
+
+/* ======================================================================= */
+export default function ViewCart({ isDrawer = false }) {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const cartItems = useSelector((state) => state.cart.items);
-  const orderForm = useSelector((state) => state.orderForm);
-  const { couponApplied } = orderForm;
 
-  // Local coupon state
+  /* ---------- redux and state (unchanged) ---------------------------- */
+  const cartItems = useSelector(s => s.cart.items);
+  const orderForm = useSelector(s => s.orderForm);
+  const couponRedux = orderForm.couponApplied;
+  const shippingTimer = useSelector(s => s.ui.shippingTimer);
+
+  /* ---------- coupon local mirror ------------------------------------ */
   const [couponState, setCouponState] = useState({
-    couponApplied: false,
-    couponName: '',
-    couponDiscount: 0,
-    discountType: '',
-    isDbCoupon: false,
-    offer: null,
+    couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null,
   });
-
-  // Rehydrate local coupon state from Redux on mount/update.
   useEffect(() => {
-    if (couponApplied.couponCode) {
+    if (couponRedux.couponCode) {
       setCouponState({
         couponApplied: true,
-        couponName: couponApplied.couponCode,
-        couponDiscount: couponApplied.discountAmount,
-        // Defaulting to 'fixed'. Adjust if needed.
-        discountType: couponApplied.discountType,
-        isDbCoupon: couponApplied.isDbCoupon,
-        offer: couponApplied.offer,
+        couponName: couponRedux.couponCode,
+        couponDiscount: couponRedux.discountAmount,
+        discountType: couponRedux.discountType,
+        offer: couponRedux.offer,
       });
+    } else {
+      setCouponState(p => ({ ...p, couponApplied: false }));
     }
-  }, [couponApplied]);
+  }, [couponRedux]);
 
-  // Other component state and hooks.
-  const [isCouponDialogOpen, setIsCouponDialogOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success',
-  });
+  /* ---------- animation variants ------------------------------------ */
+  const fadeIn = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.4 } }
+  };
+
+  const couponAnimation = {
+    applied: {
+      scale: [1, 1.05, 1],
+      backgroundColor: ['#ffffff', '#e6fff0', '#ffffff'],
+      transition: { duration: 0.8 }
+    }
+  };
+
+  // New shipping banner animation variants
+  const shippingBannerVariants = {
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: "spring",
+        stiffness: 400,
+        damping: 20,
+        duration: 0.6
+      }
+    },
+    pulse: {
+      scale: [1, 1.03, 1],
+      boxShadow: [
+        "0 4px 16px rgba(12, 206, 107, 0.3)",
+        "0 6px 20px rgba(12, 206, 107, 0.5)",
+        "0 4px 16px rgba(12, 206, 107, 0.3)"
+      ],
+      transition: {
+        duration: 2,
+        repeat: Infinity,
+        repeatDelay: 3
+      }
+    }
+  };
+
+  /* ---------- misc ui / state ---------------------------------------- */
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [dlgCoupon, setDlgCoupon] = useState(false);
   const [paymentModes, setPaymentModes] = useState([]);
-  const [selectedPaymentMode, setSelectedPaymentMode] = useState(null);
-  const [isLoadingPaymentModes, setIsLoadingPaymentModes] = useState(true);
-  const [isOrderFormOpen, setIsOrderFormOpen] = useState(false);
-  const [autoApplyAnimation, setAutoApplyAnimation] = useState(false);
-  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
-  const [autoAppliedCoupon, setAutoAppliedCoupon] = useState(false);
+  const [selectedPM, setSelectedPM] = useState(null);
+  const [loadingPM, setLoadingPM] = useState(true);
+  const [dlgOrder, setDlgOrder] = useState(false);
+  
+  const [lockedCoupon, setLockedCoupon] = useState(null);
+  const [lockedShort, setLockedShort] = useState(0);
+  const [nowCoupon, setNowCoupon] = useState(null);
 
-  // State for the "best coupon" not yet applicable but can be unlocked
-  const [bestCoupon, setBestCoupon] = useState(null);
-  const [couponShortfall, setCouponShortfall] = useState(0);
+  // Add state for timer countdown
+  const [timeRemaining, setTimeRemaining] = useState({
+    hours: 0,
+    minutes: 0,
+    seconds: 0
+  });
 
-  const [appliableCoupon, setAppliableCoupon] = useState(null);
-  const [appliableCouponShortfall, setAppliableCouponShortfall] = useState(0);
+  // Format time for display - Adding the missing function
+  const formatTime = (value) => {
+    return value < 10 ? `0${value}` : `${value}`;
+  };
 
-  // Assume you know whether this is the customer's first order.
-  const isFirstOrder = false; // Replace with your logic if available
-
-  // Set window dimensions (for confetti)
+  // Timer calculation effect
   useEffect(() => {
-    setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    if (!shippingTimer?.isActive) return;
+
+    const calculateTimeRemaining = () => {
+      const now = Date.now();
+      const difference = shippingTimer.expiryTime - now;
+
+      if (difference <= 0) {
+        dispatch(expireShippingTimer());
+        setTimeRemaining({ hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((difference / (1000 * 60)) % 60);
+      const seconds = Math.floor((difference / 1000) % 60);
+
+      setTimeRemaining({ hours, minutes, seconds });
+    };
+
+    // Initial calculation
+    calculateTimeRemaining();
+
+    // Update every second
+    const timerInterval = setInterval(calculateTimeRemaining, 1000);
+    
+    return () => clearInterval(timerInterval);
+  }, [shippingTimer?.expiryTime, shippingTimer?.isActive, dispatch]);
+
+  const lastAutoRef = useRef({ code: '', type: '' });
+  const FIVE_MIN = 5 * 60 * 1000;
+  const isFirstOrder = false;  // hook into your user meta when ready
+  const [revalidatingCoupons, setRevalidatingCoupons] = useState(false);
+
+
+
+  /* ---------- cart totals ------------------------------------------- */
+  const qty = calculateTotalQuantity(cartItems);
+  const subTot = calculateTotalCostBeforeDiscount(cartItems);
+  const MrpTotal = calcluateTotalMrp(cartItems);
+  const disc = calculateDiscountAmount(subTot, couponState);
+  const grand = calculateTotalCostAfterDiscount(subTot, disc);
+
+  const deliveryCost = 0; // If delivery is free
+  const standardDeliveryCost = 99; // Standard delivery fee that is being waived
+  const extraCharge = selectedPM?.extraCharge || 0;
+  const totalPay = grand + deliveryCost + extraCharge;
+
+  // Determine if this is a split payment based on payment mode configuration, 
+  const isSplitPayment = selectedPM?.name === 'split' ||
+    (selectedPM?.configuration?.onlinePercentage > 0 &&
+      selectedPM?.configuration?.onlinePercentage < 100);
+
+  // Calculate split amounts if applicable
+  const onlineAmount = isSplitPayment ?
+    Math.round((totalPay * (selectedPM?.configuration?.onlinePercentage || 50)) / 100) : 0;
+  const codAmount = isSplitPayment ? totalPay - onlineAmount : 0;
+
+  const snack = (m, s = 'success') => setSnackbar({ open: true, message: m, severity: s });
+  const dispatchCoupon = p => dispatch(setCouponApplied({ ...p }));
+
+  /* ---------- coupon apply / remove --------------------------------- */
+  const applyCoupon = (code, amount, type, offer, fromAuto = false) => {
+    if (amount <= 0) { snack('Offer conditions are not met.', 'warning'); return; }
+    if (type !== 'bundle' && !isOfferApplicable(offer, subTot, isFirstOrder)) {
+      snack('Offer conditions are not met.', 'warning'); return;
+    }
+
+    setCouponState({ couponApplied: true, couponName: code, couponDiscount: amount, discountType: type, offer });
+    dispatchCoupon({ couponCode: code, discountAmount: amount, discountType: type, offer });
+
+    if (!fromAuto) dispatch(setManualCoupon({ couponCode: code }));
+    dispatch(resetAutoApplyDisabled());
+    if (fromAuto) lastAutoRef.current = { code, type };
+
+    // Don't show snackbar, use the animation in the coupon section instead
+  };
+
+  const removeCoupon = (showMsg = true) => {
+    setCouponState({ couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null });
+    dispatchCoupon({ couponCode: '', discountAmount: 0, discountType: '', offer: null });
+    dispatch(setManualCoupon(null));
+    if (showMsg) snack('Coupon removed.', 'warning');
+  };
+
+  // Handler for the back button in the drawer to close it
+  const handleBackClick = () => {
+    dispatch(closeCartDrawer());
+  };
+
+  /* ---------- payment modes fetch (unchanged) ----------------------- */
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await axios.get('/api/checkout/modeofpayments');
+        setPaymentModes(data.data);
+        setSelectedPM(data.data.find(m => m.name === 'online') || data.data[0]);
+      } catch {
+        snack('Failed to fetch payment modes', 'error');
+      } finally { setLoadingPM(false); }
+    })();
   }, []);
 
-  // Fetch payment modes.
+  /* ---------- locked / now banner (unchanged) ----------------------- */
   useEffect(() => {
-    const fetchPaymentModes = async () => {
+    if (!subTot) { setLockedCoupon(null); setNowCoupon(null); return; }
+    (async () => {
       try {
-        const response = await axios.get('/api/checkout/modeofpayments');
-        if (response.status === 200) {
-          setPaymentModes(response.data.data);
-          const defaultMode =
-            response.data.data.find((mode) => mode.name === 'online') ||
-            response.data.data[0];
-          setSelectedPaymentMode(defaultMode);
+        const { data } = await axios.get('/api/checkout/bestcoupon', { params: { cartValue: subTot } });
+        const { bestOffer, shortfall } = data;
+        if (shortfall === 0) {
+          setNowCoupon(bestOffer); setLockedCoupon(null);
         } else {
-          setSnackbar({
-            open: true,
-            message: 'Failed to fetch payment modes.',
-            severity: 'error',
-          });
+          setLockedCoupon(bestOffer); setLockedShort(shortfall); setNowCoupon(null);
         }
-      } catch (error) {
-        console.error('Error fetching payment modes:', error.message);
-        setSnackbar({
-          open: true,
-          message: 'An error occurred while fetching payment modes.',
-          severity: 'error',
-        });
-      } finally {
-        setIsLoadingPaymentModes(false);
-      }
-    };
-    fetchPaymentModes();
-  }, []);
+      } catch {/* ignore */ }
+    })();
+  }, [subTot]);
 
-  // Calculate cart totals
-  const totalQuantity = calculateTotalQuantity(cartItems);
-  const totalCostBeforeDiscount = calculateTotalCostBeforeDiscount(cartItems);
-  const discountAmount = calculateDiscountAmount(totalCostBeforeDiscount, couponState);
-  const totalCostAfterDiscount = calculateTotalCostAfterDiscount(totalCostBeforeDiscount, discountAmount);
-  const deliveryCost = 0; // For your example
-  const extraCharge = selectedPaymentMode?.extraCharge || 0;
-  const totalCostWithDelivery = totalCostAfterDiscount + deliveryCost + extraCharge;
-  const originalTotal = totalCostBeforeDiscount + deliveryCost + extraCharge;
-  const onlinePercentage = selectedPaymentMode?.configuration?.onlinePercentage;
-  const codPercentage = selectedPaymentMode?.configuration?.codPercentage;
+  /* ---------- AUTO‑APPLY (unchanged) -------------------------------- */
+  const { autoApplyDisabled, autoApplyDisabledAt, manualCoupon } = orderForm;
+  const blocked = autoApplyDisabled && autoApplyDisabledAt &&
+    Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
 
-  // Handler to remove item from cart
-  const handleRemoveItem = (productId) => {
-    dispatch(removeItem({ productId }));
-  };
-
-  // Handler for going back
-  const handleBack = () => {
-    router.back();
-  };
-
-  // Checkout
-  const handleCheckout = () => {
-    setIsOrderFormOpen(true);
-  };
-
-  // Handler to apply coupon
-  const handleApplyCoupon = (couponCode, discount, discountType, isDbCoupon, offerData = null) => {
-    setCouponState({
-      couponApplied: true,
-      couponName: couponCode,
-      couponDiscount: discount,
-      discountType: discountType,
-      isDbCoupon: isDbCoupon,
-      offer: offerData,
-    });
-    setSnackbar({
-      open: true,
-      message: 'Coupon applied successfully!',
-      severity: 'success',
-    });
-    dispatch(setCouponApplied({ couponCode, discountAmount: discount, discountType, isDbCoupon, offer: offerData }));
-  };
-
-  // Handler to remove coupon + disable auto-apply
-  const handleRemoveCoupon = () => {
-    setCouponState({
-      couponApplied: false,
-      couponName: '',
-      couponDiscount: 0,
-      discountType: '',
-      isDbCoupon: false,
-      offer: null,
-    });
-    setSnackbar({
-      open: true,
-      message: 'Coupon removed.',
-      severity: 'warning',
-    });
-    dispatch(setCouponApplied({ couponCode: '', discountAmount: 0, discountType: '', isDbCoupon: false, offer: null }));
-    localStorage.setItem('autoApplyDisabled', 'true');
-    localStorage.setItem('autoApplyDisabledAt', new Date().toISOString());
-  };
-
-  // Payment mode change
-  const handlePaymentModeChange = (event) => {
-    const selectedModeName = event.target.value;
-    const mode = paymentModes.find((mode) => mode.name === selectedModeName);
-    setSelectedPaymentMode(mode);
-  };
-
-  // Subcategories for "TopBoughtProducts"
-  const topBoughtSubCategories = useMemo(() => {
-    return [...new Set(cartItems.map((item) => item.productDetails.subCategory))];
-  }, [cartItems]);
-
-  // Product IDs for "TopBoughtProducts"
-  const topBoughtCurrentProductId = useMemo(() => {
-    return cartItems.map((item) => item.productDetails._id).join(',');
-  }, [cartItems]);
-
-  // --- Fetch "best coupon" data if user is not yet eligible but might be close
   useEffect(() => {
-    const fetchBestCoupon = async () => {
-      if (totalCostBeforeDiscount <= 0) return;
+    if (blocked || manualCoupon || couponState.couponApplied || !qty) return;
+
+    (async () => {
       try {
-        const res = await axios.get('/api/checkout/applicablecoupon', {
-          params: { cartValue: totalCostBeforeDiscount },
+        const res = await fetch('/api/checkout/coupons/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            auto: true,
+            totalCost: subTot,
+            isFirstOrder,
+            cartItems: flattenCart(cartItems),
+          }),
         });
-        if (res.status === 200) {
-          const { bestOffer, shortfall } = res.data;
-          setAppliableCoupon(bestOffer);
-          setAppliableCouponShortfall(shortfall);
-        }
+        const data = await res.json();
+        if (!res.ok || !data.valid) return;
+        if (lastAutoRef.current.code === data.offer.couponCodes[0]) return;
 
-      } catch (error) {
-        console.error('Error fetching best coupon:', error);
+        applyCoupon(data.offer.couponCodes[0], data.discountValue, data.discountType, data.offer, true);
+      } catch (e) {
+        console.error('auto‑apply error', e);
       }
-    };
+    })();
+  }, [qty, subTot, cartItems, couponState.couponApplied, blocked, manualCoupon]); // eslint-disable-line
 
-    fetchBestCoupon();
-  }, [totalCostBeforeDiscount]);
+  /* ---------- RE‑VALIDATE on cart changes (unchanged) --------------- */
+  const revalidateCoupon = async (silent = false) => {
+    if (!couponState.couponApplied) return true;
 
-  // --- Auto-apply logic ---
-  useEffect(() => {
-    const autoApplyDisabledAt = localStorage.getItem('autoApplyDisabledAt');
-    const autoApplyDisabled =
-      localStorage.getItem('autoApplyDisabled') === 'true' &&
-      autoApplyDisabledAt &&
-      new Date(autoApplyDisabledAt).getTime() + 5 * 60 * 1000 > new Date().getTime();
+    try {
+      const res = await fetch('/api/checkout/coupons/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: couponState.couponName,
+          totalCost: subTot,
+          isFirstOrder,
+          cartItems: flattenCart(cartItems),
+        }),
+      });
+      const data = await res.json();
 
+      if (!res.ok || !data.valid || data.discountValue <= 0) {
+        removeCoupon(!silent);
+        if (!silent) snack(`Coupon ${couponState.couponName} no longer valid.`, 'warning');
+        return false;
+      }
 
-    if (totalQuantity > 0 && !autoApplyDisabled) {
-      const autoApplyOffer = async () => {
-        try {
-          const res = await fetch('/api/checkout/coupons?cards=true');
-          const data = await res.json();
-          if (res.ok && data.coupons && data.coupons.length > 0) {
-            // Filter for autoApply offers that meet cart and first order conditions.
-            const applicableOffers = data.coupons.filter((offer) => {
-              if (!offer.autoApply) return false;
-              const cartCondition = offer.conditions.find((cond) => cond.type === 'cart_value');
-              if (cartCondition && totalCostBeforeDiscount < cartCondition.value) return false;
-              const firstOrderCondition = offer.conditions.find((cond) => cond.type === 'first_order');
-              if (firstOrderCondition && !isFirstOrder) return false;
-              return true;
-            });
-
-            if (applicableOffers.length > 0 && !couponState.couponApplied) {
-              // For each offer, compute the effective discount.
-              const offersWithEffectiveDiscount = applicableOffers.map((offer) => {
-                let effectiveDiscount = 0;
-                const action = offer.actions[0]; // assuming one action per offer
-                if (action.type === 'discount_percent') {
-                  effectiveDiscount = Math.min(
-                    (action.discountValue / 100) * totalCostBeforeDiscount,
-                    offer.discountCap || Infinity
-                  );
-                } else if (action.type === 'discount_fixed') {
-                  effectiveDiscount = action.discountValue;
-                }
-                return { ...offer, effectiveDiscount };
-              });
-
-              // Find the offer with the maximum effective discount.
-              const bestOffer = offersWithEffectiveDiscount.reduce((prev, curr) => {
-                return curr.effectiveDiscount > prev.effectiveDiscount ? curr : prev;
-              }, offersWithEffectiveDiscount[0]);
-
-              setAutoApplyAnimation(true);
-              setTimeout(() => {
-                setAutoAppliedCoupon(true);
-                handleApplyCoupon(
-                  bestOffer.couponCodes[0],
-                  bestOffer.actions[0].discountValue,
-                  bestOffer.actions[0].type === 'discount_percent' ? 'percentage' : 'fixed',
-                  false,
-                  bestOffer
-                );
-                setAutoApplyAnimation(false);
-              }, 1000);
-            }
-          }
-        } catch (error) {
-          console.error('Error during auto apply:', error.message);
-        }
-      };
-
-      autoApplyOffer();
+      if (data.discountValue !== couponState.couponDiscount) {
+        setCouponState(p => ({ ...p, couponDiscount: data.discountValue }));
+        dispatchCoupon({ ...couponRedux, discountAmount: data.discountValue });
+      }
+      return true;
+    } catch {
+      if (!silent) snack('Could not verify coupon.', 'error');
+      return false;
     }
-  }, [totalQuantity, totalCostBeforeDiscount, couponState.couponApplied, isFirstOrder, cartItems]);
-
-  // --- Re-check applied coupon on cart update dynamically ---
-  useEffect(() => {
-    if (couponState.couponApplied && couponState.offer) {
-      const stillApplicable = isOfferApplicable(couponState.offer, totalCostBeforeDiscount, isFirstOrder);
-      if (!stillApplicable) {
-        handleRemoveCoupon();
-        setSnackbar({
-          open: true,
-          message: `The applied offer (${couponState.couponName}) is no longer valid due to cart changes.`,
-          severity: 'warning',
-        });
-      }
-    }
-  }, [totalCostBeforeDiscount, couponState, isFirstOrder, cartItems]);
-
-  useEffect(() => {
-    const fetchBestCoupon = async () => {
-      if (totalCostBeforeDiscount <= 0) return;
-      try {
-        const res = await axios.get('/api/checkout/bestcoupon', {
-          params: { cartValue: totalCostBeforeDiscount, appliedCoupon: couponState.couponName },
-        });
-        if (res.status === 200) {
-          const { bestOffer, shortfall } = res.data;
-          setBestCoupon(bestOffer);
-          setCouponShortfall(shortfall);
-
-        }
-      } catch (error) {
-        console.error('Error fetching best coupon:', error);
-      }
-    };
-
-    fetchBestCoupon();
-  }, [totalCostBeforeDiscount]);
-
-  // Close snackbar
-  const handleSnackbarClose = () => {
-    setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
+  /* run on cart changes */
+  useEffect(() => { revalidateCoupon(true); }, [cartItems, subTot]); // eslint-disable-line
+
+  /* ---------- validate before checkout (unchanged) ------------------ */
+  const handleCheckout = async () => {
+    setDlgOrder(true);
+  };
+
+  /* ---------- memo for suggestions (unchanged) ---------------------- */
+  const topSub = useMemo(() => [...new Set(cartItems.map(i => i.productDetails.subCategory))], [cartItems]);
+  const topIds = useMemo(() => cartItems.map(i => i.productDetails._id).join(','), [cartItems]);
+
+const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 ? 99 : 0);
+
+  /* -------------------  JSX (UI with fixes)  ------------------------- */
   return (
-    <div className={styles.container} style={{ position: 'relative' }}>
-      <header className={styles.headerCont0}>
-        <ViewCartHeader totalQuantity={totalQuantity} onBack={handleBack} />
+    <div
+      className={styles.container}
+      style={{
+        position: 'relative',
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        backgroundColor: '#f8f9fa'
+      }}
+    >
+      <header className={styles.headerCont}>
+        <ViewCartHeader
+          totalQuantity={qty}
+          onBack={isDrawer ? handleBackClick : undefined}
+        />
       </header>
 
-      {totalQuantity > 0 && <div className={styles.maincomp}>
-
-        <div className={styles.blueCont}>
-          {totalQuantity > 0 && <CartList cartItems={cartItems} onRemove={handleRemoveItem} />}
-        </div>
-
-        <div className={styles.blueCont2}>
-
-          {/* 2) Section: "Add ₹XYZ more to unlock X% off" if bestCoupon is not yet applicable */}
-          {bestCoupon && couponShortfall > 0 && (
-            <div className={styles.lockedOfferContainer}>
-
-              <span className={styles.lockedOfferText}>
-                Add ₹{couponShortfall} more to unlock {bestCoupon.discountType === 'percentage' ? `${bestCoupon.discountValue}%` : bestCoupon.discountValue} off coupon
-              </span>
-              <DiscountOutlinedIcon sx={{ color: '#4dff68', fontSize: 40 }} />
-
-            </div>
-          )}
-
-          {/* 3) If a coupon is applied, show "You saved ₹X on {couponState.couponName}" */}
-          <div className={styles.currentAndAllCoupons}>
-
-            {couponState.couponApplied && couponState.couponDiscount > 0 && (
-              <div className={styles.couponSaveBanner}>
-                <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27, marginLeft: '-0.1rem' }} />
-
-                <span>
-                  <span style={{ fontWeight: 600 }}>
-                    You saved</span> ₹{calculateDiscountAmount(totalCostBeforeDiscount, couponState)} on {couponState.couponName}
-
-                </span>
+      <div className={styles.scrollableContent}>
+        {qty > 0 ? (
+          <motion.div
+            className={styles.mainContent}
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+          >
+            <section className={styles.cartSection}>
+              <div className={styles.sectionHeader}>
+                <ShoppingBagIcon className={styles.sectionIcon} />
+                <h2 className={styles.sectionTitle}>Your Cart ({qty})</h2>
               </div>
-            )}
 
-            {/* If bestCoupon is already applicable (shortfall = 0) but not applied,
-          you 
-          can optionally show "You can unlock 10% off now!" */}
-            {appliableCoupon && appliableCouponShortfall === 0 && !couponState.couponApplied && (
-              <div className={styles.couponSaveBanner}>
-                <CheckCircleIcon sx={{ color: '#1bde6a', fontSize: 27, marginLeft: '-0.1rem' }} />
+              <CartList
+                cartItems={cartItems}
+                onRemove={id => dispatch(removeItem({ productId: id }))}
+              />
+            </section>
 
-                <span className={styles.couponSaveBanner}>
-                  You can now unlock {appliableCoupon.discountType === 'percentage' ? `${appliableCoupon.discountValue}%` : appliableCoupon.discountValue} off coupon!
-                </span>
-                <button
-                  className={styles.applyNowButton}
-                  onClick={() => setIsCouponDialogOpen(true)}
+            <section className={styles.detailsSection}>
+              {/* Free Shipping Banner - Show when qty > 0 and delivery is free */}
+              {qty > 0 && deliveryCost === 0 && shippingTimer.isActive && (
+                <AnimatePresence>
+                  <motion.div
+                    className={styles.freeShippingBanner}
+                    variants={shippingBannerVariants}
+                    initial="hidden"
+                    animate={["visible", "pulse"]}
+                  >
+                    <div className={styles.shippingIconWrapper}>
+                      <LocalShippingIcon className={styles.shippingIcon} />
+                    </div>
+                    <motion.div
+                      className={styles.shippingBannerContent}
+                      initial={{ opacity: 0 }}
+                      animate={{
+                        opacity: 1,
+                        transition: { delay: 0.2, duration: 0.4 }
+                      }}
+                    >
+                      <span className={styles.shippingBannerHeading}>
+                        FREE DELIVERY
+                        <motion.div 
+                          className={styles.timerContainer}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ 
+                            opacity: 1, 
+                            scale: 1,
+                            transition: { delay: 0.4, duration: 0.3 }
+                          }}
+                        >
+                          <span className={styles.timerLabel}>Ends in:</span>
+                          <span className={styles.timerDigits}>
+                            {formatTime(timeRemaining.hours)}
+                            <span className={styles.timerSeparator}>:</span>
+                            {formatTime(timeRemaining.minutes)}
+                            <span className={styles.timerSeparator}>:</span>
+                            {formatTime(timeRemaining.seconds)}
+                          </span>
+                        </motion.div>
+                      </span>
+                      <span className={styles.shippingBannerText}>
+                        You saved <strong>₹{standardDeliveryCost}</strong> on shipping
+                      </span>
+                    </motion.div>
+                  </motion.div>
+                </AnimatePresence>
+              )}
+
+              {/* Locked/Active Coupon Banners */}
+              {lockedCoupon && (
+                <motion.div
+                  className={styles.lockedOfferContainer}
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
                 >
-                  Apply Now
-                </button>
-              </div>
-            )}
+                  <div className={styles.lockedOfferContent}>
+                    <DiscountOutlinedIcon className={styles.discountIcon} />
+                    <div className={styles.lockedOfferMessage}>
+                      <span className={styles.lockedOfferHeading}>Unlock Special Offer!</span>
+                      <span className={styles.lockedOfferText}>
+                        Add <strong>₹{lockedShort}</strong> more to get
+                        {lockedCoupon.discountType === 'percentage'
+                          ? <strong> {lockedCoupon.discountValue}% </strong>
+                          : <strong> ₹{lockedCoupon.discountValue} </strong>}
+                        off your order
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
 
+              {/* Applied Coupon Section with enhanced animation */}
+              <AnimatePresence>
+                {couponState.couponApplied && (
+                  <motion.div
+                    className={styles.appliedCouponBanner}
+                    initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      scale: 1,
+                      transition: { duration: 0.4 }
+                    }}
+                    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.3 } }}
+                  >
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{
+                        scale: [0, 1.2, 1],
+                        transition: { duration: 0.5, delay: 0.2 }
+                      }}
+                      className={styles.successIconContainer}
+                    >
+                      <CheckCircleIcon className={styles.successIcon} />
+                    </motion.div>
+                    <div className={styles.appliedCouponContent}>
+                      <span className={styles.appliedCouponHeading}>Discount Applied!</span>
+                      <motion.span
+                        className={styles.appliedCouponText}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1, transition: { delay: 0.3 } }}
+                      >
+                        You saved <strong>₹{couponState.couponDiscount}</strong>{' '}
+                        {couponState.discountType === 'bundle'
+                          ? 'on your bundle'
+                          : `with ${couponState.couponName}`}
+                      </motion.span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-            {(appliableCoupon && appliableCouponShortfall === 0 && !couponState.couponApplied) || (couponState.couponApplied && couponState.couponDiscount > 0) &&
-              <div style={{ borderBottom: '1px dashed #cee2ff', margin: '0 1rem' }}>
-              </div>
-            }
-
-
-            {/* 4) "View all coupons" link that leads to the same modal as "Check coupons" */}
-            {totalQuantity > 0 && (
-              <div
-                onClick={() => setIsCouponDialogOpen(true)}
-                className={styles.viewAllCouponsSection}>
-                <button
-                  className={styles.viewAllCouponsButton}
+              {/* Available Coupon Banner */}
+              {!couponState.couponApplied && nowCoupon && (
+                <motion.div
+                  className={styles.availableCouponBanner}
+                  whileHover={{ scale: 1.02 }}
                 >
-                  <DiscountIcon sx={{ color: 'white', fontSize: 15 }} />
-                </button>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
+                  <LocalOfferIcon className={styles.offerIcon} />
+                  <div className={styles.availableCouponContent}>
+                    <span className={styles.availableCouponHeading}>Special Offer Available!</span>
+                    <span className={styles.availableCouponText}>
+                      Get {nowCoupon.discountType === 'percentage'
+                        ? `${nowCoupon.discountValue}%`
+                        : `₹${nowCoupon.discountValue}`}{' '}
+                      off on your order
+                    </span>
+                  </div>
+                  <motion.button
+                    className={styles.applyNowButton}
+                    onClick={() => setDlgCoupon(true)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Apply
+                  </motion.button>
+                </motion.div>
+              )}
 
-                  <span className={styles.viewAllCouponsText}>View all coupons</span>
-                  <ChevronRightIcon sx={{ color: '#616161', fontSize: 22 }} />
+              {/* View All Coupons Button */}
+              <div onClick={() => setDlgCoupon(true)} className={styles.viewAllCouponsSection}>
+                <div className={styles.viewAllCouponsContent}>
+                  <DiscountIcon className={styles.couponIcon} />
+                  <span className={styles.viewAllCouponsText}>View all available offers</span>
                 </div>
+                <ChevronRightIcon className={styles.arrowIcon} />
               </div>
-            )}
-          </div>
 
-          {totalQuantity > 0 && (
-            <PriceDetails
-              deliveryCost={deliveryCost}
-              couponState={couponState}
-              discountAmount={discountAmount}
-              totalCostWithDelivery={totalCostWithDelivery}
-              onOpenCoupon={() => setIsCouponDialogOpen(true)}
-              onRemoveCoupon={handleRemoveCoupon}
-            />
-          )}
-          {totalQuantity > 0 && (
-            <PaymentModes
-              paymentModes={paymentModes}
-              isLoading={isLoadingPaymentModes}
-              selectedPaymentMode={selectedPaymentMode}
-              onChange={handlePaymentModeChange}
-            />
+              {/* Price Details */}
+              <PriceDetails
+                deliveryCost={deliveryCost}
+                couponState={couponState}
+                discountAmount={disc}
+                subtotal={subTot}
+                totalCostWithDelivery={totalPay}
+                onOpenCoupon={() => setDlgCoupon(true)}
+                onRemoveCoupon={removeCoupon}
+                extraCharge={extraCharge}
+                totalMrp={MrpTotal}
+                originalTotal={originalTotal}
 
-          )}
+              />
 
 
-        </div>
-      </div>}
 
-      <div style={{
-        margin: '0 0.4rem', borderRadius: '0.6rem', backgroundColor: 'white', marginTop: totalQuantity <= 0 ? '0rem' : '-0.5rem'
-        //  border:'1px solid red'
-      }}>
-        <TopBoughtProducts subCategories={topBoughtSubCategories} currentProductId={topBoughtCurrentProductId} />
+              {/* Payment Modes */}
+              <PaymentModes
+                paymentModes={paymentModes}
+                isLoading={loadingPM}
+                selectedPaymentMode={selectedPM}
+                onChange={e => setSelectedPM(paymentModes.find(m => m.name === e.target.value))}
+              />
+            </section>
 
+            {/* Recommended Products */}
+            <section className={styles.recommendedSection}>
+              <h2 className={styles.recommendedTitle}>You might also like</h2>
+              <TopBoughtProducts
+                subCategories={topSub}
+                currentProductId={topIds}
+                pageType="viewcart"
+                hideHeading={true}
+              />
+            </section>
+          </motion.div>
+        ) : (
+          <motion.div
+            className={styles.emptyCartContainer}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className={styles.emptyCartContent}>
+              <div className={styles.emptyCartIcon}>
+                <ShoppingBagIcon style={{ fontSize: 80, color: '#d1d1d1' }} />
+              </div>
+              <h2 className={styles.emptyCartTitle}>Your cart is empty</h2>
+              <p className={styles.emptyCartSubtitle}>Add items to begin shopping</p>
+              <motion.button
+                className={styles.continueShopping}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => dispatch(closeCartDrawer())}
+              >
+                Continue Shopping
+              </motion.button>
+            </div>
+            <div className={styles.recommendedForYou}>
+              <h3 className={styles.recommendedTitle}>Recommended For You</h3>
+              <TopBoughtProducts 
+                hideHeading={true}
+              pageType="viewcart" />
+            </div>
+          </motion.div>
+        )}
       </div>
-      <div style={{
-        margin: '0.4rem 0.4rem', borderRadius: '0.6rem', backgroundColor: 'white',
-        padding: '0 0.5rem',
-        paddingLeft: '0.8rem'
-        //  border:'1px solid red'
-      }}>
-        <HappyCustomersClient headingText="Happy Customers" />
-      </div>
 
-
-
-      {totalQuantity > 0 && (
-        <Footer
-          totalCost={totalCostWithDelivery}
-          originalTotal={couponState.couponApplied ? originalTotal + 100 : originalTotal + 100}
-          onCheckout={handleCheckout}
-          onlinePercentage={onlinePercentage}
-          codPercentage={codPercentage}
-        />
-      )}
+      {qty > 0 && (
+        <motion.div
+          className={styles.checkoutFooter}
+          initial={{ y: 100 }}
+          animate={{ y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        >
+          <Footer
+            totalCost={totalPay}
+            originalTotal={originalTotal}
+            onCheckout={handleCheckout}
+            onlinePercentage={selectedPM?.configuration?.onlinePercentage || 0}
+            codPercentage={selectedPM?.configuration?.codPercentage || 0}
+            isRevalidatingCoupons={revalidatingCoupons}
+            discount={disc}
+          />
+        </motion.div>)
+      }
 
       <ApplyCoupon
-        open={isCouponDialogOpen}
-        onClose={() => setIsCouponDialogOpen(false)}
-        onApplyCoupon={handleApplyCoupon}
-        totalCost={totalCostBeforeDiscount}
+        open={dlgCoupon}
+        onClose={() => setDlgCoupon(false)}
+        onApplyCoupon={applyCoupon}
+        totalCost={subTot}
         isFirstOrder={isFirstOrder}
+        cartItems={cartItems}
+        appliedCoupon={couponState.couponName}
       />
       <OrderForm
-        open={isOrderFormOpen}
-        onClose={() => setIsOrderFormOpen(false)}
-        paymentModeConfig={selectedPaymentMode}
+        open={dlgOrder}
+        onClose={() => setDlgOrder(false)}
+        paymentModeConfig={selectedPM}
         couponCode={couponState.couponApplied ? couponState.couponName : null}
-        totalCost={totalCostWithDelivery}
-        couponsDetails={couponApplied}
+        totalCost={totalPay}
+        couponsDetails={couponRedux}
         deliveryCost={deliveryCost}
-        discountAmountFinal={discountAmount}
+        discountAmountFinal={disc}
         items={cartItems}
+        subTotal={subTot}
       />
+
       <CustomSnackbar
         open={snackbar.open}
         message={snackbar.message}
         severity={snackbar.severity}
-        handleClose={handleSnackbarClose}
+        handleClose={() => setSnackbar(p => ({ ...p, open: false }))}
       />
     </div>
   );
-};
+}
 
-export default ViewCart;
+

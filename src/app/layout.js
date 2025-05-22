@@ -4,16 +4,13 @@ import '@/styles/globals.css';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { generateWebsiteSchema, generateOrganizationSchema } from '@/lib/metadata/json-lds';
 import ReduxProvider from '@/components/layouts/ReduxProvider';
-// import FloatingActionBar from '@/components/utils/FloatingActionButton';
+import FloatingActionBar from '@/components/utils/FloatingActionButton';
 import TopLoadingBar from '@/components/utils/TopLoadingBar';
 import AnalyticsHead from '@/components/layouts/AnalyticsHead';
 import UTMCapture from '@/components/analytics/UTMCapture';
 
-
-
 // Google Fonts
 import { Krona_One, Jost, Montserrat } from 'next/font/google';
-import dynamic from 'next/dynamic';
 import LoginDialog from '@/components/dialogs/LoginDialog';
 import TimeTracker from '@/components/utils/userBehavior/TimeTracker';
 import PathnameTracker from '@/components/utils/userBehavior/PathnameTracker';
@@ -22,6 +19,8 @@ import Topbar from '@/components/layouts/Topbar';
 import Sidebar from '@/components/layouts/Sidebar';
 import SearchCategoryDialog from '@/components/dialogs/SearchCategoryDialog';
 import Footer from '@/components/layouts/Footer';
+import CartDrawer from '@/components/dialogs/CartDrawer';
+import CartInitializer from '@/components/utils/CartInitializer';
 
 // Configure Krona One with its only available weight
 const kronaOne = Krona_One({
@@ -45,7 +44,6 @@ const montserrat = Montserrat({
   style: ['normal', 'italic'],
   display: 'swap',
 });
-
 
 // Generate metadata
 export async function generateMetadata() {
@@ -80,9 +78,11 @@ export default function RootLayout({ children }) {
           <Topbar />
           <Sidebar />
           <SearchCategoryDialog />
+          <CartDrawer />
+          <CartInitializer />
 
           {children}
-          {/* <FloatingActionBar /> */}
+          <FloatingActionBar />
           <Footer />
           <TimeTracker />
           <LoginDialog />

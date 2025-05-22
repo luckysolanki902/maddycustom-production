@@ -1,70 +1,523 @@
-.inputMain {
-    background-color: #E6F0E6;
-    font-family: Jost, sans-serif;
-    padding: 0.5rem 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    /* margin: 1rem 2rem; */
-    border-radius: 0.6rem;
-
+/* Dialog Header - Simplified and aligned with cart UI */
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background-color: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 11;
+  border-bottom: 1px solid #f2f2f2;
 }
 
-.inputMain input {
-    border: none;
-    outline: none;
-    background-color: #E6F0E6;
-    width: 100%;
-    padding: 0.5rem;
-    font-size: 1rem;
-    flex: 1;
-    margin-right: 1rem;
-    text-transform: uppercase;
+.dialogTitle {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: #2d2d2d;
+  margin: 0;
 }
 
-.inputMain input::placeholder {
-    font-family: Jost, sans-serif;
-    /* font-weight: 100; */
-    /* letter-spacing: 2px; */
-    text-transform: none;
-}
-.backButton{
-    background-color: transparent;
-    cursor: pointer;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0.9rem;
-    margin: 0 0.5rem;
+.closeButton {
+  color: #2d2d2d !important;
 }
 
-.backButton:hover{
-    background-color: #e6f0e686;
+/* Search container - cleaner design */
+.searchContainer {
+  padding: 16px 20px;
+  background-color: #ffffff;
+  position: sticky;
+  top: 60px;
+  z-index: 10;
+  border-bottom: 1px solid #f2f2f2;
 }
+
+/* Simplified search bar matching cart style */
+.couponInput {
+  background: #f8f9fa;
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.couponInput:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.couponInput input {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+}
+
+.couponInput input:focus {
+  background: white;
+}
+
+.couponInput fieldset {
+  border: 1px solid #e0e0e0 !important;
+}
+
+.searchIcon {
+  color: #757575;
+  margin-right: 8px;
+  font-size: 20px !important;
+}
+
+/* Fix button spacing issue */
+.applyButton {
+  background-color: #2d2d2d !important;
+  color: white !important;
+  font-weight: 500;
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+  text-transform: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  min-width: 80px !important;
+  margin-right: 0 !important;
+  transition: all 0.2s ease !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+  font-size: 14px !important;
+}
+
+.applyButton:hover {
+  background-color: #000000 !important;
+  transform: translateY(-1px) !important;
+}
+
+.applyButton:active {
+  transform: translateY(1px) !important;
+}
+
+/* Loading button state */
+.applyButton.loading {
+  background-color: #e0e0e0 !important;
+  color: #757575 !important;
+  pointer-events: none;
+}
+
+/* Best Deal Banner - Aligned with cart UI and updated with beautiful green gradient */
+.bestDealBanner {
+  background: linear-gradient(135deg, #0cce6acc 0%, #12b76abc 100%);
+  color: white;
+  border-radius: 12px;
+  margin:  20px 16px;
+  margin-bottom: 10px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.2);
+  position: relative;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.bestDealBanner::before {
+  content: '';
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  top: -75px;
+  right: -50px;
+  z-index: 0;
+}
+
+.bestDealBanner::after {
+  content: '';
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  bottom: -50px;
+  left: -30px;
+  z-index: 0;
+}
+
+.bestDealIconWrap {
+  background-color: rgba(255, 255, 255, 0.25);
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.bestDealIcon {
+  font-size: 24px !important;
+  color: #ffffff;
+}
+
+.bestDealContent {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  padding: 12px;
+}
+
+.bestDealTitle {
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.bestDealDescription {
+  opacity: 0.9;
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+/* Applied banner variant */
+.appliedBanner {
+  background: linear-gradient(135deg, #0cce6acc 0%, #12b76abc 100%);
+}
+
+.contentScrollable {
+  overflow-y: auto;
+  padding-bottom: 16px;
+}
+
+.sectionContainer {
+  margin: 8px 0;
+  padding: 0 20px;
+}
+
+.sectionTitle {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 600;
+  color: #2d2d2d;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+/* Tabs styling - simplified to match cart UI */
+.tabsContainer {
+  background: #ffffff;
+  position: sticky;
+  top: 118px;
+  z-index: 9;
+  padding: 0 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid #f2f2f2;
+}
+
+.tabs {
+  min-height: 48px;
+  position: relative;
+}
+
+.tab {
+  text-transform: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  font-weight: 500 !important;
+  color: #757575 !important;
+  min-height: 48px !important;
+  padding: 0 16px !important;
+  transition: all 0.2s ease !important;
+}
+
+.activeTab {
+  color: #2d2d2d !important;
+  font-weight: 600 !important;
+}
+
+.tabIndicator {
+  height: 3px !important;
+  border-radius: 3px 3px 0 0 !important;
+}
+
+/* Custom styled tab indicators - Updated colors to match teal/green theme */
+.availableTabIndicator {
+  background-color: #22c55e !important;
+}
+
+.lockedTabIndicator {
+  background-color: #14b8a6 !important; /* teal */
+}
+
+.tabLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  font-size: 14px;
+}
+
+.tabIcon {
+  font-size: 20px !important;
+}
+
+.lockedBadge span {
+  background-color: #14b8a6 !important; /* teal */
+  color: white !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  font-weight: 600 !important;
+}
+
+/* Tab content transition */
+.tabContent {
+  padding: 0 20px;
+}
+
+.tabPanel {
+  min-height: 200px;
+  padding-top: 16px;
+}
+
+/* Unlock message - Changed to match the green-teal palette */
+.unlockMessage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: #ccfbf1;
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border-left: 4px solid #0d9488;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.unlockIcon {
+  color: #0d9488; /* teal-700 */
+  font-size: 24px !important;
+}
+
+/* Card grid with auto sizing for cards */
 .couponCardsSection {
-    padding:1rem 1rem;
-    margin: 0rem;
-    display: flex;
-    justify-content: flex-start;
-    gap: 1rem;
-    flex-wrap: wrap;
-    /* justify-items: center; */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 20px;
 }
 
-@media(width<600px) {
-    .couponCardsSection {
-        display: grid;
-        padding: 1rem 0;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 1rem;
-        justify-items: center;
-        /* No margin on .card elements; let grid handle spacing */
-      }
+/* Coupon skeleton */
+.couponSkeleton {
+  height: 220px;
+  width: 100%;
+  border-radius: 12px !important;
+  background-color: #f2f2f2;
 }
 
-@media(width<440px) {
-    .couponCardsSection {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      }
+.noCouponsMessage {
+  text-align: center;
+  padding: 32px 16px;
+  color: #757575;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.switchTabButton {
+  margin-top: 16px !important;
+  text-transform: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  background-color: #2d2d2d !important;
+  color: white !important;
+}
+
+.switchTabButton:hover {
+  background-color: #000000 !important;
+}
+
+/* All unlocked message */
+.noLockedCoupons {
+  background-color: #dcfce7;
+  border: none;
+  padding: 40px 24px;
+}
+
+.allUnlockedIcon {
+  font-size: 42px !important;
+  color: #22c55e;
+  margin-bottom: 16px;
+}
+
+.allUnlockedTitle {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  font-weight: 600 !important;
+  margin-bottom: 12px !important;
+  color: #16a34a;
+}
+
+.termsContainer {
+  margin: 0 20px 16px;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.termsText {
+  color: #757575;
+  line-height: 1.6;
+  font-size: 12px;
+}
+
+.appliedCard {
+  animation: pulseGreen 2s infinite;
+}
+
+@keyframes pulseGreen {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+/* Unlock More Button - New persuasive button styling */
+.unlockMoreButtonContainer {
+  grid-column: 1 / -1;
+  padding: 16px 0 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.unlockMoreButton {
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 10px 20px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2) !important;
+  transition: all 0.3s ease !important;
+  position: relative;
+  overflow: hidden !important;
+  min-width: 250px !important;
+}
+
+.unlockMoreButton:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(13, 148, 136, 0.3) !important;
+}
+
+.unlockMoreButton:active {
+  transform: translateY(1px) !important;
+}
+
+.unlockMoreButton::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 20px;
+  height: 200%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(30deg);
+  transition: all 0.8s;
+}
+
+.unlockMoreButton:hover::after {
+  left: 120%;
+}
+
+.unlockMoreContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.unlockMoreTitle {
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  margin-bottom: 2px !important;
+}
+
+.unlockMoreSubtitle {
+  opacity: 0.9;
+  font-size: 12px !important;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .couponCardsSection {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+/* Mobile view - one card per row for devices up to 480px */
+@media (max-width: 480px) {
+  .couponCardsSection {
+    grid-template-columns: 1fr; /* Single column layout */
+    gap: 12px;
+    padding: 0 4px;
+  }
+  
+  /* Center the card */
+  .couponCardsSection > div {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .bestDealBanner {
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+  }
+  
+  .bestDealIconWrap {
+    margin-bottom: 12px;
+  }
+  
+  .bestDealContent {
+    text-align: center;
+    padding: 0;
+  }
+  
+  .tab {
+    font-size: 13px !important;
+    padding: 0 8px !important;
+  }
+  
+  .unlockMoreButton {
+    min-width: 200px !important;
+    padding: 8px 16px !important;
+  }
+}
+
+@media (max-width: 400px) {
+  /* Maintain the single column from the 480px breakpoint */
+  /* Other styles unchanged */
+  
+  .dialogHeader, .searchContainer, .tabsContainer, .tabContent {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  
+  .bestDealBanner {
+    margin: 0 12px 16px;
+  }
+  
+  .termsContainer {
+    margin: 12px;
+  }
 }

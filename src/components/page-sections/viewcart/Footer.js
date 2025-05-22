@@ -2,72 +2,109 @@
 'use client';
 
 import React from 'react';
-import { useTransition, animated } from '@react-spring/web';
-import { Typography, Divider } from '@mui/material';
-import styles from './styles/viewcart.module.css';
-import BlackButtonWithOnClick from '@/components/utils/BlackButtonWithOnClick';
-const Footer = ({ totalCost, originalTotal, onCheckout,  onlinePercentage, codPercentage }) => {
+import { motion } from 'framer-motion';
+import { CircularProgress } from '@mui/material';
+import styles from './styles/footer.module.css';
 
-  const onlineAmount = Math.floor((totalCost * onlinePercentage) / 100);
-  const codAmount = Math.ceil((totalCost * codPercentage) / 100);
+const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = false, discount = 0, onlinePercentage, codPercentage }) => {
+  const handleCheckout = () => {
+    if (isRevalidatingCoupons) return;
+    onCheckout();
+  };
 
-  const showSplit = codAmount > 0 && onlineAmount > 0;
+  // Check if there's a discount to show savings
+  const hasSavings = originalTotal > totalCost;
+  
+  // Calculate percentage savings
+  const savingsPercent = hasSavings ? Math.round(((originalTotal - totalCost) / originalTotal) * 100) : 0;
 
-  // Define transitions for the split payment section
-  const transitions = useTransition(showSplit, {
-    from: { opacity: 0, transform: 'translateY(-20px)' },
-    enter: { opacity: 1, transform: 'translateY(0px)' },
-    config: { tension: 220, friction: 20 },
-  });
+  // Determine if this is a split payment scenario
+  const isSplitPayment = onlinePercentage > 0 && onlinePercentage < 100;
+
+  // Calculate split amounts
+  const onlineAmount = isSplitPayment ? Math.round((totalCost * onlinePercentage) / 100) : totalCost;
+  const codAmount = isSplitPayment ? totalCost - onlineAmount : 0;
 
   return (
-    <footer className={styles.footer}>
-      <div className={`${styles.leftSection} ${showSplit ? styles.borderRt : ''}  `}>
-
-        {transitions((style, item) =>
-          item ? (
-            <animated.div style={style} className={styles.paymentSplitMainDiv}>
-              <div className={styles.paymentSplit}>
-                <Typography variant="body1" className={styles.paymentText} sx={{fontSize:'0.9rem'}}>
-                  Online <br /> Payment <span className={styles.amount}>₹{onlineAmount}</span>
-                </Typography>
+    <div className={styles.footerContainer}>
+      <div className={styles.priceContainer}>
+        {isSplitPayment ? (
+          <div className={styles.splitWrapper}>
+            <div className={styles.totalAmount}>
+              <span className={styles.totalText}>Total</span>
+              <div className={styles.priceStack}>
+                <span className={styles.finalPrice}>₹{totalCost.toFixed(0)}</span>
+                {hasSavings && (
+                  <span className={styles.originalPrice}>₹{originalTotal.toFixed(0)}</span>
+                )}
               </div>
-              <hr style={{height:'2px', width:'100%'}}/>
-              <div className={styles.paymentSplit}>
-                <Typography variant="body1" className={styles.paymentText} sx={{fontSize:'0.9rem'}}>
-                  Pay on <br /> Delivery <span className={styles.amount}>₹{codAmount}</span>
-                </Typography>
+            </div>
+            
+            <div className={styles.paymentSplitContainer}>
+              <div className={styles.paymentOption}>
+                <div>
+                  <span className={styles.paymentLabel}>Pay Online</span>
+                  <span className={styles.paymentAmount}>₹{onlineAmount}</span>
+                </div>
               </div>
-            </animated.div>
-          ) : null
+              
+              <div className={styles.divider}>+</div>
+              
+              <div className={styles.paymentOption}>
+                <div>
+                  <span className={styles.paymentLabel}>Pay on Delivery</span>
+                  <span className={styles.paymentAmount}>₹{codAmount}</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* {hasSavings && (
+              <div className={styles.savingsBadge}>
+                <span>Save {savingsPercent}%</span>
+              </div>
+            )} */}
+          </div>
+        ) : (
+          <div className={styles.priceSummary}>
+            <div className={styles.priceDetails}>
+              <span className={styles.totalText}>Total Amount</span>
+              <div className={styles.priceStack}>
+                <span className={styles.finalPrice}>
+                  ₹{totalCost.toFixed(0)}
+                </span>
+                <span className={styles.originalPrice}>
+                  ₹{originalTotal > totalCost ? originalTotal.toFixed(0) : (totalCost * 1.2).toFixed(0)}
+                </span>
+              </div>
+            </div>
+            
+            {/* {hasSavings && (
+              <div className={styles.savingsBadge}>
+                <span>Save {savingsPercent}%</span>
+              </div>
+            )} */}
+          </div>
         )}
-
-        {/* Total Cost Section with Conditional Styling */}
-        <div
-          className={`
-            ${styles.totalCost} 
-          
-          `}
-        >
-          <Typography variant="h6" className={styles.totalCostLabel} sx={{fontSize: { xs: '1.2rem', sm: '1.5rem' }}}>
-            Total
-          </Typography>
-          <Typography variant="body1" className={styles.totalCostValue}>
-            <span className={styles.rupee}>₹</span>{totalCost}
-            {originalTotal && (
-              <span className={styles.originalTotal}>₹{originalTotal}</span>
-            )}
-          </Typography>
-        </div>
       </div>
-
-      <Divider orientation="vertical" flexItem  />
-
-      {/* Right Section: Total Cost and Checkout Button */}
-      <div className={styles.rightSection}>
-        <BlackButtonWithOnClick isLoading={false} buttonText="ORDER" onClick={onCheckout} />
-      </div>
-    </footer>
+      
+      <motion.button
+        className={`${styles.checkoutButton} ${styles.shineEffect}`}
+        onClick={handleCheckout}
+        disabled={isRevalidatingCoupons}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 400, damping: 8 }}
+      >
+        {isRevalidatingCoupons ? (
+          <div className={styles.loadingContainer}>
+            <CircularProgress size={20} color="inherit" />
+            <span>Preparing...</span>
+          </div>
+        ) : (
+          <span>Place Order</span>
+        )}
+      </motion.button>
+    </div>
   );
 };
 

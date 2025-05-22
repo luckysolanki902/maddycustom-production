@@ -13,6 +13,11 @@
     margin: auto;
 }
 
+.topBoughtContainer{
+    margin-top: 3rem;
+    padding: 1rem;
+}
+
 .belowMainHeading {
     text-align: center;
     width: 100%;

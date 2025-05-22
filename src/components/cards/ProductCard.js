@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import styles from './styles/productcard.module.css';
 import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
@@ -28,11 +28,25 @@ function getDisplayImage(product) {
   return { imageUrl: null, outOfStock: true };
 }
 
-const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, hidePrice = false }) => {
+const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, hidePrice = false, offerTaglineText, pageType }) => {
+  const insertionDetails = {
+    component: 'productCard',
+    pageType: pageType || 'unknown',
+  };
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const [isZoomed, setIsZoomed] = useState(false);
   const router = useRouter();
+  //
+  // pull MRP & final price, then memoize discount%
+  // 1) fallback to 1000 if MRP is missing
+  const mrp = product.MRP ?? 1000;
+  const finalPrice = product.variantDetails?.availableBrands?.length > 0
+    ? product.variantDetails.availableBrands[0].brandBasePrice + product.price
+    : product.price;
+  const discountPercent = useMemo(() =>
+    Math.round(((mrp - finalPrice) / mrp) * 100)
+    , [mrp, finalPrice]);
 
   // Zoom animation
   const animationProps = useSpring({
@@ -111,6 +125,10 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
         }
       }}
     >
+      {offerTaglineText && <div className={styles.fixedTagline}>
+       {offerTaglineText}
+      </div>}
+
       {/* Tap to Zoom overlay for small device */}
       {/* {isSmallDevice && !isZoomed && (
         <div
@@ -219,7 +237,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
           </div>
         </div>
 
-        {!hidePrice && <div className={styles.prodDescRow3}>
+        {/* {!hidePrice && <div className={styles.prodDescRow3}>
           <div className={styles.price}>
             <span className={styles.rupees}>₹</span>
             <span className={styles.priceValue}>
@@ -234,7 +252,20 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
               <span style={{ marginLeft: '0.4rem' }}>off</span>
             </div>
           </div>
-        </div>}
+        </div>} */}
+        {/* price + dynamic offer */}
+        {!hidePrice && (
+          <div className={styles.prodDescRow3}>
+            <span className={styles.rupees}>₹{finalPrice}</span>
+            <div className={styles.priceArrangement}>
+              <div className={styles.priceRow}>
+                <span className={styles.mrp}>₹{mrp}</span>
+                <span className={styles.discountPercentage}>{discountPercent}% off</span>
+              </div>
+              <div className={styles.offerSubtitle}>on every order</div>
+            </div>
+          </div>
+        )}
 
         <div className={styles.prodDescLastRow}>
           {/* Condition: If variant is available and not out of stock => show AddToCart */}
@@ -249,6 +280,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
                     ? product.variantDetails.availableBrands[0].brandBasePrice + product.price
                     : product.price,
                 }}
+                insertionDetails={insertionDetails}
               />
             </div>
           )}

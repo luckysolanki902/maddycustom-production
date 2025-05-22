@@ -2,7 +2,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  items: [], // Each item: { productId, quantity, productDetails }
+  items: [], // Each item: { productId, quantity, productDetails, insertionDetails }
 };
 
 const cartSlice = createSlice({
@@ -10,12 +10,21 @@ const cartSlice = createSlice({
   initialState,
   reducers: {
     addItem: (state, action) => {
-      const { productId, productDetails } = action.payload;
+      const { productId, productDetails, insertionDetails } = action.payload;
       const existingItem = state.items.find((item) => item.productId === productId);
       if (existingItem) {
         existingItem.quantity += 1;
+        // Update insertion details if provided
+        if (insertionDetails) {
+          existingItem.insertionDetails = insertionDetails;
+        }
       } else {
-        state.items.push({ productId, quantity: 1, productDetails });
+        state.items.push({ 
+          productId, 
+          quantity: 1, 
+          productDetails,
+          insertionDetails: insertionDetails || {} 
+        });
       }
     },
     removeItem: (state, action) => {
@@ -44,6 +53,16 @@ const cartSlice = createSlice({
     clearCart: (state) => {
       state.items = [];
     },
+    updateQuantity: (state, action) => {
+      const { productId, quantity } = action.payload;
+      const itemIndex = state.items.findIndex(item => 
+        (item.productId === productId || item.productDetails?._id === productId)
+      );
+      
+      if (itemIndex !== -1) {
+        state.items[itemIndex].quantity = quantity;
+      }
+    },
   },
 });
 
@@ -54,6 +73,7 @@ export const {
   decrementQuantity,
   setCart,
   clearCart,
+  updateQuantity,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

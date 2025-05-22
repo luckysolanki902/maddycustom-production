@@ -30,8 +30,22 @@ const noopVerifier = {
 const LoginDialog = () => {
   const dispatch = useDispatch();
   const pathname = usePathname();
-  const { loginDialogShown } = useSelector(state => state.orderForm);
-  const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector(state => state.userBehavior);
+
+  // Access Redux state
+  const userExists = useSelector((state) => state.orderForm.userExists);
+  const loginDialogShown = useSelector((state) => state.orderForm.loginDialogShown);
+  const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
+  const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector((state) => state.userBehavior);
+  const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+  const { control, handleSubmit, reset, formState: { errors } } = useForm({
+    defaultValues: {
+      phoneNumber: '',
+    },
+  });
+  const isUserPhoneNumberValid = useSelector((state) => state.orderForm.userDetails?.phoneNumber?.length === 10);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState('phone');            // 'phone' or 'otp'
@@ -220,7 +234,34 @@ useEffect(() => {
     dispatch(setLoginDialogShown(true));
   };
 
-  if (pathname === '/viewcart') return null;
+
+  // Open the dialog if conditions are met
+  useEffect(() => {
+    if (
+      timeSpentOnWebsite >= 30 && // Total time spent on website is at least 30 seconds
+      scrolledMoreThan60Percent &&
+      !loginDialogShown &&
+      !isUserPhoneNumberValid &&
+      !userExists &&
+      !isCartDrawerOpen && // Don't show if cart drawer is open
+      !pathname.startsWith('/orders/myorder/')
+    ) {
+      setOpen(true);
+      dispatch(setLoginDialogShown(true)); // Prevent showing again
+    }
+  }, [
+    timeSpentOnWebsite, 
+    scrolledMoreThan60Percent, 
+    loginDialogShown, 
+    userExists, 
+    pathname, 
+    dispatch, 
+    isUserPhoneNumberValid, 
+    isCartDrawerOpen
+  ]);
+
+  // Prevent rendering if cart drawer is open
+  if (isCartDrawerOpen) return null;
 
   return (
     <>

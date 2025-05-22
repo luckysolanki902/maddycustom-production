@@ -19,6 +19,7 @@ const TestPage = () => {
   const [dimensions, setDimensions] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [items, setItems] = useState([]);
 
   const handleFetch = async () => {
     setLoading(true);
@@ -41,6 +42,7 @@ const TestPage = () => {
 
       const data = await response.json();
       setDimensions(data.dimensionsAndWeight);
+      setItems(data.items);
     } catch (err) {
       setError(err.message);
       console.error(err);
@@ -111,6 +113,18 @@ const TestPage = () => {
                 <strong>Freebie Weight:</strong> {dimensions.freebieWeight} kg
               </Typography>
             )}
+          </Box>
+        )}
+        {items.length > 0 && (
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              Order Items
+            </Typography>
+            {items.map((item, index) => (
+              <Typography key={index}>
+                {item.name} (Quantity: {item.quantity})
+              </Typography>
+            ))}
           </Box>
         )}
       </Paper>

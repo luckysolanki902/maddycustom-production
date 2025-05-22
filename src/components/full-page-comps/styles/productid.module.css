@@ -23,6 +23,23 @@
     padding: 0 10px;
 }
 
+.offerAdContainer{
+    margin-bottom: 20px;
+    margin-top: 20px;
+    width: 100%;
+    text-decoration: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+}
+
+.bikeBundleImage{
+    width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+}
+
 .cardCaption {
     margin-top: -0.5rem;
     font-family: Jost;
@@ -30,6 +47,58 @@
     color: #676767;
 }
 
+/* ─── Price + Discount Styles ───────────────────────────────────────────── */
+.priceSection {
+    display: flex;
+    flex-direction: row;
+    gap: 0.25rem;
+    margin-top: 0rem;
+  }
+  .priceRow{
+    display: flex;
+    flex-direction:row ;
+    gap: 0.5rem;
+    margin-bottom: 0;
+  }
+  .currentPrice {
+    color: #424242;
+    font-size: 1.5rem;
+    font-weight: 500;
+    letter-spacing: 0.16rem;
+  }
+  
+  .priceArrangement {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-direction: column;
+  }
+  
+  .mrp {
+  text-decoration: line-through;
+  color: #a0a0a0;
+  font-size: 1rem;
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0.1rem;
+  }
+  
+  .discountPercentage {
+    color: #28a745; /* or your theme’s green */
+    font-weight: 400;
+    font-size: 0.875rem;
+  }
+  
+  .offerSubtitle {
+    font-size: 0.9rem;
+    color: #000; 
+    margin: 0;
+    line-height: 1;
+  width: 100%;
+  letter-spacing: 1.4px;
+  margin-top: -0.5rem;
+  }
+  
 .details {
     text-align: left;
 }
@@ -94,7 +163,9 @@
         margin: 0;
         padding: 0;
     }   
-
+.currentPrice{
+    color: #000;
+}
     .imageGallery {
         width: 100%;
         border: none;
@@ -128,7 +199,9 @@
     .soldByCategory{
         margin-top: 0rem;
     }
-
+.currentPrice{
+    color: #000;
+}
     .chatwithus {
         width: 8rem;
         filter: drop-shadow(-5px 3px 3px rgba(0, 0, 0, 0.5));
