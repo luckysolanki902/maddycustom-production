@@ -37,6 +37,7 @@ const AnimatedTopBought = memo(({ singleVariantCode }) => {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    console.log("prod pg");
     const frame = requestAnimationFrame(() => setIsMounted(true));
     return () => cancelAnimationFrame(frame);
   }, []);

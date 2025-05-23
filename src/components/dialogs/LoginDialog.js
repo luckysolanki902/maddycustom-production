@@ -52,9 +52,6 @@ const LoginDialog = () => {
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [snackbar, setSnackbar] = useState({ open:false, msg:'', sev:'success' });
 
-  const { control, handleSubmit, formState: { errors } } = useForm({
-    defaultValues: { phoneNumber: '', otp: '' }
-  });
   const formSubmitHandler = (e) => {
     e.preventDefault();
     console.log(`Submitting form with current step: ${step}`);
