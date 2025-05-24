@@ -14,7 +14,6 @@ import Inventory from '@/models/Inventory';
 
 export const revalidate = 36000;              // 10 h edge‑cache
 const PAGE_SIZE = 10;
-const log = (...a) => console.log('[top‑bought]', ...a);
 
 /* shuffle helper */
 const shuffle = (arr) => {
