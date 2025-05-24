@@ -47,7 +47,6 @@ const CouponCard = ({
   // Animation controls for the badge
   const badgeAnimation = useAnimation();
   const cardAnimation = useAnimation();
-
   useEffect(() => {
     // Set theme based on coupon status
     if (isApplied) {
@@ -60,59 +59,73 @@ const CouponCard = ({
       setTheme(cardThemes.default);
     }
     
-    // Animate the best deal badge
-    if (isBestDeal) {
-      // Initial swing animation
-      badgeAnimation.start({
-        rotateY: [0, 25, -10, 5, 0],
-        rotateZ: [0, -5, 10, -3, 0],
-        transition: { 
-          duration: 2, 
-          ease: "easeInOut",
-          delay: 0.5
-        }
-      });
-      
-      // Continuous subtle swing
-      setTimeout(() => {
-        badgeAnimation.start({
-          rotateY: [0, 5, 0, -5, 0],
-          rotateZ: [0, -2, 0, 2, 0],
+    // Make sure component is mounted before starting animations
+    const animateBadge = async () => {
+      if (isBestDeal) {
+        // Initial swing animation
+        await badgeAnimation.start({
+          rotateY: [0, 25, -10, 5, 0],
+          rotateZ: [0, -5, 10, -3, 0],
+          transition: { 
+            duration: 2, 
+            ease: "easeInOut",
+            delay: 0.5
+          }
+        });
+        
+        // Continuous subtle swing
+        const timerId = setTimeout(() => {
+          badgeAnimation.start({
+            rotateY: [0, 5, 0, -5, 0],
+            rotateZ: [0, -2, 0, 2, 0],
+            transition: {
+              repeat: Infinity,
+              repeatType: "loop",
+              duration: 3,
+              ease: "easeInOut"
+            }
+          });
+        }, 2500);
+        
+        // Cleanup timer if component unmounts
+        return () => clearTimeout(timerId);
+      }
+    };
+    
+    const animateCard = () => {
+      if (isBestDeal) {
+        // Highlight animation for best deal card
+        cardAnimation.start({
+          scale: [1, 1.02, 1],
           transition: {
-            repeat: Infinity,
-            repeatType: "loop",
-            duration: 3,
+            repeat: 2,
+            repeatType: "reverse",
+            duration: 1.5,
+          }
+        });
+      }
+      
+      if (isApplied) {
+        // Applied coupon gets a special highlight
+        cardAnimation.start({
+          y: [0, -5, 0],
+          boxShadow: [
+            "0 4px 12px rgba(12, 206, 107, 0.1)", 
+            "0 8px 24px rgba(12, 206, 107, 0.2)", 
+            "0 4px 12px rgba(12, 206, 107, 0.1)"
+          ],
+          transition: {
+            duration: 1.5,
             ease: "easeInOut"
           }
         });
-      }, 2500);
-      
-      // Highlight animation for best deal card
-      cardAnimation.start({
-        scale: [1, 1.02, 1],
-        transition: {
-          repeat: 2,
-          repeatType: "reverse",
-          duration: 1.5,
-        }
-      });
-    }
+      }
+    };
     
-    // Applied coupon gets a special highlight
-    if (isApplied) {
-      cardAnimation.start({
-        y: [0, -5, 0],
-        boxShadow: [
-          "0 4px 12px rgba(12, 206, 107, 0.1)", 
-          "0 8px 24px rgba(12, 206, 107, 0.2)", 
-          "0 4px 12px rgba(12, 206, 107, 0.1)"
-        ],
-        transition: {
-          duration: 1.5,
-          ease: "easeInOut"
-        }
-      });
-    }
+    // Run animations only after the component has mounted
+    animateBadge();
+    animateCard();
+    
   }, [isBestDeal, isApplied, applicable, badgeAnimation, cardAnimation]);
 
   const handleApplyClick = (e) => {
