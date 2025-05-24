@@ -2,106 +2,75 @@
 
 /* Container for the grid of products */
 .productsGrid {
-  margin-top: 2rem;
+  margin: 2rem 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  /* 2 columns for desktop and tablet */
-  row-gap: 6rem;
-  column-gap: 2rem;
-  padding: 20px;
+  grid-template-columns: repeat(3, 1fr); /* Keep original 3 columns */
+  gap: 24px;
+  padding: 0 20px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .productsGrid2 {
-  margin-top: 0.2rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  row-gap: 0.2rem;
-  column-gap: 0.2rem;
-  /* padding: 20px; */
-  overflow-x: hidden;
-  width: 100%;
-  max-width: 1200px; /* Adjust as needed */
+  grid-template-columns: repeat(4, 1fr); /* Fixed to 4 columns for layout2 */
+  gap: 16px;
+  padding: 16px;
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
-
 }
 
-
-/* Styles for each grid item to ensure equal height */
-.productsGrid>* {
+/* Ensure consistent height for grid items */
+.productsGrid > *, .productsGrid2 > * {
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.productsGrid2>* {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Video card styling */
+/* Video card styling - ensure white background */
 .videoCard {
+  position: relative;
+  background-color: white !important;
+  border-radius: 12px;
+  overflow: hidden;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  background-color: white;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1),
-    0 1px 3px rgba(145, 145, 145, 0.08);
-  padding: 0.2rem 0.5rem 1rem 0.5rem;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* Video styling to maintain aspect ratio */
-.videoCard video {
-  width: 100%;
-  height: auto;
-  max-height: 440px;
-  object-fit: cover;
-  pointer-events: none;
-
-}
-
+/* Video styling - enforce white background */
 .videoCard iframe {
   width: 100%;
-  height: auto;
-  object-fit: cover;
-  pointer-events: none;
   aspect-ratio: 16 / 9;
-  max-height: none;
-  border-radius: 1rem;
-  pointer-events: none;
-  object-fit: fill;
   border: none;
   outline: none;
+  background-color: white !important;
 }
 
+/* Header carousel styling */
 .HeaderCarouselMain {
   width: 100%;
-  height: auto;
-  max-width: 800px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1),
-    0 1px 3px rgba(145, 145, 145, 0.08);
-  padding: 0.2rem 0.5rem 1rem 0.5rem;
+  height: 100%;
+  background-color: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  position: relative;
-  overflow: hidden; /* Prevent child overflow */
-  box-sizing: border-box; /* Ensure padding is included in width */
-
 }
 
 /* "Maddy Customs" text styling */
 .videoCard h1 {
-  text-align: center;
-  margin-top: 1rem;
-  /* Space above the text */
-  font-size: 1.5rem;
-  /* Adjust as needed */
+  padding: 16px;
+  margin: 0;
+  font-size: 1.2rem;
   font-family: 'Jost', sans-serif;
-  /* Consistent font */
-  color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  color: #2d2d2d;
+  text-align: center;
+  background-color: white;
 }
 
 /* ProductCard main container styling */
@@ -126,62 +95,55 @@
   will-change: transform;
 }
 
-@media (max-width: 700px){
-  .productsGrid2{
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-
+/* Responsive breakpoints - maintain correct number of columns */
+@media (max-width: 1200px) {
+  .productsGrid2 {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
+@media (max-width: 1024px) {
+  .productsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .productsGrid2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 
 /* Responsive adjustments for mobile devices */
 @media (max-width: 600px) {
   .productsGrid {
     grid-template-columns: 1fr;
-    /* 1 column for mobile */
-    padding: 0;
-    /* Remove container padding */
-    gap: 5rem;
-    /* Reduce gap for smaller screens */
+    gap: 24px;
+    padding: 16px;
   }
+  
   .productsGrid2 {
-    /* 2 column for mobile  for layout2*/
-  /* grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); */
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-
-    padding: 0;
-    /* Remove container padding */
-    /* gap: 5rem; */
-    /* Reduce gap for smaller screens */
-  }
-
-  .videoCard h1 {
-    display: none;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 12px;
   }
 
   .videoCard {
     width: 95%;
     margin: auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: none;
-    border-radius: 1rem;
-  }
-
-  .videoCard video {
-    border-radius: 1rem;
+    border-radius: 8px;
+    background-color: white;
   }
 
   .videoCard iframe {
-    border-radius: 1rem;
+    border-radius: 8px;
+    background-color: white;
   }
-
 }
 
 @media (max-width: 390px) {
   .productsGrid2 {
-    /* 2 column for mobile  for layout2*/
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    padding: 8px;
   }
 }
