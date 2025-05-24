@@ -19,6 +19,7 @@ import utmReducer from './slices/utmSlice';
 import variantPreferenceReducer from './slices/variantPreferenceSlice';
 import userBehaviorSlice from './slices/userBehaviorSlice';
 import uiReducer from './slices/uiSlice';
+import persistentUiReducer from './slices/persistentUiSlice'; // Import the new slice
 
 const rootReducer = combineReducers({
   cart: cartReducer,
@@ -27,13 +28,14 @@ const rootReducer = combineReducers({
   variantPreference: variantPreferenceReducer,
   userBehavior: userBehaviorSlice,
   ui: uiReducer,
+  persistentUi: persistentUiReducer, // Add the new reducer
 });
 
 const persistConfig = {
-  key: 'root_v4',
+  key: 'root_v4', // Consider incrementing key if structure changes significantly, e.g., 'root_v5'
   storage,
-  // Do not include the UI slice here
-  whitelist: ['cart', 'orderForm', 'utm', 'variantPreference', 'userBehavior'],
+  // Add 'persistentUi' to the whitelist
+  whitelist: ['cart', 'orderForm', 'utm', 'variantPreference', 'userBehavior', 'persistentUi'],
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
