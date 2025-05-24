@@ -529,6 +529,7 @@ const OrderForm = ({
           itemSource: item.productDetails.source || 'inhouse',
           brand: item.productDetails.brand || null,
           option: item.productDetails.selectedOption?._id || null,
+          wrapFinish: item.productDetails.wrapFinish || null,
           name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
             ? item.productDetails.category?.name.slice(0, -1)
             : item.productDetails.category?.name

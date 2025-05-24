@@ -82,6 +82,7 @@ export default function ProductIdPage({
   const productListPageLink = pathname.split("/").slice(0, -1).join("/");
   // Memoize the product list page link to avoid unnecessary re-renders
   const memoizedProductListPageLink = useMemo(() => productListPageLink, [productListPageLink]);
+  const [selectedWrapFinish, setSelectedWrapFinish] = useState('Matte');
 
   const insertionDetails = {
     component: 'productDetails-AddToCart',
@@ -96,7 +97,6 @@ export default function ProductIdPage({
   // Get dispatch and cart items from redux
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
-
   // Compute the option label from the first valid option’s key (pluralized)
   let optionLabel = "Options";
   if (options && options.length > 0) {
@@ -125,7 +125,6 @@ export default function ProductIdPage({
     }
     setSelectedOption(opt);
   };
-
   // Auto-select the first available option (that has inventory) if none is selected
   useEffect(() => {
     if (options && options.length > 0 && !selectedOption) {
@@ -300,11 +299,15 @@ export default function ProductIdPage({
 
   // Helper: Show the prepended selected option if available
   const getDisplayedTitle = () => {
+    if(product.category.toLowerCase() == 'wraps' && selectedWrapFinish) {
+      return `${selectedWrapFinish} ${product.title}`;
+    }
     if (!selectedOption || !selectedOption.optionDetails) {
       return product.title;
     }
     // We'll take the first entry from `optionDetails`. In your use case, 
     // you might want a specific key, e.g. "flavor", "color", etc.
+    
     const detailValue = Object.values(selectedOption.optionDetails)[0];
     if (!detailValue) {
       return product.title;
@@ -408,14 +411,14 @@ export default function ProductIdPage({
             </div>
 
             {/* Render option circles */}
-            {options &&
+            {((options &&
               options.some(
                 (opt) =>
                   opt.optionDetails &&
                   Object.keys(opt.optionDetails).length > 0 &&
                   opt.inventoryData &&
                   opt.inventoryData.availableQuantity > 0
-              ) &&
+              )) || product.category.toLowerCase() === 'wraps') &&
               (isMobile ? (
                 <>
                   {/* Clickable container (icon and label) to toggle options dropdown */}
@@ -503,8 +506,47 @@ export default function ProductIdPage({
                       </div>
                     </div>
                   )}
+
+                  {product.category.toLowerCase() === 'wraps' && (
+                      <>
+                        <div
+                          onClick={() => setSelectedWrapFinish('Matte')}
+                          style={{
+                            width: "2rem",
+                            height: "2rem",
+                            borderRadius: "50%",
+                            border:
+                              selectedWrapFinish === 'Matte'
+                                ? "2px solid #000"
+                                : "1px solid #666",
+                            backgroundImage: 'url("/images/assets/matte.png")',
+                            backgroundSize: "cover",            // ensures image covers the div
+                            backgroundPosition: "center",       // centers the image
+                            backgroundRepeat: "no-repeat",
+                            cursor: "pointer",
+                          }}
+                        />
+                        <div
+                          onClick={() => setSelectedWrapFinish('Glossy')}
+                          style={{
+                            width: "2rem",
+                            height: "2rem",
+                            borderRadius: "50%",
+                            border:
+                              selectedWrapFinish === 'Glossy'
+                                ? "2px solid #000"
+                                : "1px solid #666",
+                            backgroundImage: 'url("/images/assets/glossy.png")',
+                            backgroundSize: "cover",            // ensures image covers the div
+                            backgroundPosition: "center",       // centers the image
+                            backgroundRepeat: "no-repeat",
+                            cursor: "pointer",
+                          }}
+                        />
+                      </>
+                  )}
                 </>
-              ) : (
+                ) : (
                 <div style={{ margin: "1rem 0" }}>
                   <div style={{ marginBottom: "0.5rem" }}>{optionLabel}</div>
                   <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -523,10 +565,47 @@ export default function ProductIdPage({
                           style={getOptionStyle(opt)}
                         />
                       ))}
-                  </div>
+                    {product.category.toLowerCase() === 'wraps' && (
+                      <>
+                        <div
+                          onClick={() => setSelectedWrapFinish('Matte')}
+                          style={{
+                            width: "2rem",
+                            height: "2rem",
+                            borderRadius: "50%",
+                            border:
+                              selectedWrapFinish === 'Matte'
+                                ? "2px solid #000"
+                                : "1px solid #666",
+                            backgroundImage: 'url("/images/assets/matte.png")',
+                            backgroundSize: "cover",            // ensures image covers the div
+                            backgroundPosition: "center",       // centers the image
+                            backgroundRepeat: "no-repeat",
+                            cursor: "pointer",
+                          }}
+                        />
+                        <div
+                          onClick={() => setSelectedWrapFinish('Glossy')}
+                          style={{
+                            width: "2rem",
+                            height: "2rem",
+                            borderRadius: "50%",
+                            border:
+                              selectedWrapFinish === 'Glossy'
+                                ? "2px solid #000"
+                                : "1px solid #666",
+                            backgroundImage: 'url("/images/assets/glossy.png")',
+                            backgroundSize: "cover",            // ensures image covers the div
+                            backgroundPosition: "center",       // centers the image
+                            backgroundRepeat: "no-repeat",
+                            cursor: "pointer",
+                          }}
+                        />
+                      </>
+                    )}
+                    </div>
                 </div>
               ))}
-
             {isMobile && (
               <>
                 {product.specificCategory === '673aea6778c57ec01acae635' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
@@ -588,6 +667,7 @@ export default function ProductIdPage({
                     ...product,
                     thumbnail,
                     selectedOption: selectedOption || null,
+                    wrapFinish: product.category.toLowerCase() === 'wraps' ? selectedWrapFinish : null,
                     variantDetails: variant,
                     category: category,
                     price:

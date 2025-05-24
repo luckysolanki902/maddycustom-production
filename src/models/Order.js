@@ -63,6 +63,9 @@ const OrderSchema = new mongoose.Schema(
           type: String,
           required: true,
         },
+        wrapFinish: {
+          type: String,
+        },
         // Quantity of the product
         quantity: {
           type: Number,
