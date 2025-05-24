@@ -21,6 +21,8 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Box, Typography } from "@mui/material";
+import WrapFinishSelector from "../page-sections/product-id-page/WrapFinishSelector";
+import OptionSelector from "../page-sections/product-id-page/OptionSelector";
 
 // Memoize components that do not need to update on option change
 const MemoizedImageGallery = memo(ImageGallery);
@@ -110,10 +112,9 @@ export default function ProductIdPage({
     if (validOption) {
       const firstKey = Object.keys(validOption.optionDetails)[0];
       optionLabel =
-        "More " +
+        "Select " +
         firstKey.charAt(0).toUpperCase() +
-        firstKey.slice(1) +
-        "s";
+        firstKey.slice(1)
     }
   }
 
@@ -125,6 +126,7 @@ export default function ProductIdPage({
     }
     setSelectedOption(opt);
   };
+
   // Auto-select the first available option (that has inventory) if none is selected
   useEffect(() => {
     if (options && options.length > 0 && !selectedOption) {
@@ -299,7 +301,7 @@ export default function ProductIdPage({
 
   // Helper: Show the prepended selected option if available
   const getDisplayedTitle = () => {
-    if(product.category.toLowerCase() == 'wraps' && selectedWrapFinish) {
+    if(product.category.toLowerCase() === 'wraps' && selectedWrapFinish) {
       return `${selectedWrapFinish} ${product.title}`;
     }
     if (!selectedOption || !selectedOption.optionDetails) {
@@ -398,7 +400,7 @@ export default function ProductIdPage({
         {!isZoomed && (
           <div className={styles.productDetails}>
             <div className={styles.details}>
-              {/* Here we prepend the selected option’s value to the product name */}
+              {/* Here we prepend the selected option's value to the product name */}
               <h1 className={styles.title}>{getDisplayedTitle()}</h1>
               {variant?.cardCaptions?.[0] && (
                 <p
@@ -410,202 +412,40 @@ export default function ProductIdPage({
               )}
             </div>
 
-            {/* Render option circles */}
-            {((options &&
+            {/* Render options using OptionSelector */}
+            {options && 
               options.some(
                 (opt) =>
                   opt.optionDetails &&
                   Object.keys(opt.optionDetails).length > 0 &&
                   opt.inventoryData &&
                   opt.inventoryData.availableQuantity > 0
-              )) || product.category.toLowerCase() === 'wraps') &&
-              (isMobile ? (
-                <>
-                  {/* Clickable container (icon and label) to toggle options dropdown */}
-                  <div
-                    onClick={() => setShowMoreColors((prev) => !prev)}
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                      cursor: "pointer",
-                      margin: "1rem 0",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "2rem",
-                        height: "2rem",
-                        position: "relative",
-                      }}
-                    >
-                      <Image
-                        src={moreImagesIconUrl}
-                        alt={optionLabel}
-                        layout="fill"
-                        objectFit="cover"
-                      />
-                    </div>
-                    <div>
-                      <p style={{ fontSize: "0.7rem" }}>
-                        {optionLabel.toUpperCase()}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Collapsible dropdown for options */}
-                  {showMoreColors && (
-                    <div
-                      style={{
-                        margin: "1rem 0",
-                        borderTop: "1px solid #000",
-                        padding: "0.5rem",
-                        background: "#fff",
-                      }}
-                    >
-                      <div
-                        onClick={() => setShowMoreColors(false)}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          marginBottom: "0.5rem",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <span style={{ fontSize: "0.9rem" }}>
-                          {optionLabel.toUpperCase()}
-                        </span>
-                        <span
-                          style={{
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                            fontSize: "1.2rem",
-                          }}
-                        >
-                          &times;
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", gap: "0.5rem" }}>
-                        {options
-                          .filter(
-                            (opt) =>
-                              opt.optionDetails &&
-                              Object.keys(opt.optionDetails).length > 0 &&
-                              opt.inventoryData &&
-                              opt.inventoryData.availableQuantity > 0
-                          )
-                          .map((opt) => (
-                            <div
-                              key={opt._id}
-                              onClick={() => handleColorChange(opt)}
-                              style={getOptionStyle(opt)}
-                            />
-                          ))}
-                      </div>
-                    </div>
+              ) && (
+                <OptionSelector 
+                  options={options.filter(
+                    (opt) =>
+                      opt.optionDetails &&
+                      Object.keys(opt.optionDetails).length > 0 &&
+                      opt.inventoryData &&
+                      opt.inventoryData.availableQuantity > 0
                   )}
+                  selectedOption={selectedOption}
+                  handleOptionChange={handleColorChange}
+                  optionLabel={optionLabel}
+                  colorMap={colorMap}
+                  imageBaseUrl={imageBaseUrl}
+                  isMobile={isMobile}
+                />
+              )}
+            
+            {/* Render wrap finish selector for wraps */}
+            {product.category.toLowerCase() === 'wraps' && (
+              <WrapFinishSelector 
+                selectedFinish={selectedWrapFinish}
+                setSelectedFinish={setSelectedWrapFinish}
+              />
+            )}
 
-                  {product.category.toLowerCase() === 'wraps' && (
-                      <>
-                        <div
-                          onClick={() => setSelectedWrapFinish('Matte')}
-                          style={{
-                            width: "2rem",
-                            height: "2rem",
-                            borderRadius: "50%",
-                            border:
-                              selectedWrapFinish === 'Matte'
-                                ? "2px solid #000"
-                                : "1px solid #666",
-                            backgroundImage: 'url("/images/assets/matte.png")',
-                            backgroundSize: "cover",            // ensures image covers the div
-                            backgroundPosition: "center",       // centers the image
-                            backgroundRepeat: "no-repeat",
-                            cursor: "pointer",
-                          }}
-                        />
-                        <div
-                          onClick={() => setSelectedWrapFinish('Glossy')}
-                          style={{
-                            width: "2rem",
-                            height: "2rem",
-                            borderRadius: "50%",
-                            border:
-                              selectedWrapFinish === 'Glossy'
-                                ? "2px solid #000"
-                                : "1px solid #666",
-                            backgroundImage: 'url("/images/assets/glossy.png")',
-                            backgroundSize: "cover",            // ensures image covers the div
-                            backgroundPosition: "center",       // centers the image
-                            backgroundRepeat: "no-repeat",
-                            cursor: "pointer",
-                          }}
-                        />
-                      </>
-                  )}
-                </>
-                ) : (
-                <div style={{ margin: "1rem 0" }}>
-                  <div style={{ marginBottom: "0.5rem" }}>{optionLabel}</div>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    {options
-                      .filter(
-                        (opt) =>
-                          opt.optionDetails &&
-                          Object.keys(opt.optionDetails).length > 0 &&
-                          opt.inventoryData &&
-                          opt.inventoryData.availableQuantity > 0
-                      )
-                      .map((opt) => (
-                        <div
-                          key={opt._id}
-                          onClick={() => handleColorChange(opt)}
-                          style={getOptionStyle(opt)}
-                        />
-                      ))}
-                    {product.category.toLowerCase() === 'wraps' && (
-                      <>
-                        <div
-                          onClick={() => setSelectedWrapFinish('Matte')}
-                          style={{
-                            width: "2rem",
-                            height: "2rem",
-                            borderRadius: "50%",
-                            border:
-                              selectedWrapFinish === 'Matte'
-                                ? "2px solid #000"
-                                : "1px solid #666",
-                            backgroundImage: 'url("/images/assets/matte.png")',
-                            backgroundSize: "cover",            // ensures image covers the div
-                            backgroundPosition: "center",       // centers the image
-                            backgroundRepeat: "no-repeat",
-                            cursor: "pointer",
-                          }}
-                        />
-                        <div
-                          onClick={() => setSelectedWrapFinish('Glossy')}
-                          style={{
-                            width: "2rem",
-                            height: "2rem",
-                            borderRadius: "50%",
-                            border:
-                              selectedWrapFinish === 'Glossy'
-                                ? "2px solid #000"
-                                : "1px solid #666",
-                            backgroundImage: 'url("/images/assets/glossy.png")',
-                            backgroundSize: "cover",            // ensures image covers the div
-                            backgroundPosition: "center",       // centers the image
-                            backgroundRepeat: "no-repeat",
-                            cursor: "pointer",
-                          }}
-                        />
-                      </>
-                    )}
-                    </div>
-                </div>
-              ))}
             {isMobile && (
               <>
                 {product.specificCategory === '673aea6778c57ec01acae635' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
