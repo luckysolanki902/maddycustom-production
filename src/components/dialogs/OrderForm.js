@@ -1020,10 +1020,10 @@ const OrderForm = ({
                 overflowX: 'hidden',
                 position: 'relative',
                 width: '100%',
-                // Hide scrollbar styles
+                // Hide scrollbar styles - fixed to use camelCase
                 '&::-webkit-scrollbar': { display: 'none' },
-                '-ms-overflow-style': 'none',
-                'scrollbar-width': 'none',
+                msOverflowStyle: 'none',  // Changed from '-ms-overflow-style'
+                scrollbarWidth: 'none',   // Changed from 'scrollbar-width'
                 pb: '2rem',    // extra bottom padding
               }}
             >

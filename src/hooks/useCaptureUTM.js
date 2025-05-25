@@ -1,5 +1,5 @@
 // src/hooks/useCaptureUTM.js
-
+'use client'
 import { useEffect, useRef } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
@@ -19,7 +19,8 @@ const useCaptureUTM = () => {
     useEffect(() => {
         try {
             // Get current URL with query params as string
-            const urlString = pathname + '?' + Array.from(searchParams).map(([k, v]) => `${k}=${v}`).join('&');
+            const searchParamsEntries = Array.from(searchParams);
+            const urlString = pathname + (searchParamsEntries.length > 0 ? '?' + searchParamsEntries.map(([k, v]) => `${k}=${v}`).join('&') : '');
             
             // Skip if this exact URL was already processed
             if (lastURLChecked.current === urlString) {
@@ -47,7 +48,7 @@ const useCaptureUTM = () => {
 
             // Capture non-UTM parameters
             // Convert searchParams iterator to array of entries and process
-            Array.from(searchParams.entries()).forEach(([key, value]) => {
+            searchParamsEntries.forEach(([key, value]) => {
                 // Skip UTM parameters and utm_override
                 if (!UTM_PARAMS.includes(key) && key !== 'utm_override') {
                     otherQueryParams[key] = value;
@@ -83,18 +84,20 @@ const useCaptureUTM = () => {
                     });
                 }
 
-                // Clean up URL by removing UTM parameters
-                if (Object.keys(otherQueryParams).length > 0) {
-                    const cleanQueryString = Object.entries(otherQueryParams)
-                        .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-                        .join('&');
-                        
-                    const newUrl = `${pathname}?${cleanQueryString}`;
-                    window.history.replaceState({}, document.title, newUrl);
-                } else {
-                    // No other query params, just use pathname
-                    window.history.replaceState({}, document.title, pathname);
-                }
+                // Clean up URL by removing UTM parameters - use setTimeout to avoid state updates during render
+                setTimeout(() => {
+                    if (Object.keys(otherQueryParams).length > 0) {
+                        const cleanQueryString = Object.entries(otherQueryParams)
+                            .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+                            .join('&');
+                            
+                        const newUrl = `${pathname}?${cleanQueryString}`;
+                        window.history.replaceState({}, document.title, newUrl);
+                    } else {
+                        // No other query params, just use pathname
+                        window.history.replaceState({}, document.title, pathname);
+                    }
+                }, 0);
             }
         } catch (error) {
             console.error('Error capturing UTM/FBC parameters:', error);
