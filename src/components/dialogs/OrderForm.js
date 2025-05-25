@@ -527,7 +527,7 @@ const OrderForm = ({
       }
 
       // 6. Prepare order payload *after* initial validations (especially userCheck) have completed.
-      // This ensures orderForm.userDetails.userId is correctly populated.
+      // This ensures orderForm.userDetails.userId is correctly populated
       const finalOrderPayload = {
         userId: orderForm.userDetails.userId, // Now confirmed
         phoneNumber: orderForm.userDetails.phoneNumber,
@@ -572,6 +572,7 @@ const OrderForm = ({
           },
         ],
         utmDetails: utmDetails.utmDetails || null,
+        utmHistory: utmDetails.utmHistory || [], // Send UTM history
         extraFields: orderForm.extraFields,
       };
 

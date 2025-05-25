@@ -6,6 +6,7 @@ import Order from '@/models/Order';
 import User from '@/models/User';
 import Offer from '@/models/Offer';
 import ModeOfPayment from '@/models/ModeOfPayment';
+import UTMHistory from '@/models/UTMHistory';
 import moment from 'moment-timezone';
 
 export async function POST(request) {
@@ -21,6 +22,7 @@ export async function POST(request) {
       discountAmount,
       extraCharges,
       utmDetails,
+      utmHistory,
       extraFields,
     } = await request.json();
 
@@ -140,6 +142,28 @@ export async function POST(request) {
       paymentStatus = 'allToBePaidCod';
     }
 
+    // Save UTM History if utmHistory exists in the request
+    let utmHistoryId = null;
+    if (utmHistory && Array.isArray(utmHistory) && utmHistory.length > 0) {
+      const utmHistoryDoc = new UTMHistory({
+        user: user._id,
+        history: utmHistory.map(entry => ({
+          source: entry.source || 'direct',
+          medium: entry.medium || null,
+          campaign: entry.campaign || null,
+          term: entry.term || null,
+          content: entry.content || null,
+          fbc: entry.fbc || null,
+          pathname: entry.pathname || null,
+          queryParams: entry.queryParams || null,
+          timestamp: entry.timestamp || new Date()
+        }))
+      });
+      
+      const savedUtmHistory = await utmHistoryDoc.save();
+      utmHistoryId = savedUtmHistory._id;
+    }
+
     // Create new order document
     const newOrder = {
       user: user._id,
@@ -176,11 +200,17 @@ export async function POST(request) {
       paymentStatus: paymentStatus,
       deliveryStatus: 'pending',
       utmDetails: utmDetails,
+      utmHistory: utmHistoryId, // Add the reference to UTM history
       extraFields: extraFields,
     };
 
     const order = new Order(newOrder);
     await order.save();
+
+    // Update the UTM history with the order ID (if it exists)
+    if (utmHistoryId) {
+      await UTMHistory.findByIdAndUpdate(utmHistoryId, { order: order._id });
+    }
 
     // Return minimal data needed for the next steps
     return NextResponse.json(

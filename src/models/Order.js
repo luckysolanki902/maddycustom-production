@@ -314,6 +314,12 @@ const OrderSchema = new mongoose.Schema(
         maxlength: 100,
       },
     },
+    // Reference to UTM history
+    utmHistory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'UTMHistory',
+      index: true,
+    },
   },
   { timestamps: true }
 );
