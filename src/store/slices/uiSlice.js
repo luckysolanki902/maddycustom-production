@@ -60,7 +60,13 @@ const uiSlice = createSlice({
     resetShippingTimer: (state) => {
       state.shippingTimer.expiryTime = Date.now() + (9 * 60 * 60 * 1000) + (13 * 60 * 1000);
       state.shippingTimer.isActive = true;
-    }
+    },
+    // New reducer for closing everything
+    closeAllDialogs(state) {
+      state.isCartDrawerOpen = false;
+      state.isSidebarOpen = false;
+      state.isSearchDialogOpen = false;
+    },
   },
 });
 
@@ -76,7 +82,8 @@ export const {
   closeCartDrawer,
   setShippingTimer,
   expireShippingTimer,
-  resetShippingTimer
+  resetShippingTimer,
+  closeAllDialogs
 } = uiSlice.actions;
 
 export default uiSlice.reducer;
