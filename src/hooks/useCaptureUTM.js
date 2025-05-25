@@ -12,11 +12,15 @@ const useCaptureUTM = () => {
     const hasCaptured = useRef(false); // To ensure capture only once
 
     useEffect(() => {
-        if (hasCaptured.current || isSet) {
-            return;
-        }
-
         try {
+            // Check if utm_override exists and is set to 'true'
+            const utmOverride = searchParams.get('utm_override') === 'true';
+            
+            // Skip if already captured and no override, or if isSet and no override
+            if ((hasCaptured.current || isSet) && !utmOverride) {
+                return;
+            }
+
             // Define all UTM and Facebook parameters you want to capture
             const utmParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbc'];
             const capturedUTM = {};
@@ -30,13 +34,17 @@ const useCaptureUTM = () => {
             });
 
             if (Object.keys(capturedUTM).length > 0) {
-                // Check if captured UTM differs from current state to avoid redundant dispatch
+                // If utm_override is true, always update UTM details
+                // Otherwise, only update if there's a difference and not already set
                 const isDifferent = Object.keys(capturedUTM).some(
                     (key) => utmDetails[key] !== capturedUTM[key]
                 );
 
-                if (isDifferent) {
-                    dispatch(setUTMDetails(capturedUTM));
+                if (utmOverride || (!isSet && isDifferent)) {
+                    dispatch(setUTMDetails({ 
+                        ...capturedUTM, 
+                        override: utmOverride // Store override information
+                    }));
                     hasCaptured.current = true; // Mark as captured
 
                     // Store in cookies for later use in server-side events
