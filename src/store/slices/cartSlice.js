@@ -63,6 +63,23 @@ const cartSlice = createSlice({
         state.items[itemIndex].quantity = quantity;
       }
     },
+    setDefaultWrapFinish: (state) => {
+      state.items = state.items.map(item => {
+        const categoryName = item.productDetails?.category?.name?.toLowerCase();
+
+        if ((categoryName?.includes('wrap')|| categoryName?.includes('Wrap')) && !item.productDetails.wrapFinish) {
+          console.log("added wrapfiish");
+          return {
+            ...item,
+            productDetails: {
+              ...item.productDetails,
+              wrapFinish: 'Matte',
+            },
+          };
+        }
+        return item;
+      });
+    },
   },
 });
 
@@ -74,6 +91,7 @@ export const {
   setCart,
   clearCart,
   updateQuantity,
+  setDefaultWrapFinish
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

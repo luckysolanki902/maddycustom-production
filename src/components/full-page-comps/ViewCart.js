@@ -280,7 +280,10 @@ export default function ViewCart({ isDrawer = false }) {
   const { autoApplyDisabled, autoApplyDisabledAt, manualCoupon } = orderForm;
   const blocked = autoApplyDisabled && autoApplyDisabledAt &&
     Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
-
+    
+  useEffect(()=>{
+    console.log("cartit", cartItems);
+  }, []);
   useEffect(() => {
     if (blocked || manualCoupon || couponState.couponApplied || !qty) return;
 
