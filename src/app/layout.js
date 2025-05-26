@@ -8,6 +8,7 @@ import FloatingActionBar from '@/components/utils/FloatingActionButton';
 import TopLoadingBar from '@/components/utils/TopLoadingBar';
 import AnalyticsHead from '@/components/layouts/AnalyticsHead';
 import UTMCapture from '@/components/analytics/UTMCapture';
+// import UTMLogger from '@/components/analytics/UTMLogger';
 
 // Google Fonts
 import { Krona_One, Jost, Montserrat } from 'next/font/google';
@@ -74,6 +75,7 @@ export default function RootLayout({ children }) {
       <body>
         <ReduxProvider>
           <UTMCapture />
+          {/* <UTMLogger /> */}
           <TopLoadingBar />
           <Topbar />
           <Sidebar />

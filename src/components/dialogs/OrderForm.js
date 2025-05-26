@@ -31,6 +31,7 @@ import {
   removeCoupon,
   setExtraFields
 } from '../../store/slices/orderFormSlice';
+import { closeAllDialogs } from '@/store/slices/uiSlice';  // Import the new action
 import { makePayment } from '../../lib/payments/makePayment';
 import { useRouter } from 'next/navigation';
 import CustomSnackbar from '../notifications/CustomSnackbar';
@@ -70,7 +71,7 @@ const OrderForm = ({
   const serviceabilityCache = useRef({});
   const [isPincodeValid, setIsPincodeValid] = useState(false);
   const [pincodeCheckInProgress, setPincodeCheckInProgress] = useState(false);
-  
+
   // Background processing refs and state
   const pendingOperationsRef = useRef({
     userCheck: null,
@@ -121,10 +122,10 @@ const OrderForm = ({
       acc[field.fieldName] = '';
       return acc;
     }, {}),
-  }), [userDetails.name, userDetails.phoneNumber, userDetails.email, 
-       addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city, 
-       addressDetails.state, addressDetails.pincode, addressDetails.country, 
-       aggregatedExtraFields]);
+  }), [userDetails.name, userDetails.phoneNumber, userDetails.email,
+  addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
+  addressDetails.state, addressDetails.pincode, addressDetails.country,
+    aggregatedExtraFields]);
 
   // Initialize extraFields in Redux store when dialog opens
   useEffect(() => {
@@ -188,15 +189,15 @@ const OrderForm = ({
       setValue('state', addressDetails.state || '');
       setValue('pincode', addressDetails.pincode || '');
       setValue('country', addressDetails.country || 'India');
-      
+
       // Pre-validate pincode if it exists
       if (addressDetails.pincode && addressDetails.pincode.length === 6) {
         validatePincode(addressDetails.pincode);
       }
     }
-  }, [open, setValue, userDetails.name, userDetails.phoneNumber, userDetails.email, 
-      addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city, 
-      addressDetails.state, addressDetails.pincode, addressDetails.country]);
+  }, [open, setValue, userDetails.name, userDetails.phoneNumber, userDetails.email,
+    addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
+    addressDetails.state, addressDetails.pincode, addressDetails.country]);
 
   // Handle Prefilled Address
   useEffect(() => {
@@ -205,7 +206,7 @@ const OrderForm = ({
       dispatch(setUserExists(false));
       dispatch(setPrefilledAddress(null));
       setTabIndex(1);
-      
+
       // Pre-validate pincode from prefilled address
       if (prefilledAddress.pincode && prefilledAddress.pincode.length === 6) {
         validatePincode(prefilledAddress.pincode);
@@ -222,7 +223,7 @@ const OrderForm = ({
         reduxAddress.country
       ) {
         setTabIndex(1);
-        
+
         // Pre-validate pincode from redux address
         if (reduxAddress.pincode && reduxAddress.pincode.length === 6) {
           validatePincode(reduxAddress.pincode);
@@ -250,25 +251,25 @@ const OrderForm = ({
   const formatPhoneNumber = useCallback((phone) => {
     // Keep only digits
     let digitsOnly = phone.replace(/\D/g, '');
-    
+
     // Handle common Indian prefixes
     if (digitsOnly.length > 10) {
       // Remove leading 0
       if (digitsOnly.startsWith('0')) {
         digitsOnly = digitsOnly.substring(1);
       }
-      
+
       // Remove country code +91 or 91
       if (digitsOnly.startsWith('91') && digitsOnly.length > 10) {
         digitsOnly = digitsOnly.substring(2);
       }
     }
-    
+
     // Return the last 10 digits if longer
     if (digitsOnly.length > 10) {
       digitsOnly = digitsOnly.substring(digitsOnly.length - 10);
     }
-    
+
     return digitsOnly;
   }, []);
 
@@ -276,15 +277,15 @@ const OrderForm = ({
   const handlePhoneChange = useCallback((e, onChange) => {
     const inputValue = e.target.value;
     onChange(inputValue); // Update the raw input in the form
-    
+
     // If already valid 10-digit number, no need for formatting
     if (/^\d{10}$/.test(inputValue)) {
       setShowPhoneConfirmation(false);
       return;
     }
-    
+
     const formatted = formatPhoneNumber(inputValue);
-    
+
     // Only show confirmation if input isn't valid but formatted version is
     if (formatted !== inputValue && /^\d{10}$/.test(formatted)) {
       setFormattedPhone(formatted);
@@ -306,7 +307,7 @@ const OrderForm = ({
     debounce(async (pincode) => {
       if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
         setPincodeCheckInProgress(true);
-        
+
         // Check cache first
         if (serviceabilityCache.current[pincode] !== undefined) {
           setPincodeCheckInProgress(false);
@@ -318,11 +319,11 @@ const OrderForm = ({
           const response = await axios.get(
             `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${pincode}`
           );
-          
+
           const isValid = response.data.serviceable;
           serviceabilityCache.current[pincode] = isValid;
           setIsPincodeValid(isValid);
-          
+
           if (!isValid) {
             showSnackbar(`Pincode ${pincode} is not serviceable. Please try a different one.`, 'warning');
           }
@@ -338,6 +339,12 @@ const OrderForm = ({
     [showSnackbar]
   );
 
+  // New function to fully close everything - both OrderForm and CartDrawer
+  const handleFullClose = useCallback(() => {
+    onClose();
+    dispatch(closeAllDialogs());
+  }, [onClose, dispatch]);
+  
   // Pre-validate coupon in background as soon as form opens
   useEffect(() => {
     if (open && couponCode && subTotal > 0) {
@@ -357,13 +364,13 @@ const OrderForm = ({
   const onSubmitUserDetails = useCallback(async (data) => {
     // Format phone number for submission if needed
     const phoneToUse = formatPhoneNumber(data.phoneNumber);
-    
+
     // Client-side validation to avoid unnecessary API calls
     if (phoneToUse.length !== 10 || !/^\d{10}$/.test(phoneToUse)) {
       showSnackbar('Please enter a valid 10-digit mobile number', 'error');
       return;
     }
-    
+
     // Optimistically update Redux store with user details before API call
     dispatch(
       setUserDetails({
@@ -375,51 +382,51 @@ const OrderForm = ({
 
     // Immediately move to the next tab for better UX
     setTabIndex(1);
-    
+
     // Perform user check in background without blocking UI
     pendingOperationsRef.current.userCheck = axios.patch('/api/user/check', {
       phoneNumber: phoneToUse,
       name: data.name,
       email: data.email,
     })
-    .then(response => {
-      if (response.data.exists) {
-        const latestAddress = response.data.latestAddress;
-        dispatch(setUserDetails({ userId: response.data.userId }));
+      .then(response => {
+        if (response.data.exists) {
+          const latestAddress = response.data.latestAddress;
+          dispatch(setUserDetails({ userId: response.data.userId }));
 
-        if (latestAddress) {
-          // Update form with existing address
-          Object.entries(latestAddress).forEach(([key, value]) => {
-            if (setValue && key !== '_id') {
-              setValue(key, value || '');
+          if (latestAddress) {
+            // Update form with existing address
+            Object.entries(latestAddress).forEach(([key, value]) => {
+              if (setValue && key !== '_id') {
+                setValue(key, value || '');
+              }
+            });
+
+            dispatch(setAddressDetails(latestAddress));
+
+            // Pre-validate pincode
+            if (latestAddress.pincode && latestAddress.pincode.length === 6) {
+              validatePincode(latestAddress.pincode);
             }
-          });
-          
-          dispatch(setAddressDetails(latestAddress));
-          
-          // Pre-validate pincode
-          if (latestAddress.pincode && latestAddress.pincode.length === 6) {
-            validatePincode(latestAddress.pincode);
           }
+        } else {
+          // Create user in background (non-blocking)
+          return axios.post('/api/user/create', {
+            name: data.name,
+            phoneNumber: phoneToUse,
+            email: data.email,
+            source: 'order-form',
+          })
+            .then(createResponse => {
+              dispatch(setUserDetails({ userId: createResponse.data.userId || createResponse.data.user?.userId }));
+              return createResponse;
+            });
         }
-      } else {
-        // Create user in background (non-blocking)
-        return axios.post('/api/user/create', {
-          name: data.name,
-          phoneNumber: phoneToUse,
-          email: data.email,
-          source: 'order-form',
-        })
-        .then(createResponse => {
-          dispatch(setUserDetails({ userId: createResponse.data.userId || createResponse.data.user?.userId }));
-          return createResponse;
-        });
-      }
-      return response;
-    })
-    .catch(error => {
-      console.error('Error in background user check/create:', error);
-    });
+        return response;
+      })
+      .catch(error => {
+        console.error('Error in background user check/create:', error);
+      });
   }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode]);
 
   // Optimize address submission with better parallelization
@@ -435,7 +442,7 @@ const OrderForm = ({
     try {
       // Create a single array for all initial validation promises
       const initialValidationPromises = [];
-      
+
       // 1. Check if we need to validate serviceability
       if (!isPincodeValid && data.pincode && !serviceabilityCache.current[data.pincode]) {
         const serviceabilityPromise = axios.get(
@@ -444,14 +451,14 @@ const OrderForm = ({
           const isValid = response.data.serviceable;
           serviceabilityCache.current[data.pincode] = isValid;
           setIsPincodeValid(isValid);
-          
+
           if (!isValid) {
             throw new Error(`The pincode ${data.pincode} is either invalid or we don't deliver to this location!`);
           }
         });
         initialValidationPromises.push(serviceabilityPromise);
       }
-      
+
       // 2. Check if we need to validate coupon
       let couponPromise;
       if (couponCode && !pendingOperationsRef.current.couponValidation) {
@@ -476,7 +483,7 @@ const OrderForm = ({
       if (pendingOperationsRef.current.userCheck) {
         initialValidationPromises.push(pendingOperationsRef.current.userCheck);
       }
-      
+
       // 4. Start address addition - initiate early.
       // This promise will be awaited later, in parallel with order creation.
       const addAddressPayload = {
@@ -493,19 +500,19 @@ const OrderForm = ({
           ...orderForm.extraFields,
         },
       };
-      
+
       // Re-assign to a new const for clarity in Promise.all later
       const addressAddPromise = axios.post('/api/user/add-address', addAddressPayload)
         .then(response => {
-          if (response.data.message === 'Address added successfully.' || 
-              response.data.message === 'Using existing address.') {
+          if (response.data.message === 'Address added successfully.' ||
+            response.data.message === 'Using existing address.') {
             dispatch(setAddressDetails(response.data.latestAddress));
           }
           return response.data;
         }).catch(error => {
-            console.error("Error during address addition (in parallel task):", error);
-            // Propagate error to be caught by main try-catch
-            throw new Error(error.response?.data?.message || "Failed to update address details.");
+          console.error("Error during address addition (in parallel task):", error);
+          // Propagate error to be caught by main try-catch
+          throw new Error(error.response?.data?.message || "Failed to update address details.");
         });
       pendingOperationsRef.current.addressAdd = addressAddPromise; // Keep ref if needed elsewhere, though direct use of addressAddPromise is clearer
 
@@ -518,9 +525,9 @@ const OrderForm = ({
         });
       } else {
       }
-      
+
       // 6. Prepare order payload *after* initial validations (especially userCheck) have completed.
-      // This ensures orderForm.userDetails.userId is correctly populated.
+      // This ensures orderForm.userDetails.userId is correctly populated
       const finalOrderPayload = {
         userId: orderForm.userDetails.userId, // Now confirmed
         phoneNumber: orderForm.userDetails.phoneNumber,
@@ -529,10 +536,11 @@ const OrderForm = ({
           itemSource: item.productDetails.source || 'inhouse',
           brand: item.productDetails.brand || null,
           option: item.productDetails.selectedOption?._id || null,
+          wrapFinish: item.productDetails.wrapFinish || null,
           name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
             ? item.productDetails.category?.name.slice(0, -1)
             : item.productDetails.category?.name
-          }`,
+            }`,
           quantity: item.quantity,
           priceAtPurchase: item.productDetails.price,
           sku: item.productDetails.selectedOption ? item.productDetails.selectedOption.sku : item.productDetails.sku,
@@ -564,18 +572,19 @@ const OrderForm = ({
           },
         ],
         utmDetails: utmDetails.utmDetails || null,
+        utmHistory: utmDetails.utmHistory || [], // Send UTM history
         extraFields: orderForm.extraFields,
       };
 
       // 7. Start creating the order and await its completion alongside address addition.
       const orderCreateStartTime = performance.now();
-      
+
       const orderCreatePromise = axios.post('/api/checkout/order/create', finalOrderPayload)
         .then(response => {
-            return response;
+          return response;
         }).catch(error => {
-            console.error("Error during order creation (in parallel task):", error);
-            throw new Error(error.response?.data?.message || "Failed to create order.");
+          console.error("Error during order creation (in parallel task):", error);
+          throw new Error(error.response?.data?.message || "Failed to create order.");
         });
 
       // Wait for both order creation and address addition to complete.
@@ -583,8 +592,8 @@ const OrderForm = ({
       // Address addition is important for user profile data integrity.
       const [orderResponse] = await Promise.all([orderCreatePromise, addressAddPromise]);
       // Note: result of addressAddPromise is not directly used here, but its completion is awaited.
-      
-      
+
+
       const { orderId: createdOrderId, paymentDetails: createdPaymentDetails } = orderResponse.data;
       dispatch(setLastOrderId(createdOrderId));
 
@@ -611,18 +620,18 @@ const OrderForm = ({
         ).catch(error => {
           console.error('FB pixel tracking error (non-critical):', error);
         });
-        
+
         // Start payment initialization in parallel
         const paymentStartTime = performance.now();
-        
+
         const paymentPromise = axios.post(
           '/api/checkout/order/payment/create-razorpay-order',
           { orderId: createdOrderId }
         );
-        
+
         // Wait for payment initialization (this must complete)
         const paymentInitResponse = await paymentPromise;
-        
+
         const { order: razorpayOrder, msg } = paymentInitResponse.data;
 
         if (msg !== 'success') {
@@ -631,7 +640,7 @@ const OrderForm = ({
           throw new Error('Payment initiation failed.');
         }
 
-        
+
         const paymentResult = await makePayment({
           customerName: orderForm.userDetails.name || '',
           customerMobile: orderForm.userDetails.phoneNumber,
@@ -672,20 +681,26 @@ const OrderForm = ({
         console.error('FB pixel purchase event error (non-critical):', error);
       });
 
-      
       // Reset all refs to clean up memory
       pendingOperationsRef.current = {
         userCheck: null,
         addressAdd: null, // Clear the promise from the ref
         couponValidation: null,
       };
-      
+
       // Clean up and navigate
       dispatch(clearUTMDetails());
       dispatch(clearCart());
       reset();
-      handleClose();
-      router.push(`/orders/myorder/${createdOrderId}`);
+
+      // Use handleFullClose instead of handleClose to ensure both OrderForm and CartDrawer are closed
+      handleFullClose();
+
+      // Ensure navigation happens after cleaning up the UI state
+      setTimeout(() => {
+        router.push(`/orders/myorder/${createdOrderId}`);
+      }, 100);
+
       showSnackbar('Order placed successfully!', 'success');
     } catch (error) {
       console.error('Error during purchase process:', error);
@@ -695,9 +710,9 @@ const OrderForm = ({
       setIsPaymentProcessing(false);
       setPurchaseInitiated(false);
     }
-  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar, 
-      totalCost, deliveryCost, utmDetails.utmDetails, cartItems, paymentModeConfig, 
-      discountAmountFinal, couponsDetails, isPincodeValid]);
+  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
+    totalCost, deliveryCost, utmDetails.utmDetails, cartItems, paymentModeConfig,
+    discountAmountFinal, couponsDetails, isPincodeValid, reset, handleFullClose, router]);
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
@@ -711,6 +726,8 @@ const OrderForm = ({
       onClose();
     }
   }, [isPaymentProcessing, onClose, tabIndex]);
+
+
 
   // push history entry for this dialog (priority higher than drawer)
   useHistoryState(open, handleClose, 'orderForm', 10);
@@ -750,8 +767,8 @@ const OrderForm = ({
 
   // Custom styled text field component with memoization to prevent rerenders
   const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, type = "text", maxWidth, InputProps }) => (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }} 
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: field.name === 'name' ? 0.1 : field.name === 'email' ? 0.2 : field.name === 'phoneNumber' ? 0.3 : 0.1 * parseInt(field.name.replace(/\D/g, '') || '0') }}
     >
@@ -822,21 +839,21 @@ const OrderForm = ({
           },
         }}
       >
-        <DialogContent 
-          sx={{ 
-            padding: { xs: '1.2rem', md: '1.5rem' }, 
+        <DialogContent
+          sx={{
+            padding: { xs: '1.2rem', md: '1.5rem' },
             paddingTop: { xs: '0.8rem', md: '1.2rem' },
             background: 'linear-gradient(to bottom, #f9f9f9, #ffffff)',
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             height: '100%', // Ensure DialogContent takes up height for flex children
-            overflow: 'hidden', 
+            overflow: 'hidden',
           }}
         >
           {/* Logo and Stepper - Made more compact */}
-          <Box sx={{ 
-            position: 'relative', 
+          <Box sx={{
+            position: 'relative',
             mb: 0.5,
             flexShrink: 0, // Prevent shrinking
           }}>
@@ -851,44 +868,44 @@ const OrderForm = ({
                 width={60} // Reduced from 80
                 height={60} // Reduced from 80
                 alt="Logo"
-                style={{ 
+                style={{
                   width: '60px', // Reduced from 80px
-                  height: 'auto', 
+                  height: 'auto',
                   margin: '0 auto',
                   display: 'block',
                 }}
               />
             </motion.div>
-            
+
             {/* Custom Stepper - Made more compact */}
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
               mt: 1.5, // Reduced from 3
               position: 'relative',
               height: '30px' // Reduced from 40px
             }}>
-              <Box sx={{ 
-                position: 'absolute', 
-                left: '50%', 
-                width: '60px', 
-                height: '2px', 
+              <Box sx={{
+                position: 'absolute',
+                left: '50%',
+                width: '60px',
+                height: '2px',
                 backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
                 transform: 'translateX(-30px)',
                 transition: 'background-color 0.5s'
               }} />
-              
+
               <motion.div
                 animate={{ scale: tabIndex === 0 ? 1.1 : 0.9, x: tabIndex === 0 ? -40 : -40 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
               >
-                <Box 
-                  sx={{ 
+                <Box
+                  sx={{
                     width: '25px', // Reduced from 30px
                     height: '25px', // Reduced from 30px
-                    borderRadius: '50%', 
-                    backgroundColor: '#000', 
+                    borderRadius: '50%',
+                    backgroundColor: '#000',
                     color: 'white',
                     display: 'flex',
                     justifyContent: 'center',
@@ -906,16 +923,16 @@ const OrderForm = ({
                   1
                 </Box>
               </motion.div>
-              
+
               <motion.div
                 animate={{ scale: tabIndex === 1 ? 1.1 : 0.9, x: tabIndex === 1 ? 40 : 40 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
               >
-                <Box 
-                  sx={{ 
+                <Box
+                  sx={{
                     width: '25px', // Reduced from 30px
                     height: '25px', // Reduced from 30px
-                    borderRadius: '50%', 
+                    borderRadius: '50%',
                     backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
                     color: tabIndex === 1 ? 'white' : '#999',
                     display: 'flex',
@@ -934,16 +951,16 @@ const OrderForm = ({
                 </Box>
               </motion.div>
             </Box>
-            
+
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.5 }}
             >
-              <Typography 
-                variant="h6" 
-                align="center" 
-                sx={{ 
+              <Typography
+                variant="h6"
+                align="center"
+                sx={{
                   mt: 0.5, // Reduced from 1
                   mb: 1, // Reduced from 3
                   fontFamily: 'Jost, sans-serif',
@@ -959,8 +976,8 @@ const OrderForm = ({
             {tabIndex === 1 && (
               <Box
                 onClick={() => handleTabChange(0)}
-                sx={{ 
-                  position: 'absolute', 
+                sx={{
+                  position: 'absolute',
                   left: '0.5rem', // Reduced from 1rem
                   top: '0.5rem', // Reduced from 1rem
                   cursor: 'pointer',
@@ -1003,10 +1020,10 @@ const OrderForm = ({
                 overflowX: 'hidden',
                 position: 'relative',
                 width: '100%',
-                // Hide scrollbar styles
+                // Hide scrollbar styles - fixed to use camelCase
                 '&::-webkit-scrollbar': { display: 'none' },
-                '-ms-overflow-style': 'none',
-                'scrollbar-width': 'none',
+                msOverflowStyle: 'none',  // Changed from '-ms-overflow-style'
+                scrollbarWidth: 'none',   // Changed from 'scrollbar-width'
                 pb: '2rem',    // extra bottom padding
               }}
             >
@@ -1021,7 +1038,7 @@ const OrderForm = ({
                     exit="exit"
                     style={{ width: '100%' }} // Removed height: '100%'
                   >
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1} }}> {/* Added horizontal padding */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}> {/* Added horizontal padding */}
                       {/* Name field */}
                       <Controller
                         name="name"
@@ -1096,7 +1113,7 @@ const OrderForm = ({
                               disabled={isLoading || isPaymentProcessing}
                               onChange={(e) => handlePhoneChange(e, field.onChange)}
                             />
-                            
+
                             {/* Phone number format confirmation message */}
                             <AnimatePresence>
                               {showPhoneConfirmation && (
@@ -1122,38 +1139,38 @@ const OrderForm = ({
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                   }}>
-                                      <Typography
-                                        variant="caption"
-                                        sx={{
-                                          fontSize: '0.8rem',
-                                          fontWeight: 500,
-                                          color: '#2e7d32'           // dark green text
-                                        }}
-                                      >
-                                        Is <strong>{formattedPhone}</strong> the correct 10-digit number?
-                                      </Typography>
-                                      <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={acceptFormattedPhone}
-                                        type="button"
-                                        style={{
-                                          backgroundColor: '#66bb6a',
-                                          color: '#fff',
-                                          border: 'none',
-                                          borderRadius: '6px',
-                                          padding: '6px 12px',
-                                          fontSize: '0.75rem',
-                                          cursor: 'pointer',
-                                          fontWeight: 600,
-                                        }}
-                                      >
-                                        Yes
-                                      </motion.button>
-                                    </Box>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        fontSize: '0.8rem',
+                                        fontWeight: 500,
+                                        color: '#2e7d32'           // dark green text
+                                      }}
+                                    >
+                                      Is <strong>{formattedPhone}</strong> the correct 10-digit number?
+                                    </Typography>
+                                    <motion.button
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={acceptFormattedPhone}
+                                      type="button"
+                                      style={{
+                                        backgroundColor: '#66bb6a',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '6px 12px',
+                                        fontSize: '0.75rem',
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      Yes
+                                    </motion.button>
+                                  </Box>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </Box>
                         )}
                       />
@@ -1173,7 +1190,7 @@ const OrderForm = ({
                     exit="exit"
                     style={{ width: '100%' }} // Removed height: '100%'
                   >
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1} }}> {/* Added horizontal padding */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}> {/* Added horizontal padding */}
                       <Controller
                         name="addressLine1"
                         control={control}
@@ -1306,9 +1323,9 @@ const OrderForm = ({
                       </Box>
                       {/* Pincode non-serviceable message */}
                       {watchedPincode?.length === 6 && !isPincodeValid && !pincodeCheckInProgress && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: 5 }} 
-                          animate={{ opacity: 1, y: 0 }} 
+                        <motion.div
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.2 }}
                         >
                           <Box
@@ -1345,7 +1362,7 @@ const OrderForm = ({
                 )}
               </AnimatePresence>
             </Box> {/* End Scrollable Fields Area */}
-            
+
             {/* Fixed Button Area */}
             <Box
               sx={{
@@ -1371,8 +1388,8 @@ const OrderForm = ({
                       isLoading={isLoading} // This isLoading is general; consider specific state if needed for UX
                       buttonText="Next"
                       disabled={isPaymentProcessing || isLoading}
-                      sx={{ 
-                        borderRadius: '50px', 
+                      sx={{
+                        borderRadius: '50px',
                         px: 3,
                         py: 0.5,
                         boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
@@ -1410,9 +1427,9 @@ const OrderForm = ({
               </Box>
             </Box> {/* End Fixed Button Area */}
           </Box> {/* End Form Wrapper */}
-          
+
           {/* Trust indicators - Made more compact */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
@@ -1440,7 +1457,7 @@ const OrderForm = ({
               >
                 Trusted by 50,000+ happy customers
               </Typography>
-              
+
               <Box
                 sx={{
                   display: 'flex',
@@ -1480,7 +1497,7 @@ const OrderForm = ({
                     </Typography>
                   </Box>
                 </motion.div>
-                
+
                 <motion.div whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
                   <Box
                     sx={{
@@ -1511,7 +1528,7 @@ const OrderForm = ({
                     </Typography>
                   </Box>
                 </motion.div>
-                
+
                 <motion.div whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
                   <Box
                     sx={{
@@ -1543,7 +1560,7 @@ const OrderForm = ({
                   </Box>
                 </motion.div>
               </Box>
-              
+
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Image
                   loading="eager"
@@ -1564,7 +1581,7 @@ const OrderForm = ({
                   |
                 </Typography>
                 <Image
-                  loading="eager" 
+                  loading="eager"
                   src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`}
                   width={50} // Reduced from 60
                   height={15} // Reduced from 18

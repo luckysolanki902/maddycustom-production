@@ -13,7 +13,6 @@ const CartItem = ({ item, onRemove }) => {
       onRemove(item.productId);
     }
   };
-   console.log(item?.productDetails?.category?.name)
   // Determine the image source: use option image if available, else product image
   const imageSrc =
     item.productDetails.selectedOption &&

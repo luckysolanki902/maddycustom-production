@@ -63,6 +63,9 @@ const OrderSchema = new mongoose.Schema(
           type: String,
           required: true,
         },
+        wrapFinish: {
+          type: String,
+        },
         // Quantity of the product
         quantity: {
           type: Number,
@@ -310,6 +313,12 @@ const OrderSchema = new mongoose.Schema(
         type: String,
         maxlength: 100,
       },
+    },
+    // Reference to UTM history
+    utmHistory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'UTMHistory',
+      index: true,
     },
   },
   { timestamps: true }

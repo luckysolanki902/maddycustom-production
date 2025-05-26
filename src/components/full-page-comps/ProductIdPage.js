@@ -21,6 +21,8 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Box, Typography } from "@mui/material";
+import WrapFinishSelector from "../page-sections/product-id-page/WrapFinishSelector";
+import OptionSelector from "../page-sections/product-id-page/OptionSelector";
 
 // Memoize components that do not need to update on option change
 const MemoizedImageGallery = memo(ImageGallery);
@@ -82,6 +84,7 @@ export default function ProductIdPage({
   const productListPageLink = pathname.split("/").slice(0, -1).join("/");
   // Memoize the product list page link to avoid unnecessary re-renders
   const memoizedProductListPageLink = useMemo(() => productListPageLink, [productListPageLink]);
+  const [selectedWrapFinish, setSelectedWrapFinish] = useState('Matte');
 
   const insertionDetails = {
     component: 'productDetails-AddToCart',
@@ -96,7 +99,6 @@ export default function ProductIdPage({
   // Get dispatch and cart items from redux
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
-
   // Compute the option label from the first valid option’s key (pluralized)
   let optionLabel = "Options";
   if (options && options.length > 0) {
@@ -110,10 +112,9 @@ export default function ProductIdPage({
     if (validOption) {
       const firstKey = Object.keys(validOption.optionDetails)[0];
       optionLabel =
-        "More " +
+        "Select " +
         firstKey.charAt(0).toUpperCase() +
-        firstKey.slice(1) +
-        "s";
+        firstKey.slice(1)
     }
   }
 
@@ -300,11 +301,15 @@ export default function ProductIdPage({
 
   // Helper: Show the prepended selected option if available
   const getDisplayedTitle = () => {
+    if(product.category.toLowerCase() === 'wraps' && selectedWrapFinish) {
+      return `${selectedWrapFinish} ${product.title}`;
+    }
     if (!selectedOption || !selectedOption.optionDetails) {
       return product.title;
     }
     // We'll take the first entry from `optionDetails`. In your use case, 
     // you might want a specific key, e.g. "flavor", "color", etc.
+    
     const detailValue = Object.values(selectedOption.optionDetails)[0];
     if (!detailValue) {
       return product.title;
@@ -395,7 +400,7 @@ export default function ProductIdPage({
         {!isZoomed && (
           <div className={styles.productDetails}>
             <div className={styles.details}>
-              {/* Here we prepend the selected option’s value to the product name */}
+              {/* Here we prepend the selected option's value to the product name */}
               <h1 className={styles.title}>{getDisplayedTitle()}</h1>
               {variant?.cardCaptions?.[0] && (
                 <p
@@ -407,125 +412,39 @@ export default function ProductIdPage({
               )}
             </div>
 
-            {/* Render option circles */}
-            {options &&
+            {/* Render options using OptionSelector */}
+            {options && 
               options.some(
                 (opt) =>
                   opt.optionDetails &&
                   Object.keys(opt.optionDetails).length > 0 &&
                   opt.inventoryData &&
                   opt.inventoryData.availableQuantity > 0
-              ) &&
-              (isMobile ? (
-                <>
-                  {/* Clickable container (icon and label) to toggle options dropdown */}
-                  <div
-                    onClick={() => setShowMoreColors((prev) => !prev)}
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                      cursor: "pointer",
-                      margin: "1rem 0",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "2rem",
-                        height: "2rem",
-                        position: "relative",
-                      }}
-                    >
-                      <Image
-                        src={moreImagesIconUrl}
-                        alt={optionLabel}
-                        layout="fill"
-                        objectFit="cover"
-                      />
-                    </div>
-                    <div>
-                      <p style={{ fontSize: "0.7rem" }}>
-                        {optionLabel.toUpperCase()}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Collapsible dropdown for options */}
-                  {showMoreColors && (
-                    <div
-                      style={{
-                        margin: "1rem 0",
-                        borderTop: "1px solid #000",
-                        padding: "0.5rem",
-                        background: "#fff",
-                      }}
-                    >
-                      <div
-                        onClick={() => setShowMoreColors(false)}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          marginBottom: "0.5rem",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <span style={{ fontSize: "0.9rem" }}>
-                          {optionLabel.toUpperCase()}
-                        </span>
-                        <span
-                          style={{
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                            fontSize: "1.2rem",
-                          }}
-                        >
-                          &times;
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", gap: "0.5rem" }}>
-                        {options
-                          .filter(
-                            (opt) =>
-                              opt.optionDetails &&
-                              Object.keys(opt.optionDetails).length > 0 &&
-                              opt.inventoryData &&
-                              opt.inventoryData.availableQuantity > 0
-                          )
-                          .map((opt) => (
-                            <div
-                              key={opt._id}
-                              onClick={() => handleColorChange(opt)}
-                              style={getOptionStyle(opt)}
-                            />
-                          ))}
-                      </div>
-                    </div>
+              ) && (
+                <OptionSelector 
+                  options={options.filter(
+                    (opt) =>
+                      opt.optionDetails &&
+                      Object.keys(opt.optionDetails).length > 0 &&
+                      opt.inventoryData &&
+                      opt.inventoryData.availableQuantity > 0
                   )}
-                </>
-              ) : (
-                <div style={{ margin: "1rem 0" }}>
-                  <div style={{ marginBottom: "0.5rem" }}>{optionLabel}</div>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    {options
-                      .filter(
-                        (opt) =>
-                          opt.optionDetails &&
-                          Object.keys(opt.optionDetails).length > 0 &&
-                          opt.inventoryData &&
-                          opt.inventoryData.availableQuantity > 0
-                      )
-                      .map((opt) => (
-                        <div
-                          key={opt._id}
-                          onClick={() => handleColorChange(opt)}
-                          style={getOptionStyle(opt)}
-                        />
-                      ))}
-                  </div>
-                </div>
-              ))}
+                  selectedOption={selectedOption}
+                  handleOptionChange={handleColorChange}
+                  optionLabel={optionLabel}
+                  colorMap={colorMap}
+                  imageBaseUrl={imageBaseUrl}
+                  isMobile={isMobile}
+                />
+              )}
+            
+            {/* Render wrap finish selector for wraps */}
+            {product.category.toLowerCase() === 'wraps' && (
+              <WrapFinishSelector 
+                selectedFinish={selectedWrapFinish}
+                setSelectedFinish={setSelectedWrapFinish}
+              />
+            )}
 
             {isMobile && (
               <>
@@ -588,6 +507,7 @@ export default function ProductIdPage({
                     ...product,
                     thumbnail,
                     selectedOption: selectedOption || null,
+                    wrapFinish: product.category.toLowerCase() === 'wraps' ? selectedWrapFinish : null,
                     variantDetails: variant,
                     category: category,
                     price:
