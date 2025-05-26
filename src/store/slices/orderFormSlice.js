@@ -41,7 +41,12 @@ const orderFormSlice = createSlice({
     // -------------------------------------------------- generic data
     setUserDetails: (s, a) => { s.userDetails = { ...s.userDetails, ...a.payload }; },
     setAddressDetails: (s, a) => { s.addressDetails = { ...s.addressDetails, ...a.payload }; },
-    setUserExists: (s, a) => { s.userExists = a.payload; },
+    // setUserExists: (s, a) => { s.userExists = a.payload; },
+    setUserExists: (state, action) => {
+      console.log('🔄 setUserExists called with:', action.payload);
+      state.userExists = action.payload;
+    },
+    
     setPrefilledAddress: (s, a) => { s.prefilledAddress = a.payload; },
 
     // -------------------------------------------------- coupon workflow
