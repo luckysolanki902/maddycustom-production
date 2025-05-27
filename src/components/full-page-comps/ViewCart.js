@@ -310,7 +310,6 @@ export default function ViewCart({ isDrawer = false }) {
     Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
     
   useEffect(()=>{
-    console.log("cartit", cartItems);
   }, []);
   useEffect(() => {
     if (blocked || manualCoupon || couponState.couponApplied || !qty) return;
