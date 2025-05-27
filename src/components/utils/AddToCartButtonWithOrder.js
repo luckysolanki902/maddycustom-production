@@ -50,7 +50,6 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     },
   });
   useEffect(() => {
-    console.log("cartitems", cartItems);
     dispatch(setDefaultWrapFinish());
   }, []);
   // --- INVENTORY / STOCK MANAGEMENT ---

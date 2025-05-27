@@ -76,7 +76,6 @@ const utmSlice = createSlice({
         // Add to history only if different from last entry
         if (isDifferent) {
           state.utmHistory.push(historyEntry);
-          console.log(`Added new UTM entry: source=${historyEntry.source} medium=${historyEntry.medium} campaign=${historyEntry.campaign}`);
         }
       }
     },
@@ -99,11 +98,8 @@ const utmSlice = createSlice({
       const utmString = Object.entries(state.utmDetails)
         .map(([key, value]) => `${key}=${value}`)
         .join('&');
-      console.log(`Current UTM Details: ${utmString}`);
       
-      console.log(`UTM History (${state.utmHistory.length} entries):`);
       state.utmHistory.forEach((entry, index) => {
-        console.log(`[${index}] source=${entry.source} medium=${entry.medium} campaign=${entry.campaign} path=${entry.pathname} time=${new Date(entry.timestamp).toLocaleTimeString()}`);
       });
       
       return state;

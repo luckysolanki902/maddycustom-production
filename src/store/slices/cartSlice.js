@@ -68,7 +68,6 @@ const cartSlice = createSlice({
         const categoryName = item.productDetails?.category?.name?.toLowerCase();
 
         if ((categoryName?.includes('wrap')|| categoryName?.includes('Wrap')) && !item.productDetails.wrapFinish) {
-          console.log("added wrapfiish");
           return {
             ...item,
             productDetails: {

@@ -92,7 +92,6 @@ export default function ProductIdPage({
   };
 
 
-console.log("memo", MemoizedOrderSpecifications);
   // Cloudfront URL for the icon (used when thumbnail is not provided)
   const moreImagesIconUrl = `${imageBaseUrl}/assets/icons/more-images-icon.jpg`;
 
@@ -144,7 +143,6 @@ console.log("memo", MemoizedOrderSpecifications);
     }
   }, [options, selectedOption]);
   useEffect(()=>{
-    console.log("prod",product);
   }, []);
   useEffect(() => {
     if (product.category.toLowerCase() == 'wraps') {
