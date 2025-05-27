@@ -1,22 +1,22 @@
 /* src/components/cards/styles/productswrapper.module.css */
 
-/* Container for the grid of products */
+/* Container for the grid of products - layout1 with proper spacing */
 .productsGrid {
-  margin: 2rem 0;
+  margin: 1.5rem 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* Keep original 3 columns */
-  gap: 24px;
-  padding: 0 20px;
-  max-width: 1400px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 84px 24px; /* Increased row gap for layout1 */
+  padding: 0 24px; /* Add horizontal padding for screens > 480px */
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
 
 .productsGrid2 {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* Fixed to 4 columns for layout2 */
-  gap: 16px;
-  padding: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px; /* Reduced gap for compact layout */
+  padding: 10px;
   max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
@@ -33,7 +33,7 @@
 .videoCard {
   position: relative;
   background-color: white !important;
-  border-radius: 12px;
+  border-radius: 0; /* Sharp edges for layout1 video */
   overflow: hidden;
   height: 100%;
   display: flex;
@@ -48,9 +48,10 @@
   border: none;
   outline: none;
   background-color: white !important;
+  border-radius: 0; /* Sharp edges for video frame */
 }
 
-/* Header carousel styling */
+/* Header carousel styling - keep this rounded since it's used with layout2 */
 .HeaderCarouselMain {
   width: 100%;
   height: 100%;
@@ -64,7 +65,7 @@
 
 /* "Maddy Customs" text styling */
 .videoCard h1 {
-  padding: 16px;
+  padding: 12px;
   margin: 0;
   font-size: 1.2rem;
   font-family: 'Jost', sans-serif;
@@ -105,12 +106,16 @@
 @media (max-width: 1024px) {
   .productsGrid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 20px; /* Slightly reduced but still good spacing */
+    padding: 0 20px;
   }
 }
 
 @media (max-width: 768px) {
   .productsGrid2 {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 8px;
   }
 }
 
@@ -118,32 +123,36 @@
 @media (max-width: 600px) {
   .productsGrid {
     grid-template-columns: 1fr;
-    gap: 24px;
-    padding: 16px;
+    gap: 16px; /* Still decent spacing for smaller screens */
+    padding: 0 16px; /* Keep some padding on medium-small screens */
+    margin: 1rem 0;
   }
   
   .productsGrid2 {
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    padding: 12px;
+    gap: 6px; /* Minimal gap for mobile */
+    padding: 6px;
   }
 
   .videoCard {
-    width: 95%;
-    margin: auto;
-    border-radius: 8px;
-    background-color: white;
+    width: 100%; /* Full width on mobile */
+    margin: 0;
+    border-radius: 0; /* Ensure no radius on mobile too */
   }
 
   .videoCard iframe {
-    border-radius: 8px;
-    background-color: white;
+    border-radius: 0;
+  }
+  
+  .videoCard h1 {
+    padding: 8px;
+    font-size: 1rem;
   }
 }
 
-@media (max-width: 390px) {
-  .productsGrid2 {
-    gap: 8px;
-    padding: 8px;
+/* Remove padding only for very small screens */
+@media (max-width: 480px) {
+  .productsGrid {
+    padding: 0; /* No padding for very small screens */
   }
 }

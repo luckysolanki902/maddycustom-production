@@ -3,7 +3,7 @@
 .mainCardDiv {
   position: relative;
   background-color: white;
-  border-radius: 12px;
+  border-radius: 0; /* Sharp edges for layout1 */
   overflow: hidden;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
   height: 100%;
@@ -18,9 +18,9 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
-/* Layout-specific styling */
+/* Layout-specific styling - keep rounded corners only for layout2 */
 .layout2Card {
-  border-radius: 8px;
+  border-radius: 8px; /* Rounded corners for layout2 */
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
 
@@ -32,16 +32,16 @@
 /* Fixed tagline for promotions */
 .fixedTagline {
   position: absolute;
-  top: 12px;
+  top: 10px;
   left: 0;
   z-index: 5;
   background: linear-gradient(90deg, #31C473, #27a05c);
   color: white;
-  padding: 5px 14px 5px 12px;
-  font-size: 0.85rem;
+  padding: 4px 12px 4px 10px;
+  font-size: 0.8rem;
   font-weight: 600;
   font-family: Jost, sans-serif;
-  letter-spacing: 0.03rem;
+  letter-spacing: 0.02rem;
   border-radius: 0 20px 20px 0;
   box-shadow: 0 2px 8px rgba(49, 196, 115, 0.25);
 }
@@ -62,17 +62,13 @@
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover; /* Use cover by default */
+  object-fit: cover;
   transition: transform 0.4s ease;
 }
 
 /* Adjust layout2 image container for proper aspect ratio */
 .layout2Card .imageContainer {
   padding-bottom: 100%; /* Square aspect ratio for layout2 */
-}
-
-.layout2Card .image {
-  object-fit: cover; /* Change to cover for layout2 as well */
 }
 
 .mainCardDiv:hover .image {
@@ -97,34 +93,32 @@
 .outOfStockOverlay > span {
   background: #e53935;
   color: white;
-  padding: 6px 16px;
+  padding: 4px 12px;
   border-radius: 4px;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   letter-spacing: 0.02rem;
   text-transform: uppercase;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  transform: rotate(-2deg);
 }
 
 /* Product description container */
 .productDescription {
-  padding: 16px 18px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   flex-grow: 1;
   background: white;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* Product name styling */
 .productName {
   color: #2d2d2d;
   font-family: Jost, sans-serif;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
-  margin: 0 0 8px 0;
-  line-height: 1.3;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
   letter-spacing: 0.01rem;
   overflow: hidden;
   display: -webkit-box;
@@ -135,158 +129,155 @@
 /* Product subtitle styling */
 .productCardSubtitles {
   font-family: 'Jost', sans-serif;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #666;
-  margin-bottom: 12px;
-  line-height: 1.4;
+  margin-bottom: 8px;
+  line-height: 1.3;
 }
 
 .captionText {
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0;
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-/* Price section styling */
+/* Price section styling - removed vertical margins for layout1 */
 .priceSection {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  margin: 8px 0 12px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  gap: 10px;
+  margin: 0; /* Removed vertical margins */
+}
+
+/* Add vertical margins only for layout2 */
+.layout2Card .priceSection {
+  margin: 6px 0 10px;
 }
 
 .finalPrice {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 700;
-  color: #2d2d2d;
+  color: #2d2d2de6;
 }
 
 .priceDetails {
   display: flex;
   flex-direction: column;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .priceRow {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  margin-bottom: 2px;
+  gap: 8px;
+  margin-bottom: 1px;
 }
 
 .mrp {
   text-decoration: line-through;
   color: #888;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .discountPercentage {
   color: #31C473;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   background-color: rgba(49, 196, 115, 0.1);
   padding: 2px 8px;
   border-radius: 12px;
 }
 
 .offerSubtitle {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #555;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 /* Add to cart button container */
 .addToCart {
   margin-top: auto;
-  padding-top: 12px;
+  padding-top: 8px;
 }
 
 /* Responsive styles */
 @media (max-width: 768px) {
-  .mainCardDiv {
-    border-radius: 10px;
-  }
-  
   .productDescription {
-    padding: 14px 16px;
-  }
-  
-  .finalPrice {
-    font-size: 1.3rem;
-  }
-}
-
-@media (max-width: 600px) {
-  .mainCardDiv {
-    border-radius: 8px;
-  }
-  
-  .productName {
-    font-size: 0.95rem;
-  }
-  
-  .productCardSubtitles {
-    font-size: 0.8rem;
-    margin-bottom: 10px;
-  }
-  
-  .productDescription {
-    padding: 12px 14px;
+    padding: 10px 12px;
   }
   
   .finalPrice {
     font-size: 1.2rem;
   }
-  
-  .mrp {
-    font-size: 0.8rem;
-  }
-  
-  .discountPercentage {
-    font-size: 0.75rem;
-    padding: 1px 6px;
-  }
-  
-  .offerSubtitle {
-    font-size: 0.7rem;
-  }
-
-  .fixedTagline {
-    font-size: 0.8rem;
-    top: 8px;
-    padding: 3px 12px 3px 10px;
-  }
-  
-  /* Better image proportions for small devices */
-  .layout2Card .imageContainer {
-    padding-bottom: 70%;
-  }
-
-  .outOfStockOverlay > span {
-    padding: 5px 12px;
-    font-size: 0.75rem;
-  }
 }
 
-@media (max-width: 390px) {
+@media (max-width: 600px) {
+
+  
+  .productName {
+    font-size: 0.9rem;
+  }
+  
+  .productCardSubtitles {
+    font-size: 0.75rem;
+    margin-bottom: 6px;
+  }
+  
   .productDescription {
-    padding: 10px 12px;
+    padding: 8px 10px;
   }
   
   .finalPrice {
     font-size: 1.1rem;
   }
   
+  .mrp {
+    font-size: 0.75rem;
+  }
+  
+  .discountPercentage {
+    font-size: 0.7rem;
+    padding: 1px 6px;
+  }
+  
+  .offerSubtitle {
+    font-size: 0.65rem;
+  }
+
+  .fixedTagline {
+    font-size: 0.75rem;
+    top: 6px;
+    padding: 3px 10px 3px 8px;
+  }
+  
+  /* Better image proportions for small devices */
+  .layout2Card .imageContainer {
+    padding-bottom: 75%;
+  }
+
+  .outOfStockOverlay > span {
+    padding: 3px 10px;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .productDescription {
+    padding: 8px;
+  }
+  
+  .finalPrice {
+    font-size: 1rem;
+  }
+  
   .priceSection {
-    gap: 6px;
+    gap: 5px;
   }
   
   .outOfStockOverlay > span {
-    padding: 4px 10px;
-    font-size: 0.7rem;
+    padding: 2px 8px;
+    font-size: 0.65rem;
   }
 }
