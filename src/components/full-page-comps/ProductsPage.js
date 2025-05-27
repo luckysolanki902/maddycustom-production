@@ -309,7 +309,7 @@ export default function ProductsPage({
 
             {/* Video for small devices - only render here for mobile */}
             {shouldShowVideoInPage && (
-              <div className={wrapperStyles.videoCard} aria-label="Product Video" style={{ backgroundColor: 'white' }}>
+              <div className={wrapperStyles.videoCard} aria-label="Product Video" style={{ backgroundColor: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0 1rem', marginBottom: '2rem', boxShadow: 'none' }}>
                 <iframe
                   width="100%"
                   height="100%"
@@ -318,9 +318,9 @@ export default function ProductsPage({
                   frameBorder="0"
                   allow="autoplay; encrypted-media"
                   allowFullScreen
-                  style={{ pointerEvents: 'none', backgroundColor: 'white' }}
+                  style={{ pointerEvents: 'none', backgroundColor: 'white', borderRadius: '1rem'  }}
                 />
-                <h1>Maddy Custom</h1>
+                {/* <h1>Maddy Custom</h1> */}
               </div>
             )}
 
