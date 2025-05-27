@@ -80,6 +80,15 @@ const cartSlice = createSlice({
         return item;
       });
     },
+    setWrapFinish: (state, action) => {
+      const { productId, wrapFinish } = action.payload;
+      const itemIndex = state.items.findIndex(item => 
+        (item.productId === productId || item.productDetails?._id === productId)
+      );
+      if (itemIndex !== -1) {
+        state.items[itemIndex].productDetails.wrapFinish = wrapFinish;
+      }
+    }
   },
 });
 
@@ -91,7 +100,8 @@ export const {
   setCart,
   clearCart,
   updateQuantity,
-  setDefaultWrapFinish
+  setDefaultWrapFinish,
+  setWrapFinish
 } = cartSlice.actions;
 
 export default cartSlice.reducer;
