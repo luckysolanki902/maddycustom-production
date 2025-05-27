@@ -7,11 +7,6 @@ const initialState = {
   isSearchDialogOpen: false,
   isCartDrawerOpen: false,
   cartDrawerSource: 'bottom', // 'top' or 'bottom'
-  // Add shipping timer state
-  shippingTimer: {
-    expiryTime: Date.now() + (9 * 60 * 60 * 1000) + (13 * 60 * 1000), // 9 hours 13 minutes from now
-    isActive: true
-  }
 };
 
 const uiSlice = createSlice({

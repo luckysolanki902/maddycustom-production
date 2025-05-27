@@ -6,7 +6,8 @@
   }
   @media(width<600px){
     .tagMainContainer{
-        margin-bottom: 0rem;
+        margin-bottom: 2rem;
+        margin-top: 2rem;
     }
   }
   
