@@ -28,11 +28,10 @@ export async function POST(request) {
     await connectToDatabase();
 
     // 1) Try to find a Product by pageSlug
-    const product = await Product.findOne({ pageSlug: fullSlug })
+    const product = await Product.findOne({ pageSlug: fullSlug, available: true })
       .populate('inventoryData')
       .lean()
       .exec();
-
     if (product) {
       // Found a product. Fetch the associated variant.
       const variant = await SpecificCategoryVariant.findById(product.specificCategoryVariant)
@@ -176,8 +175,13 @@ export async function POST(request) {
         },
       });
 
+      pipeline.push({
+        $match: {
+          available: true,
+        }
+      });
+      
       const products = await Product.aggregate(pipeline).exec();
-
       // unique tags
       const uniqueTagsPipeline = [
         { $match: { specificCategoryVariant: variant._id, available: true } },
