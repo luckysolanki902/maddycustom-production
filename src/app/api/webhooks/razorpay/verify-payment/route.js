@@ -299,7 +299,7 @@ export async function POST(request) {
         shipping_is_billing: true,
         order_items: latestOrder.items.map(item => ({
           name: item.name,
-          sku: `${item.sku}-${item.WrapFinish.charAt(0).toLowerCase()}`,
+          sku: `${item.sku}-${item.wrapFinish?.charAt(0)?.toLowerCase()}`,
           units: item.quantity,
           selling_price: item.priceAtPurchase,
         })),
