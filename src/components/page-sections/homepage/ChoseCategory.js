@@ -61,7 +61,8 @@ const ChooseCategory = () => {
 
       {/* Tank Wraps (Dynamic Link) */}
       <div className={styles.mainCard}>
-        <Link href={tankWrapPageSlug} className={styles.chooseCard}>
+        <Link href={
+          tankWrapPageSlug} className={styles.chooseCard}>
           <div className={styles.imageWrapper}>
             <Image
               className={styles.chooseImage}
@@ -103,7 +104,7 @@ const ChooseCategory = () => {
           <div className={styles.imageWrapper}>
             <Image
               className={styles.chooseImage}
-              src={`${baseurl}/assets/category-cards/fuel_cap_wrap1.png`}
+              src={`${baseurl}/assets/category-cards/fuelcap.jpg`}
               alt="Fuel Cap Wraps"
               fill
               sizes="(max-width: 320px) 33vw, (max-width: 768px) 25vw, 16vw"

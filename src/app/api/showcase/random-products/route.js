@@ -76,6 +76,7 @@ export async function GET(request) {
       Product.aggregate([
         { $match: { specificCategoryVariant: variant._id } },
         { $sample: { size: count } },
+        { $match: { available: true } } 
       ])
     );
     const productArrays = await Promise.all(productPromises);
@@ -83,7 +84,6 @@ export async function GET(request) {
 
     // Final shuffle of the products array before returning
     products = products.sort(() => Math.random() - 0.5);
-
     return NextResponse.json(products, { status: 200 });
   } catch (error) {
     console.error("Error fetching random products:", error.message);
