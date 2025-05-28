@@ -38,6 +38,7 @@ export async function GET(request) {
         const randomProduct = await Product.aggregate([
           { $match: { specificCategoryVariant: variant._id } },
           { $sample: { size: 1 } },
+          { $match: { available: true } }
         ]);
         if (!randomProduct || randomProduct.length === 0) {
           return null;
@@ -79,7 +80,8 @@ export async function GET(request) {
                 _id: { $nin: alreadyFetched }
               }
             },
-            { $sample: { size: 1 } }
+            { $sample: { size: 1 } },
+            { $match: { available: true } }
           ]);
           if (newProductResult && newProductResult.length > 0) {
             const newProduct = { ...newProductResult[0], variantId: vid };
