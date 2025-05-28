@@ -19,6 +19,7 @@ import {
   setHasSeenVariantPopup,
   setPageSlug,
 } from "@/store/slices/variantPreferenceSlice";
+import { Category } from "@mui/icons-material";
 
 export default function ChangeVariantButton({ category }) {
   const [showPopup, setShowPopup] = useState(false);
@@ -146,7 +147,10 @@ export default function ChangeVariantButton({ category }) {
       }}
     >
       <DialogContent className={styles.dialogContent} style={{backgroundColor:'#fff'}}>
-        <div className={`${styles.jostFam} ${styles.maindialogHeading}`}>
+        <div
+          className={`${styles.jostFam} ${styles.maindialogHeading}`}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
+        >
           CHOOSE
         </div>
         <div className={styles.categoryName}>
@@ -240,10 +244,29 @@ export default function ChangeVariantButton({ category }) {
             textAlign: "center",
             fontWeight: "bold",
             marginBottom: "1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.5rem",
           }}
         >
           CHOOSE
+          {category.name.trim() === "Fuel Cap Wraps" && (
+            <Image
+              src={`${baseImageUrl}/assets/icons/mandatory (1).jpeg`}
+              alt="Mandatory Icon"
+              width={120}
+              height={120}
+              unoptimized
+              style={{
+                objectFit: "contain",
+                maxHeight: "120px",
+                verticalAlign: "middle",
+              }}
+            />
+          )}
         </Box>
+
 
         {letterMappingGroups.map((group) => (
           <Box key={group.groupName} sx={{ marginBottom: "2rem" }}>

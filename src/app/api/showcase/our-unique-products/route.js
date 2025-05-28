@@ -29,12 +29,14 @@ export async function GET() {
     // Fetch 4 random products for each variant group
     const winProducts = await Product.aggregate([
       { $match: { specificCategoryVariant: { $in: winVariantIds } } },
-      { $sample: { size: 4 } }
+      { $sample: { size: 4 } },
+      { $match : { available: true } }
     ]);
 
     const twsProducts = await Product.aggregate([
       { $match: { specificCategoryVariant: { $in: twsVariantIds } } },
-      { $sample: { size: 4 } }
+      { $sample: { size: 4 } },
+      { $match : { available: true } }
     ]);
 
     if ((!winProducts || winProducts.length === 0) && (!twsProducts || twsProducts.length === 0)) {
@@ -47,7 +49,6 @@ export async function GET() {
       if (winProducts[i]) combinedProducts.push(winProducts[i]);
       if (twsProducts[i]) combinedProducts.push(twsProducts[i]);
     }
-
     return NextResponse.json(combinedProducts, { status: 200 });
   } catch (error) {
     console.error("Error fetching showcase products:", error.message);
