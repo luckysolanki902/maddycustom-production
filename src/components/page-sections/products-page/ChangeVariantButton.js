@@ -257,7 +257,7 @@ export default function ChangeVariantButton({ category }) {
               alt="Mandatory Icon"
               width={120}
               height={120}
-              unoptimized
+              loading="eager"
               style={{
                 objectFit: "contain",
                 maxHeight: "120px",
