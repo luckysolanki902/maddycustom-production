@@ -74,7 +74,10 @@ const OfferSchema = new mongoose.Schema({
 
   couponCodes: [{ type: String, uppercase: true, trim: true, maxlength: 20 }],
   discountCap: { type: Number, default: Infinity },
-
+  showAsCard: {
+    type: Boolean,
+    default: false,
+  },
 }, { timestamps: true });
 
 OfferSchema.index({ name: "text", description: "text" });
