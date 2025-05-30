@@ -12,6 +12,7 @@ import {
   incrementQuantity,
   decrementQuantity,
   removeItem,
+  setDefaultWrapFinish
 } from '../../store/slices/cartSlice';
 import { openCartDrawer } from '../../store/slices/uiSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
@@ -41,6 +42,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       }
     },
   });
+  useEffect(() => {
+    dispatch(setDefaultWrapFinish());
+  }, []);
 
   useEffect(() => {
     // No additional logic needed here as useSpring tracks cartItem changes.

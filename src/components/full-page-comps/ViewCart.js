@@ -6,7 +6,11 @@ import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
 
 import { removeItem } from '@/store/slices/cartSlice';
-import { closeCartDrawer, expireShippingTimer } from '@/store/slices/uiSlice';
+import { closeCartDrawer } from '@/store/slices/uiSlice'; // Removed expireShippingTimer
+import {
+  startShippingTimer as startPersistentShippingTimer,
+  clearShippingTimer as clearPersistentShippingTimer,
+} from '@/store/slices/persistentUiSlice'; // Import actions from new slice
 import {
   setCouponApplied,
   setManualCoupon,
@@ -69,7 +73,8 @@ export default function ViewCart({ isDrawer = false }) {
   const cartItems = useSelector(s => s.cart.items);
   const orderForm = useSelector(s => s.orderForm);
   const couponRedux = orderForm.couponApplied;
-  const shippingTimer = useSelector(s => s.ui.shippingTimer);
+  // Get persisted shipping timer state
+  const persistedShippingTimer = useSelector(s => s.persistentUi.shippingTimer);
 
   /* ---------- coupon local mirror ------------------------------------ */
   const [couponState, setCouponState] = useState({
@@ -156,16 +161,39 @@ export default function ViewCart({ isDrawer = false }) {
     return value < 10 ? `0${value}` : `${value}`;
   };
 
+  // Define default timer duration
+  const DEFAULT_SHIPPING_TIMER_DURATION = (9 * 60 * 60 * 1000) + (13 * 60 * 1000); // 9 hours 13 minutes
+
+  // Effect to initialize the timer if not already started
+  useEffect(() => {
+    if (!persistedShippingTimer.startTime) {
+      dispatch(startPersistentShippingTimer({ startTime: Date.now(), duration: DEFAULT_SHIPPING_TIMER_DURATION }));
+    }
+  }, [persistedShippingTimer.startTime, dispatch, DEFAULT_SHIPPING_TIMER_DURATION]);
+  
+  // Derive expiryTime and isActive status from persisted state
+  const expiryTime = persistedShippingTimer.startTime && persistedShippingTimer.duration
+    ? persistedShippingTimer.startTime + persistedShippingTimer.duration
+    : 0;
+  
+  const isActiveForShipping = persistedShippingTimer.startTime && persistedShippingTimer.duration
+    ? Date.now() < expiryTime
+    : false;
+
   // Timer calculation effect
   useEffect(() => {
-    if (!shippingTimer?.isActive) return;
+    if (!isActiveForShipping) {
+      // Ensure timer display is zeroed out if not active
+      setTimeRemaining({ hours: 0, minutes: 0, seconds: 0 });
+      return;
+    }
 
     const calculateTimeRemaining = () => {
       const now = Date.now();
-      const difference = shippingTimer.expiryTime - now;
+      const difference = expiryTime - now;
 
       if (difference <= 0) {
-        dispatch(expireShippingTimer());
+        dispatch(clearPersistentShippingTimer()); // Clear timer from persistent state
         setTimeRemaining({ hours: 0, minutes: 0, seconds: 0 });
         return;
       }
@@ -184,7 +212,7 @@ export default function ViewCart({ isDrawer = false }) {
     const timerInterval = setInterval(calculateTimeRemaining, 1000);
     
     return () => clearInterval(timerInterval);
-  }, [shippingTimer?.expiryTime, shippingTimer?.isActive, dispatch]);
+  }, [expiryTime, isActiveForShipping, dispatch]);
 
   const lastAutoRef = useRef({ code: '', type: '' });
   const FIVE_MIN = 5 * 60 * 1000;
@@ -280,7 +308,9 @@ export default function ViewCart({ isDrawer = false }) {
   const { autoApplyDisabled, autoApplyDisabledAt, manualCoupon } = orderForm;
   const blocked = autoApplyDisabled && autoApplyDisabledAt &&
     Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
-
+    
+  useEffect(()=>{
+  }, []);
   useEffect(() => {
     if (blocked || manualCoupon || couponState.couponApplied || !qty) return;
 
@@ -398,7 +428,7 @@ const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 
 
             <section className={styles.detailsSection}>
               {/* Free Shipping Banner - Show when qty > 0 and delivery is free */}
-              {qty > 0 && deliveryCost === 0 && shippingTimer.isActive && (
+              {qty > 0 && deliveryCost === 0 && isActiveForShipping && (
                 <AnimatePresence>
                   <motion.div
                     className={styles.freeShippingBanner}
@@ -426,7 +456,7 @@ const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 
                             opacity: 1, 
                             scale: 1,
                             transition: { delay: 0.4, duration: 0.3 }
-                          }}
+                        }}
                         >
                           <span className={styles.timerLabel}>Ends in:</span>
                           <span className={styles.timerDigits}>

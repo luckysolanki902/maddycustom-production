@@ -436,14 +436,11 @@ const OrderForm = ({
     setIsLoading(true);
     setIsPaymentProcessing(true);
 
-    // Performance timing logs
     const startTime = performance.now();
 
     try {
-      // Create a single array for all initial validation promises
       const initialValidationPromises = [];
 
-      // 1. Check if we need to validate serviceability
       if (!isPincodeValid && data.pincode && !serviceabilityCache.current[data.pincode]) {
         const serviceabilityPromise = axios.get(
           `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${data.pincode}`
@@ -451,7 +448,6 @@ const OrderForm = ({
           const isValid = response.data.serviceable;
           serviceabilityCache.current[data.pincode] = isValid;
           setIsPincodeValid(isValid);
-
           if (!isValid) {
             throw new Error(`The pincode ${data.pincode} is either invalid or we don't deliver to this location!`);
           }
@@ -459,13 +455,12 @@ const OrderForm = ({
         initialValidationPromises.push(serviceabilityPromise);
       }
 
-      // 2. Check if we need to validate coupon
       let couponPromise;
       if (couponCode && !pendingOperationsRef.current.couponValidation) {
         couponPromise = axios.post('/api/checkout/coupons/apply', {
           code: couponCode,
           totalCost: subTotal,
-          isFirstOrder: false,
+          isFirstOrder: false, 
           cartItems: items,
         }).then(response => {
           const couponValidation = response.data;
@@ -479,13 +474,10 @@ const OrderForm = ({
         initialValidationPromises.push(pendingOperationsRef.current.couponValidation);
       }
 
-      // 3. Check if we need to finish user check/creation (this sets/confirms userId)
       if (pendingOperationsRef.current.userCheck) {
         initialValidationPromises.push(pendingOperationsRef.current.userCheck);
       }
 
-      // 4. Start address addition - initiate early.
-      // This promise will be awaited later, in parallel with order creation.
       const addAddressPayload = {
         phoneNumber: orderForm.userDetails.phoneNumber,
         address: {
@@ -501,7 +493,6 @@ const OrderForm = ({
         },
       };
 
-      // Re-assign to a new const for clarity in Promise.all later
       const addressAddPromise = axios.post('/api/user/add-address', addAddressPayload)
         .then(response => {
           if (response.data.message === 'Address added successfully.' ||
@@ -511,25 +502,18 @@ const OrderForm = ({
           return response.data;
         }).catch(error => {
           console.error("Error during address addition (in parallel task):", error);
-          // Propagate error to be caught by main try-catch
           throw new Error(error.response?.data?.message || "Failed to update address details.");
         });
-      pendingOperationsRef.current.addressAdd = addressAddPromise; // Keep ref if needed elsewhere, though direct use of addressAddPromise is clearer
 
-      // 5. Wait for all initial critical validations to complete
-      // This ensures userId is populated in Redux store via userCheck promise if it was pending.
       if (initialValidationPromises.length > 0) {
-        const validationStartTime = performance.now();
         await Promise.all(initialValidationPromises).catch(error => {
-          throw error; // Re-throw to be caught by the main try-catch block
+          throw error;
         });
-      } else {
       }
 
-      // 6. Prepare order payload *after* initial validations (especially userCheck) have completed.
-      // This ensures orderForm.userDetails.userId is correctly populated
+      // Financial data is now sent directly
       const finalOrderPayload = {
-        userId: orderForm.userDetails.userId, // Now confirmed
+        userId: orderForm.userDetails.userId,
         phoneNumber: orderForm.userDetails.phoneNumber,
         items: cartItems.map((item) => ({
           product: item.productId,
@@ -548,7 +532,7 @@ const OrderForm = ({
           insertionDetails: item.insertionDetails || {}
         })),
         paymentModeId: paymentModeConfig._id,
-        address: { // Using form data directly for the order's address snapshot
+        address: {
           receiverName: orderForm.userDetails.name || '',
           receiverPhoneNumber: orderForm.userDetails.phoneNumber,
           addressLine1: data.addressLine1,
@@ -558,49 +542,34 @@ const OrderForm = ({
           pincode: data.pincode,
           country: data.country || 'India',
         },
+        // Raw financial details are sent:
         totalAmount: totalCost,
         discountAmount: discountAmountFinal || 0,
         couponCode: couponsDetails?.couponCode || '',
-        extraCharges: [
-          {
-            chargesName: 'MOP Charges',
-            chargesAmount: paymentModeConfig.extraCharge || 0,
-          },
-          {
-            chargesName: 'Delivery Charges',
-            chargesAmount: deliveryCost || 0,
-          },
-        ],
+        extraChargesPayload: { // Send as an object to be processed server-side
+            mopCharges: paymentModeConfig.extraCharge || 0,
+            deliveryCharges: deliveryCost || 0,
+        },
         utmDetails: utmDetails.utmDetails || null,
-        utmHistory: utmDetails.utmHistory || [], // Send UTM history
+        utmHistory: utmDetails.utmHistory || [],
         extraFields: orderForm.extraFields,
       };
 
-      // 7. Start creating the order and await its completion alongside address addition.
-      const orderCreateStartTime = performance.now();
+      const [orderCreationResponse] = await Promise.all([
+        axios.post('/api/checkout/order/create', finalOrderPayload),
+        addressAddPromise
+      ]);
 
-      const orderCreatePromise = axios.post('/api/checkout/order/create', finalOrderPayload)
-        .then(response => {
-          return response;
-        }).catch(error => {
-          console.error("Error during order creation (in parallel task):", error);
-          throw new Error(error.response?.data?.message || "Failed to create order.");
-        });
+      const {
+        orderId: createdOrderId,
+        razorpayOrder,
+        amountDueOnline
+      } = orderCreationResponse.data;
 
-      // Wait for both order creation and address addition to complete.
-      // Order creation is essential for the next step (payment).
-      // Address addition is important for user profile data integrity.
-      const [orderResponse] = await Promise.all([orderCreatePromise, addressAddPromise]);
-      // Note: result of addressAddPromise is not directly used here, but its completion is awaited.
-
-
-      const { orderId: createdOrderId, paymentDetails: createdPaymentDetails } = orderResponse.data;
       dispatch(setLastOrderId(createdOrderId));
 
-      // 8. Start preparing payment in parallel with pixel events
-      if (createdPaymentDetails.amountDueOnline > 0) {
-        // Start FB pixel tracking in parallel with payment preparation
-        const pixelPromise = initiateCheckout(
+      if (razorpayOrder && amountDueOnline > 0) {
+        initiateCheckout(
           {
             eventID: uuidv4(),
             totalValue: totalCost,
@@ -621,26 +590,6 @@ const OrderForm = ({
           console.error('FB pixel tracking error (non-critical):', error);
         });
 
-        // Start payment initialization in parallel
-        const paymentStartTime = performance.now();
-
-        const paymentPromise = axios.post(
-          '/api/checkout/order/payment/create-razorpay-order',
-          { orderId: createdOrderId }
-        );
-
-        // Wait for payment initialization (this must complete)
-        const paymentInitResponse = await paymentPromise;
-
-        const { order: razorpayOrder, msg } = paymentInitResponse.data;
-
-        if (msg !== 'success') {
-          console.error('Failed to initiate payment:', msg);
-          showSnackbar('Failed to initiate payment.', 'error');
-          throw new Error('Payment initiation failed.');
-        }
-
-
         const paymentResult = await makePayment({
           customerName: orderForm.userDetails.name || '',
           customerMobile: orderForm.userDetails.phoneNumber,
@@ -648,17 +597,20 @@ const OrderForm = ({
           razorpayOrder,
         });
 
-        // User closed the Razorpay modal
         if (paymentResult.cancelled) {
           setIsPaymentProcessing(false);
           setPurchaseInitiated(false);
+          showSnackbar('Payment was cancelled.', 'warning');
           return;
         }
-
         showSnackbar('Payment Successful!', 'success');
+      } else if (amountDueOnline === 0) {
+        showSnackbar('Order placed successfully! Payment will be collected on delivery.', 'success');
+      } else {
+        console.warn('Unexpected payment state:', { razorpayOrder, amountDueOnline });
+        showSnackbar('Order placed. Awaiting payment confirmation.', 'info');
       }
 
-      // 9. Clean up and navigate (non-blocking)
       purchase(
         {
           orderId: createdOrderId,
@@ -681,38 +633,36 @@ const OrderForm = ({
         console.error('FB pixel purchase event error (non-critical):', error);
       });
 
-      // Reset all refs to clean up memory
       pendingOperationsRef.current = {
         userCheck: null,
-        addressAdd: null, // Clear the promise from the ref
+        addressAdd: null,
         couponValidation: null,
       };
 
-      // Clean up and navigate
       dispatch(clearUTMDetails());
       dispatch(clearCart());
+      dispatch(resetOrderForm());
       reset();
 
-      // Use handleFullClose instead of handleClose to ensure both OrderForm and CartDrawer are closed
       handleFullClose();
 
-      // Ensure navigation happens after cleaning up the UI state
       setTimeout(() => {
         router.push(`/orders/myorder/${createdOrderId}`);
       }, 100);
 
-      showSnackbar('Order placed successfully!', 'success');
     } catch (error) {
       console.error('Error during purchase process:', error);
-      showSnackbar(error.message || 'An error occurred during the purchase process. Please try again.', 'error');
+      const errorMessage = error.response?.data?.message || error.message || 'An error occurred. Please try again.';
+      showSnackbar(errorMessage, 'error');
     } finally {
       setIsLoading(false);
       setIsPaymentProcessing(false);
       setPurchaseInitiated(false);
     }
   }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
-    totalCost, deliveryCost, utmDetails.utmDetails, cartItems, paymentModeConfig,
-    discountAmountFinal, couponsDetails, isPincodeValid, reset, handleFullClose, router]);
+    totalCost, deliveryCost, utmDetails, cartItems, paymentModeConfig,
+    discountAmountFinal, couponsDetails, isPincodeValid, reset, handleFullClose, router,
+    serviceabilityCache, prefilledAddress, userDetails, addressDetails]); // Maintained dependencies
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {

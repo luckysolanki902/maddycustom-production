@@ -132,7 +132,9 @@ export default function ProductsPage({
   }, [tagFilter, sortBy, fetchPageData]);
 
   /* ------------------------ helpers ------------------------ */
+  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isSmallDevice  = useMediaQuery('(max-width: 600px)');
+  const isMediumDevice = useMediaQuery('(max-width: 1024px)');
   const isLargeDevice  = useMediaQuery('(min-width: 1200px)');
   const showVideo      = currentPage === 1;
   const recommendedKey = useMemo(
@@ -167,19 +169,73 @@ export default function ProductsPage({
     });
   }, []);
 
+  // Calculate columns per row based on screen size and layout
+  const getColumnsPerRow = useCallback(() => {
+    if (showLayout2) {
+      if (isSmallDevice) return 2;
+      if (!isLargeDevice) return 3;
+      return 4; // Large device with layout2
+    } else {
+      if (isSmallDevice) return 1;
+      if (isMediumDevice) return 2;
+      return 3; // Large device with layout1
+    }
+  }, [isSmallDevice, isMediumDevice, isLargeDevice, showLayout2]);
+
+  // Determine if video should be shown and where
+  const shouldShowVideoInWrapper = useMemo(() => 
+    variant?.showCase?.[0]?.available && showVideo && !isSmallDevice, 
+    [variant?.showCase, showVideo, isSmallDevice]
+  );
+  
+  const shouldShowVideoInPage = useMemo(() => 
+    variant?.showCase?.[0]?.available && showVideo && isSmallDevice, 
+    [variant?.showCase, showVideo, isSmallDevice]
+  );
+
+  // Improved product distribution logic with complete row calculation
+  const [firstHalf, secondHalf] = useMemo(() => {
+    if (!SHOW_TOP_BOUGHT || currentPage !== 1) return [currentProducts, []];
+    
+    const columnsPerRow = getColumnsPerRow();
+    const videoOffset = shouldShowVideoInWrapper ? 1 : 0;
+    const totalItems = currentProducts.length;
+    
+    if (totalItems <= columnsPerRow - videoOffset) {
+      // Not enough items to worry about distribution
+      return [currentProducts, []];
+    }
+    
+    // Calculate how many complete rows we need for first half
+    // We want to fill complete rows before TopBoughtProducts
+    const itemsPerCompleteRow = columnsPerRow;
+    const totalSlotsWithVideo = totalItems + videoOffset;
+    const totalRows = Math.ceil(totalSlotsWithVideo / itemsPerCompleteRow);
+    
+    // Aim for half the rows (rounded up) in first section
+    const targetRows = Math.ceil(totalRows / 2);
+    const targetItems = (targetRows * itemsPerCompleteRow) - videoOffset;
+    
+    // Ensure we don't create tiny second halves - if less than a half row remains,
+    // put everything in the first half
+    if (totalItems - targetItems < Math.ceil(columnsPerRow / 2)) {
+      return [currentProducts, []];
+    }
+    
+    // Make sure we don't exceed the total number of products
+    const actualTargetItems = Math.min(targetItems, totalItems);
+    
+    return [
+      currentProducts.slice(0, actualTargetItems),
+      currentProducts.slice(actualTargetItems)
+    ];
+  }, [currentProducts, currentPage, SHOW_TOP_BOUGHT, getColumnsPerRow, shouldShowVideoInWrapper]);
+
   const handlePageChange = useCallback((event, newPage) => {
     setCurrentPage(newPage);
     fetchPageData(newPage, tagFilter, sortBy);
     enhancedScrollToTop();
   }, [fetchPageData, tagFilter, sortBy, enhancedScrollToTop]);
-
-  const [firstHalf, secondHalf] = useMemo(() => {
-    if (!SHOW_TOP_BOUGHT || currentPage !== 1) return [currentProducts, []];
-    const mid = Math.ceil(currentProducts.length / 2);
-    return [currentProducts.slice(0, mid), currentProducts.slice(mid)];
-  }, [currentProducts, currentPage]);
-
-  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   /* ------------------------ render ------------------------ */
   return (
@@ -252,18 +308,20 @@ export default function ProductsPage({
               </div>
             </header>
 
-            {variant?.showCase?.[0]?.available && isSmallDevice && showVideo && (
-              <div className={wrapperStyles.videoCard} aria-label="Product Video">
+            {/* Video for small devices - only render here for mobile */}
+            {shouldShowVideoInPage && (
+              <div className={wrapperStyles.videoCard} aria-label="Product Video" style={{ backgroundColor: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0 1rem', marginBottom: '2rem', boxShadow: 'none' }}>
                 <iframe
                   width="100%"
                   height="100%"
                   src="https://www.youtube.com/embed/MOX9WDmSkCA?autoplay=1&mute=1&loop=1&playlist=MOX9WDmSkCA&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&disablekb=1"
                   title="Product Video"
+                  frameBorder="0"
                   allow="autoplay; encrypted-media"
                   allowFullScreen
-                  style={{ pointerEvents: 'none' }}
+                  style={{ pointerEvents: 'none', backgroundColor: 'white', borderRadius: '1rem'  }}
                 />
-                <h1>Maddy Custom</h1>
+                {/* <h1>Maddy Custom</h1> */}
               </div>
             )}
 
@@ -292,7 +350,7 @@ export default function ProductsPage({
                 category={category}
                 products={firstHalf}
                 isLoading={isLoading}
-                hideVideo={!showVideo}
+                hideVideo={!shouldShowVideoInWrapper} // Only show in wrapper for non-mobile
               />
 
               {SHOW_TOP_BOUGHT && <AnimatedTopBought singleVariantCode={recommendedKey} />}
@@ -304,7 +362,7 @@ export default function ProductsPage({
                   category={category}
                   products={secondHalf}
                   isLoading={isLoading}
-                  hideVideo
+                  hideVideo={true} // Never show video in second half
                 />
               )}
             </>
@@ -315,7 +373,7 @@ export default function ProductsPage({
               category={category}
               products={currentProducts}
               isLoading={isLoading}
-              hideVideo
+              hideVideo={true} // Hide video on non-first pages
             />
           )}
 

@@ -15,7 +15,7 @@ const WrapFinishSelector = ({ selectedFinish, setSelectedFinish }) => {
           </div>
           <div className={styles.finishInfo}>
             <span className={styles.finishName}>Matte</span>
-            <span className={styles.finishDesc}>Non-reflective</span>
+            <span className={styles.finishDesc}>Textured</span>
           </div>
         </div>
         

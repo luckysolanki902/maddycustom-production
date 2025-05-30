@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, memo, useMemo } from "react";
 import Image from "next/image";
 import styles from "./styles/productid.module.css";
 import { useSelector, useDispatch } from "react-redux";
-import { removeItem } from "@/store/slices/cartSlice";
+import { removeItem , setWrapFinish} from "@/store/slices/cartSlice";
 import OrderSpecifications from "../page-sections/product-id-page/OrderSpecifications";
 import PriceAndChat from "../page-sections/product-id-page/PriceAndChat";
 import HappyCustomersClient from "../showcase/sliders/HappyCustomerClient";
@@ -92,13 +92,13 @@ export default function ProductIdPage({
   };
 
 
-
   // Cloudfront URL for the icon (used when thumbnail is not provided)
   const moreImagesIconUrl = `${imageBaseUrl}/assets/icons/more-images-icon.jpg`;
 
   // Get dispatch and cart items from redux
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
+  const cartItem = cartItems.find((item) => item.productId === product._id);
   // Compute the option label from the first valid option’s key (pluralized)
   let optionLabel = "Options";
   if (options && options.length > 0) {
@@ -142,7 +142,17 @@ export default function ProductIdPage({
       }
     }
   }, [options, selectedOption]);
-
+  useEffect(()=>{
+  }, []);
+  useEffect(() => {
+    if (product.category.toLowerCase() == 'wraps') {
+      cartItems.forEach((item) => {
+        if (item.productId === product._id) {
+          dispatch(setWrapFinish({productId: product._id, wrapFinish: selectedWrapFinish}));
+        }
+      }
+      );
+    }}, [selectedWrapFinish]);
   useEffect(() => {
     if (['fbw', 'hel'].includes(category.specificCategoryCode)) {
       setIsDisabled(true);

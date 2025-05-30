@@ -63,6 +63,31 @@ const cartSlice = createSlice({
         state.items[itemIndex].quantity = quantity;
       }
     },
+    setDefaultWrapFinish: (state) => {
+      state.items = state.items.map(item => {
+        const categoryName = item.productDetails?.category?.name?.toLowerCase();
+
+        if ((categoryName?.includes('wrap')|| categoryName?.includes('Wrap')) && !item.productDetails.wrapFinish) {
+          return {
+            ...item,
+            productDetails: {
+              ...item.productDetails,
+              wrapFinish: 'Matte',
+            },
+          };
+        }
+        return item;
+      });
+    },
+    setWrapFinish: (state, action) => {
+      const { productId, wrapFinish } = action.payload;
+      const itemIndex = state.items.findIndex(item => 
+        (item.productId === productId || item.productDetails?._id === productId)
+      );
+      if (itemIndex !== -1) {
+        state.items[itemIndex].productDetails.wrapFinish = wrapFinish;
+      }
+    }
   },
 });
 
@@ -74,6 +99,8 @@ export const {
   setCart,
   clearCart,
   updateQuantity,
+  setDefaultWrapFinish,
+  setWrapFinish
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

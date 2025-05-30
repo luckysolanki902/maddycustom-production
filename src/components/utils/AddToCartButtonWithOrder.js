@@ -13,6 +13,7 @@ import {
   incrementQuantity,
   decrementQuantity,
   removeItem,
+  setDefaultWrapFinish
 } from '../../store/slices/cartSlice';
 import { openCartDrawer } from '../../store/slices/uiSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
@@ -48,7 +49,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       if (lastAction) setLastAction(null);
     },
   });
-
+  useEffect(() => {
+    dispatch(setDefaultWrapFinish());
+  }, []);
   // --- INVENTORY / STOCK MANAGEMENT ---
   // Use product.inventoryData if available; otherwise, if there's a selectedOption, use its inventoryData.
   const inventoryData =
