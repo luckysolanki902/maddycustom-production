@@ -159,7 +159,7 @@ export default function ProductsPage({
         }
         
         // Double-check that we're at the top after animation completes
-        setTimeout(() => {W
+        setTimeout(() => {
           if (window.pageYOffset > 0) {
             window.scrollTo(0, 0);
           }
