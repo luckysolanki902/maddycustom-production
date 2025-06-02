@@ -229,7 +229,7 @@ export default function ViewCart({ isDrawer = false }) {
   const grand = calculateTotalCostAfterDiscount(subTot, disc);
 
   const deliveryCost = 0; // If delivery is free
-  const standardDeliveryCost = 99; // Standard delivery fee that is being waived
+  const standardDeliveryCost = 100; // Standard delivery fee that is being waived
   const extraCharge = selectedPM?.extraCharge || 0;
   const totalPay = grand + deliveryCost + extraCharge;
 
@@ -579,6 +579,7 @@ const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 
               {/* Price Details */}
               <PriceDetails
                 deliveryCost={deliveryCost}
+                standardDeliveryCost={standardDeliveryCost}
                 couponState={couponState}
                 discountAmount={disc}
                 subtotal={subTot}

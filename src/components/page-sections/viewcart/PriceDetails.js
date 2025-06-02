@@ -19,7 +19,8 @@ const PriceDetails = ({
   onRemoveCoupon,
   extraCharge,
   totalMrp,
-  originalTotal
+  originalTotal,
+  standardDeliveryCost
 }) => {
   const hasCoupon = couponState?.couponApplied;
   const hasDiscount = discountAmount > 0;
@@ -132,7 +133,7 @@ const PriceDetails = ({
         <span className={styles.priceLabel}>Delivery Fee</span>
         {isFreeDelivery ? (
           <div className={styles.deliveryValueContainer}>
-            <span className={styles.originalDeliveryPrice}>₹99</span>
+            <span className={styles.originalDeliveryPrice}>₹{standardDeliveryCost.toFixed(0)}</span>
             <span className={styles.freeDelivery}>Free</span>
           </div>
         ) : (
