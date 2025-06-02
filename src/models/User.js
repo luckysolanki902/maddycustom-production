@@ -85,7 +85,7 @@ const UserSchema = new mongoose.Schema(
     // source from where user is created
     source: {
       type: String,
-      default: 'unknown',
+      default: "unknown",
     },
   },
   { timestamps: true }
