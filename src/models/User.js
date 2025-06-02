@@ -1,13 +1,15 @@
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid');
 
 const UserSchema = new mongoose.Schema(
   {
-    // Phone number used for login
-    phoneNumber: {
+    // Unique identifier (UUID v4)
+    userId: {
       type: String,
-      required: true,
+      default: () => uuidv4(),
       unique: true,
-      match: /^\d{10}$/,
+      required: true,
+      immutable: true
     },
     // User's name
     name: {

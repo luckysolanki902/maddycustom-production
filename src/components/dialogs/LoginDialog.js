@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   Dialog, DialogContent, Box, IconButton,
-  Button, TextField, Typography
+  Button, TextField, Typography, CircularProgress
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useForm, Controller } from 'react-hook-form';
@@ -49,6 +49,10 @@ const LoginDialog = () => {
   const [resendTimer, setResendTimer] = useState(0);
   const timerRef = useRef(null);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isResendingOtp, setIsResendingOtp] = useState(false);
+  
   // Snackbar helper
   const showSnackbar = (msg, sev = 'success') => {
     setSnackbar({ open: true, msg, sev });
@@ -135,6 +139,7 @@ useEffect(() => {
   // Send OTP handler
   const onSendOtp = async ({ phoneNumber }) => {
     try {
+      setIsSendingOtp(true);
       setPhoneNumber(phoneNumber);
       const full = '+91' + phoneNumber.trim();
       console.log('auth:', auth);
@@ -155,12 +160,15 @@ useEffect(() => {
     } catch (error) {
       console.error('Failed to send OTP:', error);
       showSnackbar('Failed to send OTP', 'error');
+    }finally {
+      setIsSendingOtp(false); // Stop loading indicator
     }
   };
 
   // Resend OTP handler - only allowed when timer is zero
   const onResendOtp = async () => {
     if (resendTimer === 0) {
+      setIsResendingOtp(true);
       // Use the phone number from form state or from userDetails Redux state
       let phone = phoneNumber.trim();
       try {
@@ -190,6 +198,8 @@ useEffect(() => {
       } catch (error) {
         console.error('Failed to resend OTP:', error);
         showSnackbar('Failed to resend OTP', 'error');
+      } finally {
+        setIsResendingOtp(false); // Stop loading indicator
       }
     }
   };
@@ -197,6 +207,7 @@ useEffect(() => {
   // Verify OTP handler
   const onVerifyOtp = async ({ otp }) => {
     try {
+      setIsVerifyingOtp(true);
       const userCred = await confirmationResult.confirm(otp);
       console.log('User credential:', userCred);
       if (userCred && userCred.user) {
@@ -204,12 +215,12 @@ useEffect(() => {
         const response = await axios.post('/api/sessionLogin', { idToken });
 
         if (response.data.success) {
-          await axios.post('/api/login', { phoneNumber: userCred.user.phoneNumber.substring(3) });
+          let res = await axios.post('/api/login', { phoneNumber: userCred.user.phoneNumber.substring(3) });
           dispatch(setUserExists(true));
           dispatch(setUserDetails({ 
-            phoneNumber: userCred.user.phoneNumber, 
-            // name: loggedInUserName,
-            // userId: loggedInUserId,
+            phoneNumber: res.data.user.phoneNumber, 
+            name: res.data.user.name || null,
+            userId: res.data.user.userUuid
           }));
           dispatch(setLoginDialogShown(true)); // hide login dialog after login
 
@@ -223,6 +234,8 @@ useEffect(() => {
       }
     } catch (error) {
       showSnackbar('Invalid OTP', 'error');
+    } finally {
+      setIsVerifyingOtp(false); // Stop loading indicator
     }
   };
 
@@ -239,15 +252,15 @@ useEffect(() => {
   useEffect(() => {
     console.log('Checking conditions to show login dialog', userExists, loginDialogShown, isUserPhoneNumberValid, timeSpentOnWebsite, scrolledMoreThan60Percent, isCartDrawerOpen, pathname);
     if (
-      timeSpentOnWebsite >= 0 
-      &&
-      // scrolledMoreThan60Percent &&
-      // !loginDialogShown &&
-      !isUserPhoneNumberValid &&
-      // !userExists &&
-      !isCartDrawerOpen &&
-      !pathname.startsWith('/orders/myorder/')
-      
+      // timeSpentOnWebsite >= 0 
+      // &&
+      // // scrolledMoreThan60Percent &&
+      // // !loginDialogShown &&
+      // !isUserPhoneNumberValid &&
+      // // !userExists &&
+      // !isCartDrawerOpen &&
+      // !pathname.startsWith('/orders/myorder/')
+      1
     ) {
       setOpen(true);
       dispatch(setLoginDialogShown(true));
@@ -374,13 +387,30 @@ useEffect(() => {
                 onClick={onResendOtp}
                 disabled={resendTimer > 0}
                 sx={{ alignSelf: 'center', mt: 0, textTransform: 'none' }}
+                startIcon={isResendingOtp && <CircularProgress size={16} color="inherit" />}
               >
-                {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
+              {resendTimer > 0 
+                ? `Resend OTP in ${resendTimer}s` 
+                : (isResendingOtp ? 'Resending...' : 'Resend OTP')}
               </Button>
             )}
 
-            <Button variant="contained" color="primary" type="submit" fullWidth>
-              {step === 'phone' ? 'Send OTP' : 'Verify OTP'}
+            <Button 
+              variant="contained" 
+              color="primary" 
+              type="submit" 
+              fullWidth
+              disabled={step === 'phone' ? isSendingOtp : isVerifyingOtp}
+              startIcon={
+                (step === 'phone' && isSendingOtp) || (step === 'otp' && isVerifyingOtp) 
+                  ? <CircularProgress size={20} color="inherit" /> 
+                  : null
+              }
+              sx={{ position: 'relative' }}
+            >
+              {step === 'phone' 
+                ? (isSendingOtp ? 'Sending OTP...' : 'Send OTP') 
+                : (isVerifyingOtp ? 'Verifying OTP...' : 'Verify OTP')}
             </Button>
           </Box>
         </DialogContent>
@@ -396,6 +426,6 @@ useEffect(() => {
       />
     </>
   );
-};
+}
 
 export default LoginDialog;
