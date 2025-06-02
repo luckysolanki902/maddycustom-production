@@ -1,7 +1,14 @@
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require("uuid");
 
 const UserSchema = new mongoose.Schema(
   {
+    userId: {
+      type: String,
+      default: uuidv4,
+      unique: true,
+      required: true,
+    },
     // Phone number used for login
     phoneNumber: {
       type: String,
@@ -83,7 +90,7 @@ const UserSchema = new mongoose.Schema(
     // source from where user is created
     source: {
       type: String,
-      default: 'unknown',
+      default: "unknown",
     },
   },
   { timestamps: true }
