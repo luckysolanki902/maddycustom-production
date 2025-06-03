@@ -110,7 +110,7 @@ export async function POST(request) {
   } = await request.json();
 
   /* ================================================================
-     AUTO‑APPLY MODE  ––  pick the best auto‑applicable offer
+     AUTO‑APPLY MODE  ––  pick the best auto‑applicable offer with bundle priority
   =================================================================*/
   if (auto) {
     try {
@@ -122,9 +122,19 @@ export async function POST(request) {
         validFrom : { $lte: nowIst },
         validUntil: { $gte: nowIst },
       }).lean();
+      console.log({offers})
 
-      let bestOffer    = null;
-      let bestDiscount = 0;
+      if (!offers || offers.length === 0) {
+        return NextResponse.json(
+          { valid: false, message: 'No auto-apply offers available.' },
+          { status: 200 }
+        );
+      }
+
+      let bestBundleOffer = null;
+      let bestBundleDiscount = 0;
+      let bestOtherOffer = null;
+      let bestOtherDiscount = 0;
 
       for (const offer of offers) {
         /* conditions */
@@ -135,30 +145,50 @@ export async function POST(request) {
 
         /* discount value */
         const act = offer.actions[0] || {};
-        let   d   = 0;
-        if (act.type === 'discount_percent') {
-          d = (act.discountValue / 100) * totalCost;
-          if (offer.discountCap && d > offer.discountCap) d = offer.discountCap;
-        } else if (act.type === 'discount_fixed') {
-          d = act.discountValue;
-        } else if (act.type === 'bundle') {
+        let d = 0;
+        
+        if (act.type === 'bundle') {
           d = calculateBundleDiscount(cartItems, offer);
-        }
-
-        if (d > bestDiscount) {
-          bestDiscount = d;
-          bestOffer    = offer;
+          if (d > bestBundleDiscount) {
+            bestBundleDiscount = d;
+            bestBundleOffer = offer;
+          }
+        } else {
+          // Handle percentage and fixed discounts
+          if (act.type === 'discount_percent') {
+            d = (act.discountValue / 100) * totalCost;
+            if (offer.discountCap && d > offer.discountCap) d = offer.discountCap;
+          } else if (act.type === 'discount_fixed') {
+            d = act.discountValue;
+          }
+          
+          if (d > bestOtherDiscount) {
+            bestOtherDiscount = d;
+            bestOtherOffer = offer;
+          }
         }
       }
 
-      if (!bestOffer || bestDiscount <= 0) {
+      // Priority: Bundle offers first, then other offers
+      let finalOffer = null;
+      let finalDiscount = 0;
+      
+      if (bestBundleOffer && bestBundleDiscount > 0) {
+        finalOffer = bestBundleOffer;
+        finalDiscount = bestBundleDiscount;
+      } else if (bestOtherOffer && bestOtherDiscount > 0) {
+        finalOffer = bestOtherOffer;
+        finalDiscount = bestOtherDiscount;
+      }
+
+      if (!finalOffer || finalDiscount <= 0) {
         return NextResponse.json(
-          { valid: false, message: 'No applicable auto‑offers.' },
+          { valid: false, message: 'No applicable auto‑offers meet the conditions.' },
           { status: 200 }
         );
       }
 
-      const act  = bestOffer.actions[0];
+      const act = finalOffer.actions[0];
       const type = act.type === 'discount_percent'
         ? 'percentage'
         : act.type === 'bundle'
@@ -168,16 +198,17 @@ export async function POST(request) {
       return NextResponse.json(
         {
           valid        : true,
-          discountValue: Math.floor(bestDiscount),
+          discountValue: Math.floor(finalDiscount),
           discountType : type,
-          offer        : bestOffer,
+          offer        : finalOffer,
+          message      : `Auto-applied: ${finalOffer.name}`,
         },
         { status: 200 }
       );
     } catch (err) {
       console.error('Auto‑apply error:', err);
       return NextResponse.json(
-        { valid: false, message: 'Server error. Please try again.' },
+        { valid: false, message: 'Server error during auto-apply.' },
         { status: 500 }
       );
     }

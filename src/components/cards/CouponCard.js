@@ -41,9 +41,10 @@ const CouponCard = ({
   cartTotal = 0,
   isApplied = false,
   actualDiscount = 0, // The actual amount to be saved
+  discountCap = null
 }) => {
   const [theme, setTheme] = useState(cardThemes.default);
-  
+    console.log(discountCap, 'is the discountCap')
   // Animation controls for the badge
   const badgeAnimation = useAnimation();
   const cardAnimation = useAnimation();
@@ -140,11 +141,13 @@ const CouponCard = ({
       onApply(name);
     }
   };
-  
-  // Calculate displayed savings
-  const displaySavings = actualDiscount || (discountType === 'percentage' ? 
-    Math.round((discount / 100) * cartTotal) : discount);
 
+  // Calculate displayed savings
+  const calculatedDiscount = discountType === 'percentage' ? 
+    Math.round((discount / 100) * cartTotal) : discount;
+const displaySavings = discountCap
+  ? Math.min(Number(actualDiscount || calculatedDiscount) || 0, Number(discountCap))
+  : Number(actualDiscount || calculatedDiscount) || 0;
   return (
     <motion.div
       className={`${styles.card} ${!applicable ? styles.notApplicable : ''} 

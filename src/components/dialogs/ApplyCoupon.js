@@ -431,6 +431,7 @@ const ApplyCoupon = ({
                           <CouponCard
                             name={coupon.couponCodes[0]}
                             discount={coupon.calculatedDiscount}
+                            discountCap={coupon.discountCap}
                             discountType={
                               coupon.actions[0].type === 'discount_percent' ? 'percentage' :
                               coupon.actions[0].type === 'bundle' ? 'bundle' : 'fixed'
