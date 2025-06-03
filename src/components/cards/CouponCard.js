@@ -44,7 +44,6 @@ const CouponCard = ({
   discountCap = null
 }) => {
   const [theme, setTheme] = useState(cardThemes.default);
-    console.log(discountCap, 'is the discountCap')
   // Animation controls for the badge
   const badgeAnimation = useAnimation();
   const cardAnimation = useAnimation();
