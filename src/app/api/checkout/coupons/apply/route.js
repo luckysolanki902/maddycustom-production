@@ -122,7 +122,6 @@ export async function POST(request) {
         validFrom : { $lte: nowIst },
         validUntil: { $gte: nowIst },
       }).lean();
-      console.log({offers})
 
       if (!offers || offers.length === 0) {
         return NextResponse.json(
