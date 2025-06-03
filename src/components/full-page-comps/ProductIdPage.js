@@ -91,12 +91,12 @@ export default function ProductIdPage({
     pageType: 'product-id-page'
   };
 
-  console.log("product", product);
-  console.log("userDetails", userDetails);
-  console.log("variant", variant);
-  console.log("category", category);
-  console.log("description", description);
-  console.log("productInfoTabs", productInfoTabs);  
+  // console.log("product", product);
+  // console.log("userDetails", userDetails);
+  // console.log("variant", variant);
+  // console.log("category", category);
+  // console.log("description", description);
+  // console.log("productInfoTabs", productInfoTabs);  
 
   // Cloudfront URL for the icon (used when thumbnail is not provided)
   const moreImagesIconUrl = `${imageBaseUrl}/assets/icons/more-images-icon.jpg`;

@@ -8,7 +8,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useForm, Controller } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  setUserDetails, setUserExists, setLoginDialogShown
+  setUserDetails, setUserExists, setLoginDialogShown, 
+  // setLoginDialogOpen
 } from '../../store/slices/orderFormSlice';
 import CustomSnackbar from '../notifications/CustomSnackbar';
 import { usePathname } from 'next/navigation';
@@ -16,7 +17,6 @@ import Image from 'next/image';
 import axios from 'axios';
 import { auth } from '@/lib/firebase/firebaseClient';
 import { signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
-
 const OTP_RESEND_TIMEOUT = 30; // 5 minutes in seconds
 
 const LoginDialog = () => {
@@ -25,10 +25,8 @@ const LoginDialog = () => {
 
   // Redux state
   const userExists = useSelector((state) => state.orderForm.userExists);
-  console.log('userExists:', useSelector((state) => state.orderForm.userExists));
   const loginDialogShown = useSelector((state) => state.orderForm.loginDialogShown);
   const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
-  console.log({ userExists, loginDialogShown, fullState: useSelector(s => s) });
   const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector((state) => state.userBehavior);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
@@ -61,21 +59,32 @@ const LoginDialog = () => {
   // Initialize invisible reCAPTCHA once
   const recaptchaVerifierRef = useRef(null);
 
-useEffect(() => {
+// const loginDialogOpen = useSelector((state) => state.orderForm.loginDialogOpen);
+// console.log('Login Dialog Open State:', loginDialogOpen);
+
+// Make sure you have an effect to watch for the state change
+// useEffect(() => {
+//   console.log('LoginDialog useEffect triggered, loginDialogOpen:', loginDialogOpen);
+//   if (loginDialogOpen) {
+//     setOpen(true);
+//   }
+// }, [loginDialogOpen]);
+
+  useEffect(() => {
   // Only create if it doesn't already exist
-  if (!window.recaptchaVerifier) {
-    const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-      size: "invisible",
-      callback: (response) => {
-        console.log("reCAPTCHA solved:", response);
+      if (!window.recaptchaVerifier) {
+        const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+        size: "invisible",
+        callback: (response) => {
+        // console.log("reCAPTCHA solved:", response);
       },
       'expired-callback': () => {
-        console.warn('reCAPTCHA expired');
+        // console.warn('reCAPTCHA expired');
       }
     });
 
     verifier.render().then((widgetId) => {
-      console.log("Recaptcha rendered with widgetId:", widgetId);
+      // console.log("Recaptcha rendered with widgetId:", widgetId);
     });
 
     window.recaptchaVerifier = verifier;
@@ -91,7 +100,7 @@ useEffect(() => {
       try {
         window.recaptchaVerifier.clear();
       } catch (err) {
-        console.warn('Failed to clear reCAPTCHA:', err);
+        // console.warn('Failed to clear reCAPTCHA:', err);
       }
       delete window.recaptchaVerifier;
     }
@@ -115,6 +124,28 @@ useEffect(() => {
     }, 1000);
   };
 
+  // Add this function at the top of your LoginDialog component (after your imports)
+  const mapUserInBackground = (userId, phoneNumber, email) => {
+    // Fire and forget - this won't block the UI
+    fetch('http://tracker.wigzopush.com/rest/v1/learn/identify?token=966a282624127d21db2e233493a&org_token=JWF0V4pWQtjrX52Qg', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        userId: userId,
+        phone: phoneNumber,
+        email: email || undefined,
+        is_active: true,
+        source: 'web'
+      }),
+      signal: AbortSignal.timeout(5000) // 5-second timeout
+    }).then(response => {
+    }).catch(error => {
+      // Silent fail - won't impact user experience
+    });
+  };
+
   // Cleanup timer on unmount
   useEffect(() => {
     return () => clearInterval(timerRef.current);
@@ -124,7 +155,6 @@ useEffect(() => {
     async function checkLogin() {
       const res = await fetch('/api/checkSession');
       const data = await res.json();
-        console.log('User is logged in:', data.isLoggedIn);
 
       if (data.isLoggedIn) {
         dispatch(setUserExists(true));
@@ -142,9 +172,6 @@ useEffect(() => {
       setIsSendingOtp(true);
       setPhoneNumber(phoneNumber);
       const full = '+91' + phoneNumber.trim();
-      console.log('auth:', auth);
-      console.log('phone number:', full);
-      console.log('recaptchaVerifier:', window.recaptchaVerifier);
       if (!recaptchaVerifierRef.current) {
         showSnackbar('Recaptcha not ready', 'error');
         return;
@@ -158,7 +185,6 @@ useEffect(() => {
       showSnackbar('OTP sent!', 'success');
       startResendTimer();
     } catch (error) {
-      console.error('Failed to send OTP:', error);
       showSnackbar('Failed to send OTP', 'error');
     }finally {
       setIsSendingOtp(false); // Stop loading indicator
@@ -196,7 +222,6 @@ useEffect(() => {
         showSnackbar('OTP resent!', 'success');
         startResendTimer();
       } catch (error) {
-        console.error('Failed to resend OTP:', error);
         showSnackbar('Failed to resend OTP', 'error');
       } finally {
         setIsResendingOtp(false); // Stop loading indicator
@@ -209,7 +234,6 @@ useEffect(() => {
     try {
       setIsVerifyingOtp(true);
       const userCred = await confirmationResult.confirm(otp);
-      console.log('User credential:', userCred);
       if (userCred && userCred.user) {
         const idToken = await userCred.user.getIdToken();
         const response = await axios.post('/api/sessionLogin', { idToken });
@@ -218,12 +242,16 @@ useEffect(() => {
           let res = await axios.post('/api/login', { phoneNumber: userCred.user.phoneNumber.substring(3) });
           dispatch(setUserExists(true));
           dispatch(setUserDetails({ 
-            phoneNumber: res.data.user.phoneNumber, 
+            phoneNumber: userCred.user.phoneNumber, 
             name: res.data.user.name || null,
             userId: res.data.user.userUuid
           }));
           dispatch(setLoginDialogShown(true)); // hide login dialog after login
-
+          mapUserInBackground(
+            res.data.user.userUuid,
+            userCred.user.phoneNumber.substring(3),
+            res.data.user.email
+          );
           showSnackbar('Login successful!', 'success');
           handleClose();
         } else {
@@ -244,20 +272,20 @@ useEffect(() => {
     setStep('phone');
     reset();
     dispatch(setLoginDialogShown(true));
+    // dispatch(setLoginDialogOpen(false));
     clearInterval(timerRef.current);
     setResendTimer(0);
   };
 
   // Show dialog on conditions
   useEffect(() => {
-    console.log('Checking conditions to show login dialog', userExists, loginDialogShown, isUserPhoneNumberValid, timeSpentOnWebsite, scrolledMoreThan60Percent, isCartDrawerOpen, pathname);
     if (
-      // timeSpentOnWebsite >= 0 
-      // &&
-      // // scrolledMoreThan60Percent &&
-      // // !loginDialogShown &&
+      // !loginDialogOpen &&
+      // timeSpentOnWebsite >= 30 
+      // && scrolledMoreThan60Percent &&
+      // !loginDialogShown &&
       // !isUserPhoneNumberValid &&
-      // // !userExists &&
+      // !userExists &&
       // !isCartDrawerOpen &&
       // !pathname.startsWith('/orders/myorder/')
       1
@@ -273,7 +301,8 @@ useEffect(() => {
     pathname,
     dispatch,
     isUserPhoneNumberValid,
-    isCartDrawerOpen
+    isCartDrawerOpen,
+    // loginDialogOpen
   ]);
 
   if (isCartDrawerOpen) return null;

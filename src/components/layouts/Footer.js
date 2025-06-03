@@ -46,6 +46,28 @@ const usefulLinks = [
   { href: "/contact-us", label: "Contact Us" },
 ];
 
+const mapUserInBackground = (userId, phoneNumber, email) => {
+  // Fire and forget - won't block UI
+  fetch('http://tracker.wigzopush.com/rest/v1/learn/identify?token=966a282624127d21db2e233493a&org_token=JWF0V4pWQtjrX52Qg', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      userId: userId || phoneNumber, // Use phoneNumber as fallback ID if no userId
+      phone: phoneNumber,
+      email: email || undefined,
+      is_active: true,
+      source: 'web'
+    }),
+    signal: AbortSignal.timeout(5000) // 5-second timeout
+  }).then(response => {
+  }).catch(error => {
+    console.error('Background user mapping failed for footer:', error);
+    // Silent fail - won't impact user experience
+  });
+};
+
 const Footer = () => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isMobile = useMediaQuery("(max-width:600px)");
@@ -74,18 +96,32 @@ const Footer = () => {
 
       if (
         response.data.message === "User already exists" ||
-        response.data.message === "User exists and name updated"
+        response.data.message === "User exists and name updated" ||
+        response.data.message === "User exists and userId assigned"
       ) {
         setSubscriptionMessage("Already subscribed!");
         setPhoneNumber("");
+        if (response.data.user && response.data.user.userUuid) {
+        mapUserInBackground(
+          response.data.user.userUuid,
+          phoneNumber,
+          response.data.user.email
+        );
+      }
       } else if (response.data.message === "User created successfully") {
         setSubscriptionMessage("Thank you for subscribing!");
         setPhoneNumber("");
+        if (response.data.user && response.data.user.userUuid) {
+        mapUserInBackground(
+          response.data.user.userUuid,
+          phoneNumber,
+          response.data.user.email
+        );
+      }
       } else {
         setSubscriptionMessage("Subscription failed. Please try again.");
       }
     } catch (error) {
-      console.error("Subscription error:", error.message);
       setSubscriptionMessage("Could not subscribe. Please try again later.");
     } finally {
       setLoading(false);

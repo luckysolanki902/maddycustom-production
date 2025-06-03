@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+
+import ReactDOM from 'react-dom';
 import {
   Dialog,
   DialogContent,
@@ -158,7 +160,6 @@ const mapUserInBackground = (userId, phoneNumber, email) => {
     // Adding the tokens in the URL to avoid CORS issues
     signal: AbortSignal.timeout(5000) // 5-second timeout
   }).then(response => {
-    console.log('User mapping completed in background');
   }).catch(error => {
     console.error('Background user mapping failed:', error);
     // Silent fail - won't impact user experience
@@ -299,6 +300,7 @@ const mapUserInBackground = (userId, phoneNumber, email) => {
   }, 1000);
 };
   const showSnackbar = useCallback((message, severity = 'success') => {
+    console.log('Showing snackbar:', { message, severity });
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
@@ -367,6 +369,31 @@ useEffect(() => {
     setIsPincodeValid(false);
   }
 }, [watchedPincode, validatePincode]);
+
+const SnackbarPortal = ({ children }) => {
+  const [portalElement, setPortalElement] = useState(null);
+
+  useEffect(() => {
+    // Create portal container on mount
+    const element = document.createElement('div');
+    element.setAttribute('id', 'snackbar-portal-container');
+    element.style.position = 'fixed';
+    element.style.zIndex = '99999'; // High z-index
+    element.style.top = '0';
+    element.style.left = '0';
+    element.style.width = '100%';
+    document.body.appendChild(element);
+    setPortalElement(element);
+
+    // Cleanup on unmount
+    return () => {
+      document.body.removeChild(element);
+    };
+  }, []);
+
+  // Only render once portal element is available
+  return portalElement ? ReactDOM.createPortal(children, portalElement) : null;
+};
 
   // Prevent multiple form submissions
   const [purchaseInitiated, setPurchaseInitiated] = useState(false);
@@ -530,7 +557,8 @@ useEffect(() => {
   }, [open, couponCode, subTotal, items]);
 
   // Send OTP handler
-  const onSendOtp = async () => {
+  // Modify the onSendOtp function
+const onSendOtp = async () => {
   try {
     setIsSendingOtp(true);
     
@@ -564,8 +592,11 @@ useEffect(() => {
       try {
         const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
           size: 'invisible',
-          callback: () => {},
+          callback: () => {
+            console.log('reCAPTCHA solved successfully');
+          },
           'expired-callback': () => {
+            console.log('reCAPTCHA expired');
             if (window.recaptchaVerifier) {
               try {
                 window.recaptchaVerifier.clear();
@@ -586,13 +617,30 @@ useEffect(() => {
       }
     }
     
+    console.log('Sending OTP to:', '+91' + formattedPhoneNumber);
     const full = '+91' + formattedPhoneNumber;
     const result = await signInWithPhoneNumber(auth, full, window.recaptchaVerifier);
-    setConfirmationResult(result);
-    setOtpStep('otp');
-    setValue('otp', ''); 
-    showSnackbar('OTP sent successfully!', 'success');
-    startResendTimer();
+    console.log('OTP sent successfully, result:', result ? 'valid result' : 'null result');
+    
+    // Ensure state updates happen in the right order
+    await Promise.all([
+      new Promise(resolve => {
+        setConfirmationResult(result);
+        resolve();
+      }),
+      new Promise(resolve => {
+        setValue('otp', '');
+        resolve();
+      })
+    ]);
+    
+    // Force state update with small delay to ensure rendering
+    setTimeout(() => {
+      setOtpStep('otp');
+      showSnackbar('OTP sent successfully!', 'success');
+      startResendTimer();
+    }, 100);
+    
   } catch (error) {
     console.error('Failed to send OTP:', error);
     // If reCAPTCHA fails, try to reinitialize it
@@ -637,82 +685,99 @@ useEffect(() => {
   };
 
   // Verify OTP handler
-  const onVerifyOtp = async () => {
-    try {
-      setIsVerifyingOtp(true);
-      
-      // Validate OTP field
-      const isValid = await trigger('otp');
-      if (!isValid) {
-        setIsVerifyingOtp(false);
-        return;
-      }
-      
-      const otp = getValues('otp');
-      
-      if (!confirmationResult) {
-        showSnackbar('OTP session expired. Please request a new OTP.', 'error');
-        setIsVerifyingOtp(false);
-        return;
-      }
-      
-      const userCred = await confirmationResult.confirm(otp);
-      
-      if (userCred && userCred.user) {
-        const idToken = await userCred.user.getIdToken();
-        const sessionResponse = await axios.post('/api/sessionLogin', { idToken });
-
-        if (sessionResponse.data.success) {
-          // Login the user through our API
-          const phoneNumber = formatPhoneNumber(getValues('phoneNumber'));
-          const loginResponse = await axios.post('/api/login', { 
-            phoneNumber 
-          });
-
-          if (loginResponse.data.success) {
-            dispatch(setUserExists(true));
-            dispatch(setUserDetails({ 
-              phoneNumber, 
-              name: getValues('name'),
-              userId: loginResponse.data.user.userUuid || loginResponse.data.user.userId
-            }));
-            
-            setPhoneVerified(true);
-            setOtpStep('verified');
-            showSnackbar('Phone number verified!', 'success');
-              !userExists && mapUserInBackground(userId, phoneNumber, getValues('email'));
-
-            // Prefill address if it exists in user data
-            if (loginResponse.data.user.addresses && loginResponse.data.user.addresses.length > 0) {
-              const latestAddress = loginResponse.data.user.addresses[0];
-              Object.entries(latestAddress).forEach(([key, value]) => {
-                if (setValue && key !== '_id' && key !== 'receiverName' && key !== 'receiverPhoneNumber') {
-                  setValue(key, value || '');
-                }
-              });
-              dispatch(setAddressDetails(latestAddress));
-              
-              // Pre-validate pincode
-              if (latestAddress.pincode && latestAddress.pincode.length === 6) {
-                validatePincode(latestAddress.pincode);
-              }
-            }
-          } else {
-            showSnackbar('Failed to create user account', 'error');
-          }
-        } else {
-          showSnackbar('Session login failed', 'error');
-        }
-      } else {
-        showSnackbar('Verification failed', 'error');
-      }
-    } catch (error) {
-      console.error('Failed to verify OTP:', error);
-      showSnackbar('Invalid OTP or verification failed', 'error');
-    } finally {
+const onVerifyOtp = async () => {
+  try {
+    setIsVerifyingOtp(true);
+    
+    // Validate OTP field
+    const isValid = await trigger('otp');
+    if (!isValid) {
       setIsVerifyingOtp(false);
+      return;
     }
-  };
+    
+    const otp = getValues('otp');
+    
+    if (!confirmationResult) {
+      showSnackbar('OTP session expired. Please request a new OTP.', 'error');
+      setIsVerifyingOtp(false);
+      return;
+    }
+    
+    const userCred = await confirmationResult.confirm(otp);
+    
+    if (!userCred || !userCred.user) {
+      showSnackbar('Verification failed', 'error');
+      setIsVerifyingOtp(false);
+      return;
+    }
+    
+    // Get the token only if user is valid
+    const idToken = await userCred.user.getIdToken();
+    const sessionResponse = await axios.post('/api/sessionLogin', { idToken });
+
+    if (!sessionResponse.data.success) {
+      showSnackbar('Session login failed', 'error');
+      setIsVerifyingOtp(false);
+      return;
+    }
+    
+    // Login the user through our API
+    const phoneNumber = formatPhoneNumber(getValues('phoneNumber'));
+    const loginResponse = await axios.post('/api/login', { 
+      phoneNumber 
+    });
+
+    if (!loginResponse.data.success) {
+      showSnackbar('Failed to create user account', 'error');
+      setIsVerifyingOtp(false);
+      return;
+    }
+    
+    // If we reach here, everything is successful
+    const userId = loginResponse.data.user.userId;
+    const uuiduser = loginResponse.data.user.userUuid;
+    dispatch(setUserExists(true));
+    dispatch(setUserDetails({ 
+      phoneNumber, 
+      name: getValues('name'),
+      userId: userId
+    }));
+    
+    setPhoneVerified(true);
+    setOtpStep('verified');
+    showSnackbar('Phone number verified!', 'success');
+    
+    // Map user in background
+    if (!userExists && uuiduser) {
+      mapUserInBackground(uuiduser, phoneNumber, getValues('email'));
+    }
+
+    // Prefill address if it exists in user data
+    if (loginResponse.data.user.addresses && loginResponse.data.user.addresses.length > 0) {
+      const latestAddress = loginResponse.data.user.addresses[0];
+      Object.entries(latestAddress).forEach(([key, value]) => {
+        if (setValue && key !== '_id' && key !== 'receiverName' && key !== 'receiverPhoneNumber') {
+          setValue(key, value || '');
+        }
+      });
+      dispatch(setAddressDetails(latestAddress));
+      
+      // Pre-validate pincode
+      if (latestAddress.pincode && latestAddress.pincode.length === 6) {
+        validatePincode(latestAddress.pincode);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to verify OTP:', error);
+    showSnackbar('Invalid OTP or verification failed', 'error');
+    // Important: Don't change states on verification failure
+    setPhoneVerified(false);
+    setOtpStep('otp'); // Stay on OTP screen
+  } finally {
+    setIsVerifyingOtp(false);
+  }
+};
 
   // Proceed to address step
   const proceedToAddress = () => {
@@ -739,12 +804,69 @@ const onSubmitUserDetails = useCallback(async (data) => {
     return;
   }
 
-  // If verification is complete, proceed to address step
+  // If verification is complete, proceed with original flow
   if (otpStep === 'verified') {
+    // Format phone number for submission if needed
+    const phoneToUse = formatPhoneNumber(data.phoneNumber);
+
+    // Optimistically update Redux store with user details before API call
+    dispatch(
+      setUserDetails({
+        name: data.name,
+        phoneNumber: phoneToUse,
+        email: data.email,
+      })
+    );
+
+    // Immediately move to the next tab for better UX
     setTabIndex(1);
-    return;
+
+    // Perform user check in background without blocking UI
+    pendingOperationsRef.current.userCheck = axios.patch('/api/user/check', {
+      phoneNumber: phoneToUse,
+      name: data.name,
+      email: data.email,
+    })
+      .then(response => {
+        if (response.data.exists) {
+          const latestAddress = response.data.latestAddress;
+          dispatch(setUserDetails({ userId: response.data.userId }));
+
+          if (latestAddress) {
+            // Update form with existing address
+            Object.entries(latestAddress).forEach(([key, value]) => {
+              if (setValue && key !== '_id') {
+                setValue(key, value || '');
+              }
+            });
+
+            dispatch(setAddressDetails(latestAddress));
+
+            // Pre-validate pincode
+            if (latestAddress.pincode && latestAddress.pincode.length === 6) {
+              validatePincode(latestAddress.pincode);
+            }
+          }
+        } else {
+          // Create user in background (non-blocking)
+          return axios.post('/api/user/create', {
+            name: data.name,
+            phoneNumber: phoneToUse,
+            email: data.email,
+            source: 'order-form',
+          })
+            .then(createResponse => {
+              dispatch(setUserDetails({ userId: createResponse.data.userId || createResponse.data.user?.userId }));
+              return createResponse;
+            });
+        }
+        return response;
+      })
+      .catch(error => {
+        console.error('Error in background user check/create:', error);
+      });
   }
-}, [otpStep, onSendOtp, onVerifyOtp, setTabIndex]);
+}, [otpStep, onSendOtp, onVerifyOtp, formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode, setTabIndex]);
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
@@ -827,7 +949,6 @@ const onSubmitUserDetails = useCallback(async (data) => {
           throw error;
         });
       }
-
       // Financial data is now sent directly
       const finalOrderPayload = {
         userId: orderForm.userDetails.userId,
@@ -871,7 +992,6 @@ const onSubmitUserDetails = useCallback(async (data) => {
         utmHistory: utmDetails.utmHistory || [],
         extraFields: orderForm.extraFields,
       };
-
       const [orderCreationResponse] = await Promise.all([
         axios.post('/api/checkout/order/create', finalOrderPayload),
         addressAddPromise
@@ -1054,7 +1174,8 @@ const onSubmitUserDetails = useCallback(async (data) => {
     })
   }), []);
 
-  // Custom styled text field component with memoization to prevent rerenders
+// In your StyledTextField component, modify it to properly handle input changes:
+
 const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, type = "text", maxWidth, InputProps }) => (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
@@ -1078,7 +1199,7 @@ const StyledTextField = useCallback(({ field, label, error, helperText, disabled
       error={!!error}
       helperText={helperText}
       disabled={disabled}
-      onChange={onChange}
+      onChange={onChange || field.onChange} // Use provided onChange or default to field.onChange
       InputLabelProps={{
         style: {
           fontFamily: 'Jost, sans-serif',
@@ -1115,6 +1236,7 @@ const StyledTextField = useCallback(({ field, label, error, helperText, disabled
 ), []);
 
   return (
+    <>
     <ThemeProvider theme={theme}>
       <Dialog
         open={open}
@@ -1772,7 +1894,7 @@ const StyledTextField = useCallback(({ field, label, error, helperText, disabled
 
                 {tabIndex === 1 && (
                   <motion.div
-                    key="addressInfo"
+                    key="shippingInfo"
                     custom={1}
                     variants={formVariants}
                     initial="initial"
@@ -1781,134 +1903,179 @@ const StyledTextField = useCallback(({ field, label, error, helperText, disabled
                     style={{ width: '100%' }}
                   >
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}>
-                      {/* Address Line 1 */}
-                      <Controller
-                        name="addressLine1"
-                        control={control}
-                        rules={{ required: 'House No./Building name is required' }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="House No./Building name"
-                            error={errors.addressLine1}
-                            helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                          />
-                        )}
-                      />
+                      {/* Address (combines House No. and Street) */}
+<Controller
+  name="addressLine1"
+  control={control}
+  rules={{ required: 'Address is required' }}
+  render={({ field }) => (
+    <StyledTextField
+      field={field}
+      label="Address"
+      error={errors.addressLine1}
+      helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
+      disabled={isLoading || isPaymentProcessing}
+      onChange={(e) => {
+        field.onChange(e);
+        dispatch(setAddressDetails({ addressLine1: e.target.value }));
+      }}
+    />
+  )}
+/>
 
-                      {/* Address Line 2 */}
-                      <Controller
-                        name="addressLine2"
-                        control={control}
-                        rules={{ required: 'Street/Locality is required' }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Street/Locality"
-                            error={errors.addressLine2}
-                            helperText={errors.addressLine2 ? errors.addressLine2.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                          />
-                        )}
-                      />
+{/* City */}
+<Controller
+  name="city"
+  control={control}
+  rules={{ required: 'City is required' }}
+  render={({ field }) => (
+    <StyledTextField
+      field={field}
+      label="City"
+      error={errors.city}
+      helperText={errors.city ? errors.city.message : ''}
+      disabled={isLoading || isPaymentProcessing}
+      onChange={(e) => {
+        field.onChange(e);
+        dispatch(setAddressDetails({ city: e.target.value }));
+      }}
+    />
+  )}
+/>
 
-                      {/* Pincode with validation */}
-                      <Controller
-                        name="pincode"
-                        control={control}
-                        rules={{
-                          required: 'Pincode is required',
-                          pattern: {
-                            value: /^\d{6}$/,
-                            message: 'Enter a valid 6-digit pincode',
-                          },
-                          validate: {
-                            checkServiceability: async (value) => {
-                              if (!value || value.length !== 6) return true;
-                              if (serviceabilityCache.current[value] === false) {
-                                return 'This pincode is not serviceable';
-                              }
-                              return true;
-                            }
-                          }
-                        }}
-                        render={({ field }) => (
-                          <Box sx={{ position: 'relative', width: '100%' }}>
-                            <StyledTextField
-                              field={field}
-                              label="Pincode"
-                              type="tel"
-                              error={!!errors.pincode}
-                              helperText={errors.pincode ? errors.pincode.message : ''}
-                              disabled={isLoading || isPaymentProcessing}
-                              InputProps={{
-                                inputProps: { maxLength: 6, inputMode: 'numeric' },
-                                endAdornment: (
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    {pincodeCheckInProgress && (
-                                      <CircularProgress size={16} color="inherit" sx={{ opacity: 0.7 }} />
-                                    )}
-                                    {!pincodeCheckInProgress && watchedPincode?.length === 6 && (
-                                      isPincodeValid ? 
-                                      <CheckCircleOutlineIcon sx={{ color: 'success.main', fontSize: '1.2rem' }} /> :
-                                      <WarningAmberIcon sx={{ color: 'warning.main', fontSize: '1.2rem' }} />
-                                    )}
-                                  </Box>
-                                )
-                              }}
-                              onChange={(e) => {
-                                // Only allow numeric input
-                                const value = e.target.value.replace(/\D/g, '');
-                                field.onChange(value);
-                              }}
-                            />
-                          </Box>
-                        )}
-                      />
-
-                      {/* City */}
-                      <Controller
-                        name="city"
-                        control={control}
-                        rules={{ required: 'City is required' }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="City"
-                            error={errors.city}
-                            helperText={errors.city ? errors.city.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                          />
-                        )}
-                      />
-
-                      {/* State */}
-                      <Controller
-                        name="state"
-                        control={control}
-                        rules={{ required: 'State is required' }}
-                        render={({ field }) => (
-                          <Autocomplete
-                            {...field}
-                            options={indianStates}
-                            renderInput={(params) => (
-                              <StyledTextField
-                                {...params}
-                                field={{ ...field, ref: params.inputRef }}
-                                label="State"
-                                error={!!errors.state}
-                                helperText={errors.state ? errors.state.message : ''}
-                                disabled={isLoading || isPaymentProcessing}
-                              />
-                            )}
-                            onChange={(_, newValue) => {
-                              field.onChange(newValue || '');
+{/* State and Pincode in one row */}
+<Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
+  <Box sx={{ flex: 2 }}>
+    <Controller
+      name="state"
+      control={control}
+      rules={{ required: 'State is required' }}
+      render={({ field }) => (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+        >
+          <Autocomplete
+            options={indianStates}
+            getOptionLabel={(option) => option}
+            value={field.value || ''}
+            onChange={(event, newValue) => {
+              field.onChange(newValue);
+              dispatch(setAddressDetails({
+                ...addressDetails, // Keep all existing address details
+                state: newValue // Update only the state field
+              }));
+            }}
+            disableClearable
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="State"
+                error={!!errors.state}
+                helperText={errors.state ? errors.state.message : ''}
+                variant="outlined"
+                disabled={isLoading || isPaymentProcessing}
+                sx={{
+                  marginBottom: '1rem',
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '8px',
+                    fontFamily: 'Jost, sans-serif',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    '&:hover': {
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
+                    },
+                    '&.Mui-focused': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
+                    }
+                  },
+                }}
+                InputLabelProps={{
+                  style: {
+                    fontFamily: 'Jost, sans-serif',
+                    fontSize: '0.9rem',
+                  },
+                }}
+                InputProps={{
+                  ...params.InputProps,
+                  style: {
+                    fontFamily: 'Jost, sans-serif',
+                    fontSize: '1rem',
+                  },
+                }}
+              />
+            )}
+          />
+        </motion.div>
+      )}
+    />
+  </Box>
+  <Box sx={{ flex: 1 }}>
+    <Controller
+      name="pincode"
+      control={control}
+      rules={{
+        required: 'Pincode is required',
+        pattern: {
+          value: /^\d{6}$/,
+          message: 'Enter a valid 6-digit pincode',
+        }
+      }}
+      render={({ field }) => (
+        <StyledTextField
+          field={field}
+          label="Pincode"
+          error={errors.pincode}
+          helperText={errors.pincode ? errors.pincode.message : ''}
+          disabled={isLoading || isPaymentProcessing}
+          type="tel"
+          onChange={(e) => {
+            const value = e.target.value.replace(/\D/g, '');
+            field.onChange(value);
+            dispatch(setAddressDetails({ ...addressDetails, pincode: value }));
+          }}
+          maxWidth="100%"
+        />
+      )}
+    />
+  </Box>
+</Box>
+{/* Pincode non-serviceable message */}
+                      {watchedPincode?.length === 6 && !isPincodeValid && !pincodeCheckInProgress && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              p: '12px',
+                              backgroundColor: alpha(theme.palette.error.main, 0.1),
+                              border: `1px solid ${alpha(theme.palette.error.dark, 0.2)}`,
+                              borderRadius: '8px',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                              mt: 1
                             }}
-                            disabled={isLoading || isPaymentProcessing}
-                          />
-                        )}
-                      />
+                          >
+                            <WarningAmberIcon sx={{ color: theme.palette.error.dark, fontSize: '1.2rem' }} />
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                fontFamily: 'Jost, sans-serif',
+                                color: theme.palette.error.dark,
+                                fontSize: '0.8rem',
+                                fontWeight: 500
+                              }}
+                            >
+                              We don&apos;t deliver to this pincode yet.
+                            </Typography>
+                          </Box>
+                        </motion.div>
+                      )}
 
                       {/* Extra Fields from categories */}
                       {aggregatedExtraFields.map((field) => (
@@ -2027,15 +2194,186 @@ const StyledTextField = useCallback(({ field, label, error, helperText, disabled
 </Box>
             </Box>
           </Box>
+          {/* Trust indicators - Made more compact */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+          >
+            <Box
+              sx={{
+                mt: 1, // Reduced from 5
+                pt: 1,
+                borderTop: '1px solid #f0f0f0',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 1, // Reduced from 2
+                flexShrink: 0, // Prevent shrinking
+              }}
+            >
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontFamily: 'Jost, sans-serif',
+                  color: '#666',
+                  fontSize: '0.8rem', // Reduced from 0.9rem
+                  textAlign: 'center',
+                }}
+              >
+                Trusted by 50,000+ happy customers
+              </Typography>
+
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: { xs: 2, sm: 3 }, // Reduced from { xs: 2, sm: 4 }
+                  width: '100%',
+                }}
+              >
+                <motion.div whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 0.5, // Reduced from 1
+                    }}
+                  >
+                    <Image
+                      loading="eager"
+                      src={`${baseImageUrl}/assets/icons/shield.png`}
+                      width={24} // Reduced from 32
+                      height={24} // Reduced from 32
+                      alt="Secure Payment"
+                      style={{ opacity: 0.7 }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontFamily: 'Jost, sans-serif',
+                        color: '#666',
+                        textAlign: 'center',
+                        fontSize: '0.6rem', // Reduced from 0.7rem
+                      }}
+                    >
+                      Secure Payment
+                    </Typography>
+                  </Box>
+                </motion.div>
+
+                <motion.div whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 0.5, // Reduced from 1
+                    }}
+                  >
+                    <Image
+                      loading="eager"
+                      src={`${baseImageUrl}/assets/icons/fast-delivery.png`}
+                      width={24} // Reduced from 32
+                      height={24} // Reduced from 32
+                      alt="Fast Shipping"
+                      style={{ opacity: 0.7 }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontFamily: 'Jost, sans-serif',
+                        color: '#666',
+                        textAlign: 'center',
+                        fontSize: '0.6rem', // Reduced from 0.7rem
+                      }}
+                    >
+                      Fast Shipping
+                    </Typography>
+                  </Box>
+                </motion.div>
+
+                <motion.div whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 0.5, // Reduced from 1
+                    }}
+                  >
+                    <Image
+                      loading="eager"
+                      src={`${baseImageUrl}/assets/icons/happiness.png`}
+                      width={24} // Reduced from 32
+                      height={24} // Reduced from 32
+                      alt="Customer Satisfaction"
+                      style={{ opacity: 0.7 }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontFamily: 'Jost, sans-serif',
+                        color: '#666',
+                        textAlign: 'center',
+                        fontSize: '0.6rem', // Reduced from 0.7rem
+                      }}
+                    >
+                      100% Satisfaction
+                    </Typography>
+                  </Box>
+                </motion.div>
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Image
+                  loading="eager"
+                  src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`}
+                  width={50} // Reduced from 60
+                  height={15} // Reduced from 18
+                  alt="Razorpay"
+                  style={{ opacity: 0.7 }}
+                />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontFamily: 'Jost, sans-serif',
+                    color: '#666',
+                    fontSize: '0.6rem', // Reduced from 0.7rem
+                  }}
+                >
+                  |
+                </Typography>
+                <Image
+                  loading="eager"
+                  src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`}
+                  width={50} // Reduced from 60
+                  height={15} // Reduced from 18
+                  alt="Shiprocket"
+                  style={{ opacity: 0.7 }}
+                />
+              </Box>
+            </Box>
+          </motion.div>
         </DialogContent>
-        <CustomSnackbar
-          open={snackbarOpen}
-          message={snackbarMessage}
-          severity={snackbarSeverity}
-          onClose={() => setSnackbarOpen(false)}
-        />
       </Dialog>
+
     </ThemeProvider>
+    <SnackbarPortal >
+      {/* Render snackbar outside ThemeProvider */}
+      <CustomSnackbar
+        open={snackbarOpen}
+        message={snackbarMessage}
+        severity={snackbarSeverity}
+        handleClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        autoHideDuration={4000}
+        style={{ zIndex: 9999999 }} 
+      />
+    </SnackbarPortal>
+    </>
   );
 };
 

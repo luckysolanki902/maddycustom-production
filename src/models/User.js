@@ -3,6 +3,12 @@ const { v4: uuidv4 } = require('uuid');
 
 const UserSchema = new mongoose.Schema(
   {
+    phoneNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      match: /^\d{10}$/,
+    },
     // Unique identifier (UUID v4)
     userId: {
       type: String,

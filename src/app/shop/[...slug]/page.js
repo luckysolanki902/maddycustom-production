@@ -54,7 +54,6 @@ export async function generateMetadata({ params }) {
   if (productData.type === 'not-found') {
     return {};
   }
-  console.log('productData', productData);
   return createMetadata({
     canonical: canonicalUrl,
     title:

@@ -32,6 +32,7 @@ const initialState = {
   lastOrderIdSetAt: null,
   extraFields: {},
   loginDialogShown: false,
+  // loginDialogOpen: false,
 };
 
 const orderFormSlice = createSlice({
@@ -43,7 +44,6 @@ const orderFormSlice = createSlice({
     setAddressDetails: (s, a) => { s.addressDetails = { ...s.addressDetails, ...a.payload }; },
     // setUserExists: (s, a) => { s.userExists = a.payload; },
     setUserExists: (state, action) => {
-      console.log('🔄 setUserExists called with:', action.payload);
       state.userExists = action.payload;
     },
     
@@ -76,7 +76,7 @@ const orderFormSlice = createSlice({
     setLastOrderId: (s, a) => { s.lastOrderId = a.payload; },
     setExtraFields: (s, a) => { s.extraFields = { ...s.extraFields, ...a.payload }; },
     setLoginDialogShown: (s, a) => { s.loginDialogShown = a.payload; },
-
+    // setLoginDialogOpen: (s, a) => { s.loginDialogOpen = a.payload; },
     resetOrderForm: () => initialState,
   },
 });
@@ -93,6 +93,7 @@ export const {
   setLastOrderId,
   setExtraFields,
   setLoginDialogShown,
+  // setLoginDialogOpen,
   resetOrderForm,
 } = orderFormSlice.actions;
 

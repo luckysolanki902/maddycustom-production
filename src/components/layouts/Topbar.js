@@ -11,6 +11,9 @@ import Badge from '@mui/material/Badge';
 import { useSpring, animated } from 'react-spring';
 
 import { toggleSidebar, openSearchDialog, openCartDrawer } from '@/store/slices/uiSlice';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import { setLoginDialogOpen } from '@/store/slices/orderFormSlice'; // You may need to create this action
 
 const Topbar = () => {
   const pathname = usePathname();
@@ -25,7 +28,10 @@ const Topbar = () => {
   // Scroll detection state: track previous scroll position and visibility
   const [prevScrollY, setPrevScrollY] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
-
+  // const userExists = useSelector((state) => state.orderForm.userExists);
+  // const userDetails = useSelector((state) => state.orderForm.userDetails);
+  // console.log('User Exists:', userExists);
+  // console.log('User Details:', userDetails);
   useEffect(() => {
     let ticking = false;
 
@@ -127,6 +133,32 @@ const Topbar = () => {
             readOnly // focusing triggers the dialog
           />
         </div>
+        {/* <div 
+          className={styles.loginContainer}
+          onClick={() => dispatch(setLoginDialogOpen(true))}
+          style={{ 
+            cursor: 'pointer',
+            position: 'relative',
+            marginRight: '10px',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
+        <PersonOutlineIcon className={styles.loginIcon} />
+          {userExists && userDetails?.phoneNumber && (
+            <CheckCircleOutlineIcon 
+              style={{ 
+                position: 'absolute',
+                bottom: '-2px',
+                right: '-2px',
+                fontSize: '12px',
+                color: '#4caf50',
+                backgroundColor: 'white',
+                borderRadius: '50%'
+              }} 
+            />
+          )}
+        </div> */}
         {/* Cart Icon with Badge */}
         <div
           className={styles.cartContainer}

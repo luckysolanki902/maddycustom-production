@@ -154,6 +154,22 @@
     cursor: pointer;
 }
 
+/* Add these CSS classes to your existing CSS file */
+
+.loginContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  position: relative;
+  cursor: pointer;
+}
+
+.loginIcon {
+  font-size: 24px;
+  color: #000000; /* Black color for the icon */
+}
+
 /* Responsive Styles */
 
 /* Show hamburger & mobile search icon on smaller screens, hide big nav & search box */
