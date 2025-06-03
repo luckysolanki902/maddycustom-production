@@ -144,7 +144,7 @@ export default function ViewCart({ isDrawer = false }) {
   const [selectedPM, setSelectedPM] = useState(null);
   const [loadingPM, setLoadingPM] = useState(true);
   const [dlgOrder, setDlgOrder] = useState(false);
-  
+
   const [lockedCoupon, setLockedCoupon] = useState(null);
   const [lockedShort, setLockedShort] = useState(0);
   const [nowCoupon, setNowCoupon] = useState(null);
@@ -170,12 +170,12 @@ export default function ViewCart({ isDrawer = false }) {
       dispatch(startPersistentShippingTimer({ startTime: Date.now(), duration: DEFAULT_SHIPPING_TIMER_DURATION }));
     }
   }, [persistedShippingTimer.startTime, dispatch, DEFAULT_SHIPPING_TIMER_DURATION]);
-  
+
   // Derive expiryTime and isActive status from persisted state
   const expiryTime = persistedShippingTimer.startTime && persistedShippingTimer.duration
     ? persistedShippingTimer.startTime + persistedShippingTimer.duration
     : 0;
-  
+
   const isActiveForShipping = persistedShippingTimer.startTime && persistedShippingTimer.duration
     ? Date.now() < expiryTime
     : false;
@@ -210,7 +210,7 @@ export default function ViewCart({ isDrawer = false }) {
 
     // Update every second
     const timerInterval = setInterval(calculateTimeRemaining, 1000);
-    
+
     return () => clearInterval(timerInterval);
   }, [expiryTime, isActiveForShipping, dispatch]);
 
@@ -288,29 +288,60 @@ export default function ViewCart({ isDrawer = false }) {
     })();
   }, []);
 
-  /* ---------- locked / now banner (unchanged) ----------------------- */
+  /* ---------- locked / now banner (updated for card offers) ----------------------- */
   useEffect(() => {
     if (!subTot) { setLockedCoupon(null); setNowCoupon(null); return; }
     (async () => {
       try {
-        const { data } = await axios.get('/api/checkout/bestcoupon', { params: { cartValue: subTot } });
-        const { bestOffer, shortfall } = data;
-        if (shortfall === 0) {
-          setNowCoupon(bestOffer); setLockedCoupon(null);
-        } else {
-          setLockedCoupon(bestOffer); setLockedShort(shortfall); setNowCoupon(null);
-        }
-      } catch {/* ignore */ }
-    })();
-  }, [subTot]);
+        // Add loading state to prevent stale data display
+        setRevalidatingCoupons(true);
 
-  /* ---------- AUTO‑APPLY (unchanged) -------------------------------- */
+        const params = new URLSearchParams({
+          cartValue: subTot.toString(),
+          showCardOnly: 'true'
+        });
+
+        // If coupon is applied, exclude it and pass current discount for comparison
+        if (couponState.couponApplied) {
+          if (couponState.offer?._id) {
+            params.append('appliedOfferId', couponState.offer._id);
+          }
+          if (couponState.couponName) {
+            params.append('appliedCouponCode', couponState.couponName);
+          }
+          // Pass current discount amount for better comparison
+          params.append('currentDiscountAmount', couponState.couponDiscount.toString());
+        }
+
+        const { data } = await axios.get(`/api/checkout/bestcoupon?${params}`);
+        const { bestOffer, shortfall } = data;
+
+        if (shortfall === 0 && bestOffer) {
+          setNowCoupon(bestOffer);
+          setLockedCoupon(null);
+          setLockedShort(0);
+        } else if (shortfall > 0 && bestOffer) {
+          setLockedCoupon(bestOffer);
+          setLockedShort(shortfall);
+          setNowCoupon(null);
+        } else {
+          setLockedCoupon(null);
+          setNowCoupon(null);
+          setLockedShort(0);
+        }
+      } catch (error) {
+        console.error('Error fetching card offers:', error);
+      } finally {
+        setRevalidatingCoupons(false);
+      }
+    })();
+  }, [subTot, cartItems, couponState.couponApplied, couponState.offer?._id, couponState.couponName, couponState.couponDiscount]);
+
+  /* ---------- AUTO‑APPLY (fixed to work for all offer types) -------- */
   const { autoApplyDisabled, autoApplyDisabledAt, manualCoupon } = orderForm;
   const blocked = autoApplyDisabled && autoApplyDisabledAt &&
     Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
-    
-  useEffect(()=>{
-  }, []);
+
   useEffect(() => {
     if (blocked || manualCoupon || couponState.couponApplied || !qty) return;
 
@@ -327,15 +358,22 @@ export default function ViewCart({ isDrawer = false }) {
           }),
         });
         const data = await res.json();
-        if (!res.ok || !data.valid) return;
-        if (lastAutoRef.current.code === data.offer.couponCodes[0]) return;
+        if (!res.ok || !data.valid || !data.offer) return;
 
-        applyCoupon(data.offer.couponCodes[0], data.discountValue, data.discountType, data.offer, true);
+        // Get the first coupon code from the offer
+        const couponCode = data.offer.couponCodes && data.offer.couponCodes.length > 0
+          ? data.offer.couponCodes[0]
+          : `AUTO_${data.offer._id}`;
+
+        // Prevent duplicate application of the same offer
+        if (lastAutoRef.current.code === couponCode && lastAutoRef.current.type === data.discountType) return;
+
+        applyCoupon(couponCode, data.discountValue, data.discountType, data.offer, true);
       } catch (e) {
         console.error('auto‑apply error', e);
       }
     })();
-  }, [qty, subTot, cartItems, couponState.couponApplied, blocked, manualCoupon]); // eslint-disable-line
+  }, [qty, subTot, cartItems, couponState.couponApplied, blocked, manualCoupon]);
 
   /* ---------- RE‑VALIDATE on cart changes (unchanged) --------------- */
   const revalidateCoupon = async (silent = false) => {
@@ -383,7 +421,7 @@ export default function ViewCart({ isDrawer = false }) {
   const topSub = useMemo(() => [...new Set(cartItems.map(i => i.productDetails.subCategory))], [cartItems]);
   const topIds = useMemo(() => cartItems.map(i => i.productDetails._id).join(','), [cartItems]);
 
-const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 ? 99 : 0);
+  const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 ? 99 : 0);
 
   /* -------------------  JSX (UI with fixes)  ------------------------- */
   return (
@@ -449,14 +487,14 @@ const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 
                     >
                       <span className={styles.shippingBannerHeading}>
                         FREE DELIVERY
-                        <motion.div 
+                        <motion.div
                           className={styles.timerContainer}
                           initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ 
-                            opacity: 1, 
+                          animate={{
+                            opacity: 1,
                             scale: 1,
                             transition: { delay: 0.4, duration: 0.3 }
-                        }}
+                          }}
                         >
                           <span className={styles.timerLabel}>Ends in:</span>
                           <span className={styles.timerDigits}>
@@ -479,23 +517,36 @@ const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 
               {/* Locked/Active Coupon Banners */}
               {lockedCoupon && (
                 <motion.div
-                  className={styles.lockedOfferContainer}
+                  className={styles.availableCouponBanner}
                   whileHover={{ scale: 1.02 }}
                   transition={{ type: "spring", stiffness: 400, damping: 10 }}
                 >
-                  <div className={styles.lockedOfferContent}>
-                    <DiscountOutlinedIcon className={styles.discountIcon} />
-                    <div className={styles.lockedOfferMessage}>
-                      <span className={styles.lockedOfferHeading}>Unlock Special Offer!</span>
-                      <span className={styles.lockedOfferText}>
-                        Add <strong>₹{lockedShort}</strong> more to get
-                        {lockedCoupon.discountType === 'percentage'
-                          ? <strong> {lockedCoupon.discountValue}% </strong>
-                          : <strong> ₹{lockedCoupon.discountValue} </strong>}
-                        off your order
-                      </span>
+                  <LocalOfferIcon className={styles.offerIcon} />                    
+                    <div className={styles.availableCouponContent}>                      
+
+                      <div className={styles.availableCouponContent}>
+                        <span className={styles.availableCouponHeading}>Unlock More Savings!</span>
+                    <span className={styles.availableCouponText}>
+
+                        You&apos;re <strong>₹{lockedShort}</strong> away from a better deal!
+                        {/* <strong>₹{lockedCoupon.discountValue}</strong> off
+                        {couponState.couponApplied && (
+                          <span className={styles.improvementText}>
+                            {' '}(₹{lockedCoupon.discountValue - couponState.couponDiscount} more savings!)
+                          </span>
+                        )} */}
+                    </span>
+
+                      </div>
                     </div>
-                  </div>
+                    <motion.button
+                      className={styles.applyNowButton}
+                      onClick={() => setDlgCoupon(true)}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      View
+                    </motion.button>
                 </motion.div>
               )}
 
@@ -540,7 +591,7 @@ const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 
                 )}
               </AnimatePresence>
 
-              {/* Available Coupon Banner */}
+              {/* Available Coupon Banner - Enhanced with next best logic */}
               {!couponState.couponApplied && nowCoupon && (
                 <motion.div
                   className={styles.availableCouponBanner}
@@ -551,7 +602,7 @@ const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 
                     <span className={styles.availableCouponHeading}>Special Offer Available!</span>
                     <span className={styles.availableCouponText}>
                       Get {nowCoupon.discountType === 'percentage'
-                        ? `${nowCoupon.discountValue}%`
+                        ? `${nowCoupon.actions[0].discountValue}%`
                         : `₹${nowCoupon.discountValue}`}{' '}
                       off on your order
                     </span>
@@ -567,14 +618,34 @@ const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 
                 </motion.div>
               )}
 
-              {/* View All Coupons Button */}
-              <div onClick={() => setDlgCoupon(true)} className={styles.viewAllCouponsSection}>
-                <div className={styles.viewAllCouponsContent}>
-                  <DiscountIcon className={styles.couponIcon} />
-                  <span className={styles.viewAllCouponsText}>View all available offers</span>
-                </div>
-                <ChevronRightIcon className={styles.arrowIcon} />
-              </div>
+              {/* Next Available Coupon Banner - When coupon is already applied */}
+              {couponState.couponApplied && nowCoupon && (
+                <motion.div
+                  className={styles.availableCouponBanner}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <LocalOfferIcon className={styles.offerIcon} />
+                  <div className={styles.availableCouponContent}>
+                    <span className={styles.availableCouponHeading}>Better Offer Available!</span>
+                    <span className={styles.availableCouponText}>
+                      You can now unlock a better deal!
+                      {nowCoupon.discountValue > couponState.couponDiscount && (
+                        <span className={styles.savingsHighlight}>
+                          {' '}(Save ₹{nowCoupon.discountValue - couponState.couponDiscount} more!)
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <motion.button
+                    className={styles.applyNowButton}
+                    onClick={() => setDlgCoupon(true)}
+                    whileHover={{ scale: 1 }} // Removed scale transform effect
+                    whileTap={{ scale: 1 }} // Removed scale transform effect
+                  >
+                    Switch
+                  </motion.button>
+                </motion.div>
+              )}
 
               {/* Price Details */}
               <PriceDetails
@@ -638,9 +709,9 @@ const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 
             </div>
             <div className={styles.recommendedForYou}>
               <h3 className={styles.recommendedTitle}>Recommended For You</h3>
-              <TopBoughtProducts 
+              <TopBoughtProducts
                 hideHeading={true}
-              pageType="viewcart" />
+                pageType="viewcart" />
             </div>
           </motion.div>
         )}

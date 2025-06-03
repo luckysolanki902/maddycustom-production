@@ -78,6 +78,15 @@
   padding: 14px;
   margin-bottom: 16px;
   border: 1px dashed #ffd166;
+  position: relative;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px dashed #dee2e6;
+  transition: all 0.3s ease;
+}
+
+.lockedOfferContainer:hover {
+  border-color: #f39c12;
+  background: linear-gradient(135deg, #fffbf0 0%, #fff3cd 100%);
 }
 
 .lockedOfferContent {
@@ -103,8 +112,9 @@
 }
 
 .lockedOfferText {
-  font-size: 14px;
-  color: #4a4a4a;
+  font-size: 13px;
+  color: #6c757d;
+  line-height: 1.4;
 }
 
 /* Applied coupon styles - enhanced for animation */
@@ -587,4 +597,86 @@
   );
   background-size: 200% 100%;
   animation: shine 2s infinite;
+}
+
+/* Next Coupon Banner styles */
+.nextCouponBanner {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border: 1px solid #f39c12;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.nextCouponBanner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(243, 156, 18, 0.1) 0%, rgba(255, 234, 167, 0.1) 100%);
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.nextCouponBanner:hover::before {
+  opacity: 1;
+}
+
+.nextCouponContent {
+  flex: 1;
+  margin-left: 12px;
+  z-index: 1;
+}
+
+.nextCouponHeading {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  color: #d68910;
+  margin-bottom: 4px;
+}
+
+.nextCouponText {
+  display: block;
+  font-size: 13px;
+  color: #856404;
+  line-height: 1.4;
+}
+
+.applyNextButton, .unlockButton {
+  background: #f39c12;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 1;
+  position: relative;
+}
+
+.applyNextButton:hover, .unlockButton:hover {
+  background: #d68910;
+  box-shadow: 0 4px 8px rgba(243, 156, 18, 0.3);
+}
+
+.unlockButton {
+  position: absolute;
+  right: 16px;
+  top: 25%;
+  background: #6c757d;
+}
+
+.lockedOfferContainer:hover .unlockButton {
+  background: #f39c12;
 }
