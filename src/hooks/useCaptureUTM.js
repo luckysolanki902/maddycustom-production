@@ -49,7 +49,7 @@ const useCaptureUTM = () => {
             // Capture non-UTM parameters
             // Convert searchParams iterator to array of entries and process
             searchParamsEntries.forEach(([key, value]) => {
-                // Skip UTM parameters and utm_override
+                // Skip  utm_override 
                 if (!UTM_PARAMS.includes(key) && key !== 'utm_override') {
                     otherQueryParams[key] = value;
                 }
