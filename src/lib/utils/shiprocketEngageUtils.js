@@ -1,9 +1,9 @@
 "use client";
 import { v4 as uuidv4 } from "uuid";
 
-const sendCustomFeedEvent = async (eventName, payload, userId) => {
-  const url = "http://tracker.wigzopush.com/rest/v1/learn/event?token=9359622121db2e233493a&org_token=JhjA7cNKTNqZ_4UAlx_iSQ";
+const url = `http://tracker.wigzopush.com/rest/v1/learn/event?token=${process.env.ENGAGE_TOKEN}&org_token=${process.env.ENGAGE_ORG_TOKEN}`;
 
+const sendCustomFeedEvent = async (eventName, payload, userId) => {
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -25,12 +25,37 @@ const sendCustomFeedEvent = async (eventName, payload, userId) => {
     }
 
     return await res.json();
-  } catch (error) {
-    console.error("Error sending event:", error);
+  } catch (err) {
+    console.error("Error sending event:", err instanceof Error ? err.message : JSON.stringify(err));
+  }
+};
+
+const sendIdentifyEvent = async payload => {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Tracking API error: ${res.status}`);
+    }
+
+    return await res.json();
+  } catch (err) {
+    console.error("Error sending event:", err instanceof Error ? err.message : JSON.stringify(err));
   }
 };
 
 export const purchase = async (order, userData = {}) => {
+  if (!userData.userId) {
+    console.error("order: userId is required.");
+    return;
+  }
+
   try {
     const payload = {
       orderId: order._id,
@@ -74,6 +99,11 @@ export const purchase = async (order, userData = {}) => {
 };
 
 export const viewContent = async (product, variant, category, description, userData = {}) => {
+  if (!userData.userId) {
+    console.error("product/push: userId is required.");
+    return;
+  }
+
   try {
     const payload = {
       canonicalUrl: product.pageSlug,
@@ -117,6 +147,11 @@ export const viewContent = async (product, variant, category, description, userD
 };
 
 export const initiateCheckout = async (checkoutData, cartItems, userData = {}) => {
+  if (!userData.userId) {
+    console.error("checkout: userId is required.");
+    return;
+  }
+
   try {
     const payload = {
       completed_at: new Date().toISOString(),
@@ -155,27 +190,26 @@ export const initiateCheckout = async (checkoutData, cartItems, userData = {}) =
 };
 
 export const identifyUser = async (userData = {}) => {
-  if (!userData.email && !userData.phoneNumber) {
-    console.warn("identify: email or phone is required.");
+  if (!userData.userId) {
+    console.error("identify: userId is required.");
     return;
   }
+
+  if (!userData.email && !userData.phoneNumber) {
+    console.error("identify: email or phone is required.");
+    return;
+  }
+
   try {
     const payload = {
-      phone: `${userData.phoneNumber ?? ""}`,
-      createdAt: userData.createdAt ?? new Date().toISOString(),
-      updatedAt: userData.updatedAt ?? new Date().toISOString(),
+      userId: userData.userId,
       email: `${userData.email ?? ""}`,
-      firstName: userData.firstName ?? "",
-      lastName: userData.lastName ?? "",
-      customer_id: userData.userId ?? uuidv4(),
-      postal_code: userData.postalCode ?? "", //
-      city: userData.city ?? "",
-      state: userData.state ?? "",
-      country: userData.country ?? "India",
-      country_code: userData.countryCode ?? "IN",
+      phone: `${userData.phoneNumber ?? ""}`,
+      is_active: true,
+      source: "web",
     };
 
-    await sendCustomFeedEvent("identify", payload, userData.userId);
+    await sendIdentifyEvent(payload);
   } catch (err) {
     console.error("Error in identify event in shiprocketEngageUtils :", err instanceof Error ? err.message : JSON.stringify(err));
   }
