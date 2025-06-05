@@ -8,13 +8,14 @@ import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 export async function GET(req) {
   try {
     await connectToDatabase();
-
     // Define Time Window: 30 mins < order age < 60 mins
     const now = new Date();
     const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000);
     const sixtyMinsAgo = new Date(now.getTime() - 60 * 60 * 1000);
     const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-
+    const commonImage = imageBaseUrl + '/assets/marketing/aisensy-whatsapp-media/abandoned-cart-free-delivery1.png';
+    const useCommonImage = true;
+    
     const pipeline = [
       {
         $match: {
@@ -54,7 +55,6 @@ export async function GET(req) {
     ];
 
     const abandonedOrders = await Order.aggregate(pipeline).exec();
-
     if (!abandonedOrders.length) {
       return NextResponse.json({ message: 'No abandoned orders in [30-60 mins] window after correcting time calculation' });
     }
@@ -65,7 +65,37 @@ export async function GET(req) {
 
       // Build carousel cards based on the official AiSensy format
       let carouselCards = [];
-      if (firstItem && firstItem.product) {
+      
+      if (useCommonImage) {
+        // Use common image for all users
+        carouselCards = [{
+          card_index: 0,
+          components: [
+            {
+              type: "HEADER",
+              parameters: [
+                {
+                  type: "image",
+                  image: {
+                    link: commonImage
+                  }
+                }
+              ]
+            },
+            {
+              type: "BUTTON",
+              sub_type: "URL",
+              index: 0,
+              parameters: [
+                {
+                  type: "text",
+                  text: `https://maddycustom.in/product/${firstItem?.product || ''}`
+                }
+              ]
+            }
+          ]
+        }];
+      } else if (firstItem && firstItem.product) {
         const product = await Product.findById(firstItem.product).lean();
         if (product && product.images && product.images.length > 0) {
           // Get product images - max 5
@@ -119,9 +149,9 @@ export async function GET(req) {
 
       const payload = {
         user: { _id: userId, name: userName, phoneNumber },
-        campaignName: 'ac_1',
+        campaignName: 'act_1',
         orderId,
-        templateParams: [userName.split(' ')[0] || 'Friend'],
+        // templateParams: [userName.split(' ')[0] || 'Friend'],
         carouselCards,
       };
 
