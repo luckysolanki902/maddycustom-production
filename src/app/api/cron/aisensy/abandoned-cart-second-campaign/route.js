@@ -14,7 +14,8 @@ export async function GET(req) {
     const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
     const fourteenHoursAgo = new Date(now.getTime() - 14 * 60 * 60 * 1000);
     const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-
+    const commonImage = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL + '/assets/marketing/aisensy-whatsapp-media/abandoned-cart-free-delivery1.png';
+    const useCommonImage = true;
     const pipeline = [
       {
         $match: {
@@ -65,7 +66,37 @@ export async function GET(req) {
 
       // Build carousel cards based on the official AiSensy format
       let carouselCards = [];
-      if (firstItem && firstItem.product) {
+      
+      if (useCommonImage) {
+        // Use common image for all users
+        carouselCards = [{
+          card_index: 0,
+          components: [
+            {
+              type: "HEADER",
+              parameters: [
+                {
+                  type: "image",
+                  image: {
+                    link: commonImage
+                  }
+                }
+              ]
+            },
+            {
+              type: "BUTTON",
+              sub_type: "URL",
+              index: 0,
+              parameters: [
+                {
+                  type: "text",
+                  text: `https://maddycustom.in/product/${firstItem?.product || ''}`
+                }
+              ]
+            }
+          ]
+        }];
+      } else if (firstItem && firstItem.product) {
         const product = await Product.findById(firstItem.product).lean();
         if (product && product.images && product.images.length > 0) {
           // Get product images - max 5
@@ -119,9 +150,9 @@ export async function GET(req) {
 
       const payload = {
         user: { _id: userId, name: userName, phoneNumber },
-        campaignName: 'ac2',
+        campaignName: 'act_2',
         orderId,
-        templateParams: [userName.split(' ')[0] || 'Friend'],
+        // templateParams: [userName.split(' ')[0] || 'Friend'],
         carouselCards,
       };
 
