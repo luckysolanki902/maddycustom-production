@@ -515,39 +515,40 @@ export default function ViewCart({ isDrawer = false }) {
               )}
 
               {/* Locked/Active Coupon Banners */}
-              {lockedCoupon && (
-                <motion.div
-                  className={styles.availableCouponBanner}
-                  whileHover={{ scale: 1.02 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                >
-                  <LocalOfferIcon className={styles.offerIcon} />                    
-                    <div className={styles.availableCouponContent}>                      
+              {true && (
+                null  // remove this line
+                // <motion.div
+                //   className={styles.availableCouponBanner}
+                //   whileHover={{ scale: 1.02 }}
+                //   transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                // >
+                //   <LocalOfferIcon className={styles.offerIcon} />                    
+                //     <div className={styles.availableCouponContent}>                      
 
-                      <div className={styles.availableCouponContent}>
-                        <span className={styles.availableCouponHeading}>Unlock More Savings!</span>
-                    <span className={styles.availableCouponText}>
+                //       <div className={styles.availableCouponContent}>
+                //         <span className={styles.availableCouponHeading}>Unlock More Savings!</span>
+                //     <span className={styles.availableCouponText}>
 
-                        You&apos;re <strong>₹{lockedShort}</strong> away from a better deal!
-                        {/* <strong>₹{lockedCoupon.discountValue}</strong> off
-                        {couponState.couponApplied && (
-                          <span className={styles.improvementText}>
-                            {' '}(₹{lockedCoupon.discountValue - couponState.couponDiscount} more savings!)
-                          </span>
-                        )} */}
-                    </span>
+                //         You&apos;re <strong>₹{lockedShort}</strong> away from a better deal!
+                //         {/* <strong>₹{lockedCoupon.discountValue}</strong> off
+                //         {couponState.couponApplied && (
+                //           <span className={styles.improvementText}>
+                //             {' '}(₹{lockedCoupon.discountValue - couponState.couponDiscount} more savings!)
+                //           </span>
+                //         )} */}
+                //     </span>
 
-                      </div>
-                    </div>
-                    <motion.button
-                      className={styles.applyNowButton}
-                      onClick={() => setDlgCoupon(true)}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      View
-                    </motion.button>
-                </motion.div>
+                //       </div>
+                //     </div>
+                //     <motion.button
+                //       className={styles.applyNowButton}
+                //       onClick={() => setDlgCoupon(true)}
+                //       whileHover={{ scale: 1.05 }}
+                //       whileTap={{ scale: 0.95 }}
+                //     >
+                //       View
+                //     </motion.button>
+                // </motion.div>
               )}
 
               {/* Applied Coupon Section with enhanced animation */}
