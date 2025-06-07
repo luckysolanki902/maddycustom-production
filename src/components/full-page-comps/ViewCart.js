@@ -515,7 +515,7 @@ export default function ViewCart({ isDrawer = false }) {
               )}
 
               {/* Locked/Active Coupon Banners */}
-              {true && (
+              {lockedCoupon && (
                 null  // remove this line
                 // <motion.div
                 //   className={styles.availableCouponBanner}
