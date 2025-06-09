@@ -14,7 +14,7 @@ export async function GET(req) {
     const sixtyMinsAgo = new Date(now.getTime() - 60 * 60 * 1000);
     const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
     const commonImage = imageBaseUrl + '/assets/marketing/aisensy-whatsapp-media/abandoned-cart-free-delivery1.png';
-    const useCommonImage = true;
+    const useCommonImage = false;
     
     const pipeline = [
       {
@@ -149,9 +149,9 @@ export async function GET(req) {
 
       const payload = {
         user: { _id: userId, name: userName, phoneNumber },
-        campaignName: 'act_1',
+        campaignName: 'ac_1',
         orderId,
-        // templateParams: [userName.split(' ')[0] || 'Friend'],
+        templateParams: [userName.split(' ')[0] || 'Friend'],
         carouselCards,
       };
 
