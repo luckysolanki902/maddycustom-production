@@ -5,6 +5,7 @@ import Order from '@/models/Order';
 import Product from '@/models/Product';
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 
+
 export async function GET(req) {
   try {
     await connectToDatabase();
