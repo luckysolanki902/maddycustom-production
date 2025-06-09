@@ -12,6 +12,7 @@ const redirectMap = {
   '/viewcart': '/?openCart=true' // For view cart
 };
 
+
 export function middleware(request) {
   // Get the pathname of the request
   const { pathname } = request.nextUrl;
