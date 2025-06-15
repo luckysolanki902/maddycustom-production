@@ -78,9 +78,9 @@ export default function ProductsPage({
   const [showLayout2, setShowLayout2] = useState(variant?.listLayout === '2');
 
   /* ------------------------ effects ------------------------ */
-  useEffect(() => {
-    if (variant?.popupDetails?.length) setDialogOpen(true);
-  }, [variant?.popupDetails]);
+  // useEffect(() => {
+  //   if (variant?.popupDetails?.length) setDialogOpen(true);
+  // }, [variant?.popupDetails]);
 
   useEffect(() => {
     setShowLayout2(variant?.listLayout === '2');
