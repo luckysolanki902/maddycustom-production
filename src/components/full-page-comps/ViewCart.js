@@ -44,6 +44,7 @@ import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import { motion, AnimatePresence } from 'framer-motion';
 import SplitPayment from '../page-sections/viewcart/SplitPayment';
+import EndOfMonth from '../showcase/banners/EndOfMonth';
 
 /* ---------------- helper ------------------------------------------------ */
 const isOfferApplicable = (offer, totalCost, isFirstOrder = false) =>
@@ -457,6 +458,8 @@ export default function ViewCart({ isDrawer = false }) {
                 <ShoppingBagIcon className={styles.sectionIcon} />
                 <h2 className={styles.sectionTitle}>Your Cart ({qty})</h2>
               </div>
+
+              <EndOfMonth />
 
               <CartList
                 cartItems={cartItems}

@@ -4,12 +4,13 @@ import FullWidthRoundCornerLandscapeCarousel from '@/components/showcase/carouse
 import Image from 'next/image';
 import styles from './styles/herosection.module.css';
 import { useRouter } from 'next/navigation';
-
+import SaleBanner from '@/components/showcase/banners/SaleBanner';
 export default function HeroSection() {
     const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL
     const router = useRouter()
     return (
         <>
+            <SaleBanner />
             {/* <div className={styles.logoDiv}>
                 <Image
                     className={styles.logoImg}
