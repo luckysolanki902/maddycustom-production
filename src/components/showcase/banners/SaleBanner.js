@@ -20,7 +20,7 @@ const SaleBanner = () => {
         }
       }
     };
-    // checkIfLastFiveDays();
+    checkIfLastFiveDays();
   }, []);
 
   const closeBanner = () => {
@@ -73,7 +73,7 @@ const SaleBanner = () => {
               fontFamily: 'Jost, sans-serif', // Use Jost font family
             }}
           >
-            Get upto 50% discounts on your favorite products!
+            Get unbelievable discounts on your favorite products!
           </Typography>
         </Box>
         

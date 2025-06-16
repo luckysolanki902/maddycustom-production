@@ -771,5 +771,3 @@ export default function ViewCart({ isDrawer = false }) {
     </div>
   );
 }
-
-
