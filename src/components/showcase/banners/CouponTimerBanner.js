@@ -42,10 +42,10 @@ const CouponTimerBanner = () => {
 
   useEffect(() => {
     // For development/testing, uncomment:
-    
+    // setIsVisible(true);
     // For production, use this instead:
-    // const shouldShow = checkIfLastFiveDays();
-    // setIsVisible(shouldShow);
+    const shouldShow = checkIfLastFiveDays();
+    setIsVisible(shouldShow);
     
     if (isVisible) {
       updateCountdown();
@@ -98,7 +98,7 @@ const CouponTimerBanner = () => {
               {COUPON_CODE}
             </span>
             <span style={{ fontSize: '0.8rem', fontWeight: 'normal', marginLeft: '0.5rem' }}>
-              (50% OFF)
+              (Rs. 50 OFF)
             </span>
           </p>
         </div>

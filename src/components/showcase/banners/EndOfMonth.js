@@ -21,7 +21,7 @@ const EndOfMonthSale = () => {
   const checkIfLastFiveDays = useCallback(() => {
     const today = new Date();
     const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    const currentDay = today.getDate();
+    const currentDay = today.getDate(); 
     return currentDay >= (lastDayOfMonth - 4);
   }, []);
 
@@ -85,7 +85,7 @@ const EndOfMonthSale = () => {
             letterSpacing: '0.5px',
             textTransform: 'uppercase',
           }}>
-            END OF MONTH SALE! 🎉 50% OFF
+            END OF MONTH SALE! 🎉 Rs. 50 OFF
           </h3>
         </div>
         
