@@ -40,7 +40,9 @@ const orderFormSlice = createSlice({
   initialState,
   reducers: {
     // -------------------------------------------------- generic data
-    setUserDetails: (s, a) => { s.userDetails = { ...s.userDetails, ...a.payload }; },
+    setUserDetails: (s, a) => {
+      console.log('setUserDetails', a.payload);
+      s.userDetails = { ...s.userDetails, ...a.payload }; },
     setAddressDetails: (s, a) => { s.addressDetails = { ...s.addressDetails, ...a.payload }; },
     // setUserExists: (s, a) => { s.userExists = a.payload; },
     setUserExists: (state, action) => {

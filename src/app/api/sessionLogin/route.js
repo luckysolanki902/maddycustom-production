@@ -18,7 +18,8 @@ export async function POST(request) {
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
     // Set the session cookie (HttpOnly, Secure, 5-day expiration)
-    cookies().set({
+    const cookieStore=await cookies();
+    cookieStore.set({
       name: 'session',
       value: sessionCookie,
       httpOnly: true,

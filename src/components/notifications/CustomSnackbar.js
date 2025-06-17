@@ -2,7 +2,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
 import { styled } from '@mui/material/styles';
@@ -18,21 +18,40 @@ const WhiteAlert = styled(MuiAlert)(({ theme }) => ({
   },
 }));
 
-
-
-const CustomSnackbar = ({ open, message, severity, handleClose }) => {
+const CustomSnackbar = ({ 
+  open, 
+  message, 
+  severity = 'info', 
+  handleClose,
+  autoHideDuration = 3000 // Default to 3 seconds (more readable)
+}) => {
+  // Ensure snackbar closes even if parent doesn't update state
+  useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => {
+        if (handleClose) handleClose();
+      }, autoHideDuration);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [open, autoHideDuration, handleClose]);
+  
   return (
     <Snackbar
       open={open}
-      autoHideDuration={3000} // Increased duration for better visibility
-      onClose={handleClose}
+      autoHideDuration={autoHideDuration}
+      onClose={(event, reason) => {
+        if (reason !== 'clickaway') { // Don't close when clicking outside
+          handleClose();
+        }
+      }}
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
     >
       <WhiteAlert
         onClose={handleClose}
-        severity={severity} // You can still pass severity if you want to use different icons
+        severity={severity}
         elevation={6}
-        variant="filled" // Use 'filled' to maintain consistency
+        variant="filled"
       >
         {message}
       </WhiteAlert>

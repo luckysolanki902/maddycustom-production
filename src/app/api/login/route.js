@@ -5,11 +5,14 @@ import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request) {
   try {
-    const { phoneNumber } = await request.json();
-
+    const { phoneNumber, verificationStatus } = await request.json();
     if (!phoneNumber) {
       return NextResponse.json({ success: false, message: 'Phone Number is required.' }, { status: 400 });
     }
+
+    // Determine verification status based on parameter
+    const isVerified = verificationStatus !== 'beforeVerify';
+    console.log(`User verification status: ${isVerified ? 'verified' : 'not verified'}`);
 
     await connectToDatabase();
 
@@ -25,12 +28,13 @@ export async function POST(request) {
       const newUser = new User({
         userId: generatedUserId,
         phoneNumber,
-        isVerified: true,
+        isVerified: isVerified,  // Set based on parameter
         source: 'firebase-login'
       });
 
       try {
         user = await newUser.save();
+        console.log('New user created:', user);
       } catch (saveError) {
         console.error('Error saving new user:', saveError);
         return NextResponse.json({ 
@@ -57,13 +61,13 @@ export async function POST(request) {
       console.log('User exists - checking for userId');
       
       // Use MongoDB updateOne directly to bypass validation
-      // This is more reliable for adding required fields to existing documents
       try {
         const updateResult = await User.updateOne(
           { _id: user._id },
           { 
             $set: { 
-              isVerified: true,
+              // Only update isVerified if we're setting it to true or if it's currently undefined
+              ...(isVerified || user.isVerified === undefined ? { isVerified } : {}),
               // Set userId only if it doesn't exist
               ...(user.userId ? {} : { userId: generatedUserId })
             } 
@@ -74,10 +78,10 @@ export async function POST(request) {
         
         // Refresh the user data
         user = await User.findOne({ _id: user._id });
-        
+        console.log('User after update:', user);
         return NextResponse.json({
           success: true,
-          message: 'User already exists, verified.',
+          message: 'User already exists, verification status updated if needed.',
           user: {
             userId: user._id.toString(),
             isVerified: user.isVerified,

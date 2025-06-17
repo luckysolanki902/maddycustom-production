@@ -22,7 +22,7 @@ import SearchCategoryDialog from '@/components/dialogs/SearchCategoryDialog';
 import Footer from '@/components/layouts/Footer';
 import CartDrawer from '@/components/dialogs/CartDrawer';
 import CartInitializer from '@/components/utils/CartInitializer';
-
+import { AuthProvider, SessionSync } from '@/components/auth/AuthProvider';
 // Configure Krona One with its only available weight
 const kronaOne = Krona_One({
   subsets: ['latin'],
@@ -73,7 +73,9 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
+          <AuthProvider>
         <ReduxProvider>
+              <SessionSync />
           <UTMCapture />
           {/* <UTMLogger /> */}
           <TopLoadingBar />
@@ -91,6 +93,7 @@ export default function RootLayout({ children }) {
           <PathnameTracker />
           <ScrollChecker />
         </ReduxProvider>
+          </AuthProvider>
       </body>
     </html>
   );
