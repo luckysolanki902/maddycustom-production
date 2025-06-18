@@ -13,7 +13,11 @@ import {
   useMediaQuery,
   CircularProgress,
   alpha,
-  Button
+  Button,
+  Paper,
+  RadioGroup,
+  Radio,
+  FormControlLabel,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlackButton from '../utils/BlackButton';
@@ -117,6 +121,9 @@ const [isAddressLoading, setIsAddressLoading] = useState(false);
 const activeRequestsRef = useRef({});  const [shiprocketToken, setShiprocketToken] = useState(null);
 const [activeMessages, setActiveMessages] = useState(new Set());
 const snackbarTimerRef = useRef(null);
+// Add with your other state declarations
+const [addressOptions, setAddressOptions] = useState([]);
+const [showAddressSelector, setShowAddressSelector] = useState(false);
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   // Function to format phone number - memoized to prevent rerenders
   const formatPhoneNumber = useCallback((phone) => {
@@ -483,17 +490,6 @@ const createUserWithAddress = useCallback(async (phone, address) => {
   }
 }, [dispatch, getValues]);
 
-// Also add this function to handle address selection
-const handleAddressSelection = useCallback((index) => {
-  const selectedAddress = addressOptions[parseInt(index)];
-  if (selectedAddress) {
-    // Fill form with selected address
-    fillAddressForm(selectedAddress);
-    
-    // Hide address selector
-    setShowAddressSelector(false);
-  }
-}, [addressOptions, fillAddressForm]);
 // Function to fill address form with given address data
 const fillAddressForm = useCallback((address) => {
   if (!address) return;
@@ -516,6 +512,18 @@ const fillAddressForm = useCallback((address) => {
     setTimeout(() => validatePincode(address.pincode), 0);
   }
 }, [setValue, dispatch, validatePincode]);
+
+// Also add this function to handle address selection
+const handleAddressSelection = useCallback((index) => {
+  const selectedAddress = addressOptions[parseInt(index)];
+  if (selectedAddress) {
+    // Fill form with selected address
+    fillAddressForm(selectedAddress);
+    
+    // Hide address selector
+    setShowAddressSelector(false);
+  }
+}, [addressOptions, fillAddressForm]);
 
 // Function to check user by phone number
 const checkUserByPhone = useCallback(async (phone, shiprocketAddressData) => {
@@ -602,6 +610,110 @@ const extractAddressFromShiprocket = (data) => {
   }
   return null;
 };
+
+// Add this function to your component
+const checkUserInDatabase = useCallback(async (phoneNumber) => {
+  try {
+    if (!phoneNumber) return false;
+    
+    // Use controller for request cancellation
+    if (activeRequestsRef.current.userDbCheck) {
+      activeRequestsRef.current.userDbCheck.abort();
+    }
+    const controller = new AbortController();
+    activeRequestsRef.current.userDbCheck = controller;
+    
+    // Set timeout for the request
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.log('User database check request timed out');
+      return false;
+    }, 3000);
+    
+    const response = await fetch('/api/user/check', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      },
+      body: JSON.stringify({
+        phoneNumber: phoneNumber,
+        name: getValues('name'),
+        email: getValues('email'),
+        requestAddressOnly: true
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      const userData = await response.json();
+      console.log('User data received:', userData);
+      
+      if (userData.exists) {
+        // Update Redux with user ID
+        dispatch(setUserDetails({ userId: userData.userId }));
+        
+        // Process address if it exists
+        if (userData.latestAddress && Object.keys(userData.latestAddress).length > 0) {
+          // Create address object
+          const addressToUse = {
+            addressLine1: userData.latestAddress.addressLine1 || '',
+            addressLine2: userData.latestAddress.addressLine2 || '',
+            city: userData.latestAddress.city || '',
+            state: userData.latestAddress.state || '',
+            pincode: userData.latestAddress.pincode || '',
+            country: userData.latestAddress.country || 'India',
+          };
+          
+          // Single Redux update
+          dispatch(setAddressDetails(addressToUse));
+          
+          // Fill form
+          Object.entries(addressToUse).forEach(([key, value]) => {
+            setValue(key, value);
+          });
+          
+          // Pre-validate pincode
+          if (addressToUse.pincode && addressToUse.pincode.length === 6) {
+            setTimeout(() => validatePincode(addressToUse.pincode), 0);
+          }
+          
+          return true;
+        }
+      } else {
+        // Create user silently in background
+        fetch('/api/user/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phoneNumber: phoneNumber,
+            name: getValues('name'),
+            email: getValues('email'),
+            source: 'order-form'
+          })
+        })
+        .then(res => res.json())
+        .then(newUser => {
+          if (newUser.userId) {
+            dispatch(setUserDetails({ userId: newUser.userId }));
+          }
+        })
+        .catch(err => console.error('Background user creation failed', err));
+      }
+    }
+    return false;
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error('Error checking user in database:', error);
+    }
+    return false;
+  } finally {
+    delete activeRequestsRef.current.userDbCheck;
+  }
+}, [dispatch, getValues, validatePincode, setValue]);
 
 // Update your OTP verification flow
 useEffect(() => {
