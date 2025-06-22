@@ -22,6 +22,7 @@ import { styled } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import AddToCartButton from '@/components/utils/AddToCartButton';
+import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
 
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 const PAGE_SIZE = 10;
@@ -116,6 +117,7 @@ function TopBoughtProductsBase({
 
   /* ---------- State ---------- */
   const [products, setProducts] = useState([]);
+
   const [hasMore, setHasMore] = useState(false);
   const [loadingInit, setLoadingInit] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -262,7 +264,7 @@ function TopBoughtProductsBase({
           <Fade in>
             <ScrollContainer ref={scrollRef}>
               {products.map((p, i) => (
-                <ProductCard key={`${p._id}-${i}`} product={p} />
+                <ProductCard key={`${p._id}-${i}`} product={p} i={i} />
               ))}
               {loadingMore &&
                 Array.from({ length: PAGE_SIZE }).map((_, i) => (
@@ -278,7 +280,7 @@ function TopBoughtProductsBase({
 }
 
 /* ─────────────────── Cards ─────────────────── */
-const ProductCard = memo(function ProductCard({ product }) {
+const ProductCard = memo(function ProductCard({ product, i }) {
   const router = useRouter();
   const { imageUrl, outOfStock } = getDisplayImage(product);
 
@@ -303,9 +305,19 @@ const ProductCard = memo(function ProductCard({ product }) {
   return (
     <Card
       sx={cardSx}
-      onClick={() =>
+      onClick={() => {
+        if (singleVariantCode || singleCategoryCode) {
+          const slug = product.pageSlug ?? "";
+          const baseSlug = slug.substring(0, slug.lastIndexOf("/"));
+
+          const page = 1 + Math.floor(i / ITEMS_PER_PAGE);
+
+          router.push(`/shop/${baseSlug}?productId=${product._id}&page=${page}`);
+          return;
+        }
+
         router.push(`/shop/${product.pageSlug || ''}`)
-      }
+      }}
     >
       <CardMedia
         sx={{

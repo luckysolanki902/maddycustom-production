@@ -31,7 +31,7 @@ function getDisplayImage(product) {
   return { imageUrl: null, outOfStock: true };
 }
 
-const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, hidePrice = false, offerTaglineText, pageType }) => {
+const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, hidePrice = false, offerTaglineText, pageType, productRefs, selectedProductId }) => {
   const insertionDetails = {
     component: 'productCard',
     pageType: pageType || 'unknown',
@@ -69,6 +69,11 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
 
   return (
     <div
+      ref={(el) => {
+        if (product._id === selectedProductId) {
+          productRefs.current[product._id] = el;
+        }
+      }}
       className={`${styles.mainCardDiv} ${showLayout2 ? styles.layout2Card : ''}`}
       onClick={navigateToProductPage}
     >

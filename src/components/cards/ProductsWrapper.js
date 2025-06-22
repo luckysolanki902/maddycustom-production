@@ -18,6 +18,8 @@ const ProductsWrapper = ({
   hideCartButton = false,
   hidePrice = false,
   hideVideo = false,
+  productRefs,
+  selectedProductId,
 }) => {
   const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const offerTaglineText =
@@ -56,6 +58,8 @@ const ProductsWrapper = ({
       {/* Product cards */}
       {products.map((p) => (
         <ProductCard
+          productRefs={productRefs}
+          selectedProductId={selectedProductId}
           key={p._id}
           product={{
             ...p,

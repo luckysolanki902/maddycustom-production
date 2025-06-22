@@ -73,9 +73,11 @@ export async function generateMetadata({ params }) {
   });
 }
 
-export default async function ShopPage({ params }) {
+export default async function ShopPage({ params, searchParams }) {
+  const { page, productId: selectedProductId } = await searchParams;
+  
   const { slug } = await params;
-  const initialPage = 1;
+  const initialPage = parseInt(page || "1", 10);
   const limit = ITEMS_PER_PAGE;
   const data = await fetchProducts(slug, initialPage, limit);
 
@@ -87,6 +89,7 @@ export default async function ShopPage({ params }) {
   if (data.type === 'variant') {
     return (
       <ProductsPage
+        selectedProductId={selectedProductId}
         slug={slug}
         variant={data.variant}
         products={data.products}

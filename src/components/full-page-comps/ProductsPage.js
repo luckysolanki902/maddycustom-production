@@ -9,6 +9,7 @@ import React, {
   useCallback,
   useMemo,
   memo,
+  useRef,
 } from 'react';
 import Image from 'next/image';
 import { useMediaQuery, Pagination } from '@mui/material';
@@ -57,6 +58,7 @@ const AnimatedTopBought = memo(({ singleVariantCode }) => {
 });
 
 export default function ProductsPage({
+  selectedProductId,
   slug,
   variant,
   products: initialProducts,
@@ -65,6 +67,8 @@ export default function ProductsPage({
   totalPages,
   uniqueTags,
 }) {
+  const productRefs = useRef({});
+
   /* ------------------------ state ------------------------ */
   const SHOW_TOP_BOUGHT = category.specificCategoryCode !== 'tw'; // Controls visibility of TopBought section and product distribution
 
@@ -85,6 +89,15 @@ export default function ProductsPage({
   useEffect(() => {
     setShowLayout2(variant?.listLayout === '2');
   }, [variant]);
+
+  useEffect(() => {
+    if (selectedProductId && productRefs.current[selectedProductId]) {
+      productRefs.current[selectedProductId].scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [selectedProductId, initialProducts]);
 
   /* ------------------------ queries ------------------------ */
   const fetchPageData = useCallback(
@@ -114,6 +127,7 @@ export default function ProductsPage({
           setTotalPageCount(data.totalPages);
           setCurrentPage(data.currentPage);
         }
+
       } catch (err) {
         console.error('Error fetching page data:', err);
       } finally {
@@ -242,12 +256,12 @@ export default function ProductsPage({
       <VariantDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        imageUrl={`${baseImageUrl}${variant?.popupDetails?.[0] || ''}`}
+        imageUrl={`${baseImageUrl}${variant?.popupDetails?.[0] || ""}`}
       />
 
-      <div style={{ backgroundColor: showLayout2 ? '#F1F3F6' : 'white' }}>
-        <div style={{ maxWidth: showLayout2 ? '1200px' : '100%', margin: 'auto' }}>
-          <div className={showLayout2 ? styles.layout2withpadding : ''}>
+      <div style={{ backgroundColor: showLayout2 ? "#F1F3F6" : "white" }}>
+        <div style={{ maxWidth: showLayout2 ? "1200px" : "100%", margin: "auto" }}>
+          <div className={showLayout2 ? styles.layout2withpadding : ""}>
             <header>
               <div className={styles.headContainer}>
                 <div className={styles.headingFlex}>
@@ -256,52 +270,47 @@ export default function ProductsPage({
                     style={{
                       fontSize: isLargeDevice
                         ? variant?.name.length > 15
-                          ? '2.5rem'
+                          ? "2.5rem"
                           : variant?.name.length > 20
-                          ? '2rem'
-                          : '3.5rem'
+                          ? "2rem"
+                          : "3.5rem"
                         : variant?.name.length > 15
-                        ? '1.8rem'
+                        ? "1.8rem"
                         : variant?.name.length > 20
-                        ? '1.5rem'
-                        : '2.2rem',
+                        ? "1.5rem"
+                        : "2.2rem",
                     }}
                   >
                     {variant?.name}
-                    {variant?.name?.toLowerCase().includes('tank') && (
-                      <button
-                        className={styles.sizebutton}
-                        style={{ backgroundColor: '#d6fcff' }}
-                      >
-                        {variant?.name === 'Slim Tank Wraps'
-                          ? '6.8 cm wide'
-                          : variant?.name === 'Medium Tank Wraps'
-                          ? '7 cm wide'
-                          : variant?.name === 'Wide Tank Wraps'
-                          ? '19.05 cm wide'
+                    {variant?.name?.toLowerCase().includes("tank") && (
+                      <button className={styles.sizebutton} style={{ backgroundColor: "#d6fcff" }}>
+                        {variant?.name === "Slim Tank Wraps"
+                          ? "6.8 cm wide"
+                          : variant?.name === "Medium Tank Wraps"
+                          ? "7 cm wide"
+                          : variant?.name === "Wide Tank Wraps"
+                          ? "19.05 cm wide"
                           : null}
                       </button>
                     )}
                   </h1>
 
                   {variant?.subtitles?.[0] &&
-                    (variant.variantCode === 'hel' ? (
+                    (variant.variantCode === "hel" ? (
                       <>
                         <h2 className={styles.helmetTagline}>
                           &quot;Best designed helmets of India <br /> with safety of&quot;
                         </h2>
                         <Image
                           className={styles.studds}
-                          src={`${baseImageUrl}${variant?.availableBrands?.[0]?.brandLogo || ''}`}
+                          src={`${baseImageUrl}${variant?.availableBrands?.[0]?.brandLogo || ""}`}
                           width={1103 / 5}
                           height={394 / 5}
                           alt="studds"
                         />
                       </>
                     ) : (
-                      <h2 className={styles.belowMainHeading}>
-                        {variant.subtitles[0]}
-                      </h2>
+                      <h2 className={styles.belowMainHeading}>{variant.subtitles[0]}</h2>
                     ))}
                 </div>
               </div>
@@ -309,7 +318,19 @@ export default function ProductsPage({
 
             {/* Video for small devices - only render here for mobile */}
             {shouldShowVideoInPage && (
-              <div className={wrapperStyles.videoCard} aria-label="Product Video" style={{ backgroundColor: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0 1rem', marginBottom: '2rem', boxShadow: 'none' }}>
+              <div
+                className={wrapperStyles.videoCard}
+                aria-label="Product Video"
+                style={{
+                  backgroundColor: "white",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  padding: "0 1rem",
+                  marginBottom: "2rem",
+                  boxShadow: "none",
+                }}
+              >
                 <iframe
                   width="100%"
                   height="100%"
@@ -318,13 +339,13 @@ export default function ProductsPage({
                   frameBorder="0"
                   allow="autoplay; encrypted-media"
                   allowFullScreen
-                  style={{ pointerEvents: 'none', backgroundColor: 'white', borderRadius: '1rem'  }}
+                  style={{ pointerEvents: "none", backgroundColor: "white", borderRadius: "1rem" }}
                 />
                 {/* <h1>Maddy Custom</h1> */}
               </div>
             )}
 
-            {category?.specificCategoryCode === 'tw' && isSmallDevice && (
+            {category?.specificCategoryCode === "tw" && isSmallDevice && (
               <div className={styles.carouseldiv}>
                 <FullWidthRoundCornerLandscapeCarousel
                   images={[
@@ -344,6 +365,8 @@ export default function ProductsPage({
           {currentPage === 1 ? (
             <>
               <ProductsWrapper
+                productRefs={productRefs}
+                selectedProductId={selectedProductId}
                 showLayout2={showLayout2}
                 variant={variant}
                 category={category}
@@ -356,6 +379,8 @@ export default function ProductsPage({
 
               {SHOW_TOP_BOUGHT && secondHalf.length > 0 && (
                 <ProductsWrapper
+                  productRefs={productRefs}
+                  selectedProductId={selectedProductId}
                   showLayout2={showLayout2}
                   variant={variant}
                   category={category}
@@ -367,6 +392,8 @@ export default function ProductsPage({
             </>
           ) : (
             <ProductsWrapper
+              productRefs={productRefs}
+              selectedProductId={selectedProductId}
               showLayout2={showLayout2}
               variant={variant}
               category={category}
@@ -402,9 +429,7 @@ export default function ProductsPage({
             </PaginationStyles>
           )}
 
-          {currentPage !== 1 && SHOW_TOP_BOUGHT && (
-            <AnimatedTopBought singleVariantCode={recommendedKey} />
-          )}
+          {currentPage !== 1 && SHOW_TOP_BOUGHT && <AnimatedTopBought singleVariantCode={recommendedKey} />}
 
           <ScrollToTop />
         </div>

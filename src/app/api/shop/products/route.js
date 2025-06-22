@@ -127,6 +127,7 @@ export async function POST(request) {
         sortStage.createdAt = 1;
       } else {
         sortStage.displayOrder = 1;
+        sortStage._id = 1;
       }
 
       pipeline.push({

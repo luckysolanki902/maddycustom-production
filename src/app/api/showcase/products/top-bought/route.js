@@ -97,45 +97,24 @@ export async function GET(request) {
       specificCategoryCode: singleCategoryCode,
       available: true,
     }).lean();
+
     if (!sc) return NextResponse.json({ products: [], hasMore: false });
 
     const variants = await SpecificCategoryVariant.find({
       specificCategory: sc._id,
       available: true,
     }).lean();
-    if (!variants.length) return NextResponse.json({ products: [], hasMore: false });
 
-    const scvMap = Object.fromEntries(variants.map((v) => [v._id.toString(), v]));
+    const variantIds = variants.map(v => v._id);
+    const pipeline = buildProductPipeline(variantIds, skip, { displayOrder: 1, _id: 1 });
+    const products = await Product.aggregate(pipeline)
+      // .collation({ locale: "en", strength: 2 })
+      .exec();
 
-    const perVariant = await Promise.all(
-      variants.map(async (v) => {
-        const raw = await Product.find({
-          specificCategoryVariant: v._id,
-          available: true,
-        }).lean();
-        return enrichProducts(raw, { specCatDoc: sc, scvMap });
-      }),
-    );
-
-    /* round‑robin merge */
-    const merged = [];
-    let idx = 0, more = true;
-    while (more) {
-      more = false;
-      perVariant.forEach((arr) => {
-        if (idx < arr.length) {
-          merged.push(arr[idx]);
-          more = true;
-        }
-      });
-      idx++;
-    }
-
-    const slice = merged.slice(skip, skip + PAGE_SIZE + 1);
     return NextResponse.json({
-      products: slice.length > PAGE_SIZE ? slice.slice(0, PAGE_SIZE) : slice,
-      hasMore:  slice.length > PAGE_SIZE,
-      totalFound: merged.length,
+      products: products.length > PAGE_SIZE ? products.slice(0, PAGE_SIZE) : products,
+      hasMore: products.length > PAGE_SIZE,
+      totalFound: products.length,
       specificCategoryName: sc.name,
     });
   }
@@ -148,28 +127,23 @@ export async function GET(request) {
       variantCode: singleVariantCode,
       available: true,
     })
-      .populate('specificCategory', 'name specificCategoryCode available')
+      .populate("specificCategory", "name specificCategoryCode available")
       .lean();
+
     if (!scv || !scv.specificCategory?.available) {
       return NextResponse.json({ products: [], hasMore: false });
     }
 
-    const sc = scv.specificCategory;
-    const scvMap = { [scv._id.toString()]: scv };
-
-    const raw = await Product.find({
-      specificCategoryVariant: scv._id,
-      available: true,
-    }).lean();
-
-    const enriched = await enrichProducts(raw, { specCatDoc: sc, scvMap });
-    const slice    = enriched.slice(skip, skip + PAGE_SIZE + 1);
+    const pipeline = buildProductPipeline([scv._id], skip, { displayOrder: 1, _id: 1 });
+    const products = await Product.aggregate(pipeline)
+      // .collation({ locale: "en", strength: 2 }) // case-insensitive name sort
+      .exec();
 
     return NextResponse.json({
-      products: slice.length > PAGE_SIZE ? slice.slice(0, PAGE_SIZE) : slice,
-      hasMore:  slice.length > PAGE_SIZE,
-      totalFound: enriched.length,
-      specificCategoryName: sc.name,
+      products: products.length > PAGE_SIZE ? products.slice(0, PAGE_SIZE) : products,
+      hasMore: products.length > PAGE_SIZE,
+      totalFound: products.length,
+      specificCategoryName: scv.specificCategory.name,
     });
   }
 
@@ -255,4 +229,52 @@ export async function GET(request) {
     hasMore:  slice.length > PAGE_SIZE,
     totalFound: merged.length,
   });
+}
+
+function buildProductPipeline(variantIds, skip, sortStage) {
+  return [
+    { $match: { specificCategoryVariant: { $in: variantIds }, available: true } },
+
+    {
+      $lookup: {
+        from: "orders",
+        let: { productId: "$_id" },
+        pipeline: [
+          { $unwind: "$items" },
+          { $match: { $expr: { $eq: ["$items.product", "$$productId"] } } },
+          { $group: { _id: "$items.product", totalBought: { $sum: "$items.quantity" } } },
+        ],
+        as: "buyStats",
+      },
+    },
+    {
+      $addFields: {
+        totalBought: { $ifNull: [{ $arrayElemAt: ["$buyStats.totalBought", 0] }, 0] },
+        isTagMatched: false,
+      },
+    },
+    {
+      $lookup: {
+        from: "options",
+        let: { productId: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$product", "$$productId"] } } },
+          {
+            $lookup: {
+              from: "inventories",
+              localField: "inventoryData",
+              foreignField: "_id",
+              as: "inventoryData",
+            },
+          },
+          { $unwind: { path: "$inventoryData", preserveNullAndEmptyArrays: true } },
+          { $sort: { "inventoryData.availableQuantity": -1 } },
+        ],
+        as: "options",
+      },
+    },
+    { $sort: { isTagMatched: -1, ...sortStage } },
+    { $skip: skip },
+    { $limit: PAGE_SIZE + 1 },
+  ];
 }
