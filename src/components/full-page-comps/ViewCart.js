@@ -45,6 +45,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import { motion, AnimatePresence } from 'framer-motion';
 import SplitPayment from '../page-sections/viewcart/SplitPayment';
 import EndOfMonth from '../showcase/banners/EndOfMonth';
+import CouponTimerBanner from '../showcase/banners/CouponTimerBanner';
 
 /* ---------------- helper ------------------------------------------------ */
 const isOfferApplicable = (offer, totalCost, isFirstOrder = false) =>
@@ -444,6 +445,9 @@ export default function ViewCart({ isDrawer = false }) {
           onBack={isDrawer ? handleBackClick : undefined}
         />
       </header>
+      
+      {/* Moved the banner outside of scrollable content for more visibility */}
+      <CouponTimerBanner />
 
       <div className={styles.scrollableContent}>
         {qty > 0 ? (
@@ -457,9 +461,10 @@ export default function ViewCart({ isDrawer = false }) {
               <div className={styles.sectionHeader}>
                 <ShoppingBagIcon className={styles.sectionIcon} />
                 <h2 className={styles.sectionTitle}>Your Cart ({qty})</h2>
+
               </div>
 
-              <EndOfMonth />
+
 
               <CartList
                 cartItems={cartItems}
