@@ -57,6 +57,8 @@ import { auth } from '@/lib/firebase/firebaseClient';
 import { signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
 // Add this at the top with your other imports
 import { signIn } from 'next-auth/react';
+import AddIcon from '@mui/icons-material/Add';
+import MuiAlert from '@mui/material/Alert';
 
 const OTP_RESEND_TIMEOUT = 30; // 30 seconds
 
@@ -77,6 +79,8 @@ const OrderForm = ({
   const cartItems = useSelector((state) => state.cart.items);
   const orderForm = useSelector((state) => state.orderForm);
   const utmDetails = useSelector((state) => state.utm);
+  const userId = useSelector((state) => state.orderForm.userDetails.userId);
+  const phoneNumber = useSelector((state) => state.orderForm.userDetails.phoneNumber);
   const { userDetails, addressDetails, userExists, prefilledAddress } = orderForm;
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -84,6 +88,7 @@ const OrderForm = ({
   const serviceabilityCache = useRef({});
   const [isPincodeValid, setIsPincodeValid] = useState(false);
   const [pincodeCheckInProgress, setPincodeCheckInProgress] = useState(false);
+const [selectedAddressIndex, setSelectedAddressIndex] = useState(0);
 
   // Background processing refs and state
   const pendingOperationsRef = useRef({
@@ -94,7 +99,8 @@ const OrderForm = ({
 
   // Local Tab Index State - memoize to prevent rerenders
   const [tabIndex, setTabIndex] = useState(0);
-  
+  const addressFetchedRef = useRef(false);
+
   // OTP verification states
   const [otpStep, setOtpStep] = useState('phone'); // 'phone' or 'otp'
   const [phoneVerified, setPhoneVerified] = useState(false);
@@ -107,19 +113,22 @@ const OrderForm = ({
   const recaptchaVerifierRef = useRef(null);
 
   // Snackbar state
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    msg: '',
+    sev: 'success'
+  }); 
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
   const [isLoading, setIsLoading] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
-  
+
 // Add this with your other state variables
 const [isAddressLoading, setIsAddressLoading] = useState(false);
 
 // Add this to track API requests for cancellation
-const activeRequestsRef = useRef({});  const [shiprocketToken, setShiprocketToken] = useState(null);
-const [activeMessages, setActiveMessages] = useState(new Set());
+const activeMessagesRef = useRef(new Set());
 const snackbarTimerRef = useRef(null);
 // Add with your other state declarations
 const [addressOptions, setAddressOptions] = useState([]);
@@ -152,6 +161,70 @@ const [showAddressSelector, setShowAddressSelector] = useState(false);
     return digitsOnly;
   }, []);
   
+// Replace your current initializeRecaptcha function with this improved version:
+
+const initializeRecaptcha = async () => {
+  try {
+    // First, completely cleanup any existing verifier
+    if (window.recaptchaVerifier) {
+      try {
+        await window.recaptchaVerifier.clear();
+      } catch (err) {
+        console.warn('Error clearing existing reCAPTCHA:', err);
+      }
+      
+      delete window.recaptchaVerifier;
+      recaptchaVerifierRef.current = null;
+      
+      // Important: Remove any leftover reCAPTCHA elements from the DOM
+      const recaptchaContainer = document.getElementById('recaptcha-container');
+      if (recaptchaContainer) {
+        // Clear the container's content completely
+        recaptchaContainer.innerHTML = '';
+        
+        // Allow some time for DOM to update before re-rendering
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      // Also find and remove any orphaned reCAPTCHA iframes
+      const iframes = document.querySelectorAll('iframe[src*="recaptcha"]');
+      iframes.forEach(iframe => iframe.parentNode?.removeChild(iframe));
+      
+      // And remove any other reCAPTCHA elements
+      const recaptchaElements = document.getElementsByClassName('grecaptcha-badge');
+      while (recaptchaElements.length > 0) {
+        recaptchaElements[0].parentNode.removeChild(recaptchaElements[0]);
+      }
+    }
+
+    // Create new verifier after proper cleanup
+    const verifier = new RecaptchaVerifier(
+      auth, 
+      'recaptcha-container',
+      {
+        size: 'invisible',
+        callback: () => {},
+        'expired-callback': () => {
+          if (window.recaptchaVerifier) {
+            window.recaptchaVerifier.clear().catch(() => {});
+            delete window.recaptchaVerifier;
+            recaptchaVerifierRef.current = null;
+          }
+        },
+        isolated: true
+      }
+    );
+
+    // Store references
+    window.recaptchaVerifier = verifier;
+    recaptchaVerifierRef.current = verifier;
+
+    return verifier;
+  } catch (error) {
+    console.error('Error initializing reCAPTCHA:', error);
+    throw error;
+  }
+};
 
 const validatePhoneNumber = (value) => {
   if (!value) return 'Mobile number is required';
@@ -171,72 +244,6 @@ const validatePhoneNumber = (value) => {
   
   return true;
 };
-  const showSnackbar = useCallback((message, severity = 'success') => {
-  console.log('Showing snackbar:', { message, severity });
-  
-  // Don't show the same message multiple times in quick succession
-  if (activeMessages.has(message)) {
-    console.log('Skipping duplicate message:', message);
-    return;
-  }
-  
-  // Add to active messages set
-  setActiveMessages(prev => new Set(prev).add(message));
-  
-  // Clear any existing timer
-  if (snackbarTimerRef.current) {
-    clearTimeout(snackbarTimerRef.current);
-  }
-  
-  // Close any existing snackbar first
-  setSnackbarOpen(false);
-  
-  // Small delay before showing new message to ensure animation is smooth
-  setTimeout(() => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
-    
-    // Set auto-close timer that also removes from active messages
-    snackbarTimerRef.current = setTimeout(() => {
-      setSnackbarOpen(false);
-      setActiveMessages(prev => {
-        const updated = new Set(prev);
-        updated.delete(message);
-        return updated;
-      });
-      snackbarTimerRef.current = null;
-    }, 4000); // Longer duration
-  }, 50);
-}, [activeMessages]);
-
-// Also update the handleClose function for the snackbar
-const handleSnackbarClose = useCallback(() => {
-  setSnackbarOpen(false);
-  
-  // Remove current message from active messages after a short delay
-  setTimeout(() => {
-    setActiveMessages(prev => {
-      const updated = new Set(prev);
-      updated.delete(snackbarMessage);
-      return updated;
-    });
-  }, 300);
-  
-  if (snackbarTimerRef.current) {
-    clearTimeout(snackbarTimerRef.current);
-    snackbarTimerRef.current = null;
-  }
-}, [snackbarMessage]);
-
-// Add cleanup on unmount
-useEffect(() => {
-  return () => {
-    if (snackbarTimerRef.current) {
-      clearTimeout(snackbarTimerRef.current);
-    }
-  };
-}, []);
 
   // Extract and aggregate unique extraFields from cart items - memoized
   const aggregatedExtraFields = useMemo(() => {
@@ -253,51 +260,29 @@ useEffect(() => {
     });
     return Array.from(fieldsMap.values());
   }, [items]);
-// Add this function at the top of your component (after your existing imports)
-const mapUserInBackground = (userId, phoneNumber, email) => {
-  // Fire and forget - this won't block the UI
-  fetch('http://tracker.wigzopush.com/rest/v1/learn/identify', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      userId: userId,
-      phone: phoneNumber,
-      email: email || undefined,
-      is_active: true,
-      source: 'web'
-    }),
-    // Adding the tokens in the URL to avoid CORS issues
-    signal: AbortSignal.timeout(5000) // 5-second timeout
-  }).then(response => {
-  }).catch(error => {
-    console.error('Background user mapping failed:', error);
-    // Silent fail - won't impact user experience
-  });
-};
-  // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
-  const defaultValues = useMemo(() => ({
-    name: userDetails.name || '',
-    phoneNumber: userDetails.phoneNumber || '',
-    email: userDetails.email || '',
-    otp: '', // Add OTP field
-    addressLine1: addressDetails.addressLine1 || '',
-    addressLine2: addressDetails.addressLine2 || '',
-    city: addressDetails.city || '',
-    state: addressDetails.state || '',
-    pincode: addressDetails.pincode || '',
-    country: addressDetails.country || 'India',
-    ...aggregatedExtraFields.reduce((acc, field) => {
-      acc[field.fieldName] = '';
-      return acc;
-    }, {}),
-  }), [userDetails.name, userDetails.phoneNumber, userDetails.email,
-  addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
-  addressDetails.state, addressDetails.pincode, addressDetails.country,
+
+// 1. First, define defaultValues using useMemo
+const defaultValues = useMemo(() => ({
+  name: userDetails.name || '',
+  phoneNumber: userDetails.phoneNumber || '',
+  email: userDetails.email || '',
+  otp: '',
+  addressLine1: addressDetails.addressLine1 || '',
+  addressLine2: addressDetails.addressLine2 || '',
+  city: addressDetails.city || '',
+  state: addressDetails.state || '',
+  pincode: addressDetails.pincode || '',
+  country: addressDetails.country || 'India',
+  ...aggregatedExtraFields.reduce((acc, field) => {
+    acc[field.fieldName] = '';
+    return acc;
+  }, {}),
+}), [userDetails.name, userDetails.phoneNumber, userDetails.email,
+    addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
+    addressDetails.state, addressDetails.pincode, addressDetails.country,
     aggregatedExtraFields]);
 
-      const {
+const {
     control,
     handleSubmit,
     setValue,
@@ -311,6 +296,23 @@ const mapUserInBackground = (userId, phoneNumber, email) => {
     mode: 'onChange',
     shouldUnregister: false // Prevents field unregistration which helps with focus issues
   });
+
+const showSnackbar = (msg, sev = 'success') => {
+  setSnackbar({ open: true, msg, sev });
+};
+
+const handleSnackbarClose = () => {
+  setSnackbar((prev) => ({ ...prev, open: false }));
+};
+
+// Cleanup on unmount stays the same
+useEffect(() => {
+  return () => {
+    if (snackbarTimerRef.current) {
+      clearTimeout(snackbarTimerRef.current);
+    }
+  };
+}, []);
 
   // Enhanced pincode validation with proactive serviceability check
 const validatePincode = useCallback(
@@ -349,111 +351,129 @@ const validatePincode = useCallback(
   [showSnackbar]
 );
 
-// Update the fetchShiprocketAddress function
-
-// Add this function to fetch Shiprocket address data
-const fetchShiprocketAddress = useCallback(async (silent = false) => {
-  if (!silent) {
-    setIsAddressLoading(true);
-  }
+// Replace your fetchUserAddresses function
+const fetchUserAddresses = useCallback(async () => {
+  // Skip if already loading or no phone number
+  if (isAddressLoading || !phoneNumber) return;
+  
+  // console.log("Attempting to fetch addresses for:", phoneNumber);
+  const loadingKey = `${phoneNumber}-${tabIndex}`;
   
   try {
-    // OPTIMIZATION: Use controller for request cancellation
-    if (activeRequestsRef.current.shiprocketAddress) {
-      activeRequestsRef.current.shiprocketAddress.abort();
-    }
-    const controller = new AbortController();
-    activeRequestsRef.current.shiprocketAddress = controller;
+    setIsAddressLoading(true);
+    activeMessagesRef.current.add(loadingKey);
     
-    // Set timeout for the request
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-      console.log('Shiprocket request timed out');
-      if (!silent) {
-        setIsAddressLoading(false);
-      }
-    }, 5000);
-    
-    // Call your Shiprocket address API
-    const response = await fetch('/api/shiprocket/fetch-address', {
+    const response = await fetch('/api/user/find-address', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        cart_data: {
-          items: cartItems.map(item => ({
-            variant_id: item.variantId || item.id,
-            quantity: item.quantity
-          }))
-        }
-      }),
-      signal: controller.signal
+      body: JSON.stringify({ phoneNumber }),
+      cache: 'no-store'
     });
     
-    clearTimeout(timeoutId);
+    if (!response.ok) throw new Error('Failed to fetch addresses');
+
+    const userData = await response.json();
+    // console.log('Fetched user addresses:', userData);
     
-    if (!response.ok) {
-      throw new Error(`Shiprocket API error: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      // Parse response text if it's a string
-      let shiprocketData;
-      try {
-        shiprocketData = typeof result.response === 'string' 
-          ? JSON.parse(result.response) 
-          : result.response;
-      } catch (e) {
-        console.error('Failed to parse Shiprocket response:', e);
-        return null;
+    if (userData.success && userData.exists) {
+      // Store user ID in Redux if available
+      if (userData.userId) {
+        dispatch(setUserDetails({ 
+          userId: userData.userId,
+          name: userData.name || userDetails.name,
+          email: userData.email || userDetails.email,
+          phoneNumber
+        }));
       }
       
-      if (shiprocketData && shiprocketData.ok) {
-        // Extract address data
-        const addressData = shiprocketData.result;
-        console.log('Shiprocket address found:', addressData);
+      // Handle address data
+      if (userData.latestAddress && Object.keys(userData.latestAddress).length > 0) {
+        // console.log("Found address to use:", userData.latestAddress);
         
-        // Store token for future reference
-        if (addressData.platform_order_id) {
-          setShiprocketToken(addressData.platform_order_id);
-        }
+        // Map the backend address format to form fields
+        const addressToUse = {
+          addressLine1: userData.latestAddress.addressLine1 || '',
+          addressLine2: userData.latestAddress.addressLine2 || '',
+          city: userData.latestAddress.city || '',
+          state: userData.latestAddress.state || '',
+          pincode: userData.latestAddress.pincode || '',
+          country: userData.latestAddress.country || 'India',
+        };
         
-        // Extract phone number and check database
-        if (addressData.phone) {
-          const formattedPhone = formatPhoneNumber(addressData.phone);
+        // Update Redux in one go
+        dispatch(setAddressDetails(addressToUse));
+        
+        // Force form field updates with delay
+        setTimeout(() => {
+          // Clear fields first to prevent stale data
+          Object.keys(addressToUse).forEach(key => setValue(key, ''));
           
-          // Update the phone field if empty
-          if (!getValues('phoneNumber')) {
-            setValue('phoneNumber', formattedPhone);
+          // Then set new values with shouldValidate and shouldDirty flags
+          Object.entries(addressToUse).forEach(([key, value]) => {
+            // console.log(`Setting field ${key} to "${value}"`);
+            setValue(key, value || '', { shouldValidate: true, shouldDirty: true });
+          });
+          
+          // Validate pincode if present
+          if (addressToUse.pincode?.length === 6) {
+            validatePincode(addressToUse.pincode);
           }
-          
-          // Now check if this user exists in our database
-          return await checkUserByPhone(formattedPhone, addressData);
-        } else if (addressData.shipping_address?.phone) {
-          // Try shipping address phone
-          const formattedPhone = formatPhoneNumber(addressData.shipping_address.phone);
-          setValue('phoneNumber', formattedPhone);
-          return await checkUserByPhone(formattedPhone, addressData);
+        }, 100);
+        
+        // If there are multiple addresses, show selector
+        if (userData.addresses && userData.addresses.length > 0) {
+          setAddressOptions(userData.addresses);
+          if (userData.addresses.length > 1) {
+            setShowAddressSelector(true);
+          }
         }
       }
     }
-    return null;
+    
+    // Mark as fetched to prevent duplicate requests
+    addressFetchedRef.current = true;
+    
   } catch (error) {
-    if (error.name !== 'AbortError') {
-      console.error('Error fetching Shiprocket address:', error);
-      if (!silent) {
-        showSnackbar('Failed to fetch address data', 'error');
-      }
-    }
-    return null;
+    console.error("Error fetching addresses:", error);
+    showSnackbar("Couldn't retrieve your saved addresses", "error");
   } finally {
-    if (!silent) {
-      setIsAddressLoading(false);
-    }
-    delete activeRequestsRef.current.shiprocketAddress;
+    setIsAddressLoading(false);
+    activeMessagesRef.current.delete(loadingKey);
   }
-}, [cartItems, formatPhoneNumber, setValue, getValues, showSnackbar]);
+}, [phoneNumber, tabIndex, dispatch, setValue, validatePincode, userDetails.name, userDetails.email]);
+
+// Add this useEffect to handle address population when user is verified
+useEffect(() => {
+  if (phoneVerified && !addressFetchedRef.current && phoneNumber) {
+    // console.log("User verified, fetching addresses...");
+    fetchUserAddresses();
+  }
+}, [phoneVerified, phoneNumber, fetchUserAddresses]);
+
+// Add this function at the top of your component (after your existing imports)
+const mapUserInBackground = (userId, phoneNumber, email) => {
+  // Fire and forget - this won't block the UI
+  fetch('http://tracker.wigzopush.com/rest/v1/learn/identify', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      userId: userId,
+      phone: phoneNumber,
+      email: email || undefined,
+      is_active: true,
+      source: 'web'
+    }),
+    // Adding the tokens in the URL to avoid CORS issues
+    signal: AbortSignal.timeout(5000) // 5-second timeout
+  }).then(response => {
+  }).catch(error => {
+    // console.error('Background user mapping failed:', error);
+    // Silent fail - won't impact user experience
+  });
+};
+
 // Add this function to your component
 const createUserWithAddress = useCallback(async (phone, address) => {
   try {
@@ -490,41 +510,91 @@ const createUserWithAddress = useCallback(async (phone, address) => {
   }
 }, [dispatch, getValues]);
 
-// Function to fill address form with given address data
+// Function to fill address form fields
 const fillAddressForm = useCallback((address) => {
   if (!address) return;
   
-  // Batch form updates for better performance
+  // Update form fields
   const fields = [
-    'addressLine1', 'addressLine2', 'city', 'state', 
-    'pincode', 'country', 'name', 'email'
+    'addressLine1',
+    'addressLine2', 
+    'city',
+    'state',
+    'pincode'
   ];
   
   fields.forEach(field => {
-    if (address[field]) setValue(field, address[field]);
+    if (address[field] !== undefined) {
+      setValue(field, address[field] || '');
+    }
   });
-  
-  // Update Redux in one batch
+
+  // Update Redux store
   dispatch(setAddressDetails(address));
-  
-  // Pre-validate pincode in parallel if needed
-  if (address.pincode && address.pincode.length === 6) {
-    setTimeout(() => validatePincode(address.pincode), 0);
+
+  // Validate pincode if present
+  if (address.pincode?.length === 6) {
+    validatePincode(address.pincode);
   }
 }, [setValue, dispatch, validatePincode]);
 
-// Also add this function to handle address selection
-const handleAddressSelection = useCallback((index) => {
-  const selectedAddress = addressOptions[parseInt(index)];
-  if (selectedAddress) {
-    // Fill form with selected address
-    fillAddressForm(selectedAddress);
-    
-    // Hide address selector
-    setShowAddressSelector(false);
-  }
-}, [addressOptions, fillAddressForm]);
+// Update your existing handleAddressSelection function with this more robust version
 
+const handleAddressSelection = useCallback((index) => {
+  
+  // Validate index and get address
+  const numIndex = parseInt(index);
+  if (isNaN(numIndex) || numIndex < 0 || numIndex >= addressOptions.length) {
+    console.error("Invalid address index:", index);
+    return;
+  }
+  
+  const selectedAddress = addressOptions[numIndex];
+  setSelectedAddressIndex(numIndex);
+  
+  // Update Redux store immediately
+  dispatch(setAddressDetails({...selectedAddress}));
+  
+  // Force update form fields with a clear-then-set approach for reliable updates
+  setTimeout(() => {
+    // Step 1: Log initial form values
+    logFormValues();
+    
+    // Step 2: Clear all fields to ensure clean state
+    ['addressLine1', 'addressLine2', 'city', 'state', 'pincode'].forEach(field => {
+      setValue(field, '', { shouldValidate: false });
+    });
+    
+    // Step 3: Log after clearing
+    logFormValues();
+    
+    // Step 4: Set each field with validation options
+    Object.entries(selectedAddress).forEach(([key, value]) => {
+      if (key !== '_id' && key !== '__v' && value !== undefined) {
+        setValue(key, value || '', { 
+          shouldValidate: true, 
+          shouldDirty: true, 
+          shouldTouch: true 
+        });
+      }
+    });
+    
+    // Step 5: Log final form values
+    logFormValues();
+    
+    // Step 6: Force validate pincode if present
+    if (selectedAddress.pincode?.length === 6) {
+      validatePincode(selectedAddress.pincode);
+    }
+  }, 100);
+  
+  // Hide selector when an address is selected
+  setShowAddressSelector(false);
+  showSnackbar('Address selected', 'success');
+}, [addressOptions, dispatch, setValue, validatePincode, showSnackbar]);
+// UI Component remains the same as you have it
+// Just make sure you're importing AddIcon from MUI:
+// import AddIcon from '@mui/icons-material/Add';
 // Function to check user by phone number
 const checkUserByPhone = useCallback(async (phone, shiprocketAddressData) => {
   try {
@@ -626,7 +696,6 @@ const checkUserInDatabase = useCallback(async (phoneNumber) => {
     // Set timeout for the request
     const timeoutId = setTimeout(() => {
       controller.abort();
-      console.log('User database check request timed out');
       return false;
     }, 3000);
     
@@ -650,7 +719,7 @@ const checkUserInDatabase = useCallback(async (phoneNumber) => {
     
     if (response.ok) {
       const userData = await response.json();
-      console.log('User data received:', userData);
+      // console.log('User data received:', userData);
       
       if (userData.exists) {
         // Update Redux with user ID
@@ -715,116 +784,70 @@ const checkUserInDatabase = useCallback(async (phoneNumber) => {
   }
 }, [dispatch, getValues, validatePincode, setValue]);
 
-// Update your OTP verification flow
 useEffect(() => {
-  if (otpStep === 'verified') {
+  if (otpStep === 'verified' && !addressFetchedRef.current) {
     try {
       setIsAddressLoading(true);
       
-      // Format phone number
-      const phoneToUse = formatPhoneNumber(data.phoneNumber);
+      const phoneToUse = formatPhoneNumber(getValues('phoneNumber'));
 
-      // Update Redux with user information
+      // Update Redux with user information from form values
       dispatch(setUserDetails({
-        name: data.name,
+        name: getValues('name'),
         phoneNumber: phoneToUse,
-        email: data.email,
+        email: getValues('email'),
       }));
       
-      // First try Shiprocket to get address by recent orders
-      fetchShiprocketAddress(true)
-        .then(shiprocketResult => {
-          // If no address from Shiprocket, fall back to database check
-          if (!shiprocketResult?.success) {
-            return checkUserInDatabase(phoneToUse);
-          }
-        })
-        .catch(err => {
-          console.error('Error in address lookup flow:', err);
-          return checkUserInDatabase(phoneToUse);
-        })
-        .finally(() => {
-          // Always proceed to next step
-          setTabIndex(1);
-          setIsAddressLoading(false);
-        });
+      setTabIndex(1);
     } catch (error) {
       console.error('Error in verification flow:', error);
       setTabIndex(1);
+    } finally {
       setIsAddressLoading(false);
     }
   }
-}, [otpStep, fetchShiprocketAddress, checkUserInDatabase, formatPhoneNumber, dispatch, setTabIndex]);
-// Listen for address lookup events - add this AFTER the function definition
+}, [otpStep, formatPhoneNumber, dispatch, setTabIndex, getValues]);
+ // Add this with your other useEffects
 useEffect(() => {
-  const handleAddressLookup = (event) => {
-    if (event.detail && (event.detail.token || event.detail.phoneNumber)) {
-      fetchShiprocketAddress(event.detail.token);
-    }
-  };
+  if (open) {
+    // Initialize when dialog opens
+    initializeRecaptcha().catch(error => {
+      // console.error('Failed to initialize reCAPTCHA:', error);
+      showSnackbar('Failed to initialize verification system. Please try again.', 'error');
+    });
+  }
   
-  window.addEventListener('shiprocket-address-lookup', handleAddressLookup);
-  
+  // Cleanup when dialog closes
   return () => {
-    window.removeEventListener('shiprocket-address-lookup', handleAddressLookup);
-  };
-}, [fetchShiprocketAddress]);
-  // Initialize reCAPTCHA for Firebase Phone Auth
-  useEffect(() => {
-    if (open) {
-      // Clear any existing verifier to avoid conflicts
-      if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-        } catch (err) {
-          console.warn('Failed to clear existing reCAPTCHA:', err);
-        }
-        delete window.recaptchaVerifier;
-      }
-  
-      // Create new verifier with more robust error handling
+    if (window.recaptchaVerifier) {
       try {
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-          callback: (response) => {
-            console.log('reCAPTCHA solved with token length:', response?.length || 0);
-          },
-          'expired-callback': () => {
-            console.log('reCAPTCHA expired');
-            // Force recreation on expiry
-            if (window.recaptchaVerifier) {
-              try {
-                window.recaptchaVerifier.clear();
-              } catch (e) {}
-              delete window.recaptchaVerifier;
-              recaptchaVerifierRef.current = null;
-            }
-          }
-        });
-  
-        window.recaptchaVerifier = verifier;
-        recaptchaVerifierRef.current = verifier;
-        
-        console.log('reCAPTCHA instance created');
-      } catch (error) {
-        console.error('Error initializing reCAPTCHA:', error);
+        window.recaptchaVerifier.clear();
+      } catch (err) {
+        console.warn('Failed to clear reCAPTCHA:', err);
       }
-    }
-    
-    return () => {
-      if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-        } catch (err) {
-          console.warn('Failed to clear reCAPTCHA on unmount:', err);
-        }
-        delete window.recaptchaVerifier;
-      }
+      delete window.recaptchaVerifier;
       recaptchaVerifierRef.current = null;
-    };
-  }, [open]);
+    }
+  };
+}, [open]);
+// Add this useEffect to ensure we always move to address tab even if fetch fails
 
-  // Initialize extraFields in Redux store when dialog opens
+useEffect(() => {
+  // Detect when a verified user moves to tab 1 but address loading fails
+  if (tabIndex === 1 && phoneVerified && !isAddressLoading) {
+    // Check if address fields are empty (fetch might have failed)
+    const addressIsEmpty = !getValues('addressLine1') && 
+                          !getValues('city') && 
+                          !getValues('state') && 
+                          !getValues('pincode');
+    
+    // If address options exist but weren't displayed properly, show them
+    if (addressOptions.length > 0 && addressIsEmpty) {
+      setShowAddressSelector(true);
+    }
+  }
+}, [tabIndex, phoneVerified, isAddressLoading, addressOptions]);
+ // Initialize extraFields in Redux store when dialog opens
   useEffect(() => {
     if (open && aggregatedExtraFields.length > 0) {
       const initialExtraFieldValues = {};
@@ -1080,7 +1103,7 @@ const onSendOtp = async () => {
       return;
     }
     
-    // 1. Start the API call for beforeVerify in parallel - don't wait for it
+    // 1. Start the API call for beforeVerify in parallel
     const apiPromise = fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1090,74 +1113,76 @@ const onSendOtp = async () => {
       })
     });
     
-    // Update Redux store with user details
+    // Update Redux store
     dispatch(setUserDetails({
       name,
       phoneNumber: formattedPhoneNumber,
       email: getValues('email') || '',
     }));
     
-    // 2. Ensure recaptcha is ready
-    if (!window.recaptchaVerifier) {
-      try {
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-          callback: () => {},
-          'expired-callback': () => {
-            if (window.recaptchaVerifier) {
-              try {
-                window.recaptchaVerifier.clear();
-              } catch (e) {}
-              delete window.recaptchaVerifier;
-              recaptchaVerifierRef.current = null;
-            }
-          }
-        });
+    // // 2. Initialize recaptcha if needed
+    // if (!window.recaptchaVerifier) {
+    //   try {
+    //     const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+    //       size: 'invisible',
+    //       callback: () => {},
+    //       'expired-callback': () => {
+    //         if (window.recaptchaVerifier) {
+    //           try {
+    //             window.recaptchaVerifier.clear();
+    //           } catch (e) {}
+    //           delete window.recaptchaVerifier;
+    //           recaptchaVerifierRef.current = null;
+    //         }
+    //       }
+    //     });
         
-        window.recaptchaVerifier = verifier;
-        recaptchaVerifierRef.current = verifier;
-      } catch (error) {
-        console.error('Error initializing reCAPTCHA:', error);
-        showSnackbar('Verification system initialization failed. Please try again.', 'error');
-        setIsSendingOtp(false);
-        return;
-      }
+    //     window.recaptchaVerifier = verifier;
+    //     recaptchaVerifierRef.current = verifier;
+    //   } catch (error) {
+    //     console.error('Error initializing reCAPTCHA:', error);
+    //     showSnackbar('Verification system initialization failed. Please try again.', 'error');
+    //     setIsSendingOtp(false);
+    //     return;
+    //   }
+    // }
+
+    let verifier = recaptchaVerifierRef.current;
+    if (!verifier) {
+      verifier = await initializeRecaptcha();
     }
     
-    // 3. Prepare phone number for Firebase
+    // 3. Prepare phone number
     const full = '+91' + formattedPhoneNumber;
     
-    // 4. Optimistically update UI to show OTP screen immediately
+    // 4. Update UI first - without snackbar
     setOtpStep('otp');
     setValue('otp', '');
     startResendTimer();
-    showSnackbar('Sending OTP...', 'info');
     
-    // 5. Render recaptcha if not yet rendered (in background)
-    if (!recaptchaVerifierRef.current.render) {
-      await recaptchaVerifierRef.current.render();
-    }
+    // // 5. Render recaptcha if needed
+    // if (!recaptchaVerifierRef.current.render) {
+    //   await recaptchaVerifierRef.current.render();
+    // }
     
-    // 6. Call Firebase to actually send the OTP
+    // 6. Send OTP
     const result = await signInWithPhoneNumber(auth, full, recaptchaVerifierRef.current);
     setConfirmationResult(result);
     
-    // 7. Show success message after OTP is sent
-    showSnackbar('OTP sent!', 'success');
+    // 7. Show single success message
+    showSnackbar('OTP sent successfully!', 'success');
     
-    // 8. Process the API result in background
+    // 8. Process API result silently
     apiPromise.then(res => res.json())
       .then(data => {
-        console.log("User registered with beforeVerify status:", data);
+        // console.log("User registered with beforeVerify status:", data);
       })
       .catch(err => {
-        console.error("Background API call failed:", err);
-        // No UI impact for failure
+        // console.error("Background API call failed:", err);
       });
     
   } catch (error) {
-    console.error('Failed to send OTP:', error);
-    // If reCAPTCHA fails, try to reinitialize it
+    // console.error('Failed to send OTP:', error);
     if (window.recaptchaVerifier) {
       try {
         window.recaptchaVerifier.clear();
@@ -1165,273 +1190,120 @@ const onSendOtp = async () => {
       delete window.recaptchaVerifier;
       recaptchaVerifierRef.current = null;
     }
+    
+    // Single error message
     showSnackbar(error.message || 'Failed to send OTP. Please try again.', 'error');
-    // If OTP sending fails, go back to phone input
     setOtpStep('phone');
   } finally {
     setIsSendingOtp(false);
   }
 };
 
-// Resend OTP handler
-const onResendOtp = async () => {
-  if (resendTimer === 0 && !isResendingOtp) {
-    setIsResendingOtp(true);
-    
-    // Start timer immediately for better UX
-    startResendTimer();
-    showSnackbar('Sending new OTP...', 'info');
-    
-    // Use the stored phone number
-    const phoneNumber = getValues('phoneNumber');
-    const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
-    
+const onResendOtp = () => { // Remove async
+  if (resendTimer > 0) return;
+
+  // Get values immediately
+  const phoneNumber = getValues('phoneNumber');
+  const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+  const full = '+91' + formattedPhoneNumber;
+
+  // Immediate optimistic updates
+  startResendTimer();
+  showSnackbar('OTP sent!', 'success');
+
+  // Background processing
+  (async () => {
     try {
-      if (!formattedPhoneNumber || formattedPhoneNumber.length !== 10) {
-        showSnackbar('Phone number missing or invalid', 'error');
-        setIsResendingOtp(false);
-        return;
+      // Reuse existing verifier or create new one
+      let verifier = recaptchaVerifierRef.current;
+      if (!verifier || verifier.destroyed) {
+        verifier = await initializeRecaptcha();
       }
 
-      const full = '+91' + formattedPhoneNumber;
-      
-      // Create a timeout promise to handle long operations
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timed out')), 10000);
-      });
-      
-      // Try to reset recaptcha but don't wait too long
-      try {
-        if (recaptchaVerifierRef.current._reset) {
-          // Use Promise.race to avoid hanging on recaptcha reset
-          await Promise.race([
-            Promise.resolve(recaptchaVerifierRef.current._reset()),
-            new Promise(resolve => setTimeout(resolve, 1000))
-          ]);
-        }
-      } catch (resetErr) {
-        console.log('Recaptcha reset timed out or failed, continuing anyway');
-        // Create new recaptcha if reset fails
-        if (window.recaptchaVerifier) {
-          try {
-            window.recaptchaVerifier.clear();
-          } catch (e) {}
-          delete window.recaptchaVerifier;
-          recaptchaVerifierRef.current = null;
-        }
-        
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-          callback: () => {},
-          'expired-callback': () => {}
+      // Fire and forget OTP sending
+      signInWithPhoneNumber(auth, full, verifier)
+        .then(result => {
+          setConfirmationResult(result);
+        })
+        .catch(error => {
+          // console.error('Background OTP send failed:', error);
+          // Don't show error to user since we're optimistic
+          // Don't reset timer to maintain good UX
         });
-        
-        window.recaptchaVerifier = verifier;
-        recaptchaVerifierRef.current = verifier;
-      }
-      
-      // Race signInWithPhoneNumber against a timeout
-      const result = await Promise.race([
-        signInWithPhoneNumber(auth, full, recaptchaVerifierRef.current),
-        timeoutPromise
-      ]);
-      
-      setConfirmationResult(result);
-      showSnackbar('OTP resent!', 'success');
+
     } catch (error) {
-      console.error("OTP resend error:", error);
-      
-      // Special handling for timeout errors
-      if (error.message === 'Timed out') {
-        showSnackbar('OTP sending is taking longer than expected. Please try again.', 'warning');
-        // Reset timer so user can try again immediately
-        setResendTimer(0);
-        clearInterval(timerRef.current);
-      } else {
-        showSnackbar('Failed to resend OTP', 'error');
+      // console.error('Verifier initialization failed:', error);
+      // Clean up silently in background
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear().catch(() => {});
+        delete window.recaptchaVerifier;
+        recaptchaVerifierRef.current = null;
       }
-    } finally {
-      setIsResendingOtp(false);
     }
-  }
+  })();
 };
 
-// Replace the existing onVerifyOtp function with this one
 
+// Enhanced onVerifyOtp function
 const onVerifyOtp = async () => {
   try {
     setIsVerifyingOtp(true);
     
-    // Validate OTP field
-    const isValid = await trigger('otp');
-    if (!isValid) {
-      setIsVerifyingOtp(false);
-      return;
-    }
-    
     const otp = getValues('otp');
     const phoneNumber = formatPhoneNumber(getValues('phoneNumber'));
-    const name = getValues('name');
-    const email = getValues('email');
     
     if (!confirmationResult) {
       showSnackbar('OTP session expired. Please request a new OTP.', 'error');
       setIsVerifyingOtp(false);
       return;
     }
-    
-    // STEP 1: Show optimistic UI update immediately
-    showSnackbar('Verifying...', 'info');
-    
-    // STEP 2: Start verification in the background
-    const userCredPromise = confirmationResult.confirm(otp);
-    
-    // STEP 3: Optimistically update UI state
-    setPhoneVerified(true);
-    setOtpStep('verified');
-    
-    // STEP 4: Update Redux store
-    dispatch(setUserExists(true));
-    dispatch(setUserDetails({
-      phoneNumber,
-      name,
-      email
-    }));
-    
-    // STEP 5: Complete Firebase verification
-    const userCred = await userCredPromise;
+
+    // console.log("Verifying OTP...");
+    const userCred = await confirmationResult.confirm(otp);
     
     if (!userCred || !userCred.user) {
-      // Roll back optimistic updates on failure
-      setPhoneVerified(false);
-      setOtpStep('otp');
-      showSnackbar('Verification failed. Please try again.', 'error');
-      return;
+      throw new Error('Verification failed');
     }
+
+    // console.log("OTP verified successfully");
+    setPhoneVerified(true);
+    setOtpStep('verified');
+    showSnackbar('Phone verified successfully!', 'success');
     
-    // STEP 6: Get Firebase token
-    const idToken = await userCred.user.getIdToken();
-    showSnackbar('Phone verified!', 'success');
+    // Set flag to prevent duplicate fetches
+    addressFetchedRef.current = false;
     
-    // STEP 7: Check if user exists in our database with this phone number
-    try {
-      // First check if user exists with address
-      const userCheckResponse = await fetch('/api/user/find-address', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber })
-      });
-      
-      const userData = await userCheckResponse.json();
-      
-      if (userData.success && userData.exists) {
-        // User exists in our database
-        dispatch(setUserDetails({
-          phoneNumber,
-          name: userData.name || name,
-          email: userData.email || email,
-          userId: userData.userId
-        }));
-        
-        // STEP 8A: If user has address, use that
-        if (userData.hasAddress && userData.latestAddress) {
-          const address = userData.latestAddress;
-          
-          // Fill form with address from database
-          setValue('addressLine1', address.addressLine1 || '');
-          setValue('addressLine2', address.addressLine2 || '');
-          setValue('city', address.city || '');
-          setValue('state', address.state || '');
-          setValue('pincode', address.pincode || '');
-          setValue('country', address.country || 'India');
-          
-          // Update Redux
-          dispatch(setAddressDetails({
-            addressLine1: address.addressLine1 || '',
-            addressLine2: address.addressLine2 || '',
-            city: address.city || '',
-            state: address.state || '',
-            pincode: address.pincode || '',
-            country: address.country || 'India'
-          }));
-          
-          // Validate pincode
-          if (address.pincode && address.pincode.length === 6) {
-            validatePincode(address.pincode);
-          }
-          
-          showSnackbar('Address loaded from your account', 'success');
-        } 
-        // STEP 8B: If user exists but no address, try Shiprocket
-        else {
-          // Try Shiprocket address autofill
-          await fetchShiprocketAddress();
-        }
-      } else {
-        // STEP 8C: User doesn't exist in our database
-        // Create user in background
-        const createUserResponse = await fetch('/api/user/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phoneNumber,
-            name,
-            email,
-            idToken,
-            verificationStatus: 'verified'
-          })
-        });
-        
-        const newUser = await createUserResponse.json();
-        
-        if (newUser.success) {
-          dispatch(setUserDetails({
-            userId: newUser.userId,
-            phoneNumber,
-            name,
-            email
-          }));
-        }
-        
-        // Try Shiprocket address autofill
-        await fetchShiprocketAddress();
-      }
-    } catch (error) {
-      console.error('User/address check error:', error);
-      // If user/address check fails, still continue
-      // Try Shiprocket as last resort
-      await fetchShiprocketAddress();
-    }
-    
-    // STEP 9: Complete NextAuth and Session processes in background
-    Promise.allSettled([
-      // NextAuth sign in
-      signIn("credentials", {
-        redirect: false,
-        idToken
-      }),
-      
-      // Session login
-      fetch('/api/sessionLogin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken })
-      }).then(res => res.json())
-    ]).then(results => {
-      const authResult = results[0];
-      if (authResult.status !== 'fulfilled' || !authResult.value?.ok) {
-        console.warn('Session creation had issues - continuing anyway');
-      }
-    });
+    // Move to next tab with slight delay for UX
+    setTimeout(() => {
+      setTabIndex(1);
+      fetchUserAddresses(); // Explicitly fetch addresses
+    }, 300);
     
   } catch (error) {
-    console.error('Failed to verify OTP:', error);
-    showSnackbar('Verification failed', 'error');
-    setPhoneVerified(false);
-    setOtpStep('otp');
+    console.error('OTP verification failed:', error);
+    
+    if (error.code === 'auth/invalid-verification-code') {
+      showSnackbar('Invalid OTP code. Please try again.', 'error');
+    } else if (error.code === 'auth/code-expired') {
+      showSnackbar('OTP has expired. Please request a new code.', 'error');
+    } else {
+      showSnackbar('Verification failed. Please try again.', 'error');
+    }
   } finally {
     setIsVerifyingOtp(false);
   }
+};
+
+// Add this debug logging function
+const logFormValues = () => {
+  const values = {
+    addressLine1: getValues('addressLine1'),
+    addressLine2: getValues('addressLine2'),
+    city: getValues('city'),
+    state: getValues('state'),
+    pincode: getValues('pincode')
+  };
+  // console.log("Current form values:", values);
 };
 
   // Proceed to address step
@@ -1445,7 +1317,8 @@ const onVerifyOtp = async () => {
   };
 
   // Optimistic user details submission - further optimized
-// Update onSubmitUserDetails to handle the 'verified' state
+// Update the onSubmitUserDetails function to better handle verified users
+
 const onSubmitUserDetails = useCallback(async (data) => {
   // If OTP verification is not complete, send OTP
   if (otpStep === 'phone') {
@@ -1459,128 +1332,103 @@ const onSubmitUserDetails = useCallback(async (data) => {
     return;
   }
 
-  // If verification is complete, proceed with original flow
+  // When verification is complete and they click "Next"
   if (otpStep === 'verified') {
     try {
+      // Show loading state on the button
       setIsAddressLoading(true);
       
       // Format phone number
       const phoneToUse = formatPhoneNumber(data.phoneNumber);
 
-      // OPTIMIZATION 1: Update Redux immediately for better UX
+      // Update Redux with latest user details from form
       dispatch(setUserDetails({
         name: data.name,
         phoneNumber: phoneToUse,
         email: data.email,
       }));
       
-      // OPTIMIZATION 2: Use a controller for request cancellation
-      if (activeRequestsRef.current.userCheck) {
-        activeRequestsRef.current.userCheck.abort();
-      }
-      const controller = new AbortController();
-      activeRequestsRef.current.userCheck = controller;
+      // Reset address fetch flag to force a fresh fetch
+      addressFetchedRef.current = false;
       
-      // OPTIMIZATION 3: Set a timeout for the request
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-        console.log('Request timed out - proceeding anyway');
-        setTabIndex(1);
-        setIsAddressLoading(false);
-      }, 3000); // 3 second timeout
-
-      // OPTIMIZATION 4: Use fetch with AbortController instead of axios for better control
-      const response = await fetch('/api/user/check', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          // OPTIMIZATION 5: Add cache control headers
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-        body: JSON.stringify({
-          // OPTIMIZATION 6: Minimal payload
-          phoneNumber: phoneToUse,
-          name: data.name,
-          email: data.email,
-          requestAddressOnly: true // Tell backend we only need address data
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const userData = await response.json();
-        console.log('User data received:', userData);
-        if (userData.exists) {
-          // Update Redux with user ID
-          dispatch(setUserDetails({ userId: userData.userId }));
-          
-          // OPTIMIZATION 7: Only process address if it exists
-          if (userData.latestAddress && Object.keys(userData.latestAddress).length > 0) {
-            // Create a single optimized address object
-            const addressToUse = {
-              addressLine1: userData.latestAddress.addressLine1 || '',
-              addressLine2: userData.latestAddress.addressLine2 || '',
-              city: userData.latestAddress.city || '',
-              state: userData.latestAddress.state || '',
-              pincode: userData.latestAddress.pincode || '',
-              country: userData.latestAddress.country || 'India',
-            };
-            
-            // Single Redux update instead of multiple
-            dispatch(setAddressDetails(addressToUse));
-            
-            // Batch form updates
-            Object.entries(addressToUse).forEach(([key, value]) => {
-              setValue(key, value);
-            });
-            
-            // OPTIMIZATION 8: Pre-validate pincode in parallel if needed
-            if (addressToUse.pincode && addressToUse.pincode.length === 6) {
-              setTimeout(() => validatePincode(addressToUse.pincode), 0);
-            }
-          } else {
-            // OPTIMIZATION 9: Fetch Shiprocket address in background
-            setTimeout(() => fetchShiprocketAddress(true), 0);
-          }
-        } else {
-          // OPTIMIZATION 10: Create user silently in background
-          fetch('/api/user/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              phoneNumber: phoneToUse,
-              name: data.name,
-              email: data.email,
-              source: 'order-form'
-            })
-          })
-          .then(res => res.json())
-          .then(newUser => {
-            if (newUser.userId) {
-              dispatch(setUserDetails({ userId: newUser.userId }));
-            }
-          })
-          .catch(err => console.error('Background user creation failed', err));
-          
-          // Try Shiprocket for address
-          setTimeout(() => fetchShiprocketAddress(true), 0);
-        }
-      }
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('Error in user check:', error);
-      }
-    } finally {
-      // OPTIMIZATION 11: Always move to next step even if there are errors
+      // Move to the address tab immediately for better UX
       setTabIndex(1);
+      
+      // Fetch addresses with the latest phone number
+      try {
+        const response = await fetch('/api/user/find-address', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: phoneToUse }),
+          cache: 'no-store'
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          console.log('Fetched addresses for verified user:', userData);
+          
+          if (userData.success && userData.exists) {
+            // Update user ID if available
+            if (userData.userId) {
+              dispatch(setUserDetails({ userId: userData.userId }));
+            }
+            
+            // Process addresses if available
+            if (userData.addresses && userData.addresses.length > 0) {
+              setAddressOptions(userData.addresses);
+              
+              // If multiple addresses, show selector
+              if (userData.addresses.length > 1) {
+                setShowAddressSelector(true);
+                setSelectedAddressIndex(0);
+              } 
+              // If single address, pre-fill it
+              else if (userData.addresses.length === 1) {
+                const address = userData.addresses[0];
+                
+                // Update Redux store
+                dispatch(setAddressDetails({...address}));
+                
+                // Update form fields with delay to ensure they're properly set
+                setTimeout(() => {
+                  // Clear fields first
+                  ['addressLine1', 'addressLine2', 'city', 'state', 'pincode'].forEach(field => {
+                    setValue(field, '');
+                  });
+                  
+                  // Set new values
+                  Object.entries(address).forEach(([key, value]) => {
+                    if (key !== '_id' && key !== '__v' && value !== undefined) {
+                      setValue(key, value || '', { 
+                        shouldValidate: true, 
+                        shouldDirty: true 
+                      });
+                      console.log(`Set ${key} to "${value}"`);
+                    }
+                  });
+                  
+                  // Validate pincode if present
+                  if (address.pincode?.length === 6) {
+                    validatePincode(address.pincode);
+                  }
+                }, 100);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching addresses after verification:', error);
+      }
+      
+    } catch (error) {
+      console.error('Error in verified user handling:', error);
+    } finally {
+      // Always clear loading state when done
       setIsAddressLoading(false);
-      delete activeRequestsRef.current.userCheck;
     }
   }
-}, [otpStep, onSendOtp, onVerifyOtp, formatPhoneNumber, dispatch, setValue, validatePincode, setTabIndex, fetchShiprocketAddress]);
-  // Optimize address submission with better parallelization
+}, [otpStep, onSendOtp, onVerifyOtp, formatPhoneNumber, dispatch, setValue, 
+    validatePincode, setTabIndex, setAddressOptions, setShowAddressSelector]);  // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
     if (purchaseInitiated) return; // Prevent multiple submissions
     setPurchaseInitiated(true);
@@ -1628,7 +1476,7 @@ const onSubmitUserDetails = useCallback(async (data) => {
       if (pendingOperationsRef.current.userCheck) {
         initialValidationPromises.push(pendingOperationsRef.current.userCheck);
       }
-      console.log("receiverName", orderForm.userDetails.name);
+      // console.log("receiverName", orderForm.userDetails.name);
       const addAddressPayload = {
         phoneNumber: orderForm.userDetails.phoneNumber,
         address: {
@@ -1644,7 +1492,7 @@ const onSubmitUserDetails = useCallback(async (data) => {
         },
       };
 
-      console.log('Submitting address details:', addAddressPayload);
+      // console.log('Submitting address details:', addAddressPayload);
       const addressAddPromise = axios.post('/api/user/add-address', addAddressPayload)
         .then(response => {
           if (response.data.message === 'Address added successfully.' ||
@@ -1653,7 +1501,7 @@ const onSubmitUserDetails = useCallback(async (data) => {
           }
           return response.data;
         }).catch(error => {
-          console.error("Error during address addition (in parallel task):", error);
+          // console.error("Error during address addition (in parallel task):", error);
           throw new Error(error.response?.data?.message || "Failed to update address details.");
         });
 
@@ -1737,7 +1585,7 @@ const onSubmitUserDetails = useCallback(async (data) => {
             phoneNumber: orderForm.userDetails.phoneNumber,
           }
         ).catch(error => {
-          console.error('FB pixel tracking error (non-critical):', error);
+          // console.error('FB pixel tracking error (non-critical):', error);
         });
 
         const paymentResult = await makePayment({
@@ -1985,8 +1833,18 @@ const StyledTextField = useCallback(({ field, label, error, helperText, disabled
   }}
 >
   {/* Add this line */}
-  <div id="recaptcha-container" style={{ position: 'absolute', visibility: 'hidden' }}></div>
-
+<div 
+  id="recaptcha-container" 
+  className="g-recaptcha"
+  data-size="invisible"
+  style={{ 
+    position: 'fixed',
+    bottom: '-9999px',
+    left: '-9999px',
+    opacity: 0,
+    pointerEvents: 'none'
+  }} 
+/>
           {/* Logo and Stepper - Made more compact */}
           <Box sx={{
             position: 'relative',
@@ -2348,7 +2206,7 @@ const StyledTextField = useCallback(({ field, label, error, helperText, disabled
                               px: 2
                             }}>
                               <Typography variant="body2" color="text.secondary">
-                                We've sent a verification code to +91 {formatPhoneNumber(getValues('phoneNumber'))}
+                                We have sent a verification code to +91 {formatPhoneNumber(getValues('phoneNumber'))}
                               </Typography>
                             </Box>
 
@@ -2467,19 +2325,48 @@ const StyledTextField = useCallback(({ field, label, error, helperText, disabled
                               justifyContent: 'center',
                               mt: 2
                             }}>
-                              <Button
-                                variant="text"
-                                onClick={() => setOtpStep('phone')}
-                                disabled={isVerifyingOtp}
-                                sx={{
-                                  textTransform: 'none',
-                                  fontFamily: 'Jost, sans-serif',
-                                  fontSize: '0.9rem',
-                                  color: 'text.secondary'
-                                }}
-                              >
-                                Change Phone Number
-                              </Button>
+<Button
+  variant="text"
+onClick={async () => {
+  // Reset OTP related states
+  setOtpStep('phone');
+  setIsVerifyingOtp(false);
+  setIsSendingOtp(false);
+  setIsResendingOtp(false);
+  setConfirmationResult(null);
+  setValue('otp', '');
+  
+  // Clear any ongoing timers
+  if (timerRef.current) {
+    clearInterval(timerRef.current);
+    setResendTimer(0);
+  }
+
+  // First thoroughly clean up reCAPTCHA
+  if (window.recaptchaVerifier) {
+    try {
+      await window.recaptchaVerifier.clear();
+    } catch (e) {}
+    delete window.recaptchaVerifier;
+    recaptchaVerifierRef.current = null;
+  }
+  
+  // Wait a moment before re-initializing to ensure DOM is updated
+  setTimeout(() => {
+    initializeRecaptcha().catch(error => {
+      console.error('Failed to reinitialize reCAPTCHA:', error);
+    });
+  }, 300);
+}}
+  sx={{
+    textTransform: 'none',
+    fontFamily: 'Jost, sans-serif',
+    fontSize: '0.9rem',
+    color: 'text.secondary'
+  }}
+>
+  Change Phone Number
+</Button>
                             </Box>
                           </motion.div>
                         )}
@@ -2601,40 +2488,109 @@ const StyledTextField = useCallback(({ field, label, error, helperText, disabled
                   >
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}>
 
-                      {showAddressSelector && addressOptions.length > 0 && (
-        <Paper className={styles.addressSelectorContainer} elevation={2} sx={{ mb: 2, p: 2, borderRadius: '12px' }}>
-          <Typography variant="h6" sx={{ mb: 1.5, fontSize: '1rem', fontWeight: 500 }}>Select a saved address</Typography>
-          <RadioGroup onChange={(e) => handleAddressSelection(e.target.value)}>
-            {addressOptions.map((address, index) => (
-              <FormControlLabel
-                key={index}
-                value={index.toString()}
-                control={<Radio />}
-                label={
-                  <div className={styles.addressOption}>
-                    <Typography variant="body1">
-                      {address.addressLine1}
-                      {address.addressLine2 && `, ${address.addressLine2}`}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {address.city}, {address.state} - {address.pincode}
-                    </Typography>
-                  </div>
-                }
-              />
-            ))}
-          </RadioGroup>
-          <Button 
-            variant="outlined"
-            color="primary"
-            onClick={() => setShowAddressSelector(false)}
-            sx={{ mt: 1.5, textTransform: 'none' }}
-            size="small"
-          >
-            Use New Address
-          </Button>
-        </Paper>
-      )}
+{tabIndex === 1 && addressOptions.length > 0 && !showAddressSelector && (
+  <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+      Delivery Address
+    </Typography>
+    
+    <Button
+      variant="outlined"
+      size="small"
+      onClick={() => setShowAddressSelector(true)}
+      sx={{
+        textTransform: 'none',
+        borderColor: '#333',
+        color: '#333',
+        '&:hover': { borderColor: '#000', backgroundColor: 'rgba(0,0,0,0.04)' }
+      }}
+      startIcon={<AddIcon fontSize="small" />}
+    >
+      Change Address
+    </Button>
+  </Box>
+)}
+{showAddressSelector && addressOptions.length > 0 && (
+  <Paper
+    elevation={3}
+    sx={{
+      mb: 3,
+      p: 2.5,
+      borderRadius: '12px',
+      border: '1px solid #e0e0e0',
+      backgroundColor: '#f9f9f9',
+      position: 'relative',
+      overflow: 'hidden'
+    }}
+  >
+    <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem', fontWeight: 600 }}>
+      {addressOptions.length > 1 ? 'Select Delivery Address' : 'Saved Address'}
+    </Typography>
+<RadioGroup 
+  value={selectedAddressIndex.toString()}
+  onChange={(e) => handleAddressSelection(e.target.value)}
+>
+  {addressOptions.map((address, index) => (
+    <FormControlLabel
+      key={index}
+      value={index.toString()}
+      checked={selectedAddressIndex === index}
+      control={<Radio sx={{ '&.Mui-checked': { color: '#000' } }} />}
+      label={
+        <Box sx={{ ml: 1 }}>
+          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+            {address.addressLine1}
+            {address.addressLine2 && `, ${address.addressLine2}`}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {address.city}, {address.state} - {address.pincode}
+          </Typography>
+        </Box>
+      }
+      sx={{
+        mb: 1.5,
+        p: 1.5,
+        width: '100%',
+        border: '1px solid #e0e0e0',
+        borderRadius: '8px',
+        backgroundColor: selectedAddressIndex === index ? '#f5f5f5' : '#fff',
+        '&:hover': { backgroundColor: '#f5f5f5' }
+      }}
+    />
+  ))}
+</RadioGroup>
+    <Box sx={{ 
+      display: 'flex', 
+      gap: 2, 
+      mt: 3, 
+      pt: 2, 
+      borderTop: '1px solid #eee',
+      justifyContent: 'space-between'
+    }}>
+      <Button
+        variant="contained"
+        onClick={() => {
+          setShowAddressSelector(false);
+          // Clear form fields for new address
+          ['addressLine1', 'addressLine2', 'city', 'state', 'pincode'].forEach(
+            field => setValue(field, '')
+          );
+        }}
+        sx={{ 
+          flex: 1,
+          textTransform: 'none',
+          backgroundColor: '#000',
+          color: '#fff',
+          fontWeight: 'bold',
+          '&:hover': { backgroundColor: '#333' }
+        }}
+        startIcon={<AddIcon />}
+      >
+        Add New Address
+      </Button>
+    </Box>
+  </Paper>
+)}
                       {/* Address (combines House No. and Street) */}
 <Controller
   name="addressLine1"
@@ -3101,18 +3057,22 @@ const StyledTextField = useCallback(({ field, label, error, helperText, disabled
       </Dialog>
 
     </ThemeProvider>
-    <SnackbarPortal >
       {/* Render snackbar outside ThemeProvider */}
-      <CustomSnackbar
-        open={snackbarOpen}
-        message={snackbarMessage}
-        severity={snackbarSeverity}
-        handleClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        autoHideDuration={2000}
-        style={{ zIndex: 9999999 }} 
-      />
-    </SnackbarPortal>
+      {typeof window !== 'undefined' &&
+  ReactDOM.createPortal(
+    <CustomSnackbar
+      open={snackbar.open}
+      message={snackbar.msg}
+      severity={snackbar.sev}
+        handleClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      sx={{ zIndex: 9999 }} // guaranteed to be on top
+    >
+    </CustomSnackbar>,
+    document.body
+  )
+}
+
     </>
   );
 };
