@@ -60,10 +60,6 @@ const OfferSchema = new mongoose.Schema({
   validFrom: { type: Date, required: true, default: Date.now },
   validUntil: {
     type: Date, required: true,
-    validate: {
-      validator(value) { return value > this.validFrom },
-      message: "validUntil must be after validFrom"
-    }
   },
 
   autoApply: { type: Boolean, default: false },
