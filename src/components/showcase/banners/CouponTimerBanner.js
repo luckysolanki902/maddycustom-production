@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import {usePathname} from 'next/navigation';
 
 const CouponTimerBanner = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -57,12 +58,12 @@ const CouponTimerBanner = () => {
 
   if (!isVisible) return null;
 
+
   return (
     <div style={{
-      margin: '0.75rem 0',
+      margin: '0.1rem 0 0 0',
       padding: '0.75rem',
       background: 'linear-gradient(135deg, #ff5f6d, #ffc371)',
-      borderRadius: '6px',
       color: 'white',
       boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
       textAlign: 'center'
