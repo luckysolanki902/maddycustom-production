@@ -27,37 +27,39 @@ export async function sendWhatsAppMessage({
   media,
   buttons,
   countryCode = '91',
-}) {
-  let campaignLog;
-  try {
-    // 1. Check if we've *already* sent a successful message for this user+order+campaign
-    campaignLog = await CampaignLog.findOne({
-      user: user._id,          // <---- IMPORTANT: match by user also
-      order: orderId,
-      campaignName,
-    });
-
-    // If we already have a successful send, skip to avoid duplicates
-    if (campaignLog && campaignLog.successfulCount >= 1) {
-      return {
-        success: false,
-        message: 'Message already sent successfully for this campaign.',
-      };
-    }
-
-    // 2. If no campaignLog entry yet, create one
-    if (!campaignLog) {
-      campaignLog = new CampaignLog({
-        user: user._id,
+  isOTPCampaign = false,
+}) {  let campaignLog;  try {
+    // Skip all campaign log operations for OTP campaigns
+    if (!isOTPCampaign) {
+      // 1. Check if we've *already* sent a successful message for this user+order+campaign
+      campaignLog = await CampaignLog.findOne({
+        user: user._id,          // <---- IMPORTANT: match by user also
         order: orderId,
         campaignName,
-        source: 'aisensy',
-        medium: 'whatsapp',
-        phoneNumber: user.phoneNumber,
-        totalCount: 0,
-        successfulCount: 0,
-        failedCount: 0,
       });
+
+      // If we already have a successful send, skip to avoid duplicates
+      if (campaignLog && campaignLog.successfulCount >= 1) {
+        return {
+          success: false,
+          message: 'Message already sent successfully for this campaign.',
+        };
+      }
+
+      // 2. If no campaignLog entry yet, create one
+      if (!campaignLog) {
+        campaignLog = new CampaignLog({
+          user: user._id,
+          order: orderId,
+          campaignName,
+          source: 'aisensy',
+          medium: 'whatsapp',
+          phoneNumber: user.phoneNumber,
+          totalCount: 0,
+          successfulCount: 0,
+          failedCount: 0,
+        });
+      }
     }
 
     // 3. Prepare AiSensy request
@@ -98,44 +100,47 @@ export async function sendWhatsAppMessage({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    });
-
-    // If the HTTP status indicates "unauthorized", handle separately
+    });    // If the HTTP status indicates "unauthorized", handle separately
     if (response.status === 401) {
-      campaignLog.totalCount += 1;
-      campaignLog.failedCount += 1;
-      campaignLog.lastSentAt = new Date();
-      await campaignLog.save();
+      // Only update campaign log if not an OTP campaign
+      if (!isOTPCampaign && campaignLog) {
+        campaignLog.totalCount += 1;
+        campaignLog.failedCount += 1;
+        campaignLog.lastSentAt = new Date();
+        await campaignLog.save();
+      }
 
       return {
         success: false,
         message: 'Unauthorized: Invalid AiSensy API key or permission issue.',
       };
-    }
-
-    // 5. Parse AiSensy JSON response
+    }    // 5. Parse AiSensy JSON response
     let result;
     try {
       result = await response.json();
     } catch (parseErr) {
-      campaignLog.totalCount += 1;
-      campaignLog.failedCount += 1;
-      campaignLog.lastSentAt = new Date();
-      await campaignLog.save();
+      // Only update campaign log if not an OTP campaign
+      if (!isOTPCampaign && campaignLog) {
+        campaignLog.totalCount += 1;
+        campaignLog.failedCount += 1;
+        campaignLog.lastSentAt = new Date();
+        await campaignLog.save();
+      }
 
       return {
         success: false,
         message: 'AiSensy response was not valid JSON.',
       };
-    }
-
-    // 6. Check if AiSensy indicated success in the JSON
+    }    // 6. Check if AiSensy indicated success in the JSON
     //    - "AiSensy" might return "success: false" but still give a 2xx status.
     if (!response.ok || !result?.success) {
-      campaignLog.totalCount += 1;
-      campaignLog.failedCount += 1;
-      campaignLog.lastSentAt = new Date();
-      await campaignLog.save();
+      // Only update campaign log if not an OTP campaign
+      if (!isOTPCampaign && campaignLog) {
+        campaignLog.totalCount += 1;
+        campaignLog.failedCount += 1;
+        campaignLog.lastSentAt = new Date();
+        await campaignLog.save();
+      }
 
       return {
         success: false,
@@ -145,18 +150,21 @@ export async function sendWhatsAppMessage({
     }
 
     // 7. If everything looks good, mark success
-    campaignLog.totalCount += 1;
-    campaignLog.successfulCount += 1;
-    campaignLog.lastSentAt = new Date();
-    await campaignLog.save();
+    // Only update campaign log if not an OTP campaign
+    if (!isOTPCampaign && campaignLog) {
+      campaignLog.totalCount += 1;
+      campaignLog.successfulCount += 1;
+      campaignLog.lastSentAt = new Date();
+      await campaignLog.save();
+    }
 
     return {
       success: true,
       message: 'WhatsApp message sent successfully!',
       data: result,
-    };
-  } catch (error) {
-    if (campaignLog) {
+    };  } catch (error) {
+    // Only update campaign log if not an OTP campaign
+    if (!isOTPCampaign && campaignLog) {
       campaignLog.totalCount += 1;
       campaignLog.failedCount += 1;
       campaignLog.lastSentAt = new Date();

@@ -46,6 +46,16 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'; // Added
 import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+
+// Auth components
+import { useAuth } from '@/lib/auth/AuthContext';
+import { selectIsAuthenticated, selectUser } from '@/lib/auth/authSelectors';
+import AuthenticationFlow from '@/components/auth/AuthenticationFlow';
+import SavedAddressesManager from '@/components/auth/SavedAddressesManager';
+import { validateToken, resetAuthError, resetOtpState, sendOTP } from '@/store/slices/authSlice';
 
 const OrderForm = ({
   open,
@@ -67,6 +77,11 @@ const OrderForm = ({
   const { userDetails, addressDetails, userExists, prefilledAddress } = orderForm;
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // Auth state
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const authUser = useSelector(selectUser);
+  const { refreshUserData } = useAuth();
+
   // Performance optimization - serviceability cache
   const serviceabilityCache = useRef({});
   const [isPincodeValid, setIsPincodeValid] = useState(false);
@@ -81,6 +96,21 @@ const OrderForm = ({
 
   // Local Tab Index State - memoize to prevent rerenders
   const [tabIndex, setTabIndex] = useState(0);
+  // Authentication flow state
+  const [showAuthFlow, setShowAuthFlow] = useState(false);
+  const [authFallbackTab, setAuthFallbackTab] = useState(0);
+  
+  // Reset auth error and OTP state when showing auth flow
+  useEffect(() => {
+    if (showAuthFlow) {
+      // Reset any previous errors and initialize OTP state
+      dispatch(resetAuthError());
+    }
+  }, [showAuthFlow, dispatch]);
+  
+  // Address management state
+  const [showAddressManager, setShowAddressManager] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
 
   // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -105,66 +135,198 @@ const OrderForm = ({
       }
     });
     return Array.from(fieldsMap.values());
-  }, [items]);
-
-  // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
-  const defaultValues = useMemo(() => ({
-    name: userDetails.name || '',
-    phoneNumber: userDetails.phoneNumber || '',
-    email: userDetails.email || '',
-    addressLine1: addressDetails.addressLine1 || '',
-    addressLine2: addressDetails.addressLine2 || '',
-    city: addressDetails.city || '',
-    state: addressDetails.state || '',
-    pincode: addressDetails.pincode || '',
-    country: addressDetails.country || 'India',
-    ...aggregatedExtraFields.reduce((acc, field) => {
-      acc[field.fieldName] = '';
-      return acc;
-    }, {}),
-  }), [userDetails.name, userDetails.phoneNumber, userDetails.email,
-  addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
-  addressDetails.state, addressDetails.pincode, addressDetails.country,
-    aggregatedExtraFields]);
-
-  // Initialize extraFields in Redux store when dialog opens
-  useEffect(() => {
-    if (open && aggregatedExtraFields.length > 0) {
-      const initialExtraFieldValues = {};
-      aggregatedExtraFields.forEach((field) => {
-        initialExtraFieldValues[field.fieldName] = ''; // Initialize with empty string
-      });
-      dispatch(setExtraFields(initialExtraFieldValues));
-    }
-  }, [open, aggregatedExtraFields, dispatch]);
-
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    reset,
-    formState: { errors },
-    watch,
-  } = useForm({
-    defaultValues,
+  }, [items]);  // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
+  const { control, handleSubmit, setValue, watch, getValues, reset, formState: { errors, isValid } } = useForm({
     mode: 'onChange',
-    shouldUnregister: false // Prevents field unregistration which helps with focus issues
+    defaultValues: useMemo(() => ({
+      name: userDetails?.name || '',
+      phoneNumber: userDetails?.phoneNumber || '',
+      email: userDetails?.email || '',
+      addressLine1: addressDetails?.addressLine1 || '',
+      addressLine2: addressDetails?.addressLine2 || '',
+      city: addressDetails?.city || '',
+      state: addressDetails?.state || '',
+      pincode: addressDetails?.pincode || '',
+      country: addressDetails?.country || 'India',
+      // Add any extraFields from cart items
+      ...aggregatedExtraFields,
+    }), [userDetails, addressDetails, aggregatedExtraFields]),
   });
+  
+  // Define showSnackbar first since it's used in validatePincode
+  const showSnackbar = useCallback((message, severity = 'success') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  }, []);
+  
+  // Enhanced pincode validation with proactive serviceability check
+  const validatePincode = useCallback((pincode) => {
+    // Use debounce inside the callback
+    const debouncedCheck = debounce(async (pincodeToCheck) => {
+      if (pincodeToCheck.length === 6 && /^\d{6}$/.test(pincodeToCheck)) {
+        setPincodeCheckInProgress(true);
 
-  // Watch pincode for immediate validation
-  const watchedPincode = watch('pincode');
+        // Check cache first
+        if (serviceabilityCache.current[pincodeToCheck] !== undefined) {
+          setPincodeCheckInProgress(false);
+          setIsPincodeValid(serviceabilityCache.current[pincodeToCheck]);
+          return;
+        }
 
-  // Effect for early pincode validation
-  useEffect(() => {
-    if (watchedPincode?.length === 6 && /^\d{6}$/.test(watchedPincode)) {
-      // Check if we've already validated this pincode
-      if (serviceabilityCache.current[watchedPincode] !== undefined) {
-        setIsPincodeValid(serviceabilityCache.current[watchedPincode]);
+        try {
+          const response = await axios.get(
+            `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${pincodeToCheck}`
+          );
+
+          const isValid = response.data.serviceable;
+          serviceabilityCache.current[pincodeToCheck] = isValid;
+          setIsPincodeValid(isValid);
+
+          if (!isValid) {
+            showSnackbar(`Pincode ${pincodeToCheck} is not serviceable. Please try a different one.`, 'warning');
+          }
+        } catch (error) {
+          console.error('Error checking pincode:', error);
+        } finally {
+          setPincodeCheckInProgress(false);
+        }
       } else {
-        validatePincode(watchedPincode);
+        setIsPincodeValid(false);
+      }
+    }, 300);
+
+    // Call the debounced function
+    debouncedCheck(pincode);
+  }, [showSnackbar, setIsPincodeValid, setPincodeCheckInProgress, serviceabilityCache]);
+
+  // Load user addresses when authenticated - wrapped in useCallback
+  const loadUserAddresses = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+      
+      const response = await axios.get('/api/user/addresses', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data?.addresses?.length > 0) {
+        // Find primary address
+        const primaryAddress = response.data.addresses.find(addr => addr.isPrimary) || response.data.addresses[0];
+        
+        if (primaryAddress) {
+          // Set as prefilled address
+          dispatch(setPrefilledAddress({
+            addressLine1: primaryAddress.addressLine1,
+            addressLine2: primaryAddress.addressLine2 || '',
+            city: primaryAddress.city,
+            state: primaryAddress.state,
+            pincode: primaryAddress.pincode,
+            country: primaryAddress.country || 'India',
+          }));
+          
+          setSelectedAddressId(primaryAddress._id);
+          
+          // Set form values
+          setValue('addressLine1', primaryAddress.addressLine1);
+          setValue('addressLine2', primaryAddress.addressLine2 || '');
+          setValue('city', primaryAddress.city);
+          setValue('state', primaryAddress.state);
+          setValue('pincode', primaryAddress.pincode);
+          
+          // Validate pincode for serviceability
+          validatePincode(primaryAddress.pincode);
+        }
+      }    } catch (error) {
+      console.error('Error loading user addresses:', error);    }
+  }, [dispatch, setValue, validatePincode]);
+  
+  // Check authentication on component mount and when auth state changes
+  useEffect(() => {
+    if (open && !isAuthenticated) {
+      // Validate token on first open
+      dispatch(validateToken());
+    } else if (open && isAuthenticated && authUser) {
+      // User is authenticated, set user details from auth state
+      dispatch(setUserDetails({
+        name: authUser.name,
+        phoneNumber: authUser.phoneNumber,
+        email: authUser.email || '',
+        userId: authUser.id
+      }));
+      
+      dispatch(setUserExists(true));
+      
+      // Set form values
+      setValue('name', authUser.name || '');
+      setValue('phoneNumber', authUser.phoneNumber || '');
+      setValue('email', authUser.email || '');
+      
+      // Check if user has addresses and load them
+      if (authUser.hasPrimaryAddress) {
+        loadUserAddresses();
       }
     }
-  }, [watchedPincode]);
+  }, [open, isAuthenticated, authUser, dispatch, setValue, loadUserAddresses]);
+  
+  // Handle authentication success
+  const handleAuthenticationSuccess = (user) => {
+    setShowAuthFlow(false);
+    
+    // Update auth state
+    refreshUserData();
+    
+    // Update form with user data
+    dispatch(setUserDetails({
+      name: user.name,
+      phoneNumber: user.phoneNumber,
+      email: user.email || '',
+      userId: user.id
+    }));
+    
+    dispatch(setUserExists(true));
+    
+    // Set form values
+    setValue('name', user.name || '');
+    setValue('phoneNumber', user.phoneNumber || '');
+    setValue('email', user.email || '');
+    
+    // If user has addresses, show address manager
+    if (user.hasPrimaryAddress) {
+      setShowAddressManager(true);
+    } else {
+      // Return to the fallback tab if no addresses
+      setTabIndex(authFallbackTab);
+    }
+  };
+  
+  // Handle address selection
+  const handleAddressSelected = (address) => {
+    setShowAddressManager(false);
+    
+    // Set the selected address in the form
+    dispatch(setPrefilledAddress({
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2 || '',
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+      country: address.country || 'India',
+    }));
+    
+    // Update form values
+    setValue('addressLine1', address.addressLine1);
+    setValue('addressLine2', address.addressLine2 || '');
+    setValue('city', address.city);
+    setValue('state', address.state);
+    setValue('pincode', address.pincode);
+    
+    // Validate pincode for serviceability
+    validatePincode(address.pincode);
+    
+    // Return to the fallback tab
+    setTabIndex(authFallbackTab);
+  };
 
   // Prevent multiple form submissions
   const [purchaseInitiated, setPurchaseInitiated] = useState(false);
@@ -194,10 +356,9 @@ const OrderForm = ({
       if (addressDetails.pincode && addressDetails.pincode.length === 6) {
         validatePincode(addressDetails.pincode);
       }
-    }
-  }, [open, setValue, userDetails.name, userDetails.phoneNumber, userDetails.email,
+    }  }, [open, setValue, userDetails.name, userDetails.phoneNumber, userDetails.email,
     addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
-    addressDetails.state, addressDetails.pincode, addressDetails.country]);
+    addressDetails.state, addressDetails.pincode, addressDetails.country, validatePincode]);
 
   // Handle Prefilled Address
   useEffect(() => {
@@ -230,22 +391,16 @@ const OrderForm = ({
         }
       }
     }
-  }, [userExists, prefilledAddress, dispatch, addressDetails]);
-
-  const handleTabChange = useCallback((newValue) => {
+  }, [userExists, prefilledAddress, dispatch, addressDetails, validatePincode]);  const handleTabChange = useCallback((newValue) => {
     setTabIndex(newValue);
   }, []);
-
-  const showSnackbar = useCallback((message, severity = 'success') => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
-  }, []);
-
   // State for formatted phone number display - memoized
   const [formattedPhone, setFormattedPhone] = useState('');
   const [showPhoneConfirmation, setShowPhoneConfirmation] = useState(false);
   const [originalPhone, setOriginalPhone] = useState('');
+  
+  // Get watched pincode value from form
+  const watchedPincode = watch('pincode');
 
   // Function to format phone number - memoized to prevent rerenders
   const formatPhoneNumber = useCallback((phone) => {
@@ -295,49 +450,11 @@ const OrderForm = ({
       setShowPhoneConfirmation(false);
     }
   }, [formatPhoneNumber]);
-
   const acceptFormattedPhone = useCallback(() => {
     setValue('phoneNumber', formattedPhone, { shouldValidate: true });
     dispatch(setUserDetails({ phoneNumber: formattedPhone }));
     setShowPhoneConfirmation(false);
   }, [formattedPhone, setValue, dispatch]);
-
-  // Enhanced pincode validation with proactive serviceability check
-  const validatePincode = useCallback(
-    debounce(async (pincode) => {
-      if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
-        setPincodeCheckInProgress(true);
-
-        // Check cache first
-        if (serviceabilityCache.current[pincode] !== undefined) {
-          setPincodeCheckInProgress(false);
-          setIsPincodeValid(serviceabilityCache.current[pincode]);
-          return;
-        }
-
-        try {
-          const response = await axios.get(
-            `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${pincode}`
-          );
-
-          const isValid = response.data.serviceable;
-          serviceabilityCache.current[pincode] = isValid;
-          setIsPincodeValid(isValid);
-
-          if (!isValid) {
-            showSnackbar(`Pincode ${pincode} is not serviceable. Please try a different one.`, 'warning');
-          }
-        } catch (error) {
-          console.error('Error checking pincode:', error);
-        } finally {
-          setPincodeCheckInProgress(false);
-        }
-      } else {
-        setIsPincodeValid(false);
-      }
-    }, 300),
-    [showSnackbar]
-  );
 
   // New function to fully close everything - both OrderForm and CartDrawer
   const handleFullClose = useCallback(() => {
@@ -359,8 +476,7 @@ const OrderForm = ({
       });
     }
   }, [open, couponCode, subTotal, items]);
-
-  // Optimistic user details submission - further optimized
+  // Optimistic user details submission - improved to directly send OTP
   const onSubmitUserDetails = useCallback(async (data) => {
     // Format phone number for submission if needed
     const phoneToUse = formatPhoneNumber(data.phoneNumber);
@@ -371,7 +487,21 @@ const OrderForm = ({
       return;
     }
 
-    // Optimistically update Redux store with user details before API call
+    // If user is already authenticated, proceed to next tab
+    if (isAuthenticated) {
+      // Optimistically update Redux store with user details
+      dispatch(
+        setUserDetails({
+          name: data.name,
+          phoneNumber: phoneToUse,
+          email: data.email,
+        })
+      );
+      setTabIndex(1);
+      return;
+    }
+
+    // Store values in redux for non-authenticated users
     dispatch(
       setUserDetails({
         name: data.name,
@@ -379,55 +509,25 @@ const OrderForm = ({
         email: data.email,
       })
     );
-
-    // Immediately move to the next tab for better UX
-    setTabIndex(1);
-
-    // Perform user check in background without blocking UI
-    pendingOperationsRef.current.userCheck = axios.patch('/api/user/check', {
-      phoneNumber: phoneToUse,
-      name: data.name,
-      email: data.email,
-    })
-      .then(response => {
-        if (response.data.exists) {
-          const latestAddress = response.data.latestAddress;
-          dispatch(setUserDetails({ userId: response.data.userId }));
-
-          if (latestAddress) {
-            // Update form with existing address
-            Object.entries(latestAddress).forEach(([key, value]) => {
-              if (setValue && key !== '_id') {
-                setValue(key, value || '');
-              }
-            });
-
-            dispatch(setAddressDetails(latestAddress));
-
-            // Pre-validate pincode
-            if (latestAddress.pincode && latestAddress.pincode.length === 6) {
-              validatePincode(latestAddress.pincode);
-            }
-          }
-        } else {
-          // Create user in background (non-blocking)
-          return axios.post('/api/user/create', {
-            name: data.name,
-            phoneNumber: phoneToUse,
-            email: data.email,
-            source: 'order-form',
-          })
-            .then(createResponse => {
-              dispatch(setUserDetails({ userId: createResponse.data.userId || createResponse.data.user?.userId }));
-              return createResponse;
-            });
-        }
-        return response;
-      })
-      .catch(error => {
-        console.error('Error in background user check/create:', error);
-      });
-  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode]);
+    
+    // Save the current tab index for returning after auth flow
+    setAuthFallbackTab(1);
+    
+    // Reset OTP state before showing the auth flow
+    dispatch(resetOtpState());
+    dispatch(resetAuthError());
+    
+    // Send OTP directly without asking for phone again
+    const result = await dispatch(sendOTP({ phoneNumber: phoneToUse }));
+    
+    if (result.meta.requestStatus === 'fulfilled') {
+      // After successful OTP send, show auth flow with OTP input screen directly
+      setShowAuthFlow(true);
+    } else {
+      // If sending OTP failed
+      showSnackbar(result.payload?.message || 'Failed to send OTP. Please try again.', 'error');
+    }
+  }, [formatPhoneNumber, dispatch, showSnackbar, isAuthenticated, setAuthFallbackTab, setTabIndex, setShowAuthFlow]);
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
@@ -658,11 +758,10 @@ const OrderForm = ({
       setIsLoading(false);
       setIsPaymentProcessing(false);
       setPurchaseInitiated(false);
-    }
-  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
+    }  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
     totalCost, deliveryCost, utmDetails, cartItems, paymentModeConfig,
     discountAmountFinal, couponsDetails, isPincodeValid, reset, handleFullClose, router,
-    serviceabilityCache, prefilledAddress, userDetails, addressDetails]); // Maintained dependencies
+    serviceabilityCache, setIsLoading, setIsPaymentProcessing, setPurchaseInitiated]);// Maintained dependencies
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
@@ -788,8 +887,7 @@ const OrderForm = ({
             maxHeight: '88vh',
           },
         }}
-      >
-        <DialogContent
+      >        <DialogContent
           sx={{
             padding: { xs: '1.2rem', md: '1.5rem' },
             paddingTop: { xs: '0.8rem', md: '1.2rem' },
@@ -801,11 +899,46 @@ const OrderForm = ({
             overflow: 'hidden',
           }}
         >
-          {/* Logo and Stepper - Made more compact */}
-          <Box sx={{
-            position: 'relative',
-            mb: 0.5,
-            flexShrink: 0, // Prevent shrinking
+          {/* Authentication Flow */}
+          {showAuthFlow && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+            >
+              <AuthenticationFlow
+                onSuccess={handleAuthenticationSuccess}
+                onBack={() => setShowAuthFlow(false)}
+                phoneNumber={userDetails.phoneNumber}
+              />
+            </motion.div>
+          )}
+
+          {/* Address Manager */}
+          {showAddressManager && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+            >              <SavedAddressesManager
+                onSelectAddress={handleAddressSelected}
+                onBack={() => setShowAddressManager(false)}
+                initialSelectedAddressId={selectedAddressId}
+                validatePincode={validatePincode}
+              />
+            </motion.div>
+          )}
+
+          {/* Regular form content - shown when not in auth or address management flow */}
+          {!showAuthFlow && !showAddressManager && (
+            <>
+              {/* Logo and Stepper - Made more compact */}
+              <Box sx={{
+                position: 'relative',
+                mb: 0.5,
+                flexShrink: 0, // Prevent shrinking
           }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -977,8 +1110,7 @@ const OrderForm = ({
                 pb: '2rem',    // extra bottom padding
               }}
             >
-              <AnimatePresence mode="wait" initial={false} custom={tabIndex}>
-                {tabIndex === 0 && (
+              <AnimatePresence mode="wait" initial={false} custom={tabIndex}>                {tabIndex === 0 && (
                   <motion.div
                     key="personalInfo"
                     custom={0}
@@ -988,6 +1120,25 @@ const OrderForm = ({
                     exit="exit"
                     style={{ width: '100%' }} // Removed height: '100%'
                   >
+                    {isAuthenticated && (
+                      <Box 
+                        sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 1, 
+                          bgcolor: 'success.light', 
+                          color: 'success.contrastText',
+                          borderRadius: 1,
+                          p: 1,
+                          mb: 2 
+                        }}
+                      >
+                        <VerifiedUserIcon color="inherit" />
+                        <Typography variant="body2">
+                          You are securely logged in
+                        </Typography>
+                      </Box>
+                    )}
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}> {/* Added horizontal padding */}
                       {/* Name field */}
                       <Controller
@@ -1015,30 +1166,7 @@ const OrderForm = ({
                         )}
                       />
 
-                      {/* Email field */}
-                      <Controller
-                        name="email"
-                        control={control}
-                        rules={{
-                          pattern: {
-                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                            message: 'Enter a valid email address',
-                          },
-                        }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Email (Optional)"
-                            error={errors.email}
-                            helperText={errors.email ? errors.email.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              dispatch(setUserDetails({ email: e.target.value }));
-                            }}
-                          />
-                        )}
-                      />
+             
 
                       {/* Phone number field with enhanced validation */}
                       <Controller
@@ -1125,6 +1253,31 @@ const OrderForm = ({
                         )}
                       />
 
+         {/* Email field */}
+                      <Controller
+                        name="email"
+                        control={control}
+                        rules={{
+                          pattern: {
+                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                            message: 'Enter a valid email address',
+                          },
+                        }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="Email (Optional)"
+                            error={errors.email}
+                            helperText={errors.email ? errors.email.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              dispatch(setUserDetails({ email: e.target.value }));
+                            }}
+                          />
+                        )}
+                      />
+                      
                       {/* Removed Button from here, will be in fixed footer */}
                     </Box>
                   </motion.div>
@@ -1325,19 +1478,18 @@ const OrderForm = ({
                 width: '100%',
                 boxShadow: '0 -2px 5px rgba(0,0,0,0.05)' // Subtle shadow for separation
               }}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            >              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                 {tabIndex === 0 && (
                   <motion.div
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.98 }}
-                  >
-                    <BlackButton
+                  >                    <BlackButton
                       type="submit" // Changed from onClick
                       extraClass="lg"
                       isLoading={isLoading} // This isLoading is general; consider specific state if needed for UX
-                      buttonText="Next"
+                      buttonText={isAuthenticated ? "Continue to Delivery" : "Verify with WhatsApp OTP & Continue"}
                       disabled={isPaymentProcessing || isLoading}
+                      endIcon={!isAuthenticated && !isLoading ? <WhatsAppIcon /> : null}
                       sx={{
                         borderRadius: '50px',
                         px: 3,
@@ -1537,10 +1689,11 @@ const OrderForm = ({
                   height={15} // Reduced from 18
                   alt="Shiprocket"
                   style={{ opacity: 0.7 }}
-                />
-              </Box>
+                />              </Box>
             </Box>
           </motion.div>
+          </>
+          )}
         </DialogContent>
       </Dialog>
 

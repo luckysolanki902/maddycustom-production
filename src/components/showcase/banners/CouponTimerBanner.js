@@ -55,12 +55,6 @@ const CouponTimerBanner = () => {
   }, [calculateEndOfMonth]);
 
   useEffect(() => {
-    // For development/testing, uncomment:
-    setIsVisible(true);
-    // For production, use this instead:
-    // const shouldShow = checkIfLastFiveDays();
-    // setIsVisible(shouldShow);
-    
     if (isVisible) {
       updateCountdown();
       const timer = setInterval(updateCountdown, 1000);
