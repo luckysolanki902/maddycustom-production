@@ -16,6 +16,7 @@ const CouponTimerBanner = () => {
   // Check window size for responsive design
   useEffect(() => {
     const checkMobile = () => {
+      
       setIsMobile(window.innerWidth < 768);
     };
     
