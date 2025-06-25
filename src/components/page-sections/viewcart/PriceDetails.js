@@ -86,7 +86,6 @@ const PriceDetails = ({
           </motion.div>
         )}
 
-        {!hasCoupon && (
           <motion.div
             className={styles.applyCouponRow}
             variants={itemVariants}
@@ -96,16 +95,15 @@ const PriceDetails = ({
           >
             <div className={styles.couponLeft}>
               <LocalOfferOutlinedIcon className={styles.couponIcon} />
-              <span className={styles.couponText}>Apply Coupon</span>
+              <span className={styles.couponText}>See all available coupons</span>
             </div>
             <button
               className={styles.applyCouponBtn}
               onClick={onOpenCoupon}
             >
-              Apply
+              View
             </button>
           </motion.div>
-        )}
 
 
 
