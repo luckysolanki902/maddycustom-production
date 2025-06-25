@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isLastFiveDaysOfMonth, getEndOfMonth } from '@/lib/utils/dateUtils';
 
 const CouponTimerBanner = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -22,24 +23,10 @@ const CouponTimerBanner = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Calculate end of month date
-  const calculateEndOfMonth = useCallback(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-  }, []);
-
-  // Check if we're in the last 5 days of the month
-  const checkIfLastFiveDays = useCallback(() => {
-    const today = new Date();
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    const currentDay = today.getDate();
-    return currentDay >= (lastDayOfMonth - 4);
-  }, []);
-
   // Update countdown timer 
   const updateCountdown = useCallback(() => {
     const now = new Date();
-    const endOfMonth = calculateEndOfMonth();
+    const endOfMonth = getEndOfMonth();
     const totalSeconds = Math.floor((endOfMonth - now) / 1000);
     
     if (totalSeconds <= 0) {
@@ -52,21 +39,20 @@ const CouponTimerBanner = () => {
     const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
     const seconds = Math.floor(totalSeconds % 60);
     setTimeLeft({ days, hours, minutes, seconds });
-  }, [calculateEndOfMonth]);
+  }, []);
+
+  // Check if it's the last 5 days and set visibility
+  useEffect(() => {
+    setIsVisible(isLastFiveDaysOfMonth());
+  }, []);
 
   useEffect(() => {
-    // For development/testing, uncomment:
-    setIsVisible(true);
-    // For production, use this instead:
-    // const shouldShow = checkIfLastFiveDays();
-    // setIsVisible(shouldShow);
-    
     if (isVisible) {
       updateCountdown();
       const timer = setInterval(updateCountdown, 1000);
       return () => clearInterval(timer);
     }
-  }, [checkIfLastFiveDays, updateCountdown, isVisible]);
+  }, [updateCountdown, isVisible]);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(COUPON_CODE);
