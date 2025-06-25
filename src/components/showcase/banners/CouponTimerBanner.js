@@ -4,14 +4,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isLastFiveDaysOfMonth, getEndOfMonth } from '@/lib/utils/dateUtils';
-
+import {useSelector} from 'react-redux';
 const CouponTimerBanner = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [copied, setCopied] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const COUPON_CODE = "EOM50";
-
+  const pathname = usePathname();
+  const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
   // Check window size for responsive design
   useEffect(() => {
     const checkMobile = () => {
@@ -60,7 +61,7 @@ const CouponTimerBanner = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || (pathname === '/' && !isCartDrawerOpen)) return null;
 
   // Dynamically choose a persuasive message based on days left
   const getUrgencyMessage = () => {
