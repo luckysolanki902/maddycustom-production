@@ -6,7 +6,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
 
 import { removeItem } from '@/store/slices/cartSlice';
-import { closeCartDrawer } from '@/store/slices/uiSlice'; // Removed expireShippingTimer
+import { closeCartDrawer } from '@/store/slices/uiSlice';
 import {
   startShippingTimer as startPersistentShippingTimer,
   clearShippingTimer as clearPersistentShippingTimer,
@@ -48,17 +48,28 @@ import EndOfMonth from '../showcase/banners/EndOfMonth';
 import CouponTimerBanner from '../showcase/banners/CouponTimerBanner';
 
 /* ---------------- helper ------------------------------------------------ */
-const isOfferApplicable = (offer, totalCost, isFirstOrder = false) =>
-  offer.conditions.every(c => {
+const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
+  if (!offer || !offer.conditions) {
+    return false;
+  }
+  
+  const result = offer.conditions.every(c => {
     if (c.type === 'cart_value') {
       const v = totalCost, x = c.value;
-      return (c.operator === '>=' && v >= x) || (c.operator === '>' && v > x)
+      const conditionMet = (c.operator === '>=' && v >= x) || (c.operator === '>' && v > x)
         || (c.operator === '<' && v < x) || (c.operator === '<=' && v <= x)
         || (c.operator === '==' && v === x);
+      return conditionMet;
     }
-    if (c.type === 'first_order') return isFirstOrder === c.value;
+    if (c.type === 'first_order') {
+      const conditionMet = isFirstOrder === c.value;
+      return conditionMet;
+    }
     return true;
   });
+  
+  return result;
+};
 
 const flattenCart = cartItems => cartItems.map(i => ({
   productId: i.productId || i.productDetails._id,
@@ -77,12 +88,10 @@ export default function ViewCart({ isDrawer = false }) {
   const couponRedux = orderForm.couponApplied;
   // Get persisted shipping timer state
   const persistedShippingTimer = useSelector(s => s.persistentUi.shippingTimer);
-
   /* ---------- coupon local mirror ------------------------------------ */
   const [couponState, setCouponState] = useState({
     couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null,
-  });
-  useEffect(() => {
+  });  useEffect(() => {
     if (couponRedux.couponCode) {
       setCouponState({
         couponApplied: true,
@@ -246,31 +255,44 @@ export default function ViewCart({ isDrawer = false }) {
   const codAmount = isSplitPayment ? totalPay - onlineAmount : 0;
   const snack = useCallback((m, s = 'success') => setSnackbar({ open: true, message: m, severity: s }), []);
   const dispatchCoupon = p => dispatch(setCouponApplied({ ...p }));
-
-  /* ---------- coupon apply / remove --------------------------------- */
-  const applyCoupon = useCallback((code, amount, type, offer, fromAuto = false) => {
-    if (amount <= 0) { snack('Offer conditions are not met.', 'warning'); return; }
-    if (type !== 'bundle' && !isOfferApplicable(offer, subTot, isFirstOrder)) {
-      snack('Offer conditions are not met.', 'warning'); return;
+  /* ---------- coupon apply / remove --------------------------------- */  const applyCoupon = useCallback((code, amount, type, offer, fromAuto = false) => {
+    if (amount <= 0) { 
+      snack('Offer conditions are not met.', 'warning'); 
+      return; 
     }
-
+    
+    if (type !== 'bundle' && !isOfferApplicable(offer, subTot, isFirstOrder)) {
+      snack('Offer conditions are not met.', 'warning'); 
+      return;
+    }
+    
     setCouponState({ couponApplied: true, couponName: code, couponDiscount: amount, discountType: type, offer });
     dispatch(setCouponApplied({ couponCode: code, discountAmount: amount, discountType: type, offer }));
 
-    if (!fromAuto) dispatch(setManualCoupon({ couponCode: code }));
+    if (!fromAuto) {
+      dispatch(setManualCoupon({ couponCode: code }));
+    }
+    
     dispatch(resetAutoApplyDisabled());
-    if (fromAuto) lastAutoRef.current = { code, type };
-
-    // Don't show snackbar, use the animation in the coupon section instead
-  }, [subTot, isFirstOrder, dispatch, snack]);  const removeCoupon = useCallback((showMsg = true) => {
+    
+    if (fromAuto) {
+      lastAutoRef.current = { code, type };
+    }
+  }, [subTot, isFirstOrder, dispatch, snack]);const removeCoupon = useCallback((showMsg = true) => {
     setCouponState({ couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null });
     dispatch(setCouponApplied({ couponCode: '', discountAmount: 0, discountType: '', offer: null }));
-    
-    // When manually removing a coupon, we'll set manualCoupon to null but also flag to check for auto-apply immediately
+      // Reset both flags to allow auto-apply
+    dispatch(resetAutoApplyDisabled());
     dispatch(setManualCoupon(null));
     
-    // Set a flag to force auto-apply on next evaluation (even with manual removed)
-    forceAutoApply.current = true;
+
+    lastAutoRef.current = { code: '', type: '' };
+    
+
+    
+
+    manualRemovalRef.current = true;
+
     
     if (showMsg) snack('Coupon removed.', 'warning');
   }, [dispatch, snack]);
@@ -345,39 +367,51 @@ export default function ViewCart({ isDrawer = false }) {
   const { autoApplyDisabled, autoApplyDisabledAt, manualCoupon } = orderForm;
   const blocked = autoApplyDisabled && autoApplyDisabledAt &&
     Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
-
   // Track previous cart state to detect changes
   const prevCartRef = useRef(null);
   const cartChanged = useRef(false);
-  const forceAutoApply = useRef(false);
-  
-  // Check if cart has changed
+  const forceAutoApply = useRef(false);  const manualRemovalRef = useRef(false);
+
   useEffect(() => {
     const currentCartKey = JSON.stringify(cartItems.map(item => ({ id: item.productId, qty: item.quantity })));
     if (prevCartRef.current !== currentCartKey) {
       cartChanged.current = true;
-      forceAutoApply.current = true; // Flag to force auto-apply regardless of manual coupon state
+      forceAutoApply.current = true;
       prevCartRef.current = currentCartKey;
       
-      // Reset autoApplyDisabled when cart changes
+      if (manualRemovalRef.current) {
+        manualRemovalRef.current = false;
+      }
+      
+      lastAutoRef.current = { code: '', type: '' };
+      
       if (autoApplyDisabled) {
         dispatch(resetAutoApplyDisabled());
       }
+      if (manualCoupon) {
+        dispatch(setManualCoupon(null));
+      }
     }
-  }, [cartItems, dispatch, autoApplyDisabled]);
+  }, [cartItems, dispatch, autoApplyDisabled, manualCoupon]);
+
   useEffect(() => {
-    // Don't proceed if a coupon is already applied or cart is empty
-    if (couponState.couponApplied || !qty) {
-      forceAutoApply.current = false; // Reset force flag
+    if (!qty) {
+      forceAutoApply.current = false;
       return;
     }
     
-    // If cart changed, ignore blocked state and manual coupon; otherwise respect regular rules
-    if (forceAutoApply.current || ((cartChanged.current || !blocked) && !manualCoupon)) {
-      cartChanged.current = false; // Reset the flag
-      forceAutoApply.current = false; // Reset the force flag
-      
-      (async () => {
+    if (manualRemovalRef.current) {
+      return;
+    }
+    
+    const shouldCheckAutoApply = forceAutoApply.current || 
+      cartChanged.current || 
+      (!blocked && !manualCoupon && !couponState.couponApplied);
+    
+    if (shouldCheckAutoApply) {
+      cartChanged.current = false;
+      forceAutoApply.current = false;
+        (async () => {
         try {
           const res = await fetch('/api/checkout/coupons/apply', {
             method: 'POST',
@@ -387,26 +421,35 @@ export default function ViewCart({ isDrawer = false }) {
               totalCost: subTot,
               isFirstOrder,
               cartItems: flattenCart(cartItems),
+              currentCouponCode: couponState.couponApplied ? couponState.couponName : '',
+              currentDiscountAmount: couponState.couponApplied ? couponState.couponDiscount : 0,
             }),
           });
+          
           const data = await res.json();
-          if (!res.ok || !data.valid || !data.offer) return;
+          
+          if (!res.ok || !data.valid || !data.offer) {
+            return;
+          }
 
-          // Get the first coupon code from the offer
           const couponCode = data.offer.couponCodes && data.offer.couponCodes.length > 0
-            ? data.offer.couponCodes[0]
-            : `AUTO_${data.offer._id}`;
+            ? data.offer.couponCodes[0]            : `AUTO_${data.offer._id}`;
 
-          // Prevent duplicate application of the same offer
-          if (lastAutoRef.current.code === couponCode && lastAutoRef.current.type === data.discountType) return;
+          if (couponState.couponApplied && couponState.couponName === couponCode) {
+            return;
+          }
 
-          applyCoupon(couponCode, data.discountValue, data.discountType, data.offer, true);
+          try {
+            applyCoupon(couponCode, data.discountValue, data.discountType, data.offer, true);
+          } catch (applyCouponError) {
+            console.error('Error in applyCoupon function:', applyCouponError);
+          }
         } catch (e) {
-          console.error('auto‑apply error', e);
+          console.error('Auto‑apply error:', e);
         }
       })();
     }
-  }, [qty, subTot, cartItems, couponState.couponApplied, blocked, manualCoupon, dispatch, applyCoupon, isFirstOrder]);
+  }, [qty, subTot, cartItems, couponState.couponApplied, couponState.couponName, couponState.couponDiscount, blocked, manualCoupon, dispatch, applyCoupon, isFirstOrder]);
   /* ---------- RE‑VALIDATE on cart changes (unchanged) --------------- */
   const revalidateCoupon = useCallback(async (silent = false) => {
     if (!couponState.couponApplied) return true;
@@ -440,20 +483,19 @@ export default function ViewCart({ isDrawer = false }) {
       if (!silent) snack('Could not verify coupon.', 'error');
       return false;
     }  }, [couponState.couponApplied, couponState.couponName, couponState.couponDiscount, 
-      subTot, isFirstOrder, cartItems, removeCoupon, couponRedux, dispatch, snack]);  /* run on cart changes */
-  useEffect(() => { 
-    // First revalidate existing coupon
+      subTot, isFirstOrder, cartItems, removeCoupon, couponRedux, dispatch, snack]);  /* run on cart changes */  useEffect(() => { 
     const revalidate = async () => {
-      const isValid = await revalidateCoupon(true);
-      
-      // If no valid coupon after revalidation, make sure we trigger auto-apply
-      if (!isValid && !couponState.couponApplied) {
-        forceAutoApply.current = true;
+      if (couponState.couponApplied) {
+        const isValid = await revalidateCoupon(true);
+        
+        if (!isValid && !manualRemovalRef.current) {
+          forceAutoApply.current = true;
+        }
       }
     };
     
     revalidate();
-  }, [cartItems, subTot, revalidateCoupon, couponState.couponApplied]);
+  }, [cartItems, subTot, revalidateCoupon, couponState.couponApplied, couponState.couponName]);
 
   /* ---------- validate before checkout (unchanged) ------------------ */
   const handleCheckout = async () => {
