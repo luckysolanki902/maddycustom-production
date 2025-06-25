@@ -1,7 +1,7 @@
 // components/ViewCart.jsx
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
 
@@ -244,33 +244,36 @@ export default function ViewCart({ isDrawer = false }) {
   const onlineAmount = isSplitPayment ?
     Math.round((totalPay * (selectedPM?.configuration?.onlinePercentage || 50)) / 100) : 0;
   const codAmount = isSplitPayment ? totalPay - onlineAmount : 0;
-
-  const snack = (m, s = 'success') => setSnackbar({ open: true, message: m, severity: s });
+  const snack = useCallback((m, s = 'success') => setSnackbar({ open: true, message: m, severity: s }), []);
   const dispatchCoupon = p => dispatch(setCouponApplied({ ...p }));
 
   /* ---------- coupon apply / remove --------------------------------- */
-  const applyCoupon = (code, amount, type, offer, fromAuto = false) => {
+  const applyCoupon = useCallback((code, amount, type, offer, fromAuto = false) => {
     if (amount <= 0) { snack('Offer conditions are not met.', 'warning'); return; }
     if (type !== 'bundle' && !isOfferApplicable(offer, subTot, isFirstOrder)) {
       snack('Offer conditions are not met.', 'warning'); return;
     }
 
     setCouponState({ couponApplied: true, couponName: code, couponDiscount: amount, discountType: type, offer });
-    dispatchCoupon({ couponCode: code, discountAmount: amount, discountType: type, offer });
+    dispatch(setCouponApplied({ couponCode: code, discountAmount: amount, discountType: type, offer }));
 
     if (!fromAuto) dispatch(setManualCoupon({ couponCode: code }));
     dispatch(resetAutoApplyDisabled());
     if (fromAuto) lastAutoRef.current = { code, type };
 
     // Don't show snackbar, use the animation in the coupon section instead
-  };
-
-  const removeCoupon = (showMsg = true) => {
+  }, [subTot, isFirstOrder, dispatch, snack]);  const removeCoupon = useCallback((showMsg = true) => {
     setCouponState({ couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null });
-    dispatchCoupon({ couponCode: '', discountAmount: 0, discountType: '', offer: null });
+    dispatch(setCouponApplied({ couponCode: '', discountAmount: 0, discountType: '', offer: null }));
+    
+    // When manually removing a coupon, we'll set manualCoupon to null but also flag to check for auto-apply immediately
     dispatch(setManualCoupon(null));
+    
+    // Set a flag to force auto-apply on next evaluation (even with manual removed)
+    forceAutoApply.current = true;
+    
     if (showMsg) snack('Coupon removed.', 'warning');
-  };
+  }, [dispatch, snack]);
 
   // Handler for the back button in the drawer to close it
   const handleBackClick = () => {
@@ -288,7 +291,7 @@ export default function ViewCart({ isDrawer = false }) {
         snack('Failed to fetch payment modes', 'error');
       } finally { setLoadingPM(false); }
     })();
-  }, []);
+  }, [snack]);
 
   /* ---------- locked / now banner (updated for card offers) ----------------------- */
   useEffect(() => {
@@ -338,47 +341,74 @@ export default function ViewCart({ isDrawer = false }) {
       }
     })();
   }, [subTot, cartItems, couponState.couponApplied, couponState.offer?._id, couponState.couponName, couponState.couponDiscount]);
-
   /* ---------- AUTO‑APPLY (fixed to work for all offer types) -------- */
   const { autoApplyDisabled, autoApplyDisabledAt, manualCoupon } = orderForm;
   const blocked = autoApplyDisabled && autoApplyDisabledAt &&
     Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
 
+  // Track previous cart state to detect changes
+  const prevCartRef = useRef(null);
+  const cartChanged = useRef(false);
+  const forceAutoApply = useRef(false);
+  
+  // Check if cart has changed
   useEffect(() => {
-    if (blocked || manualCoupon || couponState.couponApplied || !qty) return;
-
-    (async () => {
-      try {
-        const res = await fetch('/api/checkout/coupons/apply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            auto: true,
-            totalCost: subTot,
-            isFirstOrder,
-            cartItems: flattenCart(cartItems),
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.valid || !data.offer) return;
-
-        // Get the first coupon code from the offer
-        const couponCode = data.offer.couponCodes && data.offer.couponCodes.length > 0
-          ? data.offer.couponCodes[0]
-          : `AUTO_${data.offer._id}`;
-
-        // Prevent duplicate application of the same offer
-        if (lastAutoRef.current.code === couponCode && lastAutoRef.current.type === data.discountType) return;
-
-        applyCoupon(couponCode, data.discountValue, data.discountType, data.offer, true);
-      } catch (e) {
-        console.error('auto‑apply error', e);
+    const currentCartKey = JSON.stringify(cartItems.map(item => ({ id: item.productId, qty: item.quantity })));
+    if (prevCartRef.current !== currentCartKey) {
+      cartChanged.current = true;
+      forceAutoApply.current = true; // Flag to force auto-apply regardless of manual coupon state
+      prevCartRef.current = currentCartKey;
+      
+      // Reset autoApplyDisabled when cart changes
+      if (autoApplyDisabled) {
+        dispatch(resetAutoApplyDisabled());
       }
-    })();
-  }, [qty, subTot, cartItems, couponState.couponApplied, blocked, manualCoupon]);
+    }
+  }, [cartItems, dispatch, autoApplyDisabled]);
+  useEffect(() => {
+    // Don't proceed if a coupon is already applied or cart is empty
+    if (couponState.couponApplied || !qty) {
+      forceAutoApply.current = false; // Reset force flag
+      return;
+    }
+    
+    // If cart changed, ignore blocked state and manual coupon; otherwise respect regular rules
+    if (forceAutoApply.current || ((cartChanged.current || !blocked) && !manualCoupon)) {
+      cartChanged.current = false; // Reset the flag
+      forceAutoApply.current = false; // Reset the force flag
+      
+      (async () => {
+        try {
+          const res = await fetch('/api/checkout/coupons/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              auto: true,
+              totalCost: subTot,
+              isFirstOrder,
+              cartItems: flattenCart(cartItems),
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.valid || !data.offer) return;
 
+          // Get the first coupon code from the offer
+          const couponCode = data.offer.couponCodes && data.offer.couponCodes.length > 0
+            ? data.offer.couponCodes[0]
+            : `AUTO_${data.offer._id}`;
+
+          // Prevent duplicate application of the same offer
+          if (lastAutoRef.current.code === couponCode && lastAutoRef.current.type === data.discountType) return;
+
+          applyCoupon(couponCode, data.discountValue, data.discountType, data.offer, true);
+        } catch (e) {
+          console.error('auto‑apply error', e);
+        }
+      })();
+    }
+  }, [qty, subTot, cartItems, couponState.couponApplied, blocked, manualCoupon, dispatch, applyCoupon, isFirstOrder]);
   /* ---------- RE‑VALIDATE on cart changes (unchanged) --------------- */
-  const revalidateCoupon = async (silent = false) => {
+  const revalidateCoupon = useCallback(async (silent = false) => {
     if (!couponState.couponApplied) return true;
 
     try {
@@ -392,27 +422,38 @@ export default function ViewCart({ isDrawer = false }) {
           cartItems: flattenCart(cartItems),
         }),
       });
-      const data = await res.json();
-
-      if (!res.ok || !data.valid || data.discountValue <= 0) {
+      const data = await res.json();      if (!res.ok || !data.valid || data.discountValue <= 0) {
         removeCoupon(!silent);
         if (!silent) snack(`Coupon ${couponState.couponName} no longer valid.`, 'warning');
+        
+        // Set flag to force auto-apply after coupon is invalidated
+        forceAutoApply.current = true;
         return false;
       }
 
       if (data.discountValue !== couponState.couponDiscount) {
         setCouponState(p => ({ ...p, couponDiscount: data.discountValue }));
-        dispatchCoupon({ ...couponRedux, discountAmount: data.discountValue });
+        dispatch(setCouponApplied({ ...couponRedux, discountAmount: data.discountValue }));
       }
       return true;
     } catch {
       if (!silent) snack('Could not verify coupon.', 'error');
       return false;
-    }
-  };
-
-  /* run on cart changes */
-  useEffect(() => { revalidateCoupon(true); }, [cartItems, subTot]); // eslint-disable-line
+    }  }, [couponState.couponApplied, couponState.couponName, couponState.couponDiscount, 
+      subTot, isFirstOrder, cartItems, removeCoupon, couponRedux, dispatch, snack]);  /* run on cart changes */
+  useEffect(() => { 
+    // First revalidate existing coupon
+    const revalidate = async () => {
+      const isValid = await revalidateCoupon(true);
+      
+      // If no valid coupon after revalidation, make sure we trigger auto-apply
+      if (!isValid && !couponState.couponApplied) {
+        forceAutoApply.current = true;
+      }
+    };
+    
+    revalidate();
+  }, [cartItems, subTot, revalidateCoupon, couponState.couponApplied]);
 
   /* ---------- validate before checkout (unchanged) ------------------ */
   const handleCheckout = async () => {
@@ -445,7 +486,7 @@ export default function ViewCart({ isDrawer = false }) {
           onBack={isDrawer ? handleBackClick : undefined}
         />
       </header>
-      
+
       {/* Moved the banner outside of scrollable content for more visibility */}
       <CouponTimerBanner />
 
@@ -600,8 +641,11 @@ export default function ViewCart({ isDrawer = false }) {
                 )}
               </AnimatePresence>
 
+
+{/* _______________________________________________________NOT REQUIRED FOR NOW______________________________________________ */}
+              {/* We don't need this section for now  */}
               {/* Available Coupon Banner - Enhanced with next best logic */}
-              {!couponState.couponApplied && nowCoupon && (
+              {/* {!couponState.couponApplied && nowCoupon && (
                 <motion.div
                   className={styles.availableCouponBanner}
                   whileHover={{ scale: 1.02 }}
@@ -625,10 +669,12 @@ export default function ViewCart({ isDrawer = false }) {
                     Apply
                   </motion.button>
                 </motion.div>
-              )}
 
+              )} */}
+
+              {/* We don't need this section for now  */}
               {/* Next Available Coupon Banner - When coupon is already applied */}
-              {couponState.couponApplied && nowCoupon && (
+              {/* {couponState.couponApplied && nowCoupon && (
                 <motion.div
                   className={styles.availableCouponBanner}
                   whileHover={{ scale: 1.02 }}
@@ -654,7 +700,9 @@ export default function ViewCart({ isDrawer = false }) {
                     Switch
                   </motion.button>
                 </motion.div>
-              )}
+              )} */}
+{/* __________________________________________________________________________________________________________________________*/}
+
 
               {/* Price Details */}
               <PriceDetails
