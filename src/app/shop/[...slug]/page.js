@@ -10,7 +10,6 @@ import { notFound } from 'next/navigation';
 import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
 import ProductInfoTab from '@/models/ProductInfoTab';
 import connectToDatabase from '@/lib/middleware/connectToDb';
-import CouponTimerBanner from '@/components/showcase/banners/CouponTimerBanner';
 async function getProductInfoTabs(specificCategory, product, variant) {
   if (
     !specificCategory ||
@@ -129,7 +128,6 @@ export default async function ShopPage({ params }) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <CouponTimerBanner />
         <ProductIdPage
           product={product}
           variant={variant}
