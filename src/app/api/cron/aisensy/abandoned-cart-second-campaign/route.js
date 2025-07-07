@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
 import Product from '@/models/Product';
+import CampaignLog from '@/models/CampaignLog';
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 
 export async function GET(req) {
@@ -61,8 +62,23 @@ export async function GET(req) {
     }
 
     let sentCount = 0;
+    let skippedCount = 0;
+    
     for (const order of abandonedOrders) {
       const { userId, userName, phoneNumber, orderId, firstItem } = order;
+
+      // Check if this phone number already received a successful message for any abandoned cart campaign
+      const existingSuccessfulCampaign = await CampaignLog.findOne({
+        phoneNumber: phoneNumber,
+        campaignName: { $in: ['ac_1', 'ac2'] }, // Check both abandoned cart campaigns
+        successfulCount: { $gte: 1 }
+      });
+
+      if (existingSuccessfulCampaign) {
+        console.log(`Skipping ${phoneNumber} - already received successful campaign: ${existingSuccessfulCampaign.campaignName}`);
+        skippedCount++;
+        continue;
+      }
 
       // Build carousel cards based on the official AiSensy format
       let carouselCards = [];
@@ -162,7 +178,7 @@ export async function GET(req) {
     }
 
     return NextResponse.json({
-      message: `Abandoned Cart Second Campaign executed. Messages attempted: ${abandonedOrders.length}, successfully sent: ${sentCount}`,
+      message: `Abandoned Cart Second Campaign executed. Messages attempted: ${abandonedOrders.length}, successfully sent: ${sentCount}, skipped (already contacted): ${skippedCount}`,
     });
   } catch (error) {
     console.error("Error in second-campaign cron:", error);
