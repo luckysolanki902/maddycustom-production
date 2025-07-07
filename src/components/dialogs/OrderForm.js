@@ -82,10 +82,8 @@ const OrderForm = ({
   // Local Tab Index State - memoize to prevent rerenders
   const [tabIndex, setTabIndex] = useState(0);
 
-  // Mobile keyboard detection state
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  const [viewportHeight, setViewportHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 0);
-  const [initialViewportHeight, setInitialViewportHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 0);
+  // Simple mobile focus detection
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -237,110 +235,24 @@ const OrderForm = ({
     }
   }, [userExists, prefilledAddress, dispatch, addressDetails]);
 
-  // Mobile keyboard detection effect - Enhanced for better UX in browsers like Instagram
+  // Simple focus-based mobile optimization
   useEffect(() => {
-    if (!isMobile || typeof window === 'undefined') return;
+    if (!isMobile || !isInputFocused) return;
 
-    // Set initial viewport height when dialog opens
-    if (open) {
-      const initialHeight = window.innerHeight;
-      setInitialViewportHeight(initialHeight);
-      setViewportHeight(initialHeight);
-      setIsKeyboardVisible(false);
-    }
-
-    let resizeTimer;
-    let rafId;
-
-    const handleResize = () => {
-      // Debounce resize events but use RAF for smooth updates
-      clearTimeout(resizeTimer);
-      if (rafId) cancelAnimationFrame(rafId);
-      
-      resizeTimer = setTimeout(() => {
-        rafId = requestAnimationFrame(() => {
-          const currentHeight = window.innerHeight;
-          const heightDifference = initialViewportHeight - currentHeight;
-          
-          // If height decreased by more than 150px, assume keyboard is visible
-          // Also check if current height is significantly smaller than initial
-          const keyboardVisible = heightDifference > 150 && currentHeight < initialViewportHeight * 0.75;
-          
-          setIsKeyboardVisible(keyboardVisible);
-          setViewportHeight(currentHeight);
+    // Simple scroll behavior when input is focused on mobile
+    const timeoutId = setTimeout(() => {
+      const activeElement = document.activeElement;
+      if (activeElement && activeElement.tagName === 'INPUT') {
+        activeElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
         });
-      }, 100);
-    };
-
-    const handleVisibilityChange = () => {
-      // Reset keyboard state when page becomes hidden/visible
-      if (document.visibilityState === 'visible') {
-        setTimeout(() => {
-          const currentHeight = window.innerHeight;
-          setViewportHeight(currentHeight);
-          // Only reset keyboard state if height is back to normal
-          if (currentHeight >= initialViewportHeight * 0.9) {
-            setIsKeyboardVisible(false);
-          }
-        }, 100);
       }
-    };
+    }, 300); // Allow time for keyboard to appear
 
-    // Handle orientation change
-    const handleOrientationChange = () => {
-      setTimeout(() => {
-        const newHeight = window.innerHeight;
-        setInitialViewportHeight(newHeight);
-        setViewportHeight(newHeight);
-        setIsKeyboardVisible(false);
-      }, 300); // Allow time for orientation change to complete
-    };
-
-    if (open) {
-      window.addEventListener('resize', handleResize, { passive: true });
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      window.addEventListener('orientationchange', handleOrientationChange);
-    }
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('orientationchange', handleOrientationChange);
-      clearTimeout(resizeTimer);
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, [isMobile, open, initialViewportHeight]);
-
-  // Handle focus behavior when keyboard appears
-  useEffect(() => {
-    if (!isMobile || !isKeyboardVisible) return;
-
-    // Scroll to focused element when keyboard appears
-    const handleFocusScroll = () => {
-      setTimeout(() => {
-        const activeElement = document.activeElement;
-        if (activeElement && activeElement.tagName === 'INPUT') {
-          activeElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-            inline: 'nearest'
-          });
-        }
-      }, 300);
-    };
-
-    // Add listener to all input fields
-    const inputElements = document.querySelectorAll('input[type="text"], input[type="tel"], input[type="email"]');
-    inputElements.forEach(input => {
-      input.addEventListener('focus', handleFocusScroll);
-    });
-
-    return () => {
-      inputElements.forEach(input => {
-        input.removeEventListener('focus', handleFocusScroll);
-      });
-    };
-  }, [isMobile, isKeyboardVisible]);
+    return () => clearTimeout(timeoutId);
+  }, [isMobile, isInputFocused]);
 
   const handleTabChange = useCallback((newValue) => {
     setTabIndex(newValue);
@@ -842,6 +754,8 @@ const OrderForm = ({
         helperText={helperText}
         disabled={disabled}
         onChange={onChange}
+        onFocus={() => isMobile && setIsInputFocused(true)}
+        onBlur={() => isMobile && setIsInputFocused(false)}
         InputLabelProps={{
           style: {
             fontFamily: 'Jost, sans-serif',
@@ -856,7 +770,7 @@ const OrderForm = ({
           ...InputProps
         }}
         sx={{
-          marginBottom: isKeyboardVisible ? '0.75rem' : '1rem',
+          marginBottom: '1rem',
           maxWidth: maxWidth,
           '& .MuiOutlinedInput-root': {
             borderRadius: '8px',
@@ -865,21 +779,17 @@ const OrderForm = ({
               boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
             },
             '&.Mui-focused': {
-              transform: isKeyboardVisible ? 'translateY(-1px)' : 'translateY(-2px)',
+              transform: 'translateY(-2px)',
               boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
             }
           },
           '& .MuiInputLabel-shrink': {
             transform: 'translate(14px, -12px) scale(0.75)',
-          },
-          '& .MuiFormHelperText-root': {
-            fontSize: isKeyboardVisible ? '0.7rem' : '0.75rem',
-            marginTop: isKeyboardVisible ? '2px' : '3px',
           }
         }}
       />
     </motion.div>
-  ), [isKeyboardVisible]);
+  ), [isMobile]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -899,109 +809,77 @@ const OrderForm = ({
           sx: {
             borderRadius: '1.5rem',
             overflow: 'hidden',
-            // Dynamic height based on keyboard state for mobile
-            ...(isMobile && isKeyboardVisible 
-              ? {
-                  height: `${Math.max(viewportHeight * 0.95, 400)}px`, // Ensure minimum height
-                  maxHeight: `${Math.max(viewportHeight * 0.95, 400)}px`,
-                  position: 'fixed',
-                  top: '2.5vh',
-                  margin: 0,
-                }
-              : {
-                  maxHeight: '88vh',
-                }
-            ),
-            // Ensure dialog doesn't get too small on very short screens
+            maxHeight: '88vh',
+            // Ensure minimum height on very small screens
             minHeight: isMobile ? '400px' : 'auto',
           },
         }}
       >
         <DialogContent
           sx={{
-            padding: { 
-              xs: isKeyboardVisible ? '0.8rem' : '1.2rem', 
-              md: '1.5rem' 
-            },
-            paddingTop: { 
-              xs: isKeyboardVisible ? '0.5rem' : '0.8rem', 
-              md: '1.2rem' 
-            },
+            padding: { xs: '1.2rem', md: '1.5rem' },
+            paddingTop: { xs: '0.8rem', md: '1.2rem' },
             background: 'linear-gradient(to bottom, #f9f9f9, #ffffff)',
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
             overflow: 'hidden',
-            // Ensure proper scrolling when keyboard is visible
-            ...(isMobile && isKeyboardVisible && {
-              minHeight: '350px', // Minimum usable height
-              maxHeight: `${Math.max(viewportHeight * 0.95, 400)}px`,
-            }),
           }}
         >
-          {/* Logo and Stepper - Made more compact, especially when keyboard is visible */}
+          {/* Logo and Stepper */}
           <Box sx={{
             position: 'relative',
-            mb: isKeyboardVisible ? 0.2 : 0.5,
-            flexShrink: 0, // Prevent shrinking
-            transition: 'margin-bottom 0.3s ease',
+            mb: 0.5,
+            flexShrink: 0,
           }}>
-            {/* Logo - Hide or make smaller when keyboard is visible */}
-            {!isKeyboardVisible && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.5, type: 'spring', stiffness: 200 }}
-              >
-                <Image
-                  loading="eager"
-                  src={`${baseImageUrl}/assets/logos/md_nothing_else.png`}
-                  width={60}
-                  height={60}
-                  alt="Logo"
-                  style={{
-                    width: '60px',
-                    height: 'auto',
-                    margin: '0 auto',
-                    display: 'block',
-                  }}
-                />
-              </motion.div>
-            )}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, type: 'spring', stiffness: 200 }}
+            >
+              <Image
+                loading="eager"
+                src={`${baseImageUrl}/assets/logos/md_nothing_else.png`}
+                width={60}
+                height={60}
+                alt="Logo"
+                style={{
+                  width: '60px',
+                  height: 'auto',
+                  margin: '0 auto',
+                  display: 'block',
+                }}
+              />
+            </motion.div>
 
-            {/* Custom Stepper - More compact when keyboard is visible */}
+            {/* Custom Stepper */}
             <Box sx={{
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              mt: isKeyboardVisible ? 0.5 : 1.5,
+              mt: 1.5,
               position: 'relative',
-              height: isKeyboardVisible ? '25px' : '30px',
-              transition: 'margin-top 0.3s ease, height 0.3s ease',
+              height: '30px',
             }}>
               <Box sx={{
                 position: 'absolute',
                 left: '50%',
-                width: isKeyboardVisible ? '50px' : '60px',
+                width: '60px',
                 height: '2px',
                 backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
-                transform: isKeyboardVisible ? 'translateX(-25px)' : 'translateX(-30px)',
-                transition: 'background-color 0.5s, width 0.3s ease, transform 0.3s ease'
+                transform: 'translateX(-30px)',
+                transition: 'background-color 0.5s'
               }} />
 
               <motion.div
-                animate={{ 
-                  scale: tabIndex === 0 ? 1.1 : 0.9, 
-                  x: tabIndex === 0 ? (isKeyboardVisible ? -30 : -40) : (isKeyboardVisible ? -30 : -40) 
-                }}
+                animate={{ scale: tabIndex === 0 ? 1.1 : 0.9, x: -40 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
               >
                 <Box
                   sx={{
-                    width: isKeyboardVisible ? '20px' : '25px',
-                    height: isKeyboardVisible ? '20px' : '25px',
+                    width: '25px',
+                    height: '25px',
                     borderRadius: '50%',
                     backgroundColor: '#000',
                     color: 'white',
@@ -1010,10 +888,10 @@ const OrderForm = ({
                     alignItems: 'center',
                     fontFamily: 'Jost, sans-serif',
                     fontWeight: 600,
-                    fontSize: isKeyboardVisible ? '0.7rem' : '0.8rem',
+                    fontSize: '0.8rem',
                     zIndex: 1,
                     boxShadow: tabIndex === 0 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'box-shadow 0.3s, width 0.3s ease, height 0.3s ease, font-size 0.3s ease',
+                    transition: 'box-shadow 0.3s',
                     cursor: 'pointer'
                   }}
                   onClick={() => tabIndex !== 0 && handleTabChange(0)}
@@ -1023,16 +901,13 @@ const OrderForm = ({
               </motion.div>
 
               <motion.div
-                animate={{ 
-                  scale: tabIndex === 1 ? 1.1 : 0.9, 
-                  x: tabIndex === 1 ? (isKeyboardVisible ? 30 : 40) : (isKeyboardVisible ? 30 : 40) 
-                }}
+                animate={{ scale: tabIndex === 1 ? 1.1 : 0.9, x: 40 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
               >
                 <Box
                   sx={{
-                    width: isKeyboardVisible ? '20px' : '25px',
-                    height: isKeyboardVisible ? '20px' : '25px',
+                    width: '25px',
+                    height: '25px',
                     borderRadius: '50%',
                     backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
                     color: tabIndex === 1 ? 'white' : '#999',
@@ -1041,10 +916,10 @@ const OrderForm = ({
                     alignItems: 'center',
                     fontFamily: 'Jost, sans-serif',
                     fontWeight: 600,
-                    fontSize: isKeyboardVisible ? '0.7rem' : '0.8rem',
+                    fontSize: '0.8rem',
                     zIndex: 1,
                     boxShadow: tabIndex === 1 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'box-shadow 0.3s, background-color 0.3s, color 0.3s, width 0.3s ease, height 0.3s ease, font-size 0.3s ease',
+                    transition: 'box-shadow 0.3s, background-color 0.3s, color 0.3s',
                     cursor: tabIndex === 1 ? 'pointer' : 'default'
                   }}
                 >
@@ -1054,7 +929,7 @@ const OrderForm = ({
               </motion.div>
             </Box>
 
-            {/* Title - More compact when keyboard is visible */}
+            {/* Title */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1064,13 +939,12 @@ const OrderForm = ({
                 variant="h6"
                 align="center"
                 sx={{
-                  mt: isKeyboardVisible ? 0.2 : 0.5,
-                  mb: isKeyboardVisible ? 0.5 : 1,
+                  mt: 0.5,
+                  mb: 1,
                   fontFamily: 'Jost, sans-serif',
                   fontWeight: 500,
-                  fontSize: isKeyboardVisible ? '0.9rem' : '1rem',
+                  fontSize: '1rem',
                   color: '#333',
-                  transition: 'margin-top 0.3s ease, margin-bottom 0.3s ease, font-size 0.3s ease',
                 }}
               >
                 {tabIndex === 0 ? "Let's get to know you" : "Where should we deliver?"}
@@ -1116,7 +990,7 @@ const OrderForm = ({
               margin: '0 auto', // Center the form content area
             }}
           >
-            {/* Scrollable Fields Area - More responsive when keyboard is visible */}
+            {/* Scrollable Fields Area */}
             <Box
               sx={{
                 flexGrow: 1,
@@ -1124,17 +998,10 @@ const OrderForm = ({
                 overflowX: 'hidden',
                 position: 'relative',
                 width: '100%',
-                // Hide scrollbar styles
                 '&::-webkit-scrollbar': { display: 'none' },
                 msOverflowStyle: 'none',
                 scrollbarWidth: 'none',
-                pb: isKeyboardVisible ? '1rem' : '2rem',
-                // When keyboard is visible, ensure minimum scroll area
-                ...(isMobile && isKeyboardVisible && {
-                  minHeight: '200px',
-                  maxHeight: `${Math.max(viewportHeight * 0.5, 200)}px`,
-                }),
-                transition: 'padding-bottom 0.3s ease',
+                pb: '2rem',
               }}
             >
               <AnimatePresence mode="wait" initial={false} custom={tabIndex}>
@@ -1151,11 +1018,10 @@ const OrderForm = ({
                     <Box sx={{ 
                       display: 'flex', 
                       flexDirection: 'column', 
-                      gap: isKeyboardVisible ? '0.3rem' : '0.5rem', 
+                      gap: '0.5rem', 
                       width: '100%', 
-                      paddingTop: isKeyboardVisible ? '0.3rem' : '0.5rem', 
+                      paddingTop: '0.5rem', 
                       px: { xs: 0.5, sm: 1 },
-                      transition: 'gap 0.3s ease, padding-top 0.3s ease',
                     }}> {/* Added horizontal padding */}
                       {/* Name field */}
                       <Controller
@@ -1311,10 +1177,9 @@ const OrderForm = ({
                     <Box sx={{ 
                       display: 'flex', 
                       flexDirection: 'column', 
-                      gap: isKeyboardVisible ? '0.3rem' : '0.5rem', 
-                      paddingTop: isKeyboardVisible ? '0.3rem' : '0.5rem', 
+                      gap: '0.5rem', 
+                      paddingTop: '0.5rem', 
                       px: { xs: 0.5, sm: 1 },
-                      transition: 'gap 0.3s ease, padding-top 0.3s ease',
                     }}> {/* Added horizontal padding */}
                       <Controller
                         name="addressLine1"
@@ -1488,18 +1353,17 @@ const OrderForm = ({
               </AnimatePresence>
             </Box> {/* End Scrollable Fields Area */}
 
-            {/* Fixed Button Area - More compact when keyboard is visible */}
+            {/* Fixed Button Area */}
             <Box
               sx={{
                 flexShrink: 0,
-                pt: isKeyboardVisible ? 0.8 : 1.5,
-                pb: isKeyboardVisible ? 0.5 : { xs: 1, sm: 1.5 },
+                pt: 1.5,
+                pb: { xs: 1, sm: 1.5 },
                 mt: 'auto',
                 borderTop: `1px solid ${theme.palette.divider}`,
                 backgroundColor: '#ffffff',
                 width: '100%',
                 boxShadow: '0 -2px 5px rgba(0,0,0,0.05)',
-                transition: 'padding-top 0.3s ease, padding-bottom 0.3s ease',
               }}
             >
               <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -1554,26 +1418,24 @@ const OrderForm = ({
             </Box> {/* End Fixed Button Area */}
           </Box> {/* End Form Wrapper */}
 
-          {/* Trust indicators - Hide when keyboard is visible to save space */}
-          {!isKeyboardVisible && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ delay: 0.5, duration: 0.6 }}
+          {/* Trust indicators */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+          >
+            <Box
+              sx={{
+                mt: 1,
+                pt: 1,
+                borderTop: '1px solid #f0f0f0',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 1,
+                flexShrink: 0,
+              }}
             >
-              <Box
-                sx={{
-                  mt: 1,
-                  pt: 1,
-                  borderTop: '1px solid #f0f0f0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 1,
-                  flexShrink: 0,
-                }}
-              >
               <Typography
                 variant="subtitle2"
                 sx={{
@@ -1719,7 +1581,6 @@ const OrderForm = ({
               </Box>
             </Box>
           </motion.div>
-          )}
         </DialogContent>
       </Dialog>
 
