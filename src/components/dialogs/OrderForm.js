@@ -235,6 +235,62 @@ const OrderForm = ({
     }
   }, [userExists, prefilledAddress, dispatch, addressDetails]);
 
+  // Prevent dialog shrinking on mobile keyboard
+  useEffect(() => {
+    if (!isMobile || !open) return;
+
+    // Force dialog to use visual viewport instead of layout viewport
+    const handleViewportChange = () => {
+      if (window.visualViewport) {
+        const viewport = window.visualViewport;
+        const dialogElement = document.querySelector('.MuiDialog-paper');
+        if (dialogElement) {
+          // Keep dialog at original size regardless of keyboard
+          dialogElement.style.position = 'fixed';
+          dialogElement.style.top = '50%';
+          dialogElement.style.left = '50%';
+          dialogElement.style.transform = 'translate(-50%, -50%)';
+          dialogElement.style.zIndex = '1300';
+          dialogElement.style.width = '90vw';
+          dialogElement.style.maxWidth = '500px';
+          dialogElement.style.height = '85vh';
+          dialogElement.style.maxHeight = '600px';
+        }
+      }
+    };
+
+    // Use visual viewport API if available
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+    }
+
+    // Initial setup
+    handleViewportChange();
+
+    // Prevent body scrolling and resizing
+    const originalOverflow = document.body.style.overflow;
+    const originalPosition = document.body.style.position;
+    const originalHeight = document.body.style.height;
+    
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.height = '100vh';
+    document.body.style.width = '100vw';
+
+    return () => {
+      // Cleanup
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+      }
+      
+      // Restore body styles
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = originalPosition;
+      document.body.style.height = originalHeight;
+      document.body.style.width = '';
+    };
+  }, [isMobile, open]);
+
   // Simple focus-based mobile optimization
   useEffect(() => {
     if (!isMobile || !isInputFocused) return;
@@ -809,28 +865,48 @@ const OrderForm = ({
           sx: {
             borderRadius: '1.5rem',
             overflow: 'hidden',
-            maxHeight: '88vh',
-            // Ensure minimum height on very small screens
-            minHeight: isMobile ? '400px' : 'auto',
+            // Force fixed positioning and dimensions to prevent keyboard shrinking
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: { xs: '90vw', sm: '500px' },
+            maxWidth: '500px',
+            height: { xs: '85vh', sm: 'auto' },
+            maxHeight: '90vh',
+            margin: 0,
+            // Ensure minimum height on mobile to prevent shrinking
+            minHeight: isMobile ? '500px' : 'auto',
+            // Responsive height for very short screens
+            '@media (max-height: 550px)': {
+              height: '90vh',
+              minHeight: '90vh',
+            },
           },
         }}
       >
         <DialogContent
           sx={{
-            padding: { xs: '1.2rem', md: '1.5rem' },
-            paddingTop: { xs: '0.8rem', md: '1.2rem' },
+            padding: { xs: '0.8rem', md: '1.5rem' }, // Reduced padding on mobile
+            paddingTop: { xs: '0.4rem', md: '1.2rem' }, // Reduced top padding on mobile
             background: 'linear-gradient(to bottom, #f9f9f9, #ffffff)',
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
             overflow: 'hidden',
+            // Remove minHeight to prevent footer from growing
+            // minHeight: isMobile ? '420px' : 'auto',
+            ...(isMobile && {
+              height: '100%',
+              maxHeight: 'none',
+            }),
           }}
         >
           {/* Logo and Stepper */}
           <Box sx={{
             position: 'relative',
-            mb: 0.5,
+            mb: { xs: 0, sm: 0.5 }, // No margin on mobile
             flexShrink: 0,
           }}>
             <motion.div
@@ -841,11 +917,11 @@ const OrderForm = ({
               <Image
                 loading="eager"
                 src={`${baseImageUrl}/assets/logos/md_nothing_else.png`}
-                width={60}
-                height={60}
+                width={isMobile ? 35 : 60} // Even smaller on mobile
+                height={isMobile ? 35 : 60}
                 alt="Logo"
                 style={{
-                  width: '60px',
+                  width: isMobile ? '35px' : '60px',
                   height: 'auto',
                   margin: '0 auto',
                   display: 'block',
@@ -858,9 +934,9 @@ const OrderForm = ({
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              mt: 1.5,
+              mt: { xs: 0.5, sm: 1.5 }, // Much smaller margin on mobile
               position: 'relative',
-              height: '30px',
+              height: { xs: '20px', sm: '30px' }, // Smaller height on mobile
             }}>
               <Box sx={{
                 position: 'absolute',
@@ -878,8 +954,8 @@ const OrderForm = ({
               >
                 <Box
                   sx={{
-                    width: '25px',
-                    height: '25px',
+                    width: { xs: '20px', sm: '25px' }, // Smaller on mobile
+                    height: { xs: '20px', sm: '25px' },
                     borderRadius: '50%',
                     backgroundColor: '#000',
                     color: 'white',
@@ -888,7 +964,7 @@ const OrderForm = ({
                     alignItems: 'center',
                     fontFamily: 'Jost, sans-serif',
                     fontWeight: 600,
-                    fontSize: '0.8rem',
+                    fontSize: { xs: '0.7rem', sm: '0.8rem' }, // Smaller font on mobile
                     zIndex: 1,
                     boxShadow: tabIndex === 0 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
                     transition: 'box-shadow 0.3s',
@@ -906,8 +982,8 @@ const OrderForm = ({
               >
                 <Box
                   sx={{
-                    width: '25px',
-                    height: '25px',
+                    width: { xs: '20px', sm: '25px' }, // Smaller on mobile
+                    height: { xs: '20px', sm: '25px' },
                     borderRadius: '50%',
                     backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
                     color: tabIndex === 1 ? 'white' : '#999',
@@ -916,7 +992,7 @@ const OrderForm = ({
                     alignItems: 'center',
                     fontFamily: 'Jost, sans-serif',
                     fontWeight: 600,
-                    fontSize: '0.8rem',
+                    fontSize: { xs: '0.7rem', sm: '0.8rem' }, // Smaller font on mobile
                     zIndex: 1,
                     boxShadow: tabIndex === 1 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
                     transition: 'box-shadow 0.3s, background-color 0.3s, color 0.3s',
@@ -929,11 +1005,20 @@ const OrderForm = ({
               </motion.div>
             </Box>
 
-            {/* Title */}
+            {/* Title - Hidden on small/short mobile screens */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.5 }}
+              sx={{
+                display: {
+                  xs: 'none', // Hide on extra small screens
+                  sm: 'block', // Show on small screens and up
+                  '@media (max-height: 600px)': {
+                    display: 'none', // Hide on short viewports regardless of width
+                  },
+                },
+              }}
             >
               <Typography
                 variant="h6"
@@ -1002,6 +1087,12 @@ const OrderForm = ({
                 msOverflowStyle: 'none',
                 scrollbarWidth: 'none',
                 pb: '2rem',
+                // Use flexible height instead of fixed height to fill available space
+                ...(isMobile && {
+                  flex: 1, // Take up remaining space
+                  minHeight: '200px', // Minimum to ensure usability
+                  // Remove fixed height constraints
+                }),
               }}
             >
               <AnimatePresence mode="wait" initial={false} custom={tabIndex}>
@@ -1357,13 +1448,19 @@ const OrderForm = ({
             <Box
               sx={{
                 flexShrink: 0,
-                pt: 1.5,
-                pb: { xs: 1, sm: 1.5 },
-                mt: 'auto',
+                pt: { xs: 0.8, sm: 1.5 }, // Reduced padding on mobile
+                pb: { xs: 0.8, sm: 1.5 }, // Reduced padding on mobile
+                // Removed mt: 'auto' to prevent footer from being pushed down
                 borderTop: `1px solid ${theme.palette.divider}`,
                 backgroundColor: '#ffffff',
                 width: '100%',
                 boxShadow: '0 -2px 5px rgba(0,0,0,0.05)',
+                // Ensure button area is always visible on mobile
+                ...(isMobile && {
+                  pb: 0.8,
+                  position: 'relative',
+                  zIndex: 1,
+                }),
               }}
             >
               <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -1418,21 +1515,32 @@ const OrderForm = ({
             </Box> {/* End Fixed Button Area */}
           </Box> {/* End Form Wrapper */}
 
-          {/* Trust indicators */}
+          {/* Trust indicators - Compact on mobile, hidden on very small/short screens */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
+            sx={{
+              display: {
+                xs: 'block',
+                '@media (max-width: 360px)': {
+                  display: 'none', // Hide on very small screens
+                },
+                '@media (max-height: 550px)': {
+                  display: 'none', // Hide on very short viewports
+                },
+              },
+            }}
           >
             <Box
               sx={{
-                mt: 1,
-                pt: 1,
+                mt: { xs: 0.25, sm: 1 }, // Much smaller margin on mobile
+                pt: { xs: 0.25, sm: 1 }, // Much smaller padding on mobile
                 borderTop: '1px solid #f0f0f0',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 1,
+                gap: { xs: 0.25, sm: 1 }, // Much smaller gap on mobile
                 flexShrink: 0,
               }}
             >
@@ -1441,8 +1549,13 @@ const OrderForm = ({
                 sx={{
                   fontFamily: 'Jost, sans-serif',
                   color: '#666',
-                  fontSize: '0.8rem', // Reduced from 0.9rem
+                  fontSize: { xs: '0.65rem', sm: '0.8rem' }, // Smaller on mobile
                   textAlign: 'center',
+                  display: {
+                    '@media (max-height: 600px)': {
+                      display: 'none', // Hide text on short screens
+                    },
+                  },
                 }}
               >
                 Trusted by 50,000+ happy customers
@@ -1453,7 +1566,7 @@ const OrderForm = ({
                   display: 'flex',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  gap: { xs: 2, sm: 3 }, // Reduced from { xs: 2, sm: 4 }
+                  gap: { xs: 0.5, sm: 2 }, // Much smaller gap on mobile
                   width: '100%',
                 }}
               >
@@ -1463,14 +1576,14 @@ const OrderForm = ({
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: 0.5, // Reduced from 1
+                      gap: { xs: 0.25, sm: 0.5 }, // Smaller gap on mobile
                     }}
                   >
                     <Image
                       loading="eager"
                       src={`${baseImageUrl}/assets/icons/shield.png`}
-                      width={24} // Reduced from 32
-                      height={24} // Reduced from 32
+                      width={isMobile ? 14 : 24} // Even smaller icons on mobile
+                      height={isMobile ? 14 : 24}
                       alt="Secure Payment"
                       style={{ opacity: 0.7 }}
                     />
@@ -1480,10 +1593,15 @@ const OrderForm = ({
                         fontFamily: 'Jost, sans-serif',
                         color: '#666',
                         textAlign: 'center',
-                        fontSize: '0.6rem', // Reduced from 0.7rem
+                        fontSize: { xs: '0.5rem', sm: '0.6rem' }, // Smaller text on mobile
+                        display: {
+                          '@media (max-height: 600px)': {
+                            display: 'none', // Hide text on short screens
+                          },
+                        },
                       }}
                     >
-                      Secure Payment
+                      Secure
                     </Typography>
                   </Box>
                 </motion.div>
@@ -1494,14 +1612,14 @@ const OrderForm = ({
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: 0.5, // Reduced from 1
+                      gap: { xs: 0.25, sm: 0.5 }, // Smaller gap on mobile
                     }}
                   >
                     <Image
                       loading="eager"
                       src={`${baseImageUrl}/assets/icons/fast-delivery.png`}
-                      width={24} // Reduced from 32
-                      height={24} // Reduced from 32
+                      width={isMobile ? 14 : 24} // Even smaller icons on mobile
+                      height={isMobile ? 14 : 24}
                       alt="Fast Shipping"
                       style={{ opacity: 0.7 }}
                     />
@@ -1511,10 +1629,15 @@ const OrderForm = ({
                         fontFamily: 'Jost, sans-serif',
                         color: '#666',
                         textAlign: 'center',
-                        fontSize: '0.6rem', // Reduced from 0.7rem
+                        fontSize: { xs: '0.5rem', sm: '0.6rem' }, // Smaller text on mobile
+                        display: {
+                          '@media (max-height: 600px)': {
+                            display: 'none', // Hide text on short screens
+                          },
+                        },
                       }}
                     >
-                      Fast Shipping
+                      Fast
                     </Typography>
                   </Box>
                 </motion.div>
@@ -1525,14 +1648,14 @@ const OrderForm = ({
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: 0.5, // Reduced from 1
+                      gap: { xs: 0.25, sm: 0.5 }, // Smaller gap on mobile
                     }}
                   >
                     <Image
                       loading="eager"
                       src={`${baseImageUrl}/assets/icons/happiness.png`}
-                      width={24} // Reduced from 32
-                      height={24} // Reduced from 32
+                      width={isMobile ? 14 : 24} // Even smaller icons on mobile
+                      height={isMobile ? 14 : 24}
                       alt="Customer Satisfaction"
                       style={{ opacity: 0.7 }}
                     />
@@ -1542,21 +1665,35 @@ const OrderForm = ({
                         fontFamily: 'Jost, sans-serif',
                         color: '#666',
                         textAlign: 'center',
-                        fontSize: '0.6rem', // Reduced from 0.7rem
+                        fontSize: { xs: '0.5rem', sm: '0.6rem' }, // Smaller text on mobile
+                        display: {
+                          '@media (max-height: 600px)': {
+                            display: 'none', // Hide text on short screens
+                          },
+                        },
                       }}
                     >
-                      100% Satisfaction
+                      100%
                     </Typography>
                   </Box>
                 </motion.div>
               </Box>
 
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  '@media (max-height: 600px)': {
+                    display: 'none', // Hide payment logo on short screens
+                  },
+                }}
+              >
                 <Image
                   loading="eager"
                   src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`}
-                  width={50} // Reduced from 60
-                  height={15} // Reduced from 18
+                  width={isMobile ? 40 : 50} // Smaller on mobile
+                  height={isMobile ? 12 : 15}
                   alt="Razorpay"
                   style={{ opacity: 0.7 }}
                 />
@@ -1565,7 +1702,7 @@ const OrderForm = ({
                   sx={{
                     fontFamily: 'Jost, sans-serif',
                     color: '#666',
-                    fontSize: '0.6rem', // Reduced from 0.7rem
+                    fontSize: { xs: '0.5rem', sm: '0.6rem' }, // Smaller on mobile
                   }}
                 >
                   |
@@ -1573,8 +1710,8 @@ const OrderForm = ({
                 <Image
                   loading="eager"
                   src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`}
-                  width={50} // Reduced from 60
-                  height={15} // Reduced from 18
+                  width={isMobile ? 40 : 50} // Smaller on mobile
+                  height={isMobile ? 12 : 15}
                   alt="Shiprocket"
                   style={{ opacity: 0.7 }}
                 />
