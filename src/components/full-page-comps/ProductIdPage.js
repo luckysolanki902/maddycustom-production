@@ -165,7 +165,7 @@ export default function ProductIdPage({
   // --- MERGE IMAGES FROM DESCRIPTION TAB ---
   const productImages = product.images || [];
   let descriptionImages = [];
-
+if (category?.specificCategoryCode !== 'cmat') {
   productInfoTabs.forEach((tab) => {
     if (
       tab.title &&
@@ -190,6 +190,7 @@ export default function ProductIdPage({
       });
     }
   });
+}
 
   // Determine which images to show:
   // If a selected option exists with images, show its first image; otherwise, show product & description images.
