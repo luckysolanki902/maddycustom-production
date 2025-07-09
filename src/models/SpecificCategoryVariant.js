@@ -73,6 +73,11 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    commonGalleryImages: [
+      {
+        type: String,
+      },
+    ],
     features: [
       {
         imageUrl: {
