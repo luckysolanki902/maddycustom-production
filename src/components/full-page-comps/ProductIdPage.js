@@ -162,7 +162,7 @@ export default function ProductIdPage({
     }
   }, [category, router]);
 
-  // --- MERGE IMAGES FROM DESCRIPTION TAB ---
+  // --- MERGE IMAGES FROM DESCRIPTION TAB AND COMMON GALLERY ---
   const productImages = product.images || [];
   let descriptionImages = [];
 if (category?.specificCategoryCode !== 'cmat') {
@@ -192,12 +192,15 @@ if (category?.specificCategoryCode !== 'cmat') {
   });
 }
 
+  // Get common gallery images from category
+  const commonGalleryImages = category?.commonGalleryImages || [];
+
   // Determine which images to show:
-  // If a selected option exists with images, show its first image; otherwise, show product & description images.
+  // If a selected option exists with images, show its first image; otherwise, show product, description, and common gallery images.
   const mergedImages =
     selectedOption && selectedOption.images && selectedOption.images.length > 0
       ? [selectedOption.images[0]]
-      : [...productImages, ...descriptionImages];
+      : [...productImages, ...descriptionImages, ...commonGalleryImages];
 
   // Prepend the Cloudfront base URL if necessary
   const allImages = mergedImages.map((img) =>
