@@ -59,6 +59,9 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
   // Determine which image to display
   const { imageUrl, outOfStock } = getDisplayImage(product);
 
+  // Check if this is a square layout (listLayout 3)
+  const isSquareLayout = product.variantDetails?.listLayout === '3';
+
   // Final src for Next/Image
   let finalSrc = '/images/assets/gifs/helmetloadinggiflandscape2.gif';
   if (imageUrl) {
@@ -69,7 +72,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
 
   return (
     <div
-      className={`${styles.mainCardDiv} ${showLayout2 ? styles.layout2Card : ''}`}
+      className={`${styles.mainCardDiv} ${showLayout2 ? styles.layout2Card : ''} ${isSquareLayout ? styles.squareLayoutCard : ''}`}
       onClick={navigateToProductPage}
     >
       {offerTaglineText && (
@@ -78,13 +81,13 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
         </div>
       )}
 
-      <div className={styles.imageContainer}>
+      <div className={`${styles.imageContainer} ${isSquareLayout ? styles.squareImageContainer : ''}`}>
         <Image
-          className={styles.image}
+          className={`${styles.image} ${isSquareLayout ? styles.squareImage : ''}`}
           src={finalSrc}
           alt={product.name}
-          width={1076}
-          height={683}
+          width={isSquareLayout ? 1080 : 1076}
+          height={isSquareLayout ? 1080 : 683}
           loading="lazy"
           title={product.title}
           style={{ 
