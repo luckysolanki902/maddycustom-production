@@ -78,6 +78,49 @@
   padding-bottom: 100%; /* Square aspect ratio for layout2 */
 }
 
+/* Square layout (listLayout 3) for 1:1 aspect ratio images */
+.squareLayoutCard {
+  /* margin: 1rem; */
+  /* border-radius: 8px; */
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.squareLayoutCard .imageContainer,
+.squareImageContainer {
+  padding-bottom: 100% !important; /* Perfect square aspect ratio */
+}
+
+.squareLayoutCard .image,
+.squareImage {
+  object-fit: contain !important; /* Show full image without cropping */
+  object-position: center !important;
+  background-color: #fafafa !important;
+}
+
+/* Ensure square layout overrides any media query styles */
+@media (min-width: 1px) {
+  .squareLayoutCard .imageContainer {
+    padding-bottom: 100% !important;
+  }
+  
+  .squareLayoutCard .image {
+    object-fit: contain !important;
+    object-position: center !important;
+  }
+}
+
+/* Hover effects for square layout */
+@media (min-width: 1025px) {
+  .squareLayoutCard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  }
+  
+  .squareLayoutCard:hover .image {
+    transform: scale(1.02);
+  }
+}
+
 /* Enhanced out of stock overlay - minimalistic design */
 .outOfStockOverlay {
   position: absolute;
@@ -127,6 +170,7 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 /* Product subtitle styling */
@@ -144,6 +188,7 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 /* Price section styling - removed vertical margins for layout1 */
@@ -214,11 +259,20 @@
   .finalPrice {
     font-size: 1.2rem;
   }
+  
+  /* HIGH SPECIFICITY OVERRIDE for square layout - ensure it works on all screen sizes */
+  .mainCardDiv.squareLayoutCard .imageContainer {
+    padding-bottom: 100% !important;
+  }
+
+  .mainCardDiv.squareLayoutCard .image {
+    object-fit: contain !important;
+    object-position: center !important;
+    background-color: #fafafa !important;
+  }
 }
 
 @media (max-width: 600px) {
-
-  
   .productName {
     font-size: 0.9rem;
   }
@@ -259,10 +313,26 @@
   .layout2Card .imageContainer {
     padding-bottom: 75%;
   }
+  
+  /* Ensure square layout always maintains square aspect ratio */
+  .squareLayoutCard .imageContainer {
+    padding-bottom: 100% !important;
+  }
 
   .outOfStockOverlay > span {
     padding: 3px 10px;
     font-size: 0.7rem;
+  }
+  
+  /* HIGH SPECIFICITY OVERRIDE for square layout - ensure it works on all screen sizes */
+  .mainCardDiv.squareLayoutCard .imageContainer {
+    padding-bottom: 100% !important;
+  }
+
+  .mainCardDiv.squareLayoutCard .image {
+    object-fit: contain !important;
+    object-position: center !important;
+    background-color: #fafafa !important;
   }
 }
 
@@ -282,5 +352,21 @@
   .outOfStockOverlay > span {
     padding: 2px 8px;
     font-size: 0.65rem;
+  }
+  
+  /* Ensure square layout always maintains square aspect ratio on small screens */
+  .squareLayoutCard .imageContainer {
+    padding-bottom: 100% !important;
+  }
+  
+  /* HIGH SPECIFICITY OVERRIDE for square layout - ensure it works on all screen sizes */
+  .mainCardDiv.squareLayoutCard .imageContainer {
+    padding-bottom: 100% !important;
+  }
+
+  .mainCardDiv.squareLayoutCard .image {
+    object-fit: contain !important;
+    object-position: center !important;
+    background-color: #fafafa !important;
   }
 }

@@ -63,7 +63,24 @@ const HomePage = async () => {
         {/* Category cards like Helmet, Tank, Bonnet to choose from */}
         <ChooseCategory />
 
-        <KeychainImageGrid />
+        {/* <KeychainImageGrid /> */}
+        <FlexibleLargePoster
+          items={[
+            {
+              pcImage: "car_floor_mats_pc.jpg",
+              phoneImage: "car_floor_mats_mobile.jpg",
+              link: "/shop/accessories/car-care/car-floor-mats/universal-car-mats",
+            },
+          ]}
+        />
+        <Box
+          sx={{
+            marginBottom: { xs: '2rem', md: '2.5rem', lg: '5rem' },
+            width: '100%',
+            height: 0,
+          }}
+        ></Box>
+
 
         {/* Our Unique Products */}
         <OurUniqueProductCarousel products={ourUniqueProductsData} />
@@ -89,6 +106,8 @@ const HomePage = async () => {
             },
           ]}
         />
+
+
 
         {/* Featured Products */}
         <FeaturedProducts data={featuredBikeWrapsData} />
