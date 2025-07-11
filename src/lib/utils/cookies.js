@@ -15,6 +15,18 @@ export const getCookie = (name) => {
       fbc = getCookie('_fbc');
     }
     
+    // If still not found, try to construct from fbclid in URL (fallback)
+    if (!fbc && typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const fbclid = urlParams.get('fbclid');
+      if (fbclid) {
+        fbc = `fb.1.${Date.now()}.${fbclid}`;
+        // Store it in cookie for future use
+        document.cookie = `fbc=${fbc}; path=/; max-age=31536000; SameSite=Lax`;
+        document.cookie = `_fbc=${fbc}; path=/; max-age=31536000; SameSite=Lax`;
+      }
+    }
+    
     return fbc || null; // Return null instead of undefined for better handling
   };
 
