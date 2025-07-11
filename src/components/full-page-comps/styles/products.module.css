@@ -18,6 +18,12 @@
     padding: 1rem;
 }
 
+.extraTopBoughtContainer{
+    padding: 1rem;
+    border-top: 1px solid #eaeaea;
+    background-color: #f9f9f9;
+}
+
 .belowMainHeading {
     text-align: center;
     width: 100%;
@@ -659,4 +665,28 @@
     .popup {
         max-height: 90vh;
     }
+}
+
+/* Extra Ribbon Styles */
+.extraRibbonContainer {
+  margin: 2rem 0;
+  padding: 1.5rem 0;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.extraRibbonHeading {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .extraRibbonHeading {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
 }
