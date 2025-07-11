@@ -163,6 +163,24 @@ export const viewContent = async (product, userData = {}) => {
 };
 
 /**
+ * Tracks the "PageView" event.
+ * @param {object} userData - Optional user data (e.g., email, phoneNumber).
+ * @param {object} pageData - Optional page data (e.g., content_name, content_category).
+ */
+export const pageView = async (userData = {}, pageData = {}) => {
+  try {
+    await trackEvent('PageView', userData, {
+      content_name: pageData.content_name || document.title,
+      content_category: pageData.content_category || 'page',
+      content_type: 'website',
+      ...pageData,
+    });
+  } catch (error) {
+    console.error('Error in pageView function:', error);
+  }
+};
+
+/**
  * Tracks the "InitiateCheckout" event.
  * @param {object} checkoutData - The checkout details.
  * @param {object} userData - Optional user data (e.g., email, phoneNumber).

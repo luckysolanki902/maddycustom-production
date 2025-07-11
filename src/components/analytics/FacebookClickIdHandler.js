@@ -21,14 +21,27 @@ const FacebookClickIdHandler = () => {
           
           // Only create new fbc if we don't have it or if it's different
           if (!existingFbc || existingFbclid !== fbclid) {
-            // Create fbc in the format Facebook expects: fb.1.timestamp.fbclid
-            const fbc = `fb.1.${Date.now()}.${fbclid}`;
+            // Calculate subdomain index according to Meta's specification:
+            // 'com' = 0, 'example.com' = 1, 'www.example.com' = 2
+            const hostname = window.location.hostname;
+            const domainParts = hostname.split('.');
+            let subdomainIndex = 1; // Default value as recommended by Meta
             
-            // Set the fbc cookie
-            document.cookie = `fbc=${fbc}; path=/; max-age=31536000; SameSite=Lax`;
+            if (domainParts.length === 2) {
+              subdomainIndex = 1; // example.com
+            } else if (domainParts.length >= 3) {
+              subdomainIndex = 2; // www.example.com or subdomain.example.com
+            }
             
-            // Also set _fbc (Facebook's standard cookie name)
-            document.cookie = `_fbc=${fbc}; path=/; max-age=31536000; SameSite=Lax`;
+            // Create fbc in the format Facebook expects: fb.subdomainIndex.timestamp.fbclid
+            const timestamp = Date.now(); // UNIX time in milliseconds
+            const fbc = `fb.${subdomainIndex}.${timestamp}.${fbclid}`;
+            
+            // Set the _fbc cookie (Facebook's standard cookie name)
+            document.cookie = `_fbc=${fbc}; path=/; max-age=7776000; SameSite=Lax`; // 90 days as recommended
+            
+            // Also set fbc for backward compatibility
+            document.cookie = `fbc=${fbc}; path=/; max-age=7776000; SameSite=Lax`; // 90 days
             
             console.log('Facebook Click ID captured and stored:', fbc);
           }
