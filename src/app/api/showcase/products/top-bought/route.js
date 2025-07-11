@@ -97,13 +97,19 @@ export async function GET(request) {
       specificCategoryCode: singleCategoryCode,
       available: true,
     }).lean();
-    if (!sc) return NextResponse.json({ products: [], hasMore: false });
+    
+    if (!sc) {
+      return NextResponse.json({ products: [], hasMore: false });
+    }
 
     const variants = await SpecificCategoryVariant.find({
       specificCategory: sc._id,
       available: true,
     }).lean();
-    if (!variants.length) return NextResponse.json({ products: [], hasMore: false });
+    
+    if (!variants.length) {
+      return NextResponse.json({ products: [], hasMore: false });
+    }
 
     const scvMap = Object.fromEntries(variants.map((v) => [v._id.toString(), v]));
 
@@ -132,12 +138,14 @@ export async function GET(request) {
     }
 
     const slice = merged.slice(skip, skip + PAGE_SIZE + 1);
-    return NextResponse.json({
+    const response = {
       products: slice.length > PAGE_SIZE ? slice.slice(0, PAGE_SIZE) : slice,
       hasMore:  slice.length > PAGE_SIZE,
       totalFound: merged.length,
       specificCategoryName: sc.name,
-    });
+    };
+
+    return NextResponse.json(response);
   }
 
   /* ─────────────────────────────────────────────────────────────────── */
@@ -150,6 +158,7 @@ export async function GET(request) {
     })
       .populate('specificCategory', 'name specificCategoryCode available')
       .lean();
+      
     if (!scv || !scv.specificCategory?.available) {
       return NextResponse.json({ products: [], hasMore: false });
     }
@@ -163,14 +172,17 @@ export async function GET(request) {
     }).lean();
 
     const enriched = await enrichProducts(raw, { specCatDoc: sc, scvMap });
+    
     const slice    = enriched.slice(skip, skip + PAGE_SIZE + 1);
 
-    return NextResponse.json({
+    const response = {
       products: slice.length > PAGE_SIZE ? slice.slice(0, PAGE_SIZE) : slice,
       hasMore:  slice.length > PAGE_SIZE,
       totalFound: enriched.length,
       specificCategoryName: sc.name,
-    });
+    };
+
+    return NextResponse.json(response);
   }
 
   /* ─────────────────────────────────────────────────────────────────── */
@@ -180,6 +192,7 @@ export async function GET(request) {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+    
   if (!subCategories.length && !singleVariantCode && !singleCategoryCode) {
     return NextResponse.json(
       { error: 'subCategories required when not using singleVariantCode or singleCategoryCode' },
@@ -193,6 +206,7 @@ export async function GET(request) {
       available: true,
       subCategory: { $nin: subCategories },
     }).select('subCategory').lean();
+    
     shuffle(extras);
     subCategories = subCategories.concat(
       extras.slice(0, 3 - subCategories.length).map((e) => e.subCategory),
@@ -204,7 +218,10 @@ export async function GET(request) {
     subCategory: { $in: subCategories },
     available: true,
   }).lean();
-  if (!specCats.length) return NextResponse.json({ products: [] });
+  
+  if (!specCats.length) {
+    return NextResponse.json({ products: [] });
+  }
 
   const specIds = specCats.map((c) => c._id);
   const scvDocs = await SpecificCategoryVariant.find({
@@ -250,9 +267,11 @@ export async function GET(request) {
   }
 
   const slice = merged.slice(skip, skip + PAGE_SIZE + 1);
-  return NextResponse.json({
+  const response = {
     products: slice.length > PAGE_SIZE ? slice.slice(0, PAGE_SIZE) : slice,
     hasMore:  slice.length > PAGE_SIZE,
     totalFound: merged.length,
-  });
+  };
+
+  return NextResponse.json(response);
 }

@@ -95,15 +95,13 @@ function TopBoughtProductsBase({
   };
 
   /* ---------- Normalise sub‑categories ---------- */
-  // Guarantee an array, even when undefined/null is supplied
-  const subCatArr = Array.isArray(subCategories) ? subCategories : [];
-
-  // Fallback default only if no variant/category code is supplied and caller
-  // forgot to pass a sub‑category list
-  const effectiveSubCats =
-    subCatArr.length || singleVariantCode || singleCategoryCode
+  // Guarantee an array, even when undefined/null is supplied and memoize to prevent re-renders
+  const effectiveSubCats = useMemo(() => {
+    const subCatArr = Array.isArray(subCategories) ? subCategories : [];
+    return subCatArr.length || singleVariantCode || singleCategoryCode
       ? subCatArr
       : ['Car Wraps', 'Car Care'];
+  }, [subCategories, singleVariantCode, singleCategoryCode]);
 
   const subCatKey = useMemo(
     () =>
@@ -120,11 +118,22 @@ function TopBoughtProductsBase({
   const [loadingInit, setLoadingInit] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [specCatName, setSpecCatName] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  /* ---------- De‑dupe set ---------- */
-  const seenIds = useRef(
-    new Set([...excludeProductIds, currentProductId].filter(Boolean))
-  );
+  /* ---------- De‑dupe set (only used for multi-subcategory mode) ---------- */
+  const seenIds = useRef(null);
+  
+  // Check if we're in random products mode (multi-subcategory) 
+  const isRandomProductsMode = !singleVariantCode && !singleCategoryCode && effectiveSubCats.length > 0;
+  
+  // Initialize seenIds only for random products mode
+  if (!seenIds.current && isRandomProductsMode) {
+    seenIds.current = new Set([...excludeProductIds, currentProductId].filter(Boolean));
+  }
+  
+  // Track current parameters to prevent unnecessary refetches
+  const currentParams = useRef('');
+  const isFirstRender = useRef(true);
 
   /* ---------- Fetcher ---------- */
   const fetchPage = useCallback(
@@ -154,11 +163,13 @@ function TopBoughtProductsBase({
           setSpecCatName(specificCategoryName);
         }
 
-        /* client‑side exclusion */
-        fetched = fetched.filter((p) => !seenIds.current.has(p._id));
+        /* client‑side exclusion only for multi-subcategory mode */
+        if (isRandomProductsMode && seenIds.current) {
+          fetched = fetched.filter((p) => !seenIds.current.has(p._id));
+        }
 
-        /* if too few, pull next page */
-        if (fetched.length < PAGE_SIZE && more) {
+        /* if too few and we're in random mode, pull next page */
+        if (isRandomProductsMode && fetched.length < PAGE_SIZE && more && seenIds.current) {
           fetched.forEach((p) => seenIds.current.add(p._id));
           const extra = await fetchPage(offset + PAGE_SIZE, false);
           fetched = fetched.concat(extra.fetched);
@@ -171,35 +182,78 @@ function TopBoughtProductsBase({
             : p
         );
 
-        setProducts((prev) =>
-          offset === 0 ? ready : [...prev, ...ready]
-        );
-        ready.forEach((p) => seenIds.current.add(p._id));
+        // Always update products when we get new data
+        if (isInitial) {
+          setProducts(ready);
+        } else {
+          setProducts((prev) => [...prev, ...ready]);
+        }
+        
+        // Add to seenIds only for random products mode
+        if (isRandomProductsMode && seenIds.current) {
+          ready.forEach((p) => seenIds.current.add(p._id));
+        }
+        
         setHasMore(more);
+        
+        if (isInitial) {
+          setIsInitialized(true);
+        }
 
         return { fetched: ready, more };
       } catch (err) {
-        console.error('top-bought fetch err:', err);
+        console.error('Error fetching top bought products:', err);
+        
+        // On error, only mark as initialized if it's initial load
+        if (isInitial) {
+          setIsInitialized(true);
+          setProducts([]); // Clear products on initial error
+        }
         return { fetched: [], more: false };
       } finally {
         isInitial ? setLoadingInit(false) : setLoadingMore(false);
       }
     },
-    [effectiveSubCats, singleVariantCode, singleCategoryCode]
+    [effectiveSubCats, singleVariantCode, singleCategoryCode, isRandomProductsMode]
   );
 
   /* ---------- Initial load ---------- */
   useEffect(() => {
+    // Create stable key for current parameters
+    const paramsKey = `${effectiveSubCats.join('|')}::${singleVariantCode}::${singleCategoryCode}`;
+    
+    // Skip if parameters haven't changed and we already have data
+    if (currentParams.current === paramsKey && products.length > 0 && isInitialized) {
+      return;
+    }
+    
+    // Skip duplicate calls in React strict mode
+    if (currentParams.current === paramsKey && isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    
+    // Update current parameters
+    currentParams.current = paramsKey;
+    isFirstRender.current = false;
+    
+    // Reset state for new fetch
     skipRef.current = 0;
-    setProducts([]);
     setHasMore(false);
     setSpecCatName('');
-    seenIds.current = new Set(
-      [...excludeProductIds, currentProductId].filter(Boolean)
-    );
+    setIsInitialized(false);
+    setLoadingInit(true);
+    
+    // Reset seenIds only for random products mode
+    if (isRandomProductsMode) {
+      const initialExclusions = [...excludeProductIds, currentProductId].filter(Boolean);
+      seenIds.current = new Set(initialExclusions);
+    }
+    
+    // Start fetching
     fetchPage(0, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveSubCats.join('|'), singleVariantCode, singleCategoryCode]);
+  }, [effectiveSubCats.join('|'), singleVariantCode, singleCategoryCode, fetchPage, isRandomProductsMode]);
 
   /* ---------- Infinite‑scroll observer ---------- */
   useEffect(() => {
@@ -230,6 +284,11 @@ function TopBoughtProductsBase({
       : 'Customers also bought';
 
   /* ─────────────────── Render ─────────────────── */
+  // Don't render anything if we don't have the necessary parameters
+  if (!singleVariantCode && !singleCategoryCode && (!effectiveSubCats || effectiveSubCats.length === 0)) {
+    return null;
+  }
+
   return (
     <TopBoughtContext.Provider
     value={{ singleCategoryCode, singleVariantCode, insertionDetails }}
@@ -237,7 +296,7 @@ function TopBoughtProductsBase({
       <Box sx={{ width: '100%', px: 1 }}>
         {!hideHeading && (
           <>
-            {loadingInit && !specCatName ? (
+            {(loadingInit && !isInitialized) && !specCatName ? (
               <Skeleton
                 variant="text"
                 width={200}
@@ -252,14 +311,14 @@ function TopBoughtProductsBase({
           </>
         )}
 
-        {loadingInit ? (
+        {loadingInit && !isInitialized ? (
           <ScrollContainer>
             {Array.from({ length: PAGE_SIZE }).map((_, i) => (
               <ProductCardSkeleton key={`skel-${i}`} />
             ))}
           </ScrollContainer>
         ) : (
-          <Fade in>
+          <Fade in={isInitialized && products.length > 0}>
             <ScrollContainer ref={scrollRef}>
               {products.map((p, i) => (
                 <ProductCard key={`${p._id}-${i}`} product={p} />
@@ -271,6 +330,15 @@ function TopBoughtProductsBase({
               {hasMore && <Sentinel ref={sentinelRef} />}
             </ScrollContainer>
           </Fade>
+        )}
+        
+        {/* Show message when no products are found and not loading */}
+        {isInitialized && products.length === 0 && !loadingInit && (
+          <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+            <Typography variant="body2">
+              No products found for this category.
+            </Typography>
+          </Box>
         )}
       </Box>
     </TopBoughtContext.Provider>
@@ -397,7 +465,10 @@ function propsAreEqual(prev, next) {
     prevCats === nextCats &&
     prev.currentProductId === next.currentProductId &&
     prev.singleVariantCode === next.singleVariantCode &&
-    prev.singleCategoryCode === next.singleCategoryCode
+    prev.singleCategoryCode === next.singleCategoryCode &&
+    prev.excludeProductIds?.join('|') === next.excludeProductIds?.join('|') &&
+    prev.pageType === next.pageType &&
+    prev.hideHeading === next.hideHeading
   );
 }
 
