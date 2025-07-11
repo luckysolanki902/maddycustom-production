@@ -2,6 +2,7 @@
 
 import React from 'react'
 import FacebookPixel from '../analytics/FacebookPixel'
+import FacebookClickIdHandler from '../analytics/FacebookClickIdHandler'
 import GoogleAnalytics from '../analytics/GoogleAnalytics'
 import Clarity from '../analytics/Clarity'
 import Razorpay from '../analytics/Razorpay'
@@ -12,6 +13,7 @@ export default function AnalyticsHead() {
         <>
             <CssBaseline />
             <FacebookPixel />
+            <FacebookClickIdHandler />
             <GoogleAnalytics />
             <Clarity />
             <Razorpay />

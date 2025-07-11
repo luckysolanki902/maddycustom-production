@@ -1,6 +1,6 @@
 'use client';
 import { v4 as uuidv4 } from 'uuid';
-import { getFbp, getFbc } from '@/lib/utils/cookies';
+import { getFbp, getFbc, getFacebookTrackingParams } from '@/lib/utils/cookies';
 
 // 1. Get client IP address (attempt IPv6 first, then fallback to IPv4)
 const getClientIp = async () => {
@@ -56,8 +56,9 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
     const client_user_agent = navigator.userAgent;
 
     // Retrieve fbp and fbc from cookies
-    const fbp = getFbp();
-    const fbc = getFbc();
+    const { fbp, fbc } = getFacebookTrackingParams();
+
+    console.log('Facebook tracking params:', { fbp, fbc }); // Debug log
 
     const eventParams = {
       eventID: eventId,
