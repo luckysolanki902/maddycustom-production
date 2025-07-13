@@ -17,6 +17,7 @@ export default function HeroSection() {
         const isEOMPeriod = isLastFiveDaysOfMonth();
         const images = [
             ...(isEOMPeriod ? [`${baseUrl}/assets/carousels/homepage-main/eom2.png`] : []),
+            `${baseUrl}/assets/carousels/homepage-main/mat.jpg`,
             `${baseUrl}/assets/carousels/homepage-main/first-three-products-banner.jpg`,
             `${baseUrl}/assets/carousels/homepage-main/car-pillar-wraps-shinobi.jpg`,
             `${baseUrl}/assets/carousels/homepage-main/bonnet-strip-wraps-assassin.jpg`,
