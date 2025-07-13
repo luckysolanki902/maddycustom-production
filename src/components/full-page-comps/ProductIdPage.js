@@ -471,6 +471,15 @@ if (category?.specificCategoryCode !== 'cmat') {
                     className={styles.bikeBundleImage}
                   />
                 </Link>}
+                {product.specificCategory === '685be144d656a52f5754e667' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
+                  <Image
+                    src={`${imageBaseUrl}/assets/posters/mat_phone.jpg`}
+                    alt="Mat Bundle offer Mobile"
+                    width={1024}
+                    height={200}
+                    className={styles.bikeBundleImage}
+                  />
+                </Link>}
                 <div className={styles.orderSpecificationsContainer}>
                   <MemoizedOrderSpecifications
                     features={variant.features}
@@ -499,6 +508,15 @@ if (category?.specificCategoryCode !== 'cmat') {
                   <Image
                     src={`${imageBaseUrl}/assets/posters/tankbundlepc.png`}
                     alt="Bike Bundle offer PC"
+                    width={1024}
+                    height={200}
+                    className={styles.bikeBundleImage}
+                  />
+                </Link>}
+                {product.specificCategory === '685be144d656a52f5754e667' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
+                  <Image
+                    src={`${imageBaseUrl}/assets/posters/mat_pc.jpg`}
+                    alt="Mat Bundle offer PC"
                     width={1024}
                     height={200}
                     className={styles.bikeBundleImage}

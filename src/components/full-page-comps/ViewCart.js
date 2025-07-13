@@ -673,10 +673,13 @@ export default function ViewCart({ isDrawer = false }) {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1, transition: { delay: 0.3 } }}
                       >
-                        You saved <strong>₹{couponState.couponDiscount}</strong>{' '}
-                        {couponState.discountType === 'bundle'
-                          ? 'on your bundle'
-                          : `with ${couponState.couponName}`}
+                        {couponState.couponName === 'MATS150' && couponState.discountType === 'bundle'
+                          ? <>Launch Deal Unlocked: <strong>₹{couponState.couponDiscount}</strong> on Your Car Floor Mats!</>
+                          : <>You saved <strong>₹{couponState.couponDiscount}</strong>{' '}
+                            {couponState.discountType === 'bundle'
+                              ? 'on your bundle'
+                              : `with ${couponState.couponName}`}</>
+                        }
                       </motion.span>
                     </div>
                   </motion.div>
