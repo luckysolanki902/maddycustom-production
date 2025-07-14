@@ -4,6 +4,7 @@ import { Box, Card, CardContent, Typography, Button, LinearProgress, Chip, Divid
 import { motion, AnimatePresence } from "framer-motion";
 import { useSelector } from "react-redux";
 import Image from "next/image";
+import LoginIcon from "@mui/icons-material/Login";
 
 export default function MyOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -78,12 +79,64 @@ export default function MyOrdersPage() {
     }
   };
 
-  if (!userDetails?.userId) {
+  if (userDetails?.userId) {
     return (
-      <Box sx={{ textAlign: "center", mt: 10 }}>
-        <Typography variant="h6" color="text.secondary">
-          You are not logged in.
+      <Box
+        sx={{
+          textAlign: "center",
+          mt: 10,
+          px: 3,
+          py: 5,
+          maxWidth: 400,
+          mx: "auto",
+          bgcolor: "#ffffff",
+          borderRadius: 3,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
+          mb: "10rem"
+        }}
+      >
+        <Box
+          sx={{
+            width: 64,
+            height: 64,
+            mx: "auto",
+            mb: 2,
+            bgcolor: "#e3f2fd",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <LoginIcon sx={{ color: "#1976d2", fontSize: 32 }} />
+        </Box>
+
+        <Typography variant="h5" fontWeight={600} gutterBottom>
+          You’re not logged in
         </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          Please log in to view and track your orders seamlessly.
+        </Typography>
+
+        <Button
+          variant="contained"
+          color="primary"
+          href="/login" // Replace with your actual login URL
+          sx={{
+            textTransform: "none",
+            px: 4,
+            py: 1.5,
+            borderRadius: 2,
+            fontWeight: 600,
+            fontSize: "1rem",
+            boxShadow: "0 4px 12px rgba(25, 118, 210, 0.4)",
+            "&:hover": {
+              boxShadow: "0 6px 20px rgba(25, 118, 210, 0.5)",
+            },
+          }}
+        >
+          Login Now
+        </Button>
       </Box>
     );
   }
