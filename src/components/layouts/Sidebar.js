@@ -51,7 +51,7 @@ export default function Sidebar({ categories = [], variants = [] }) {
     { text: 'Home', href: '/' },
     { text: 'Customer Support', href: '/faqs' },
     { text: 'Search Categories', action: () => dispatch(openSearchDialog()) },
-    { text: 'Track Your Order', href: '/orders/track' },
+    { text: 'My Orders', href: '/orders' },
     { text: 'About Us', href: '/about-us' },
   ];
 
