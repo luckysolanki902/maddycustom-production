@@ -11,6 +11,7 @@ import React, {
   memo,
 } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useMediaQuery, Pagination } from '@mui/material';
 import { useSpring, animated } from 'react-spring';
 
@@ -276,6 +277,36 @@ export default function ProductsPage({
     enhancedScrollToTop();
   }, [fetchPageData, tagFilter, sortBy, enhancedScrollToTop]);
 
+  /* ------------------------ check for new launch products ------------------------ */
+  const isNewLaunch = useMemo(() => {
+    if (!currentProducts || currentProducts.length === 0) return false;
+    
+    const firstProduct = currentProducts[0];
+    if (!firstProduct?.createdAt) return false;
+    
+    const createdDate = new Date(firstProduct.createdAt);
+    const currentDate = new Date();
+    const diffInDays = Math.floor((currentDate - createdDate) / (1000 * 60 * 60 * 24));
+    
+    return diffInDays <= 20;
+  }, [currentProducts]);
+
+  /* ------------------------ chat button styles ------------------------ */
+  const chatButtonStyles = {
+    position: 'fixed',
+    bottom: isSmallDevice ? '90px' : '50px',
+    right: isSmallDevice ? '20px' : '30px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    transition: 'all 0.3s ease',
+    cursor: 'pointer',
+    textDecoration: 'none',
+    border: 'none',
+    outline: 'none',
+  };
+
   /* ------------------------ render ------------------------ */
   return (
     <>
@@ -462,6 +493,31 @@ export default function ProductsPage({
           <ScrollToTop />
         </div>
       </div>
+
+      {/* WhatsApp Chat Button - Only show for new launch products */}
+      {isNewLaunch && (
+        <Link 
+          href="https://wa.me/8112673988" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={chatButtonStyles}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'scale(1.1)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'scale(1)';
+            e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+          }}
+        >
+          <Image
+            src={`${baseImageUrl}/assets/icons/chatwithus.png`}
+            alt="Chat with us on WhatsApp"
+            width={isSmallDevice ? 80 : 100}
+            height={isSmallDevice ? 40 : 50}
+            style={{ objectFit: 'contain', width: '120px', height: 'auto' }}
+          />
+        </Link>
+      )}
 
       {/* Global background (kept) */}
       <style jsx global>
