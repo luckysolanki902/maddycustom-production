@@ -116,6 +116,7 @@ const OrderForm = ({
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [fetchAddressConsent, setFetchAddressConsent] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
@@ -136,6 +137,7 @@ const OrderForm = ({
     });
     return Array.from(fieldsMap.values());
   }, [items]);  // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
+
   const { control, handleSubmit, setValue, watch, getValues, reset, formState: { errors, isValid } } = useForm({
     mode: 'onChange',
     defaultValues: useMemo(() => ({
@@ -148,6 +150,7 @@ const OrderForm = ({
       state: addressDetails?.state || '',
       pincode: addressDetails?.pincode || '',
       country: addressDetails?.country || 'India',
+      token: null,
       // Add any extraFields from cart items
       ...aggregatedExtraFields,
     }), [userDetails, addressDetails, aggregatedExtraFields]),
@@ -281,7 +284,8 @@ const OrderForm = ({
       name: user.name,
       phoneNumber: user.phoneNumber,
       email: user.email || '',
-      userId: user.id
+      userId: user.id,
+      addressDetails: user.addressDetails,
     }));
     
     dispatch(setUserExists(true));
@@ -394,6 +398,7 @@ const OrderForm = ({
   }, [userExists, prefilledAddress, dispatch, addressDetails, validatePincode]);  const handleTabChange = useCallback((newValue) => {
     setTabIndex(newValue);
   }, []);
+
   // State for formatted phone number display - memoized
   const [formattedPhone, setFormattedPhone] = useState('');
   const [showPhoneConfirmation, setShowPhoneConfirmation] = useState(false);
@@ -450,6 +455,7 @@ const OrderForm = ({
       setShowPhoneConfirmation(false);
     }
   }, [formatPhoneNumber]);
+
   const acceptFormattedPhone = useCallback(() => {
     setValue('phoneNumber', formattedPhone, { shouldValidate: true });
     dispatch(setUserDetails({ phoneNumber: formattedPhone }));
@@ -476,28 +482,64 @@ const OrderForm = ({
       });
     }
   }, [open, couponCode, subTotal, items]);
+
+  const onSubmitPhoneNumber = useCallback(
+    async data => {
+
+      // Format phone number for submission if needed
+      const phoneToUse = formatPhoneNumber(data.phoneNumber);
+
+      // Client-side validation to avoid unnecessary API calls
+      if (phoneToUse.length !== 10 || !/^\d{10}$/.test(phoneToUse)) {
+        showSnackbar("Please enter a valid 10-digit mobile number", "error");
+        return;
+      }
+
+      // If user is already authenticated, proceed to next tab
+      if (isAuthenticated) {
+        // Optimistically update Redux store with user details
+        dispatch(setUserDetails({ phoneNumber: phoneToUse }));
+        setTabIndex(1);
+        return;
+      }
+
+      // Store values in redux for non-authenticated users
+      dispatch(setUserDetails({ phoneNumber: phoneToUse }));
+
+      // Save the current tab index for returning after auth flow
+      setAuthFallbackTab(0);
+
+      // Reset OTP state before showing the auth flow
+      dispatch(resetOtpState());
+      dispatch(resetAuthError());
+
+      // Send OTP directly without asking for phone again
+      const result = await dispatch(sendOTP({ phoneNumber: phoneToUse, shipRocketUserConsent: fetchAddressConsent }));
+
+      if (result?.meta?.requestStatus === "fulfilled") {
+        // set token in form
+        setValue("token", result.payload.shiprocketToken, { shouldValidate: true });
+        // After successful OTP send, show auth flow with OTP input screen directly
+        setShowAuthFlow(true);
+      } else {
+        // If sending OTP failed
+        showSnackbar(result.payload?.message || "Failed to send OTP. Please try again.", "error");
+      }
+    },
+    [dispatch, fetchAddressConsent, formatPhoneNumber, isAuthenticated, setValue, showSnackbar]
+  );
+  
   // Optimistic user details submission - improved to directly send OTP
   const onSubmitUserDetails = useCallback(async (data) => {
-    // Format phone number for submission if needed
-    const phoneToUse = formatPhoneNumber(data.phoneNumber);
-
-    // Client-side validation to avoid unnecessary API calls
-    if (phoneToUse.length !== 10 || !/^\d{10}$/.test(phoneToUse)) {
-      showSnackbar('Please enter a valid 10-digit mobile number', 'error');
-      return;
-    }
-
-    // If user is already authenticated, proceed to next tab
     if (isAuthenticated) {
       // Optimistically update Redux store with user details
       dispatch(
         setUserDetails({
           name: data.name,
-          phoneNumber: phoneToUse,
           email: data.email,
         })
       );
-      setTabIndex(1);
+      setTabIndex(2);
       return;
     }
 
@@ -505,7 +547,6 @@ const OrderForm = ({
     dispatch(
       setUserDetails({
         name: data.name,
-        phoneNumber: phoneToUse,
         email: data.email,
       })
     );
@@ -513,21 +554,7 @@ const OrderForm = ({
     // Save the current tab index for returning after auth flow
     setAuthFallbackTab(1);
     
-    // Reset OTP state before showing the auth flow
-    dispatch(resetOtpState());
-    dispatch(resetAuthError());
-    
-    // Send OTP directly without asking for phone again
-    const result = await dispatch(sendOTP({ phoneNumber: phoneToUse }));
-    
-    if (result.meta.requestStatus === 'fulfilled') {
-      // After successful OTP send, show auth flow with OTP input screen directly
-      setShowAuthFlow(true);
-    } else {
-      // If sending OTP failed
-      showSnackbar(result.payload?.message || 'Failed to send OTP. Please try again.', 'error');
-    }
-  }, [formatPhoneNumber, dispatch, showSnackbar, isAuthenticated, setAuthFallbackTab, setTabIndex, setShowAuthFlow]);
+  }, [dispatch, isAuthenticated]);
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
@@ -911,6 +938,7 @@ const OrderForm = ({
                 onSuccess={handleAuthenticationSuccess}
                 onBack={() => setShowAuthFlow(false)}
                 phoneNumber={userDetails.phoneNumber}
+                shipRocketToken={getValues("token")}
               />
             </motion.div>
           )}
@@ -961,79 +989,65 @@ const OrderForm = ({
             </motion.div>
 
             {/* Custom Stepper - Made more compact */}
-            <Box sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              mt: 1.5, // Reduced from 3
-              position: 'relative',
-              height: '30px' // Reduced from 40px
-            }}>
-              <Box sx={{
-                position: 'absolute',
-                left: '50%',
-                width: '60px',
-                height: '2px',
-                backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
-                transform: 'translateX(-30px)',
-                transition: 'background-color 0.5s'
-              }} />
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                mt: 1.5,
+                position: 'relative',
+                height: '30px',
+                gap: '40px' // <-- This controls spacing between steps
+              }}
+            >
+              {/* Progress line */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  width: '120px',
+                  height: '2px',
+                  backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
+                  transform: 'translateX(-50%) translateY(-50%)',
+                  transition: 'background-color 0.5s'
+                }}
+              />
 
-              <motion.div
-                animate={{ scale: tabIndex === 0 ? 1.1 : 0.9, x: tabIndex === 0 ? -40 : -40 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              >
-                <Box
-                  sx={{
-                    width: '25px', // Reduced from 30px
-                    height: '25px', // Reduced from 30px
-                    borderRadius: '50%',
-                    backgroundColor: '#000',
-                    color: 'white',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    fontFamily: 'Jost, sans-serif',
-                    fontWeight: 600,
-                    fontSize: '0.8rem', // Added smaller font
-                    zIndex: 1,
-                    boxShadow: tabIndex === 0 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'box-shadow 0.3s',
-                    cursor: 'pointer'
+              {[0, 1, 2].map((step) => (
+                <motion.div
+                  key={step}
+                  animate={{
+                    scale: tabIndex === step ? 1.1 : 0.9
                   }}
-                  onClick={() => tabIndex !== 0 && handleTabChange(0)}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 >
-                  1
-                </Box>
-              </motion.div>
-
-              <motion.div
-                animate={{ scale: tabIndex === 1 ? 1.1 : 0.9, x: tabIndex === 1 ? 40 : 40 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              >
-                <Box
-                  sx={{
-                    width: '25px', // Reduced from 30px
-                    height: '25px', // Reduced from 30px
-                    borderRadius: '50%',
-                    backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
-                    color: tabIndex === 1 ? 'white' : '#999',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    fontFamily: 'Jost, sans-serif',
-                    fontWeight: 600,
-                    fontSize: '0.8rem', // Added smaller font
-                    zIndex: 1,
-                    boxShadow: tabIndex === 1 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'box-shadow 0.3s, background-color 0.3s, color 0.3s',
-                    cursor: tabIndex === 1 ? 'pointer' : 'default'
-                  }}
-                >
-                  2
-                </Box>
-              </motion.div>
+                  <Box
+                    sx={{
+                      width: '25px',
+                      height: '25px',
+                      borderRadius: '50%',
+                      backgroundColor: tabIndex === step ? '#000' : '#e0e0e0',
+                      color: tabIndex === step ? 'white' : '#999',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      fontFamily: 'Jost, sans-serif',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      zIndex: 1,
+                      boxShadow: tabIndex === step ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
+                      transition: 'box-shadow 0.3s, background-color 0.3s, color 0.3s',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => handleTabChange(step)}
+                  >
+                    {step + 1}
+                  </Box>
+                </motion.div>
+              ))}
             </Box>
+
 
             <motion.div
               initial={{ opacity: 0 }}
@@ -1052,7 +1066,7 @@ const OrderForm = ({
                   color: '#333'
                 }}
               >
-                {tabIndex === 0 ? "Let's get to know you" : "Where should we deliver?"}
+                {tabIndex <= 1 ? "Let's get to know you" : "Where should we deliver?"}
               </Typography>
             </motion.div>
 
@@ -1084,7 +1098,7 @@ const OrderForm = ({
           {/* Form Wrapper - Handles submission and layout (scrollable fields + fixed buttons) */}
           <Box
             component="form"
-            onSubmit={handleSubmit(tabIndex === 0 ? onSubmitUserDetails : onSubmitAddressDetails)}
+            onSubmit={handleSubmit(tabIndex === 0 ? onSubmitPhoneNumber : tabIndex === 1 ? onSubmitUserDetails : onSubmitAddressDetails)}
             sx={{
               display: 'flex',
               flexDirection: 'column',
@@ -1112,7 +1126,7 @@ const OrderForm = ({
             >
               <AnimatePresence mode="wait" initial={false} custom={tabIndex}>                {tabIndex === 0 && (
                   <motion.div
-                    key="personalInfo"
+                    key="Phone"
                     custom={0}
                     variants={formVariants}
                     initial="initial"
@@ -1140,34 +1154,6 @@ const OrderForm = ({
                       </Box>
                     )}
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}> {/* Added horizontal padding */}
-                      {/* Name field */}
-                      <Controller
-                        name="name"
-                        control={control}
-                        rules={{
-                          required: 'Name is required',
-                          minLength: {
-                            value: 3,
-                            message: 'Name must be at least 3 characters',
-                          },
-                        }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Your Name"
-                            error={errors.name}
-                            helperText={errors.name ? errors.name.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              dispatch(setUserDetails({ name: e.target.value }));
-                            }}
-                          />
-                        )}
-                      />
-
-             
-
                       {/* Phone number field with enhanced validation */}
                       <Controller
                         name="phoneNumber"
@@ -1252,8 +1238,61 @@ const OrderForm = ({
                           </Box>
                         )}
                       />
+                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                        <input
+                          type="checkbox"
+                          checked={fetchAddressConsent}
+                          onChange={(e) => setFetchAddressConsent(e.target.checked)}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Typography variant="body2">
+                          Fetch my shipping address based on past order
+                        </Typography>
+                      </Box>
 
-         {/* Email field */}
+                      {/* Removed Button from here, will be in fixed footer */}
+                    </Box>
+                  </motion.div>
+                )}
+
+                {tabIndex === 1 && (
+                  <motion.div
+                    key="Info"
+                    custom={1}
+                    variants={formVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    style={{ width: '100%' }} // Removed height: '100%'
+                  >
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}>
+                       {/* Name field */}
+                       <Controller
+                        name="name"
+                        control={control}
+                        rules={{
+                          required: 'Name is required',
+                          minLength: {
+                            value: 3,
+                            message: 'Name must be at least 3 characters',
+                          },
+                        }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="Your Name"
+                            error={errors.name}
+                            helperText={errors.name ? errors.name.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              dispatch(setUserDetails({ name: e.target.value }));
+                            }}
+                          />
+                        )}
+                      />
+                      
+                      {/* Email field */}
                       <Controller
                         name="email"
                         control={control}
@@ -1277,13 +1316,11 @@ const OrderForm = ({
                           />
                         )}
                       />
-                      
-                      {/* Removed Button from here, will be in fixed footer */}
                     </Box>
                   </motion.div>
                 )}
 
-                {tabIndex === 1 && (
+                {tabIndex === 2 && (
                   <motion.div
                     key="shippingInfo"
                     custom={1}
@@ -1293,8 +1330,8 @@ const OrderForm = ({
                     exit="exit"
                     style={{ width: '100%' }} // Removed height: '100%'
                   >
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}> {/* Added horizontal padding */}
-                      <Controller
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}>
+                    <Controller
                         name="addressLine1"
                         control={control}
                         rules={{ required: 'Address is required' }}
@@ -1424,6 +1461,7 @@ const OrderForm = ({
                           />
                         </Box>
                       </Box>
+                       
                       {/* Pincode non-serviceable message */}
                       {watchedPincode?.length === 6 && !isPincodeValid && !pincodeCheckInProgress && (
                         <motion.div
@@ -1478,16 +1516,18 @@ const OrderForm = ({
                 width: '100%',
                 boxShadow: '0 -2px 5px rgba(0,0,0,0.05)' // Subtle shadow for separation
               }}
-            >              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            >              
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                 {tabIndex === 0 && (
                   <motion.div
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.98 }}
-                  >                    <BlackButton
+                  >                    
+                  <BlackButton
                       type="submit" // Changed from onClick
                       extraClass="lg"
                       isLoading={isLoading} // This isLoading is general; consider specific state if needed for UX
-                      buttonText={isAuthenticated ? "Continue to Delivery" : "Verify with WhatsApp OTP & Continue"}
+                      buttonText={isAuthenticated ? "Continue to Delivery" : "Get OTP"}
                       disabled={isPaymentProcessing || isLoading}
                       endIcon={!isAuthenticated && !isLoading ? <WhatsAppIcon /> : null}
                       sx={{
@@ -1502,6 +1542,36 @@ const OrderForm = ({
                   </motion.div>
                 )}
                 {tabIndex === 1 && (
+                  <motion.div 
+                    whileHover={{ scale: 1.03 }} 
+                    whileTap={{ scale: 0.98 }} 
+                    // onClick={() => getValues('name') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(getValues('email')) && setTabIndex(2)}
+                  >
+                    <BlackButton
+                      extraClass="lg"
+                      isLoading={isLoading}
+                      buttonText="Next"
+                      type="submit"
+                      disabled={
+                        isPaymentProcessing ||
+                        isLoading ||
+                        purchaseInitiated ||
+                        pincodeCheckInProgress ||  // disable while checking
+                        !isPincodeValid             // disable until valid
+                      }
+                      sx={{
+                        borderRadius: '50px',
+                        px: 3,
+                        py: 0.5,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                        fontFamily: 'Jost, sans-serif',
+                        fontSize: '0.9rem'
+                      }}
+                    />
+                  </motion.div>
+                )}
+
+                {tabIndex === 2 && (
                   <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
                     <BlackButton
                       extraClass="lg"

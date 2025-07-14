@@ -19,27 +19,29 @@ const initialState = {
 
 // Async thunks for authentication
 export const sendOTP = createAsyncThunk(
-  'auth/sendOTP',
-  async ({ phoneNumber, authMethod = 'whatsapp' }, { rejectWithValue }) => {
+  "auth/sendOTP",
+  async ({ phoneNumber, authMethod = "sms", shipRocketUserConsent }, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/auth/send-otp', { 
-        phoneNumber, 
-        authMethod 
+      const response = await axios.post("/api/auth/send-otp", {
+        phoneNumber,
+        authMethod,
+        shipRocketUserConsent,
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || { message: 'Failed to send OTP' });
+      return rejectWithValue(error.response?.data || { message: "Failed to send OTP" });
     }
   }
 );
 
 export const verifyOTP = createAsyncThunk(
   'auth/verifyOTP',
-  async ({ phoneNumber, otp }, { rejectWithValue }) => {
+  async ({ phoneNumber, otp, shipRocketToken }, { rejectWithValue }) => {
     try {
       const response = await axios.post('/api/auth/verify-otp', { 
         phoneNumber, 
-        otp 
+        otp,
+        shipRocketToken,
       });
       
       // Store token in localStorage for client-side use

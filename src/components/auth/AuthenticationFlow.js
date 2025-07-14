@@ -62,7 +62,7 @@ const ErrorMessage = styled(Typography)(({ theme }) => ({
   fontSize: '0.875rem',
 }));
 
-const AuthenticationFlow = ({ onSuccess, onBack, phoneNumber: initialPhoneNumber }) => {
+const AuthenticationFlow = ({ onSuccess, onBack, phoneNumber: initialPhoneNumber, shipRocketToken }) => {
   const dispatch = useDispatch();
     // Local state
   const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber || '');
@@ -109,7 +109,7 @@ const AuthenticationFlow = ({ onSuccess, onBack, phoneNumber: initialPhoneNumber
   const handleVerifyOtp = async () => {
     if (otpValue.length !== 6) return;
     
-    const result = await dispatch(verifyOTP({ phoneNumber, otp: otpValue }));
+    const result = await dispatch(verifyOTP({ phoneNumber, otp: otpValue, shipRocketToken }));
     
     if (result.meta.requestStatus === 'fulfilled') {
       if (onSuccess) onSuccess(result.payload.user);

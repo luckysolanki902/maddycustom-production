@@ -17,15 +17,12 @@ const UserSchema = new mongoose.Schema(
       maxlength: 100,
       required: false,
     },
-    email:{
+    email: {
       type: String,
       required: false,
       unique: true,
       //validation for email:
-      match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-        'Please add a valid email address',
-      ],
+      match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, "Please add a valid email address"],
     },
     // Array of address objects
     addresses: [
@@ -62,7 +59,7 @@ const UserSchema = new mongoose.Schema(
         },
         country: {
           type: String,
-          default: 'India',
+          default: "India",
           maxlength: 100,
         },
         pincode: {
@@ -110,8 +107,8 @@ const UserSchema = new mongoose.Schema(
     },
     preferredAuthMethod: {
       type: String,
-      enum: ['whatsapp', 'sms'],
-      default: 'whatsapp',
+      enum: ["whatsapp", "sms"],
+      default: "whatsapp",
     },
 
     // Indicates if the user is verified atleast once in a lifetime
@@ -123,7 +120,11 @@ const UserSchema = new mongoose.Schema(
     // this is used for analytics and marketing purposes
     source: {
       type: String,
-      default: 'unknown',
+      default: "unknown",
+    },
+    shiprocketCustomerData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
   },
   { timestamps: true }
@@ -144,7 +145,7 @@ UserSchema.methods.generateAuthToken = function() {
 };
 
 // Method to generate OTP
-UserSchema.methods.generateOTP = function() {
+UserSchema.methods.generateOTP = function({ isShiprocket = false }) {
   // Generate a 6-digit OTP
   const otp = crypto.randomInt(100000, 999999).toString();
   
@@ -152,7 +153,7 @@ UserSchema.methods.generateOTP = function() {
   const hashedOTP = crypto.createHash('sha256').update(otp).digest('hex');
   
   this.otpDetails = {
-    otp: hashedOTP,
+    otp: isShiprocket ? null : hashedOTP,
     otpExpiry: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes expiry
     resendAllowedAt: new Date(Date.now() + 60 * 1000), // Allow resend after 1 minute
     otpAttempts: 0,
