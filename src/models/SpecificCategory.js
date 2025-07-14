@@ -103,6 +103,10 @@ const SpecificCategorySchema = new mongoose.Schema(
       type: String,
       // e.g. 'Wraps', 'Accessories'
     },
+    seperateCategoryShipping: {
+      type: Boolean,
+      default: false, // If true, this category has to be delivered in a separate shiprocket order (items of this category can be combined)
+    },
     available: {
       type: Boolean,
       default: true,
