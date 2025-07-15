@@ -2,5 +2,6 @@
 export const recommendationMap = {
   win: 'bsw',
   bsw: 'win',
+  ucmat: 'win',
 };
 

@@ -5,60 +5,33 @@ import "swiper/css/pagination";
 import "swiper/css/navigation";
 import { register } from "swiper/element/bundle";
 import Image from "next/image";
-
-// Import the new Timer component
-import TimerOverBg from "../launch/TimerOverBg";
 import { useMediaQuery } from "@mui/material";
-
 
 register();
 
-
 const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
-    const isSmallDevice = useMediaQuery('(max-width: 600px)');
-    const isBetweenSmallAndMedium = useMediaQuery('(min-width: 601px) and (max-width: 1424px)');
-    // Example: environment-based URL for timer background
-    const baseUrl =
-        process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL +
-        "/assets/carousels/homepage-main/timer_bg2.jpg";
-    const launchDate = new Date("2025-02-18T23:59:00");
-    const now = new Date();
-    const showTimer = now < launchDate;
+
     return (
         <Swiper
-            style={{ height: "auto", borderRadius: showTimer ? "1rem" : "2rem" }}
+            style={{ height: "auto", borderRadius: "2rem" }}
             loop={true}
             speed={500}
             simulateTouch={true}
             autoplay={{ delay: 3000, disableOnInteraction: false }}
         >
-            {/* First Slide - Timer */}
-            {showTimer ? (
-                <SwiperSlide>
-                    <TimerOverBg
-                        imageUrl={baseUrl}
-                        endTime="2025-08-19T23:59:00"
-                        paramCount={isSmallDevice ? 3 : isBetweenSmallAndMedium ? 3 : 4}          // s, m, h, d
-                        imageQuality={80}      // example quality
-                        width={976}
-                        height={406}
+            {images.map((url, index) => (
+                <SwiperSlide key={index}>
+                    <Image
+                        priority={true}
+                        unoptimized={process.env.NODE_ENV === "development"}
+                        src={url}
+                        alt={`carousel-image-${index}`}
+                        width={1242 * 2}
+                        height={547 * 2}
+                        style={{ width: "100%", height: "auto", cursor: "pointer" }}
                     />
                 </SwiperSlide>
-            ) : (
-                images.map((url, index) => (
-                    <SwiperSlide key={index}>
-                        <Image
-                            priority={true}
-                            src={url}
-                            alt={`carousel-image-${index}`}
-                            width={1242 * 2}
-                            height={547 * 2}
-                            style={{ width: "100%", height: "auto", cursor: "pointer" }}
-                        />
-                    </SwiperSlide>
-                ))
-            )}
-
+            ))}
         </Swiper>
     );
 };

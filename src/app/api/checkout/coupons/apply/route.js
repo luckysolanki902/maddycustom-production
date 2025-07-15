@@ -77,21 +77,28 @@ function calculateBundleDiscount(cartItems, offer) {
 /* ------------------------------------------------------------------ */
 
 function evaluateCondition(condition, totalCost, isFirstOrder = false) {
+  if (!condition || typeof condition !== 'object') {
+    return false;
+  }
+  
   if (condition.type === 'cart_value') {
-    const v = totalCost;
-    const x = condition.value;
+    const v = typeof totalCost === 'number' ? totalCost : 0;
+    const x = typeof condition.value === 'number' ? condition.value : 0;
+    
     switch (condition.operator) {
       case '>=': return v >= x;
       case '<=': return v <= x;
-      case '>':  return v >  x;
-      case '<':  return v <  x;
+      case '>':  return v > x;
+      case '<':  return v < x;
       case '==': return v === x;
       default:   return false;
     }
   }
+  
   if (condition.type === 'first_order') {
     return isFirstOrder === condition.value;
   }
+  
   return false;
 }
 
@@ -100,28 +107,31 @@ function evaluateCondition(condition, totalCost, isFirstOrder = false) {
 /* ------------------------------------------------------------------ */
 export async function POST(request) {
   await connectToDatabase();
-
   const {
-    code        = '',           // manual mode
+    code        = '',
     totalCost   = 0,
     isFirstOrder = false,
     cartItems   = [],
-    auto        = false,        // ← AUTO‑APPLY flag
+    auto        = false,
+    currentCouponCode = '',
+    currentDiscountAmount = 0,
   } = await request.json();
 
-  /* ================================================================
-     AUTO‑APPLY MODE  ––  pick the best auto‑applicable offer with bundle priority
-  =================================================================*/
-  if (auto) {
-    try {
+  if (auto) {    try {
       const nowIst = moment().tz('Asia/Kolkata').toDate();
-
-      const offers = await Offer.find({
-        isActive : true,
+      
+      const query = {
+        isActive: true,
         autoApply: true,
-        validFrom : { $lte: nowIst },
+        validFrom: { $lte: nowIst },
         validUntil: { $gte: nowIst },
-      }).lean();
+      };
+      
+      if (currentCouponCode) {
+        query.couponCodes = { $ne: currentCouponCode.toUpperCase() };
+      }
+
+      const offers = await Offer.find(query).lean();
 
       if (!offers || offers.length === 0) {
         return NextResponse.json(
@@ -133,16 +143,18 @@ export async function POST(request) {
       let bestBundleOffer = null;
       let bestBundleDiscount = 0;
       let bestOtherOffer = null;
-      let bestOtherDiscount = 0;
+      let bestOtherDiscount = 0;      for (const offer of offers) {
+        const conditionResults = offer.conditions.map(c => ({
+          condition: c,
+          result: evaluateCondition(c, totalCost, isFirstOrder)
+        }));
+        
+        const ok = conditionResults.every(cr => cr.result);
+        
+        if (!ok) {
+          continue;
+        }
 
-      for (const offer of offers) {
-        /* conditions */
-        const ok = offer.conditions.every(c =>
-          evaluateCondition(c, totalCost, isFirstOrder)
-        );
-        if (!ok) continue;
-
-        /* discount value */
         const act = offer.actions[0] || {};
         let d = 0;
         
@@ -153,7 +165,6 @@ export async function POST(request) {
             bestBundleOffer = offer;
           }
         } else {
-          // Handle percentage and fixed discounts
           if (act.type === 'discount_percent') {
             d = (act.discountValue / 100) * totalCost;
             if (offer.discountCap && d > offer.discountCap) d = offer.discountCap;
@@ -166,10 +177,7 @@ export async function POST(request) {
             bestOtherOffer = offer;
           }
         }
-      }
-
-      // Priority: Bundle offers first, then other offers
-      let finalOffer = null;
+      }      let finalOffer = null;
       let finalDiscount = 0;
       
       if (bestBundleOffer && bestBundleDiscount > 0) {
@@ -180,14 +188,15 @@ export async function POST(request) {
         finalDiscount = bestOtherDiscount;
       }
 
-      if (!finalOffer || finalDiscount <= 0) {
+      const MINIMUM_IMPROVEMENT = 10;
+      const requiredDiscount = currentDiscountAmount + MINIMUM_IMPROVEMENT;
+      
+      if (!finalOffer || finalDiscount <= requiredDiscount) {
         return NextResponse.json(
-          { valid: false, message: 'No applicable auto‑offers meet the conditions.' },
+          { valid: false, message: 'No better auto‑offers available.' },
           { status: 200 }
         );
-      }
-
-      const act = finalOffer.actions[0];
+      }      const act = finalOffer.actions[0];
       const type = act.type === 'discount_percent'
         ? 'percentage'
         : act.type === 'bundle'
@@ -211,12 +220,7 @@ export async function POST(request) {
         { status: 500 }
       );
     }
-  }
-
-  /* ================================================================
-     MANUAL MODE  ––  user entered a code (old behaviour)
-  =================================================================*/
-  if (!code.trim()) {
+  }  if (!code.trim()) {
     return NextResponse.json(
       { valid: false, message: 'Coupon code is required.' },
       { status: 400 }
@@ -224,7 +228,6 @@ export async function POST(request) {
   }
 
   try {
-    /* 1 ‑ fetch offer by code */
     const offer = await Offer.findOne({
       couponCodes: code.trim().toUpperCase(),
       isActive   : true,
@@ -237,7 +240,6 @@ export async function POST(request) {
       );
     }
 
-    /* 2 ‑ check validity window */
     const now = moment().tz('Asia/Kolkata').toDate();
     if (now < offer.validFrom || now > offer.validUntil) {
       return NextResponse.json(
@@ -246,7 +248,6 @@ export async function POST(request) {
       );
     }
 
-    /* 3 ‑ conditions */
     const ok = offer.conditions.every(c =>
       evaluateCondition(c, totalCost, isFirstOrder)
     );
@@ -257,7 +258,6 @@ export async function POST(request) {
       );
     }
 
-    /* 4 ‑ discount calculation */
     const action = offer.actions[0] || {};
     let discount = 0;
     if (action.type === 'discount_percent') {

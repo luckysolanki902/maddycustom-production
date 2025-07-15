@@ -92,7 +92,7 @@ const Topbar = () => {
         <div className={styles.navLinks}>
           {[
             { text: 'Home', href: '/' },
-            { text: 'Track Your Order', href: '/orders/track' },
+            { text: 'My Orders', href: '/orders' },
             { text: 'Customer Support', href: '/faqs' },
             { text: 'About Us', href: '/about-us' },
           ].map((item) => (

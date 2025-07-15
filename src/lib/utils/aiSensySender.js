@@ -28,15 +28,52 @@ export async function sendWhatsAppMessage({
   buttons,
   countryCode = '91',
   isOTPCampaign = false,
-}) {  let campaignLog;  try {
+}) {
+  let campaignLog;
+  
+  try {
     // Skip all campaign log operations for OTP campaigns
     if (!isOTPCampaign) {
-      // 1. Check if we've *already* sent a successful message for this user+order+campaign
-      campaignLog = await CampaignLog.findOne({
-        user: user._id,          // <---- IMPORTANT: match by user also
-        order: orderId,
-        campaignName,
-      });
+      // 1. Use findOneAndUpdate with upsert to atomically create/find the campaign log
+      // This prevents race conditions by ensuring only one record exists
+      try {
+        campaignLog = await CampaignLog.findOneAndUpdate(
+          {
+            user: user._id,
+            order: orderId,
+            campaignName,
+          },
+          {
+            $setOnInsert: {
+              user: user._id,
+              order: orderId,
+              campaignName,
+              source: 'aisensy',
+              medium: 'whatsapp',
+              phoneNumber: user.phoneNumber,
+              totalCount: 0,
+              successfulCount: 0,
+              failedCount: 0,
+            }
+          },
+          {
+            upsert: true,
+            new: true,
+            setDefaultsOnInsert: true
+          }
+        );
+      } catch (duplicateError) {
+        // Handle duplicate key error - fetch the existing record
+        if (duplicateError.code === 11000) {
+          campaignLog = await CampaignLog.findOne({
+            user: user._id,
+            order: orderId,
+            campaignName,
+          });
+        } else {
+          throw duplicateError;
+        }
+      }
 
       // If we already have a successful send, skip to avoid duplicates
       if (campaignLog && campaignLog.successfulCount >= 1) {
@@ -44,21 +81,6 @@ export async function sendWhatsAppMessage({
           success: false,
           message: 'Message already sent successfully for this campaign.',
         };
-      }
-
-      // 2. If no campaignLog entry yet, create one
-      if (!campaignLog) {
-        campaignLog = new CampaignLog({
-          user: user._id,
-          order: orderId,
-          campaignName,
-          source: 'aisensy',
-          medium: 'whatsapp',
-          phoneNumber: user.phoneNumber,
-          totalCount: 0,
-          successfulCount: 0,
-          failedCount: 0,
-        });
       }
     }
 
@@ -70,6 +92,14 @@ export async function sendWhatsAppMessage({
       return {
         success: false,
         message: 'AiSensy API key is missing. Check your environment config.',
+      };
+    }
+
+    // Double-check for duplicates right before sending (extra safety)
+    if (!isOTPCampaign && campaignLog && campaignLog.successfulCount >= 1) {
+      return {
+        success: false,
+        message: 'Message already sent successfully for this campaign (pre-send check).',
       };
     }
 
@@ -104,10 +134,10 @@ export async function sendWhatsAppMessage({
     if (response.status === 401) {
       // Only update campaign log if not an OTP campaign
       if (!isOTPCampaign && campaignLog) {
-        campaignLog.totalCount += 1;
-        campaignLog.failedCount += 1;
-        campaignLog.lastSentAt = new Date();
-        await campaignLog.save();
+        await CampaignLog.findByIdAndUpdate(campaignLog._id, {
+          $inc: { totalCount: 1, failedCount: 1 },
+          $set: { lastSentAt: new Date() }
+        });
       }
 
       return {
@@ -121,10 +151,10 @@ export async function sendWhatsAppMessage({
     } catch (parseErr) {
       // Only update campaign log if not an OTP campaign
       if (!isOTPCampaign && campaignLog) {
-        campaignLog.totalCount += 1;
-        campaignLog.failedCount += 1;
-        campaignLog.lastSentAt = new Date();
-        await campaignLog.save();
+        await CampaignLog.findByIdAndUpdate(campaignLog._id, {
+          $inc: { totalCount: 1, failedCount: 1 },
+          $set: { lastSentAt: new Date() }
+        });
       }
 
       return {
@@ -136,10 +166,10 @@ export async function sendWhatsAppMessage({
     if (!response.ok || !result?.success) {
       // Only update campaign log if not an OTP campaign
       if (!isOTPCampaign && campaignLog) {
-        campaignLog.totalCount += 1;
-        campaignLog.failedCount += 1;
-        campaignLog.lastSentAt = new Date();
-        await campaignLog.save();
+        await CampaignLog.findByIdAndUpdate(campaignLog._id, {
+          $inc: { totalCount: 1, failedCount: 1 },
+          $set: { lastSentAt: new Date() }
+        });
       }
 
       return {
@@ -152,10 +182,10 @@ export async function sendWhatsAppMessage({
     // 7. If everything looks good, mark success
     // Only update campaign log if not an OTP campaign
     if (!isOTPCampaign && campaignLog) {
-      campaignLog.totalCount += 1;
-      campaignLog.successfulCount += 1;
-      campaignLog.lastSentAt = new Date();
-      await campaignLog.save();
+      await CampaignLog.findByIdAndUpdate(campaignLog._id, {
+        $inc: { totalCount: 1, successfulCount: 1 },
+        $set: { lastSentAt: new Date() }
+      });
     }
 
     return {
@@ -165,10 +195,10 @@ export async function sendWhatsAppMessage({
     };  } catch (error) {
     // Only update campaign log if not an OTP campaign
     if (!isOTPCampaign && campaignLog) {
-      campaignLog.totalCount += 1;
-      campaignLog.failedCount += 1;
-      campaignLog.lastSentAt = new Date();
-      await campaignLog.save();
+      await CampaignLog.findByIdAndUpdate(campaignLog._id, {
+        $inc: { totalCount: 1, failedCount: 1 },
+        $set: { lastSentAt: new Date() }
+      });
     }
 
     return {

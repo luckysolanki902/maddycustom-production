@@ -60,6 +60,11 @@ export async function POST(request) {
   try {
     const { eventName, options = {} } = await request.json();
     const currentTimestamp = Math.floor(Date.now() / 1000);
+    
+    // Debug logging for fbc
+    console.log('Received fbc:', options.fbc);
+    console.log('Received fbp:', options.fbp);
+    
     // Validate eventName
     const validEvents = ['Purchase', 'AddToCart', 'ViewContent', 'InitiateCheckout'];
     if (!validEvents.includes(eventName)) {
@@ -82,9 +87,22 @@ export async function POST(request) {
       .setEmails(hashedEmails) // hashed emails
       .setPhones(hashedPhones) // hashed phone numbers
       .setClientIpAddress(options.client_ip_address || '')
-      .setClientUserAgent(options.client_user_agent || '')
-      .setFbp(options.fbp || '')
-      .setFbc(options.fbc || '');
+      .setClientUserAgent(options.client_user_agent || '');
+
+    // Only set fbp and fbc if they have valid values
+    if (options.fbp && options.fbp.trim() !== '' && options.fbp !== 'null' && options.fbp !== 'undefined') {
+      userData.setFbp(options.fbp);
+      console.log('Setting fbp:', options.fbp);
+    } else {
+      console.log('No valid fbp provided');
+    }
+    
+    if (options.fbc && options.fbc.trim() !== '' && options.fbc !== 'null' && options.fbc !== 'undefined') {
+      userData.setFbc(options.fbc);
+      console.log('Setting fbc:', options.fbc);
+    } else {
+      console.log('No valid fbc provided');
+    }
 
     // Prepare Contents
     const contents = options.contents

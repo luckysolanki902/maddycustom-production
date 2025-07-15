@@ -6,5 +6,55 @@ export const getCookie = (name) => {
   };
   
   export const getFbp = () => getCookie('_fbp');
-  export const getFbc = () => getCookie('fbc'); 
- 
+  export const getFbc = () => {
+    // First try to get _fbc from cookie (Facebook's standard cookie name)
+    let fbc = getCookie('_fbc');
+    
+    // If not found, try to get fbc (our backup cookie)
+    if (!fbc) {
+      fbc = getCookie('fbc');
+    }
+    
+    // If still not found, try to construct from fbclid in URL (fallback)
+    if (!fbc && typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const fbclid = urlParams.get('fbclid');
+      if (fbclid) {
+        // Calculate subdomain index according to Meta's specification:
+        // 'com' = 0, 'example.com' = 1, 'www.example.com' = 2
+        const hostname = window.location.hostname;
+        const domainParts = hostname.split('.');
+        let subdomainIndex = 1; // Default value as recommended by Meta
+        
+        if (domainParts.length === 2) {
+          subdomainIndex = 1; // example.com
+        } else if (domainParts.length >= 3) {
+          subdomainIndex = 2; // www.example.com or subdomain.example.com
+        }
+        
+        const timestamp = Date.now(); // UNIX time in milliseconds
+        fbc = `fb.${subdomainIndex}.${timestamp}.${fbclid}`;
+        
+        // Store it in cookie for future use (90 days as recommended by Meta)
+        document.cookie = `_fbc=${fbc}; path=/; max-age=7776000; SameSite=Lax`;
+        document.cookie = `fbc=${fbc}; path=/; max-age=7776000; SameSite=Lax`;
+      }
+    }
+    
+    return fbc || null; // Return null instead of undefined for better handling
+  };
+
+  // Helper function to check if we have valid Facebook tracking parameters
+  export const hasValidFacebookTracking = () => {
+    const fbp = getFbp();
+    const fbc = getFbc();
+    return !!(fbp || fbc);
+  };
+
+  // Get Facebook tracking parameters as an object
+  export const getFacebookTrackingParams = () => {
+    return {
+      fbp: getFbp(),
+      fbc: getFbc()
+    };
+  };

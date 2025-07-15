@@ -5,8 +5,8 @@ import { useSearchParams, usePathname } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUTMDetails } from '@/store/slices/utmSlice';
 
-// List of UTM and Facebook parameters we want to track
-const UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbc'];
+// List of UTM parameters we want to track (fbc is handled separately as it's a cookie)
+const UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
 
 const useCaptureUTM = () => {
     const searchParams = useSearchParams();

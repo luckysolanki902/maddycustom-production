@@ -162,10 +162,10 @@ export default function ProductIdPage({
     }
   }, [category, router]);
 
-  // --- MERGE IMAGES FROM DESCRIPTION TAB ---
+  // --- MERGE IMAGES FROM DESCRIPTION TAB AND COMMON GALLERY ---
   const productImages = product.images || [];
   let descriptionImages = [];
-
+if (category?.specificCategoryCode !== 'cmat') {
   productInfoTabs.forEach((tab) => {
     if (
       tab.title &&
@@ -190,13 +190,17 @@ export default function ProductIdPage({
       });
     }
   });
+}
+
+  // Get common gallery images from category
+  const commonGalleryImages = category?.commonGalleryImages || [];
 
   // Determine which images to show:
-  // If a selected option exists with images, show its first image; otherwise, show product & description images.
+  // If a selected option exists with images, show its first image; otherwise, show product, description, and common gallery images.
   const mergedImages =
     selectedOption && selectedOption.images && selectedOption.images.length > 0
       ? [selectedOption.images[0]]
-      : [...productImages, ...descriptionImages];
+      : [...productImages, ...descriptionImages, ...commonGalleryImages];
 
   // Prepend the Cloudfront base URL if necessary
   const allImages = mergedImages.map((img) =>
@@ -467,6 +471,15 @@ export default function ProductIdPage({
                     className={styles.bikeBundleImage}
                   />
                 </Link>}
+                {product.specificCategory === '685be144d656a52f5754e667' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
+                  <Image
+                    src={`${imageBaseUrl}/assets/posters/mat_phone.jpg`}
+                    alt="Mat Bundle offer Mobile"
+                    width={1024}
+                    height={200}
+                    className={styles.bikeBundleImage}
+                  />
+                </Link>}
                 <div className={styles.orderSpecificationsContainer}>
                   <MemoizedOrderSpecifications
                     features={variant.features}
@@ -495,6 +508,15 @@ export default function ProductIdPage({
                   <Image
                     src={`${imageBaseUrl}/assets/posters/tankbundlepc.png`}
                     alt="Bike Bundle offer PC"
+                    width={1024}
+                    height={200}
+                    className={styles.bikeBundleImage}
+                  />
+                </Link>}
+                {product.specificCategory === '685be144d656a52f5754e667' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
+                  <Image
+                    src={`${imageBaseUrl}/assets/posters/mat_pc.jpg`}
+                    alt="Mat Bundle offer PC"
                     width={1024}
                     height={200}
                     className={styles.bikeBundleImage}

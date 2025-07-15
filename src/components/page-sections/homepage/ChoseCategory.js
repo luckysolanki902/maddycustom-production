@@ -24,20 +24,20 @@ const ChooseCategory = () => {
       {/* Graphic Helmets */}
       <div className={styles.mainCard}>
         <Link
-          href={'/shop/accessories/minimal-personalization/keychains/realistic-functional-keychains'}
+          href={'/shop/accessories/car-care/car-floor-mats/universal-car-mats'}
           className={styles.chooseCard}
         >
           <div className={styles.imageWrapper}>
             <Image
               className={styles.chooseImage}
-              src={`${baseurl}/assets/posters/keychain1.png`}
+              src={`${baseurl}/assets/category-cards/ucmat.jpg`}
               alt="Keychain"
               fill
               sizes="(max-width: 320px) 33vw, (max-width: 768px) 25vw, 16vw"
             />
           </div>
         </Link>
-        <div className={styles.name}>JDM KeyChain</div>
+        <div className={styles.name}>Car Floor Mats</div>
       </div>
 
       {/* Car Pillar Wrap */}

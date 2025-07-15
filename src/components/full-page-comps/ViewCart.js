@@ -1,12 +1,12 @@
 // components/ViewCart.jsx
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
 
 import { removeItem } from '@/store/slices/cartSlice';
-import { closeCartDrawer } from '@/store/slices/uiSlice'; // Removed expireShippingTimer
+import { closeCartDrawer } from '@/store/slices/uiSlice';
 import {
   startShippingTimer as startPersistentShippingTimer,
   clearShippingTimer as clearPersistentShippingTimer,
@@ -48,17 +48,28 @@ import EndOfMonth from '../showcase/banners/EndOfMonth';
 import CouponTimerBanner from '../showcase/banners/CouponTimerBanner';
 
 /* ---------------- helper ------------------------------------------------ */
-const isOfferApplicable = (offer, totalCost, isFirstOrder = false) =>
-  offer.conditions.every(c => {
+const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
+  if (!offer || !offer.conditions) {
+    return false;
+  }
+  
+  const result = offer.conditions.every(c => {
     if (c.type === 'cart_value') {
       const v = totalCost, x = c.value;
-      return (c.operator === '>=' && v >= x) || (c.operator === '>' && v > x)
+      const conditionMet = (c.operator === '>=' && v >= x) || (c.operator === '>' && v > x)
         || (c.operator === '<' && v < x) || (c.operator === '<=' && v <= x)
         || (c.operator === '==' && v === x);
+      return conditionMet;
     }
-    if (c.type === 'first_order') return isFirstOrder === c.value;
+    if (c.type === 'first_order') {
+      const conditionMet = isFirstOrder === c.value;
+      return conditionMet;
+    }
     return true;
   });
+  
+  return result;
+};
 
 const flattenCart = cartItems => cartItems.map(i => ({
   productId: i.productId || i.productDetails._id,
@@ -77,12 +88,10 @@ export default function ViewCart({ isDrawer = false }) {
   const couponRedux = orderForm.couponApplied;
   // Get persisted shipping timer state
   const persistedShippingTimer = useSelector(s => s.persistentUi.shippingTimer);
-
   /* ---------- coupon local mirror ------------------------------------ */
   const [couponState, setCouponState] = useState({
     couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null,
-  });
-  useEffect(() => {
+  });  useEffect(() => {
     if (couponRedux.couponCode) {
       setCouponState({
         couponApplied: true,
@@ -244,33 +253,49 @@ export default function ViewCart({ isDrawer = false }) {
   const onlineAmount = isSplitPayment ?
     Math.round((totalPay * (selectedPM?.configuration?.onlinePercentage || 50)) / 100) : 0;
   const codAmount = isSplitPayment ? totalPay - onlineAmount : 0;
-
-  const snack = (m, s = 'success') => setSnackbar({ open: true, message: m, severity: s });
+  const snack = useCallback((m, s = 'success') => setSnackbar({ open: true, message: m, severity: s }), []);
   const dispatchCoupon = p => dispatch(setCouponApplied({ ...p }));
-
-  /* ---------- coupon apply / remove --------------------------------- */
-  const applyCoupon = (code, amount, type, offer, fromAuto = false) => {
-    if (amount <= 0) { snack('Offer conditions are not met.', 'warning'); return; }
-    if (type !== 'bundle' && !isOfferApplicable(offer, subTot, isFirstOrder)) {
-      snack('Offer conditions are not met.', 'warning'); return;
+  /* ---------- coupon apply / remove --------------------------------- */  const applyCoupon = useCallback((code, amount, type, offer, fromAuto = false) => {
+    if (amount <= 0) { 
+      snack('Offer conditions are not met.', 'warning'); 
+      return; 
     }
-
+    
+    if (type !== 'bundle' && !isOfferApplicable(offer, subTot, isFirstOrder)) {
+      snack('Offer conditions are not met.', 'warning'); 
+      return;
+    }
+    
     setCouponState({ couponApplied: true, couponName: code, couponDiscount: amount, discountType: type, offer });
-    dispatchCoupon({ couponCode: code, discountAmount: amount, discountType: type, offer });
+    dispatch(setCouponApplied({ couponCode: code, discountAmount: amount, discountType: type, offer }));
 
-    if (!fromAuto) dispatch(setManualCoupon({ couponCode: code }));
+    if (!fromAuto) {
+      dispatch(setManualCoupon({ couponCode: code }));
+    }
+    
     dispatch(resetAutoApplyDisabled());
-    if (fromAuto) lastAutoRef.current = { code, type };
-
-    // Don't show snackbar, use the animation in the coupon section instead
-  };
-
-  const removeCoupon = (showMsg = true) => {
+    
+    if (fromAuto) {
+      lastAutoRef.current = { code, type };
+    }
+  }, [subTot, isFirstOrder, dispatch, snack]);const removeCoupon = useCallback((showMsg = true) => {
     setCouponState({ couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null });
-    dispatchCoupon({ couponCode: '', discountAmount: 0, discountType: '', offer: null });
+    dispatch(setCouponApplied({ couponCode: '', discountAmount: 0, discountType: '', offer: null }));
+      // Reset both flags to allow auto-apply
+    dispatch(resetAutoApplyDisabled());
     dispatch(setManualCoupon(null));
+    
+
+    lastAutoRef.current = { code: '', type: '' };
+    
+
+    
+
+    manualRemovalRef.current = true;
+
+    
     if (showMsg) snack('Coupon removed.', 'warning');
-  };
+  }, [dispatch, snack]);
 
   // Handler for the back button in the drawer to close it
   const handleBackClick = () => {
@@ -288,7 +313,7 @@ export default function ViewCart({ isDrawer = false }) {
         snack('Failed to fetch payment modes', 'error');
       } finally { setLoadingPM(false); }
     })();
-  }, []);
+  }, [snack]);
 
   /* ---------- locked / now banner (updated for card offers) ----------------------- */
   useEffect(() => {
@@ -338,47 +363,95 @@ export default function ViewCart({ isDrawer = false }) {
       }
     })();
   }, [subTot, cartItems, couponState.couponApplied, couponState.offer?._id, couponState.couponName, couponState.couponDiscount]);
-
   /* ---------- AUTO‑APPLY (fixed to work for all offer types) -------- */
   const { autoApplyDisabled, autoApplyDisabledAt, manualCoupon } = orderForm;
   const blocked = autoApplyDisabled && autoApplyDisabledAt &&
     Date.now() < new Date(autoApplyDisabledAt).getTime() + FIVE_MIN;
+  // Track previous cart state to detect changes
+  const prevCartRef = useRef(null);
+  const cartChanged = useRef(false);
+  const forceAutoApply = useRef(false);  const manualRemovalRef = useRef(false);
 
   useEffect(() => {
-    if (blocked || manualCoupon || couponState.couponApplied || !qty) return;
-
-    (async () => {
-      try {
-        const res = await fetch('/api/checkout/coupons/apply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            auto: true,
-            totalCost: subTot,
-            isFirstOrder,
-            cartItems: flattenCart(cartItems),
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.valid || !data.offer) return;
-
-        // Get the first coupon code from the offer
-        const couponCode = data.offer.couponCodes && data.offer.couponCodes.length > 0
-          ? data.offer.couponCodes[0]
-          : `AUTO_${data.offer._id}`;
-
-        // Prevent duplicate application of the same offer
-        if (lastAutoRef.current.code === couponCode && lastAutoRef.current.type === data.discountType) return;
-
-        applyCoupon(couponCode, data.discountValue, data.discountType, data.offer, true);
-      } catch (e) {
-        console.error('auto‑apply error', e);
+    const currentCartKey = JSON.stringify(cartItems.map(item => ({ id: item.productId, qty: item.quantity })));
+    if (prevCartRef.current !== currentCartKey) {
+      cartChanged.current = true;
+      forceAutoApply.current = true;
+      prevCartRef.current = currentCartKey;
+      
+      if (manualRemovalRef.current) {
+        manualRemovalRef.current = false;
       }
-    })();
-  }, [qty, subTot, cartItems, couponState.couponApplied, blocked, manualCoupon]);
+      
+      lastAutoRef.current = { code: '', type: '' };
+      
+      if (autoApplyDisabled) {
+        dispatch(resetAutoApplyDisabled());
+      }
+      if (manualCoupon) {
+        dispatch(setManualCoupon(null));
+      }
+    }
+  }, [cartItems, dispatch, autoApplyDisabled, manualCoupon]);
 
+  useEffect(() => {
+    if (!qty) {
+      forceAutoApply.current = false;
+      return;
+    }
+    
+    if (manualRemovalRef.current) {
+      return;
+    }
+    
+    const shouldCheckAutoApply = forceAutoApply.current || 
+      cartChanged.current || 
+      (!blocked && !manualCoupon && !couponState.couponApplied);
+    
+    if (shouldCheckAutoApply) {
+      cartChanged.current = false;
+      forceAutoApply.current = false;
+        (async () => {
+        try {
+          const res = await fetch('/api/checkout/coupons/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              auto: true,
+              totalCost: subTot,
+              isFirstOrder,
+              cartItems: flattenCart(cartItems),
+              currentCouponCode: couponState.couponApplied ? couponState.couponName : '',
+              currentDiscountAmount: couponState.couponApplied ? couponState.couponDiscount : 0,
+            }),
+          });
+          
+          const data = await res.json();
+          
+          if (!res.ok || !data.valid || !data.offer) {
+            return;
+          }
+
+          const couponCode = data.offer.couponCodes && data.offer.couponCodes.length > 0
+            ? data.offer.couponCodes[0]            : `AUTO_${data.offer._id}`;
+
+          if (couponState.couponApplied && couponState.couponName === couponCode) {
+            return;
+          }
+
+          try {
+            applyCoupon(couponCode, data.discountValue, data.discountType, data.offer, true);
+          } catch (applyCouponError) {
+            console.error('Error in applyCoupon function:', applyCouponError);
+          }
+        } catch (e) {
+          console.error('Auto‑apply error:', e);
+        }
+      })();
+    }
+  }, [qty, subTot, cartItems, couponState.couponApplied, couponState.couponName, couponState.couponDiscount, blocked, manualCoupon, dispatch, applyCoupon, isFirstOrder]);
   /* ---------- RE‑VALIDATE on cart changes (unchanged) --------------- */
-  const revalidateCoupon = async (silent = false) => {
+  const revalidateCoupon = useCallback(async (silent = false) => {
     if (!couponState.couponApplied) return true;
 
     try {
@@ -392,27 +465,37 @@ export default function ViewCart({ isDrawer = false }) {
           cartItems: flattenCart(cartItems),
         }),
       });
-      const data = await res.json();
-
-      if (!res.ok || !data.valid || data.discountValue <= 0) {
+      const data = await res.json();      if (!res.ok || !data.valid || data.discountValue <= 0) {
         removeCoupon(!silent);
         if (!silent) snack(`Coupon ${couponState.couponName} no longer valid.`, 'warning');
+        
+        // Set flag to force auto-apply after coupon is invalidated
+        forceAutoApply.current = true;
         return false;
       }
 
       if (data.discountValue !== couponState.couponDiscount) {
         setCouponState(p => ({ ...p, couponDiscount: data.discountValue }));
-        dispatchCoupon({ ...couponRedux, discountAmount: data.discountValue });
+        dispatch(setCouponApplied({ ...couponRedux, discountAmount: data.discountValue }));
       }
       return true;
     } catch {
       if (!silent) snack('Could not verify coupon.', 'error');
       return false;
-    }
-  };
-
-  /* run on cart changes */
-  useEffect(() => { revalidateCoupon(true); }, [cartItems, subTot]); // eslint-disable-line
+    }  }, [couponState.couponApplied, couponState.couponName, couponState.couponDiscount, 
+      subTot, isFirstOrder, cartItems, removeCoupon, couponRedux, dispatch, snack]);  /* run on cart changes */  useEffect(() => { 
+    const revalidate = async () => {
+      if (couponState.couponApplied) {
+        const isValid = await revalidateCoupon(true);
+        
+        if (!isValid && !manualRemovalRef.current) {
+          forceAutoApply.current = true;
+        }
+      }
+    };
+    
+    revalidate();
+  }, [cartItems, subTot, revalidateCoupon, couponState.couponApplied, couponState.couponName]);
 
   /* ---------- validate before checkout (unchanged) ------------------ */
   const handleCheckout = async () => {
@@ -445,7 +528,7 @@ export default function ViewCart({ isDrawer = false }) {
           onBack={isDrawer ? handleBackClick : undefined}
         />
       </header>
-      
+
       {/* Moved the banner outside of scrollable content for more visibility */}
       <CouponTimerBanner />
 
@@ -590,18 +673,24 @@ export default function ViewCart({ isDrawer = false }) {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1, transition: { delay: 0.3 } }}
                       >
-                        You saved <strong>₹{couponState.couponDiscount}</strong>{' '}
-                        {couponState.discountType === 'bundle'
-                          ? 'on your bundle'
-                          : `with ${couponState.couponName}`}
+                        {couponState.couponName === 'MATS150' && couponState.discountType === 'bundle'
+                          ? <>Launch Deal Unlocked: <strong>₹{couponState.couponDiscount}</strong> on Your Car Floor Mats!</>
+                          : <>You saved <strong>₹{couponState.couponDiscount}</strong>{' '}
+                            {couponState.discountType === 'bundle'
+                              ? 'on your bundle'
+                              : `with ${couponState.couponName}`}</>
+                        }
                       </motion.span>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
+
+{/* _______________________________________________________NOT REQUIRED FOR NOW______________________________________________ */}
+              {/* We don't need this section for now  */}
               {/* Available Coupon Banner - Enhanced with next best logic */}
-              {!couponState.couponApplied && nowCoupon && (
+              {/* {!couponState.couponApplied && nowCoupon && (
                 <motion.div
                   className={styles.availableCouponBanner}
                   whileHover={{ scale: 1.02 }}
@@ -625,10 +714,12 @@ export default function ViewCart({ isDrawer = false }) {
                     Apply
                   </motion.button>
                 </motion.div>
-              )}
 
+              )} */}
+
+              {/* We don't need this section for now  */}
               {/* Next Available Coupon Banner - When coupon is already applied */}
-              {couponState.couponApplied && nowCoupon && (
+              {/* {couponState.couponApplied && nowCoupon && (
                 <motion.div
                   className={styles.availableCouponBanner}
                   whileHover={{ scale: 1.02 }}
@@ -654,7 +745,9 @@ export default function ViewCart({ isDrawer = false }) {
                     Switch
                   </motion.button>
                 </motion.div>
-              )}
+              )} */}
+{/* __________________________________________________________________________________________________________________________*/}
+
 
               {/* Price Details */}
               <PriceDetails

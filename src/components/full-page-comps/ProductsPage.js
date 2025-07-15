@@ -27,9 +27,10 @@ import { PaginationStyles, PaginationStylesForPhone } from '@/styles/PaginationS
 import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
 import { recommendationMap } from '@/lib/constants/recommendationMap';
 import TopBoughtProducts from '@/components/showcase/products/TopBoughtProducts';
+import IsolatedTopBoughtProducts from '@/components/showcase/products/IsolatedTopBoughtProducts';
 
 /* ------------------------------------------------------------------ */
-/* Smooth “Top-Bought” fade-in/slide-up wrapper                        */
+/* Smooth "Top-Bought" fade-in/slide-up wrapper                        */
 /* (hoisted so it stays mounted across re-renders)                    */
 /* ------------------------------------------------------------------ */
 // eslint-disable-next-line react/display-name
@@ -56,6 +57,37 @@ const AnimatedTopBought = memo(({ singleVariantCode }) => {
   );
 });
 
+// Static version of top-bought section to prevent rerendering issues
+// eslint-disable-next-line react/display-name
+const StaticTopBought = memo(({ singleVariantCode, containerStyle = {} }) => {
+  return (
+    <div className={styles.topBoughtContainer} style={containerStyle}>
+      <TopBoughtProducts 
+        singleVariantCode={singleVariantCode} 
+        pageType="products-list"
+        key={`static-${singleVariantCode}`} // Stable key to prevent remounting
+      />
+    </div>
+  );
+});
+
+// Completely stable version that doesn't re-render at all
+// eslint-disable-next-line react/display-name
+const StableTopBought = memo(({ singleVariantCode, containerStyle = {} }) => {
+  return (
+    <div className={styles.topBoughtContainer} style={containerStyle}>
+      <IsolatedTopBoughtProducts 
+        singleVariantCode={singleVariantCode} 
+        pageType="products-list"
+        hideHeading={false}
+      />
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Only re-render if singleVariantCode actually changes
+  return prevProps.singleVariantCode === nextProps.singleVariantCode;
+});
+
 export default function ProductsPage({
   slug,
   variant,
@@ -76,6 +108,17 @@ export default function ProductsPage({
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [showLayout2, setShowLayout2] = useState(variant?.listLayout === '2');
+
+  // Stable references to prevent TopBoughtProducts re-renders
+  const stableRecommendedKey = useMemo(
+    () => recommendationMap[variant?.variantCode] || 'win',
+    [variant?.variantCode]
+  );
+  
+  const stableVariantCode = useMemo(
+    () => variant?.variantCode,
+    [variant?.variantCode]
+  );
 
   /* ------------------------ effects ------------------------ */
   // useEffect(() => {
@@ -136,10 +179,6 @@ export default function ProductsPage({
   const isMediumDevice = useMediaQuery('(max-width: 1024px)');
   const isLargeDevice  = useMediaQuery('(min-width: 1200px)');
   const showVideo      = currentPage === 1;
-  const recommendedKey = useMemo(
-    () => recommendationMap[variant?.variantCode] || 'win',
-    [variant?.variantCode]
-  );
 
   // Enhanced scroll to top function with better reliability
   const enhancedScrollToTop = useCallback(() => {
@@ -194,6 +233,7 @@ export default function ProductsPage({
 
   // Improved product distribution logic with complete row calculation
   const [firstHalf, secondHalf] = useMemo(() => {
+    console.log({currentProducts})
     if (!SHOW_TOP_BOUGHT || currentPage !== 1) return [currentProducts, []];
     
     const columnsPerRow = getColumnsPerRow();
@@ -352,7 +392,7 @@ export default function ProductsPage({
                 hideVideo={!shouldShowVideoInWrapper} // Only show in wrapper for non-mobile
               />
 
-              {SHOW_TOP_BOUGHT && <AnimatedTopBought singleVariantCode={recommendedKey} />}
+              {SHOW_TOP_BOUGHT && <StableTopBought singleVariantCode={stableRecommendedKey} />}
 
               {SHOW_TOP_BOUGHT && secondHalf.length > 0 && (
                 <ProductsWrapper
@@ -403,7 +443,20 @@ export default function ProductsPage({
           )}
 
           {currentPage !== 1 && SHOW_TOP_BOUGHT && (
-            <AnimatedTopBought singleVariantCode={recommendedKey} />
+            <StableTopBought singleVariantCode={stableRecommendedKey} />
+          )}
+          
+          {/* Extra ribbon of TopBoughtProducts for 'win' variant */}
+          {stableVariantCode === 'win' && (
+            <StableTopBought 
+              singleVariantCode="ucmat" 
+              containerStyle={{ 
+                marginTop: '2rem',
+                padding: '1rem',
+                borderTop: '1px solid #eaeaea',
+                backgroundColor: '#f9f9f9'
+              }}
+            />
           )}
 
           <ScrollToTop />
