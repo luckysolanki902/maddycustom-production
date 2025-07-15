@@ -10,7 +10,6 @@ import { notFound } from 'next/navigation';
 import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
 import ProductInfoTab from '@/models/ProductInfoTab';
 import connectToDatabase from '@/lib/middleware/connectToDb';
-
 async function getProductInfoTabs(specificCategory, product, variant) {
   if (
     !specificCategory ||
@@ -83,7 +82,7 @@ export default async function ShopPage({ params }) {
     notFound();
   }
 
-  // If it’s a variant display page => show products listing
+  // If it's a variant display page => show products listing
   if (data.type === 'variant') {
     return (
       <ProductsPage
@@ -99,7 +98,7 @@ export default async function ShopPage({ params }) {
     );
   }
 
-  // If it’s an actual single “product detail” page => show ProductIdPage
+  // If it's an actual single "product detail" page => show ProductIdPage
   if (data.type === 'product') {
     const { product, variant, specificCategory } = data;
     const canonicalUrl = `https://www.maddycustom.com/shop/${slug.join('/')}`;
@@ -110,7 +109,7 @@ export default async function ShopPage({ params }) {
     // Fetch the product info tabs from DB (SSR)
     const productInfoTabs = await getProductInfoTabs(specificCategory, product, variant);
 
-    // Merge “Description” images into product images
+    // Merge "Description" images into product images
     let appendedImages = [...(product.images || [])];
     const descriptionTab = productInfoTabs.find((t) => t.title === 'Description');
     if (descriptionTab && Array.isArray(descriptionTab.images)) {

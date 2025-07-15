@@ -97,6 +97,7 @@ export default function ProductsPage({
   initialPage,
   totalPages,
   uniqueTags,
+  isNewLaunch: isNewLaunchFromAPI,
 }) {
   /* ------------------------ state ------------------------ */
   const SHOW_TOP_BOUGHT = category.specificCategoryCode !== 'tw'; // Controls visibility of TopBought section and product distribution
@@ -109,6 +110,7 @@ export default function ProductsPage({
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [showLayout2, setShowLayout2] = useState(variant?.listLayout === '2');
+  const [isNewLaunch, setIsNewLaunch] = useState(isNewLaunchFromAPI || false);
 
   // Stable references to prevent TopBoughtProducts re-renders
   const stableRecommendedKey = useMemo(
@@ -157,6 +159,10 @@ export default function ProductsPage({
           setCurrentProducts(data.products);
           setTotalPageCount(data.totalPages);
           setCurrentPage(data.currentPage);
+          // Update isNewLaunch if it's available in the response
+          if (data.hasOwnProperty('isNewLaunch')) {
+            setIsNewLaunch(data.isNewLaunch);
+          }
         }
       } catch (err) {
         console.error('Error fetching page data:', err);
@@ -276,20 +282,6 @@ export default function ProductsPage({
     fetchPageData(newPage, tagFilter, sortBy);
     enhancedScrollToTop();
   }, [fetchPageData, tagFilter, sortBy, enhancedScrollToTop]);
-
-  /* ------------------------ check for new launch products ------------------------ */
-  const isNewLaunch = useMemo(() => {
-    if (!currentProducts || currentProducts.length === 0) return false;
-    
-    const firstProduct = currentProducts[0];
-    if (!firstProduct?.createdAt) return false;
-    
-    const createdDate = new Date(firstProduct.createdAt);
-    const currentDate = new Date();
-    const diffInDays = Math.floor((currentDate - createdDate) / (1000 * 60 * 60 * 24));
-    
-    return diffInDays <= 20;
-  }, [currentProducts]);
 
   /* ------------------------ chat button styles ------------------------ */
   const chatButtonStyles = {
