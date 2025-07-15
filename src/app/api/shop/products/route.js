@@ -178,6 +178,25 @@ export async function POST(request) {
 
       const products = await Product.aggregate(pipeline).exec();
 
+      // Check if this is a new launch by finding the oldest product in this variant
+      const oldestProductPipeline = [
+        { $match: { specificCategoryVariant: variant._id, available: true } },
+        { $sort: { createdAt: 1 } },
+        { $limit: 1 },
+        { $project: { createdAt: 1 } }
+      ];
+      const oldestProductResult = await Product.aggregate(oldestProductPipeline).exec();
+      
+      let isNewLaunch = false;
+      if (oldestProductResult.length > 0) {
+        const oldestProduct = oldestProductResult[0];
+        const createdDate = new Date(oldestProduct.createdAt);
+        const currentDate = new Date();
+        const diffInDays = Math.floor((currentDate - createdDate) / (1000 * 60 * 60 * 24));
+        isNewLaunch = diffInDays <= 20;
+      }
+      console.log({isNewLaunch});
+
       // unique tags
       const uniqueTagsPipeline = [
         { $match: { specificCategoryVariant: variant._id, available: true } },
@@ -198,6 +217,7 @@ export async function POST(request) {
           totalPages,
           currentPage,
           uniqueTags,
+          isNewLaunch,
         },
         { status: 200 }
       );
