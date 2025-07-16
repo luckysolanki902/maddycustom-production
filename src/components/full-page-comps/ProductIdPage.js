@@ -480,6 +480,15 @@ if (category?.specificCategoryCode !== 'cmat') {
                     className={styles.bikeBundleImage}
                   />
                 </Link>}
+                {product.specificCategory === '67d95873451481014c7d0bb2' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
+                  <Image
+                    src={`${imageBaseUrl}/assets/posters/freshener_offer_phone.jpg`}
+                    alt="Freshener Bundle offer Mobile"
+                    width={1024}
+                    height={200}
+                    className={styles.bikeBundleImage}
+                  />
+                </Link>}
                 <div className={styles.orderSpecificationsContainer}>
                   <MemoizedOrderSpecifications
                     features={variant.features}
@@ -517,6 +526,15 @@ if (category?.specificCategoryCode !== 'cmat') {
                   <Image
                     src={`${imageBaseUrl}/assets/posters/mat_pc.jpg`}
                     alt="Mat Bundle offer PC"
+                    width={1024}
+                    height={200}
+                    className={styles.bikeBundleImage}
+                  />
+                </Link>}
+                {product.specificCategory === '67d95873451481014c7d0bb2' && <Link href={memoizedProductListPageLink} className={styles.offerAdContainer}>
+                  <Image
+                    src={`${imageBaseUrl}/assets/posters/freshener_offer_pc.jpg`}
+                    alt="Freshener Bundle offer PC"
                     width={1024}
                     height={200}
                     className={styles.bikeBundleImage}

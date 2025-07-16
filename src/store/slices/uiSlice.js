@@ -7,6 +7,15 @@ const initialState = {
   isSearchDialogOpen: false,
   isCartDrawerOpen: false,
   cartDrawerSource: 'bottom', // 'top' or 'bottom'
+  shippingTimer: {
+    expiryTime: Date.now() + (9 * 60 * 60 * 1000) + (13 * 60 * 1000), // 9 hours 13 minutes from now
+    isActive: false
+  },
+  topStrip: {
+    show: false,
+    categoryId: null,
+    data: null
+  }
 };
 
 const uiSlice = createSlice({
@@ -62,6 +71,18 @@ const uiSlice = createSlice({
       state.isSidebarOpen = false;
       state.isSearchDialogOpen = false;
     },
+    
+    // TopStrip reducers
+    showTopStrip(state, action) {
+      state.topStrip.show = true;
+      state.topStrip.categoryId = action.payload?.categoryId || null;
+      state.topStrip.data = action.payload?.data || null;
+    },
+    hideTopStrip(state) {
+      state.topStrip.show = false;
+      state.topStrip.categoryId = null;
+      state.topStrip.data = null;
+    },
   },
 });
 
@@ -78,7 +99,9 @@ export const {
   setShippingTimer,
   expireShippingTimer,
   resetShippingTimer,
-  closeAllDialogs
+  closeAllDialogs,
+  showTopStrip,
+  hideTopStrip
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

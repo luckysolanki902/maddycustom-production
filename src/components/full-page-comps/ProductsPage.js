@@ -14,6 +14,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useMediaQuery, Pagination } from '@mui/material';
 import { useSpring, animated } from 'react-spring';
+import { useDispatch } from 'react-redux';
 
 import styles from './styles/products.module.css';
 import wrapperStyles from '../cards/styles/productswrapper.module.css';
@@ -29,6 +30,7 @@ import { ITEMS_PER_PAGE } from '@/lib/constants/productsPageConsts';
 import { recommendationMap } from '@/lib/constants/recommendationMap';
 import TopBoughtProducts from '@/components/showcase/products/TopBoughtProducts';
 import IsolatedTopBoughtProducts from '@/components/showcase/products/IsolatedTopBoughtProducts';
+import { showTopStrip, hideTopStrip } from '@/store/slices/uiSlice';
 
 /* ------------------------------------------------------------------ */
 /* Smooth "Top-Bought" fade-in/slide-up wrapper                        */
@@ -101,6 +103,7 @@ export default function ProductsPage({
 }) {
   /* ------------------------ state ------------------------ */
   const SHOW_TOP_BOUGHT = category.specificCategoryCode !== 'tw'; // Controls visibility of TopBought section and product distribution
+  const dispatch = useDispatch();
 
   const [tagFilter, setTagFilter] = useState(null);
   const [sortBy, setSortBy] = useState('default');
@@ -131,6 +134,30 @@ export default function ProductsPage({
   useEffect(() => {
     setShowLayout2(variant?.listLayout === '2');
   }, [variant]);
+
+  // TopStrip management effect
+  useEffect(() => {
+    // Show TopStrip if category matches the specific ID
+    if (category?._id === '67d95873451481014c7d0bb2') {
+      dispatch(showTopStrip({ 
+        categoryId: category._id,
+        data: {
+          images: {
+            pc: 'freshener strip_banner_pc.jpg',
+            phone: 'freshener strip_banner_phone.jpg'
+          }
+        }
+      }));
+    } else {
+      // Hide TopStrip for other categories
+      dispatch(hideTopStrip());
+    }
+
+    // Cleanup when component unmounts
+    return () => {
+      dispatch(hideTopStrip());
+    };
+  }, [category?._id, dispatch]);
 
   /* ------------------------ queries ------------------------ */
   const fetchPageData = useCallback(
