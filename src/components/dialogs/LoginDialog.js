@@ -51,7 +51,6 @@ const LoginDialog = () => {
 
   useEffect(() => {
     if (
-      true||
         timeSpentOnWebsite >= 30 &&
         scrolledMoreThan60Percent &&
         !loginDialogShown &&

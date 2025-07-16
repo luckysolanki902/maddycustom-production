@@ -79,7 +79,7 @@ export default function MyOrdersPage() {
     }
   };
 
-  if (userDetails?.userId) {
+  if (!userDetails?.userId) {
     return (
       <Box
         sx={{
