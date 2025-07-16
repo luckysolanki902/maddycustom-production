@@ -9,15 +9,18 @@ import CustomSnackbar from "../notifications/CustomSnackbar";
 import CloseIcon from "@mui/icons-material/Close";
 import Image from "next/image";
 import OtpInput from "../auth/OtpInput";
+import { usePathname } from "next/navigation";
 
 const LoginDialog = () => {
   const dispatch = useDispatch();
+  const pathname = usePathname();
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   const userExists = useSelector(state => state.orderForm.userExists);
   const loginDialogShown = useSelector(state => state.orderForm.loginDialogShown);
   const isCartDrawerOpen = useSelector(state => state.ui.isCartDrawerOpen);
   const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector(state => state.userBehavior);
+  const isUserPhoneNumberValid = useSelector(state => state.orderForm.userDetails?.phoneNumber?.length === 10);
 
   const { isLoading, error, otpDetails = { waitTime: 0 } } = useSelector(state => state.auth);
 
@@ -48,6 +51,7 @@ const LoginDialog = () => {
 
   useEffect(() => {
     if (
+      true||
         timeSpentOnWebsite >= 30 &&
         scrolledMoreThan60Percent &&
         !loginDialogShown &&
@@ -59,7 +63,7 @@ const LoginDialog = () => {
       setOpen(true);
       dispatch(setLoginDialogShown(true));
     }
-  }, [dispatch, loginDialogShown, userExists, isCartDrawerOpen, timeSpentOnWebsite, scrolledMoreThan60Percent]);
+  }, [dispatch, loginDialogShown, userExists, isCartDrawerOpen, timeSpentOnWebsite, scrolledMoreThan60Percent, isUserPhoneNumberValid, pathname]);
 
   const handleClose = () => {
     setOpen(false);
