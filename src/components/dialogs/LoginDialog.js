@@ -1,103 +1,114 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, Box, IconButton, Button } from '@mui/material';
-import { useForm, Controller } from 'react-hook-form';
-import { useDispatch, useSelector } from 'react-redux';
-import { setUserDetails, setUserExists, setLoginDialogShown } from '../../store/slices/orderFormSlice';
-import CustomSnackbar from '../notifications/CustomSnackbar';
-import { usePathname } from 'next/navigation';
-import CloseIcon from '@mui/icons-material/Close';
-import Image from 'next/image';
-import axios from 'axios';
+import React, { useEffect, useState, useCallback } from "react";
+import { Dialog, DialogContent, Box, IconButton, Button, Typography, CircularProgress, alpha } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
+import { setUserDetails, setUserExists, setLoginDialogShown } from "../../store/slices/orderFormSlice";
+import { sendOTP, verifyOTP, resetAuthError, decrementOtpTimer, resetOtpState } from "@/store/slices/authSlice";
+import CustomSnackbar from "../notifications/CustomSnackbar";
+import CloseIcon from "@mui/icons-material/Close";
+import Image from "next/image";
+import OtpInput from "../auth/OtpInput";
 
 const LoginDialog = () => {
   const dispatch = useDispatch();
-  const pathname = usePathname();
-
-  // Access Redux state
-  const userExists = useSelector((state) => state.orderForm.userExists);
-  const loginDialogShown = useSelector((state) => state.orderForm.loginDialogShown);
-  const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
-  const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector((state) => state.userBehavior);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-  const { control, handleSubmit, reset, formState: { errors } } = useForm({
-    defaultValues: {
-      phoneNumber: '',
-    },
-  });
-  const isUserPhoneNumberValid = useSelector((state) => state.orderForm.userDetails?.phoneNumber?.length === 10);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+
+  const userExists = useSelector(state => state.orderForm.userExists);
+  const loginDialogShown = useSelector(state => state.orderForm.loginDialogShown);
+  const isCartDrawerOpen = useSelector(state => state.ui.isCartDrawerOpen);
+  const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector(state => state.userBehavior);
+
+  const { isLoading, error, otpDetails = { waitTime: 0 } } = useSelector(state => state.auth);
 
   const [open, setOpen] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otpValue, setOtpValue] = useState("");
+  const [showOtpInput, setShowOtpInput] = useState(false);
 
-  // Function to show snackbar
-  const showSnackbar = (message, severity = 'success') => {
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
+
+  const showSnackbar = (message, severity = "success") => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
   };
 
-  // Handle form submission
-  const onSubmit = async (data) => {
-    try {
-      const response = await axios.post('/api/user/create', {
-        phoneNumber: data.phoneNumber,
-        source: 'login-popup',
-      });
-
-      if (response.data.message === 'User already exists' || response.data.message === 'User exists and name updated') {
-        dispatch(setUserExists(true));
-        dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.userId }));
-        showSnackbar('Welcome to MaddyCustom!.', 'success');
-      } else if (response.data.message === 'User created successfully') {
-        dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.user.userId }));
-        showSnackbar('Welcome to MaddyCustom!.', 'success');
-      }
-      reset();
-      handleClose(); // Use handleClose to ensure consistent behavior
-    } catch (error) {
-      console.error('Error in LoginDialog:', error.message);
-      const errorMessage = error.response?.data?.message || 'An error occurred.';
-      showSnackbar('Could not login!', 'error');
+  useEffect(() => {
+    let timerId;
+    if (otpDetails && otpDetails.waitTime > 0) {
+      timerId = setInterval(() => {
+        dispatch(decrementOtpTimer());
+      }, 1000);
     }
-  };
+    return () => clearInterval(timerId);
+  }, [dispatch, otpDetails]);
 
-  // Function to handle closing the dialog
+  useEffect(() => {
+    if (
+        timeSpentOnWebsite >= 30 &&
+        scrolledMoreThan60Percent &&
+        !loginDialogShown &&
+        !isUserPhoneNumberValid &&
+        !userExists &&
+        !isCartDrawerOpen &&
+        !pathname.startsWith("/orders/myorder/")
+    ) {
+      setOpen(true);
+      dispatch(setLoginDialogShown(true));
+    }
+  }, [dispatch, loginDialogShown, userExists, isCartDrawerOpen, timeSpentOnWebsite, scrolledMoreThan60Percent]);
+
   const handleClose = () => {
     setOpen(false);
     dispatch(setLoginDialogShown(true));
   };
 
-
-  // Open the dialog if conditions are met
-  useEffect(() => {
-    if (
-      timeSpentOnWebsite >= 30 && // Total time spent on website is at least 30 seconds
-      scrolledMoreThan60Percent &&
-      !loginDialogShown &&
-      !isUserPhoneNumberValid &&
-      !userExists &&
-      !isCartDrawerOpen && // Don't show if cart drawer is open
-      !pathname.startsWith('/orders/myorder/')
-    ) {
-      setOpen(true);
-      dispatch(setLoginDialogShown(true)); // Prevent showing again
+  const handleSendOtp = async () => {
+    if (phoneNumber.length !== 10) {
+      showSnackbar("Please enter a valid 10-digit number", "error");
+      return;
     }
-  }, [
-    timeSpentOnWebsite, 
-    scrolledMoreThan60Percent, 
-    loginDialogShown, 
-    userExists, 
-    pathname, 
-    dispatch, 
-    isUserPhoneNumberValid, 
-    isCartDrawerOpen
-  ]);
+    dispatch(resetAuthError());
+    dispatch(resetOtpState());
+    const result = await dispatch(sendOTP({ phoneNumber }));
+    if (result.meta.requestStatus === "fulfilled") {
+      setShowOtpInput(true);
+      showSnackbar("OTP sent successfully", "success");
+    } else {
+      showSnackbar(result.payload?.message || "Failed to send OTP", "error");
+    }
+  };
 
-  // Prevent rendering if cart drawer is open
+  const handleVerifyOtp = async () => {
+    if (otpValue.length !== 6) return;
+    const result = await dispatch(verifyOTP({ phoneNumber, otp: otpValue }));
+    if (result.meta.requestStatus === "fulfilled") {
+      handleAuthenticationSuccess(result.payload.user);
+    } else {
+      showSnackbar(result.payload?.message || "Invalid OTP", "error");
+    }
+  };
+
+  const handleAuthenticationSuccess = useCallback(
+    user => {
+      dispatch(
+        setUserDetails({
+          name: user.name,
+          phoneNumber: user.phoneNumber,
+          email: user.email || "",
+          userId: user.id,
+        })
+      );
+      dispatch(setUserExists(true));
+      showSnackbar("Welcome to MaddyCustom!", "success");
+      setOpen(false);
+    },
+    [dispatch]
+  );
+
   if (isCartDrawerOpen) return null;
 
   return (
@@ -105,8 +116,7 @@ const LoginDialog = () => {
       <Dialog
         open={open}
         onClose={(event, reason) => {
-          if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
-            // Prevent closing the dialog
+          if (reason === "backdropClick" || reason === "escapeKeyDown") {
             return;
           }
           handleClose();
@@ -116,146 +126,149 @@ const LoginDialog = () => {
         maxWidth="xs"
         PaperProps={{
           sx: {
-            overflow: 'unset',
-            borderRadius: '1rem',
-            // gray little shadow
-            boxShadow: '0 0 4px 8px rgba(0, 0, 0, 0.11)',
+            borderRadius: "1.5rem",
+            background: "rgba(255, 255, 255, 0.85)",
+            backdropFilter: "blur(16px)",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
+            overflow: "hidden",
           },
         }}
       >
-        <DialogContent dividers>
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
+        <DialogContent
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            p: 3,
+          }}
+        >
+          <Box sx={{ width: "100%", display: "flex", justifyContent: "flex-end" }}>
             <IconButton
               aria-label="close"
               onClick={handleClose}
               sx={{
-                color: (theme) => theme.palette.grey[500],
-                padding: "0.5rem",
-                boxShadow: "0 0 4px 2px #4de1ff24, 0 0 4px 2px #40bcff33",
-                borderRadius: '0.5rem',
+                color: theme => theme.palette.grey[700],
+                backdropFilter: "blur(8px)",
+                border: `1px solid ${alpha("#ccc", 0.3)}`,
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
               }}
             >
               <CloseIcon />
             </IconButton>
           </Box>
 
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              boxShadow: '0 0 8px 8px rgba(77, 225, 255, 0.11)',
-              borderRadius: '50%',
-              padding: '1rem',
-              width: { xs: '100px', sm: '120px' },
-              height: { xs: '100px', sm: '120px' },
-              overflow: 'hidden',
-              margin: 'auto',
-              marginBottom: { xs: '1rem', sm: '2rem' }
-            }}
-          >
-            <Image
-              src={`${imageBaseUrl}/assets/logos/just-helmet.png`}
-              alt="MaddyCustom"
-              width={150}
-              height={150}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-              }}
-            />
-          </Box>
+          <Image
+            src={`${imageBaseUrl}/assets/logos/maddy_custom3_main_logo.png`}
+            alt="Maddy Logo"
+            title="Maddy Logo"
+            width={120}
+            height={50}
+            style={{ marginBottom: "1.5rem" }}
+          />
 
-          <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: 'flex', flexDirection: 'column', gap: '1rem', mt: 1 }}>
-            <Controller
-              name="phoneNumber"
-              control={control}
-              rules={{
-                required: 'Mobile number is required',
-                pattern: {
-                  value: /^\d{10}$/,
-                  message: 'Mobile number must be exactly 10 digits',
-                },
-              }}
-              render={({ field }) => {
-                const handleChange = (e) => {
-                  const value = e.target.value;
-                  // Remove all non-digit characters
-                  const numericValue = value.replace(/\D/g, '');
-                  // Update the form state with the numeric value
-                  field.onChange(numericValue);
-                };
-
-                return (
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      {...field}
-                      onChange={handleChange}
-                      type="tel"
-                      inputMode="numeric"
-                      pattern="\d*"
-                      style={{
-                        borderRadius: '1.2rem',
-                        boxShadow: 'inset 0 0 4px 3px rgba(56, 167, 186, 0.14)',
-                        outline: "none",
-                        border: errors.phoneNumber ? '2px solid red' : 'none',
-                        padding: '0.8rem 1rem',
-                        color: "rgb(85, 85, 85)",
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        fontFamily: "Jost",
-                      }}
-                      placeholder='Mobile Number'
-                      aria-invalid={errors.phoneNumber ? 'true' : 'false'}
-                      aria-describedby="phoneNumber-error"
-                    />
-                    {errors.phoneNumber && (
-                      <span
-                        id="phoneNumber-error"
-                        style={{
-                          color: 'red',
-                          fontSize: '0.8rem',
-                          position: 'absolute',
-                          top: '100%',
-                          left: '0',
-                          fontFamily: "Jost",
-
-                        }}
-                      >
-                        {errors.phoneNumber.message}
-                      </span>
-                    )}
-                  </div>
-                );
-              }}
-            />
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
+          {!showOtpInput ? (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: "1.2rem", width: "100%" }}>
+              <input
+                value={phoneNumber}
+                onChange={e => {
+                  const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                  setPhoneNumber(value);
+                }}
+                type="tel"
+                placeholder="Enter Mobile Number"
                 style={{
-                  borderRadius: '1rem',
-                  boxShadow: '0 2px 3px 2px rgba(56, 167, 186, 0.14)',
-                  border: 'none',
-                  outline: 'none',
-                  padding: '0.4rem 1.5rem',
-                  backgroundColor: 'white',
-                  fontSize: '1rem',
-                  margin: 'auto',
-                  color: '#77c6cb',
-                  cursor: 'pointer',
-                  fontFamily: 'Jost',
+                  borderRadius: "1rem",
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  padding: "0.9rem 1.2rem",
+                  fontSize: "1rem",
+                  fontFamily: "Jost",
+                  background: "rgba(255, 255, 255, 0.7)",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+                  transition: "all 0.3s",
+                  color: "black"
+                }}
+              />
+
+              <Button
+                variant="contained"
+                onClick={handleSendOtp}
+                disabled={isLoading}
+                sx={{
+                  borderRadius: "2rem",
+                  py: 1.2,
+                  fontWeight: 600,
+                  textTransform: "none",
+                  background: "#222",
+                  color: "#fff",
+                  boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
+                  "&:hover": {
+                    background: "#000",
+                  },
                 }}
               >
-                Login
+                {isLoading ? <CircularProgress size={24} color="inherit" /> : "Get OTP"}
               </Button>
             </Box>
-          </Box>
+          ) : (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: "1.2rem", width: "100%" }}>
+              <Typography variant="body2" align="center" sx={{ fontFamily: "Jost", fontWeight: 500 }}>
+                Enter the 6-digit code sent to <strong>{phoneNumber}</strong>
+              </Typography>
+
+              <OtpInput length={6} value={otpValue} onChange={setOtpValue} disabled={isLoading} />
+
+              {error && (
+                <Typography color="error" variant="body2" align="center">
+                  {error}
+                </Typography>
+              )}
+
+              <Button
+                variant="contained"
+                onClick={handleVerifyOtp}
+                disabled={otpValue.length !== 6 || isLoading}
+                sx={{
+                  borderRadius: "2rem",
+                  py: 1.2,
+                  fontWeight: 600,
+                  textTransform: "none",
+                  background: "#222",
+                  color: "#fff",
+                  boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
+                  "&:hover": {
+                    background: "#000",
+                  },
+                }}
+              >
+                {isLoading ? <CircularProgress size={24} color="inherit" /> : "Verify & Continue"}
+              </Button>
+
+              <Button
+                variant="text"
+                onClick={async () => {
+                  if (otpDetails?.waitTime > 0) return;
+                  await dispatch(sendOTP({ phoneNumber }));
+                  setOtpValue("");
+                  showSnackbar("OTP resent", "info");
+                }}
+                disabled={otpDetails?.waitTime > 0 || isLoading}
+                sx={{
+                  fontFamily: "Jost",
+                  textTransform: "none",
+                  color: "#555",
+                  "&:hover": {
+                    color: "#000",
+                    textDecoration: "underline",
+                  },
+                }}
+              >
+                {otpDetails?.waitTime > 0 ? `Resend OTP in ${otpDetails.waitTime}s` : "Resend OTP"}
+              </Button>
+            </Box>
+          )}
         </DialogContent>
       </Dialog>
-      {/* Custom Snackbar for Notifications */}
+
       <CustomSnackbar
         open={snackbarOpen}
         message={snackbarMessage}

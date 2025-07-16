@@ -46,6 +46,16 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'; // Added
 import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+
+// Auth components
+import { useAuth } from '@/lib/auth/AuthContext';
+import { selectIsAuthenticated, selectUser } from '@/lib/auth/authSelectors';
+import AuthenticationFlow from '@/components/auth/AuthenticationFlow';
+import SavedAddressesManager from '@/components/auth/SavedAddressesManager';
+import { validateToken, resetAuthError, resetOtpState, sendOTP } from '@/store/slices/authSlice';
 
 const OrderForm = ({
   open,
@@ -67,6 +77,11 @@ const OrderForm = ({
   const { userDetails, addressDetails, userExists, prefilledAddress } = orderForm;
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // Auth state
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const authUser = useSelector(selectUser);
+  const { refreshUserData } = useAuth();
+
   // Performance optimization - serviceability cache
   const serviceabilityCache = useRef({});
   const [isPincodeValid, setIsPincodeValid] = useState(false);
@@ -81,14 +96,27 @@ const OrderForm = ({
 
   // Local Tab Index State - memoize to prevent rerenders
   const [tabIndex, setTabIndex] = useState(0);
-
-  // Simple mobile focus detection
-  const [isInputFocused, setIsInputFocused] = useState(false);
+  // Authentication flow state
+  const [showAuthFlow, setShowAuthFlow] = useState(false);
+  const [authFallbackTab, setAuthFallbackTab] = useState(0);
+  
+  // Reset auth error and OTP state when showing auth flow
+  useEffect(() => {
+    if (showAuthFlow) {
+      // Reset any previous errors and initialize OTP state
+      dispatch(resetAuthError());
+    }
+  }, [showAuthFlow, dispatch]);
+  
+  // Address management state
+  const [showAddressManager, setShowAddressManager] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
 
   // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [fetchAddressConsent, setFetchAddressConsent] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
@@ -108,66 +136,201 @@ const OrderForm = ({
       }
     });
     return Array.from(fieldsMap.values());
-  }, [items]);
+  }, [items]);  // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
 
-  // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
-  const defaultValues = useMemo(() => ({
-    name: userDetails.name || '',
-    phoneNumber: userDetails.phoneNumber || '',
-    email: userDetails.email || '',
-    addressLine1: addressDetails.addressLine1 || '',
-    addressLine2: addressDetails.addressLine2 || '',
-    city: addressDetails.city || '',
-    state: addressDetails.state || '',
-    pincode: addressDetails.pincode || '',
-    country: addressDetails.country || 'India',
-    ...aggregatedExtraFields.reduce((acc, field) => {
-      acc[field.fieldName] = '';
-      return acc;
-    }, {}),
-  }), [userDetails.name, userDetails.phoneNumber, userDetails.email,
-  addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
-  addressDetails.state, addressDetails.pincode, addressDetails.country,
-    aggregatedExtraFields]);
-
-  // Initialize extraFields in Redux store when dialog opens
-  useEffect(() => {
-    if (open && aggregatedExtraFields.length > 0) {
-      const initialExtraFieldValues = {};
-      aggregatedExtraFields.forEach((field) => {
-        initialExtraFieldValues[field.fieldName] = ''; // Initialize with empty string
-      });
-      dispatch(setExtraFields(initialExtraFieldValues));
-    }
-  }, [open, aggregatedExtraFields, dispatch]);
-
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    reset,
-    formState: { errors },
-    watch,
-  } = useForm({
-    defaultValues,
+  const { control, handleSubmit, setValue, watch, getValues, reset, formState: { errors, isValid } } = useForm({
     mode: 'onChange',
-    shouldUnregister: false // Prevents field unregistration which helps with focus issues
+    defaultValues: useMemo(() => ({
+      name: userDetails?.name || '',
+      phoneNumber: userDetails?.phoneNumber || '',
+      email: userDetails?.email || '',
+      addressLine1: addressDetails?.addressLine1 || '',
+      addressLine2: addressDetails?.addressLine2 || '',
+      city: addressDetails?.city || '',
+      state: addressDetails?.state || '',
+      pincode: addressDetails?.pincode || '',
+      country: addressDetails?.country || 'India',
+      token: null,
+      // Add any extraFields from cart items
+      ...aggregatedExtraFields,
+    }), [userDetails, addressDetails, aggregatedExtraFields]),
   });
+  
+  // Define showSnackbar first since it's used in validatePincode
+  const showSnackbar = useCallback((message, severity = 'success') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  }, []);
+  
+  // Enhanced pincode validation with proactive serviceability check
+  const validatePincode = useCallback((pincode) => {
+    // Use debounce inside the callback
+    const debouncedCheck = debounce(async (pincodeToCheck) => {
+      if (pincodeToCheck.length === 6 && /^\d{6}$/.test(pincodeToCheck)) {
+        setPincodeCheckInProgress(true);
 
-  // Watch pincode for immediate validation
-  const watchedPincode = watch('pincode');
+        // Check cache first
+        if (serviceabilityCache.current[pincodeToCheck] !== undefined) {
+          setPincodeCheckInProgress(false);
+          setIsPincodeValid(serviceabilityCache.current[pincodeToCheck]);
+          return;
+        }
 
-  // Effect for early pincode validation
-  useEffect(() => {
-    if (watchedPincode?.length === 6 && /^\d{6}$/.test(watchedPincode)) {
-      // Check if we've already validated this pincode
-      if (serviceabilityCache.current[watchedPincode] !== undefined) {
-        setIsPincodeValid(serviceabilityCache.current[watchedPincode]);
+        try {
+          const response = await axios.get(
+            `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${pincodeToCheck}`
+          );
+
+          const isValid = response.data.serviceable;
+          serviceabilityCache.current[pincodeToCheck] = isValid;
+          setIsPincodeValid(isValid);
+
+          if (!isValid) {
+            showSnackbar(`Pincode ${pincodeToCheck} is not serviceable. Please try a different one.`, 'warning');
+          }
+        } catch (error) {
+          console.error('Error checking pincode:', error);
+        } finally {
+          setPincodeCheckInProgress(false);
+        }
       } else {
-        validatePincode(watchedPincode);
+        setIsPincodeValid(false);
+      }
+    }, 300);
+
+    // Call the debounced function
+    debouncedCheck(pincode);
+  }, [showSnackbar, setIsPincodeValid, setPincodeCheckInProgress, serviceabilityCache]);
+
+  // Load user addresses when authenticated - wrapped in useCallback
+  const loadUserAddresses = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+      
+      const response = await axios.get('/api/user/addresses', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data?.addresses?.length > 0) {
+        // Find primary address
+        const primaryAddress = response.data.addresses.find(addr => addr.isPrimary) || response.data.addresses[0];
+        
+        if (primaryAddress) {
+          // Set as prefilled address
+          dispatch(setPrefilledAddress({
+            addressLine1: primaryAddress.addressLine1,
+            addressLine2: primaryAddress.addressLine2 || '',
+            city: primaryAddress.city,
+            state: primaryAddress.state,
+            pincode: primaryAddress.pincode,
+            country: primaryAddress.country || 'India',
+          }));
+          
+          setSelectedAddressId(primaryAddress._id);
+          
+          // Set form values
+          setValue('addressLine1', primaryAddress.addressLine1);
+          setValue('addressLine2', primaryAddress.addressLine2 || '');
+          setValue('city', primaryAddress.city);
+          setValue('state', primaryAddress.state);
+          setValue('pincode', primaryAddress.pincode);
+          
+          // Validate pincode for serviceability
+          validatePincode(primaryAddress.pincode);
+        }
+      }    } catch (error) {
+      console.error('Error loading user addresses:', error);    }
+  }, [dispatch, setValue, validatePincode]);
+  
+  // Check authentication on component mount and when auth state changes
+  useEffect(() => {
+    if (open && !isAuthenticated) {
+      // Validate token on first open
+      dispatch(validateToken());
+    } else if (open && isAuthenticated && authUser) {
+      // User is authenticated, set user details from auth state
+      dispatch(setUserDetails({
+        name: authUser.name,
+        phoneNumber: authUser.phoneNumber,
+        email: authUser.email || '',
+        userId: authUser.id
+      }));
+      
+      dispatch(setUserExists(true));
+      
+      // Set form values
+      setValue('name', authUser.name || '');
+      setValue('phoneNumber', authUser.phoneNumber || '');
+      setValue('email', authUser.email || '');
+      
+      // Check if user has addresses and load them
+      if (authUser.hasPrimaryAddress) {
+        loadUserAddresses();
       }
     }
-  }, [watchedPincode]);
+  }, [open, isAuthenticated, authUser, dispatch, setValue, loadUserAddresses]);
+  
+  // Handle authentication success
+  const handleAuthenticationSuccess = (user) => {
+    setShowAuthFlow(false);
+    
+    // Update auth state
+    refreshUserData();
+    
+    // Update form with user data
+    dispatch(setUserDetails({
+      name: user.name,
+      phoneNumber: user.phoneNumber,
+      email: user.email || '',
+      userId: user.id,
+      addressDetails: user.addressDetails,
+    }));
+    
+    dispatch(setUserExists(true));
+    
+    // Set form values
+    setValue('name', user.name || '');
+    setValue('phoneNumber', user.phoneNumber || '');
+    setValue('email', user.email || '');
+    
+    // If user has addresses, show address manager
+    if (user.hasPrimaryAddress) {
+      setShowAddressManager(true);
+    } else {
+      // Return to the fallback tab if no addresses
+      setTabIndex(authFallbackTab);
+    }
+  };
+  
+  // Handle address selection
+  const handleAddressSelected = (address) => {
+    setShowAddressManager(false);
+    
+    // Set the selected address in the form
+    dispatch(setPrefilledAddress({
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2 || '',
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+      country: address.country || 'India',
+    }));
+    
+    // Update form values
+    setValue('addressLine1', address.addressLine1);
+    setValue('addressLine2', address.addressLine2 || '');
+    setValue('city', address.city);
+    setValue('state', address.state);
+    setValue('pincode', address.pincode);
+    
+    // Validate pincode for serviceability
+    validatePincode(address.pincode);
+    
+    // Return to the fallback tab
+    setTabIndex(authFallbackTab);
+  };
 
   // Prevent multiple form submissions
   const [purchaseInitiated, setPurchaseInitiated] = useState(false);
@@ -197,10 +360,9 @@ const OrderForm = ({
       if (addressDetails.pincode && addressDetails.pincode.length === 6) {
         validatePincode(addressDetails.pincode);
       }
-    }
-  }, [open, setValue, userDetails.name, userDetails.phoneNumber, userDetails.email,
+    }  }, [open, setValue, userDetails.name, userDetails.phoneNumber, userDetails.email,
     addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
-    addressDetails.state, addressDetails.pincode, addressDetails.country]);
+    addressDetails.state, addressDetails.pincode, addressDetails.country, validatePincode]);
 
   // Handle Prefilled Address
   useEffect(() => {
@@ -233,97 +395,17 @@ const OrderForm = ({
         }
       }
     }
-  }, [userExists, prefilledAddress, dispatch, addressDetails]);
-
-  // Prevent dialog shrinking on mobile keyboard
-  useEffect(() => {
-    if (!isMobile || !open) return;
-
-    // Force dialog to use visual viewport instead of layout viewport
-    const handleViewportChange = () => {
-      if (window.visualViewport) {
-        const viewport = window.visualViewport;
-        const dialogElement = document.querySelector('.MuiDialog-paper');
-        if (dialogElement) {
-          // Keep dialog at original size regardless of keyboard
-          dialogElement.style.position = 'fixed';
-          dialogElement.style.top = '50%';
-          dialogElement.style.left = '50%';
-          dialogElement.style.transform = 'translate(-50%, -50%)';
-          dialogElement.style.zIndex = '1300';
-          dialogElement.style.width = '90vw';
-          dialogElement.style.maxWidth = '500px';
-          dialogElement.style.height = '85vh';
-          dialogElement.style.maxHeight = '600px';
-        }
-      }
-    };
-
-    // Use visual viewport API if available
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleViewportChange);
-    }
-
-    // Initial setup
-    handleViewportChange();
-
-    // Prevent body scrolling and resizing
-    const originalOverflow = document.body.style.overflow;
-    const originalPosition = document.body.style.position;
-    const originalHeight = document.body.style.height;
-    
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.height = '100vh';
-    document.body.style.width = '100vw';
-
-    return () => {
-      // Cleanup
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleViewportChange);
-      }
-      
-      // Restore body styles
-      document.body.style.overflow = originalOverflow;
-      document.body.style.position = originalPosition;
-      document.body.style.height = originalHeight;
-      document.body.style.width = '';
-    };
-  }, [isMobile, open]);
-
-  // Simple focus-based mobile optimization
-  useEffect(() => {
-    if (!isMobile || !isInputFocused) return;
-
-    // Simple scroll behavior when input is focused on mobile
-    const timeoutId = setTimeout(() => {
-      const activeElement = document.activeElement;
-      if (activeElement && activeElement.tagName === 'INPUT') {
-        activeElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-          inline: 'nearest'
-        });
-      }
-    }, 300); // Allow time for keyboard to appear
-
-    return () => clearTimeout(timeoutId);
-  }, [isMobile, isInputFocused]);
-
-  const handleTabChange = useCallback((newValue) => {
+  }, [userExists, prefilledAddress, dispatch, addressDetails, validatePincode]);  const handleTabChange = useCallback((newValue) => {
     setTabIndex(newValue);
-  }, []);
-
-  const showSnackbar = useCallback((message, severity = 'success') => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
   }, []);
 
   // State for formatted phone number display - memoized
   const [formattedPhone, setFormattedPhone] = useState('');
   const [showPhoneConfirmation, setShowPhoneConfirmation] = useState(false);
   const [originalPhone, setOriginalPhone] = useState('');
+  
+  // Get watched pincode value from form
+  const watchedPincode = watch('pincode');
 
   // Function to format phone number - memoized to prevent rerenders
   const formatPhoneNumber = useCallback((phone) => {
@@ -380,43 +462,6 @@ const OrderForm = ({
     setShowPhoneConfirmation(false);
   }, [formattedPhone, setValue, dispatch]);
 
-  // Enhanced pincode validation with proactive serviceability check
-  const validatePincode = useCallback(
-    debounce(async (pincode) => {
-      if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
-        setPincodeCheckInProgress(true);
-
-        // Check cache first
-        if (serviceabilityCache.current[pincode] !== undefined) {
-          setPincodeCheckInProgress(false);
-          setIsPincodeValid(serviceabilityCache.current[pincode]);
-          return;
-        }
-
-        try {
-          const response = await axios.get(
-            `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${pincode}`
-          );
-
-          const isValid = response.data.serviceable;
-          serviceabilityCache.current[pincode] = isValid;
-          setIsPincodeValid(isValid);
-
-          if (!isValid) {
-            showSnackbar(`Pincode ${pincode} is not serviceable. Please try a different one.`, 'warning');
-          }
-        } catch (error) {
-          console.error('Error checking pincode:', error);
-        } finally {
-          setPincodeCheckInProgress(false);
-        }
-      } else {
-        setIsPincodeValid(false);
-      }
-    }, 300),
-    [showSnackbar]
-  );
-
   // New function to fully close everything - both OrderForm and CartDrawer
   const handleFullClose = useCallback(() => {
     onClose();
@@ -438,74 +483,78 @@ const OrderForm = ({
     }
   }, [open, couponCode, subTotal, items]);
 
-  // Optimistic user details submission - further optimized
-  const onSubmitUserDetails = useCallback(async (data) => {
-    // Format phone number for submission if needed
-    const phoneToUse = formatPhoneNumber(data.phoneNumber);
+  const onSubmitPhoneNumber = useCallback(
+    async data => {
 
-    // Client-side validation to avoid unnecessary API calls
-    if (phoneToUse.length !== 10 || !/^\d{10}$/.test(phoneToUse)) {
-      showSnackbar('Please enter a valid 10-digit mobile number', 'error');
+      // Format phone number for submission if needed
+      const phoneToUse = formatPhoneNumber(data.phoneNumber);
+
+      // Client-side validation to avoid unnecessary API calls
+      if (phoneToUse.length !== 10 || !/^\d{10}$/.test(phoneToUse)) {
+        showSnackbar("Please enter a valid 10-digit mobile number", "error");
+        return;
+      }
+
+      // If user is already authenticated, proceed to next tab
+      if (isAuthenticated) {
+        // Optimistically update Redux store with user details
+        dispatch(setUserDetails({ phoneNumber: phoneToUse }));
+        setTabIndex(1);
+        return;
+      }
+
+      // Store values in redux for non-authenticated users
+      dispatch(setUserDetails({ phoneNumber: phoneToUse }));
+
+      // Save the current tab index for returning after auth flow
+      setAuthFallbackTab(0);
+
+      // Reset OTP state before showing the auth flow
+      dispatch(resetOtpState());
+      dispatch(resetAuthError());
+
+      // Send OTP directly without asking for phone again
+      const result = await dispatch(sendOTP({ phoneNumber: phoneToUse, shipRocketUserConsent: fetchAddressConsent }));
+
+      if (result?.meta?.requestStatus === "fulfilled") {
+        // set token in form
+        setValue("token", result.payload.shiprocketToken, { shouldValidate: true });
+        // After successful OTP send, show auth flow with OTP input screen directly
+        setShowAuthFlow(true);
+      } else {
+        // If sending OTP failed
+        showSnackbar(result.payload?.message || "Failed to send OTP. Please try again.", "error");
+      }
+    },
+    [dispatch, fetchAddressConsent, formatPhoneNumber, isAuthenticated, setValue, showSnackbar]
+  );
+  
+  // Optimistic user details submission - improved to directly send OTP
+  const onSubmitUserDetails = useCallback(async (data) => {
+    if (isAuthenticated) {
+      // Optimistically update Redux store with user details
+      dispatch(
+        setUserDetails({
+          name: data.name,
+          email: data.email,
+        })
+      );
+      setTabIndex(2);
       return;
     }
 
-    // Optimistically update Redux store with user details before API call
+    // Store values in redux for non-authenticated users
     dispatch(
       setUserDetails({
         name: data.name,
-        phoneNumber: phoneToUse,
         email: data.email,
       })
     );
-
-    // Immediately move to the next tab for better UX
-    setTabIndex(1);
-
-    // Perform user check in background without blocking UI
-    pendingOperationsRef.current.userCheck = axios.patch('/api/user/check', {
-      phoneNumber: phoneToUse,
-      name: data.name,
-      email: data.email,
-    })
-      .then(response => {
-        if (response.data.exists) {
-          const latestAddress = response.data.latestAddress;
-          dispatch(setUserDetails({ userId: response.data.userId }));
-
-          if (latestAddress) {
-            // Update form with existing address
-            Object.entries(latestAddress).forEach(([key, value]) => {
-              if (setValue && key !== '_id') {
-                setValue(key, value || '');
-              }
-            });
-
-            dispatch(setAddressDetails(latestAddress));
-
-            // Pre-validate pincode
-            if (latestAddress.pincode && latestAddress.pincode.length === 6) {
-              validatePincode(latestAddress.pincode);
-            }
-          }
-        } else {
-          // Create user in background (non-blocking)
-          return axios.post('/api/user/create', {
-            name: data.name,
-            phoneNumber: phoneToUse,
-            email: data.email,
-            source: 'order-form',
-          })
-            .then(createResponse => {
-              dispatch(setUserDetails({ userId: createResponse.data.userId || createResponse.data.user?.userId }));
-              return createResponse;
-            });
-        }
-        return response;
-      })
-      .catch(error => {
-        console.error('Error in background user check/create:', error);
-      });
-  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode]);
+    
+    // Save the current tab index for returning after auth flow
+    setAuthFallbackTab(1);
+    
+  }, [dispatch, isAuthenticated]);
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
@@ -736,11 +785,10 @@ const OrderForm = ({
       setIsLoading(false);
       setIsPaymentProcessing(false);
       setPurchaseInitiated(false);
-    }
-  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
+    }  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
     totalCost, deliveryCost, utmDetails, cartItems, paymentModeConfig,
     discountAmountFinal, couponsDetails, isPincodeValid, reset, handleFullClose, router,
-    serviceabilityCache, prefilledAddress, userDetails, addressDetails]); // Maintained dependencies
+    serviceabilityCache, setIsLoading, setIsPaymentProcessing, setPurchaseInitiated]);// Maintained dependencies
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
@@ -810,8 +858,6 @@ const OrderForm = ({
         helperText={helperText}
         disabled={disabled}
         onChange={onChange}
-        onFocus={() => isMobile && setIsInputFocused(true)}
-        onBlur={() => isMobile && setIsInputFocused(false)}
         InputLabelProps={{
           style: {
             fontFamily: 'Jost, sans-serif',
@@ -845,7 +891,7 @@ const OrderForm = ({
         }}
       />
     </motion.div>
-  ), [isMobile]);
+  ), []);
 
   return (
     <ThemeProvider theme={theme}>
@@ -865,49 +911,62 @@ const OrderForm = ({
           sx: {
             borderRadius: '1.5rem',
             overflow: 'hidden',
-            // Force fixed positioning and dimensions to prevent keyboard shrinking
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: { xs: '90vw', sm: '500px' },
-            maxWidth: '500px',
-            height: { xs: '85vh', sm: 'auto' },
-            maxHeight: '90vh',
-            margin: 0,
-            // Ensure minimum height on mobile to prevent shrinking
-            minHeight: isMobile ? '500px' : 'auto',
-            // Responsive height for very short screens
-            '@media (max-height: 550px)': {
-              height: '90vh',
-              minHeight: '90vh',
-            },
+            maxHeight: '88vh',
           },
         }}
-      >
-        <DialogContent
+      >        <DialogContent
           sx={{
-            padding: { xs: '0.8rem', md: '1.5rem' }, // Reduced padding on mobile
-            paddingTop: { xs: '0.4rem', md: '1.2rem' }, // Reduced top padding on mobile
+            padding: { xs: '1.2rem', md: '1.5rem' },
+            paddingTop: { xs: '0.8rem', md: '1.2rem' },
             background: 'linear-gradient(to bottom, #f9f9f9, #ffffff)',
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
-            height: '100%',
+            height: '100%', // Ensure DialogContent takes up height for flex children
             overflow: 'hidden',
-            // Remove minHeight to prevent footer from growing
-            // minHeight: isMobile ? '420px' : 'auto',
-            ...(isMobile && {
-              height: '100%',
-              maxHeight: 'none',
-            }),
           }}
         >
-          {/* Logo and Stepper */}
-          <Box sx={{
-            position: 'relative',
-            mb: { xs: 0, sm: 0.5 }, // No margin on mobile
-            flexShrink: 0,
+          {/* Authentication Flow */}
+          {showAuthFlow && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+            >
+              <AuthenticationFlow
+                onSuccess={handleAuthenticationSuccess}
+                onBack={() => setShowAuthFlow(false)}
+                phoneNumber={userDetails.phoneNumber}
+                shipRocketToken={getValues("token")}
+              />
+            </motion.div>
+          )}
+
+          {/* Address Manager */}
+          {showAddressManager && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+            >              <SavedAddressesManager
+                onSelectAddress={handleAddressSelected}
+                onBack={() => setShowAddressManager(false)}
+                initialSelectedAddressId={selectedAddressId}
+                validatePincode={validatePincode}
+              />
+            </motion.div>
+          )}
+
+          {/* Regular form content - shown when not in auth or address management flow */}
+          {!showAuthFlow && !showAddressManager && (
+            <>
+              {/* Logo and Stepper - Made more compact */}
+              <Box sx={{
+                position: 'relative',
+                mb: 0.5,
+                flexShrink: 0, // Prevent shrinking
           }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -917,11 +976,11 @@ const OrderForm = ({
               <Image
                 loading="eager"
                 src={`${baseImageUrl}/assets/logos/md_nothing_else.png`}
-                width={isMobile ? 35 : 60} // Even smaller on mobile
-                height={isMobile ? 35 : 60}
+                width={60} // Reduced from 80
+                height={60} // Reduced from 80
                 alt="Logo"
                 style={{
-                  width: isMobile ? '35px' : '60px',
+                  width: '60px', // Reduced from 80px
                   height: 'auto',
                   margin: '0 auto',
                   display: 'block',
@@ -929,110 +988,85 @@ const OrderForm = ({
               />
             </motion.div>
 
-            {/* Custom Stepper */}
-            <Box sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              mt: { xs: 0.5, sm: 1.5 }, // Much smaller margin on mobile
-              position: 'relative',
-              height: { xs: '20px', sm: '30px' }, // Smaller height on mobile
-            }}>
-              <Box sx={{
-                position: 'absolute',
-                left: '50%',
-                width: '60px',
-                height: '2px',
-                backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
-                transform: 'translateX(-30px)',
-                transition: 'background-color 0.5s'
-              }} />
+            {/* Custom Stepper - Made more compact */}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                mt: 1.5,
+                position: 'relative',
+                height: '30px',
+                gap: '40px' // <-- This controls spacing between steps
+              }}
+            >
+              {/* Progress line */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  width: '120px',
+                  height: '2px',
+                  backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
+                  transform: 'translateX(-50%) translateY(-50%)',
+                  transition: 'background-color 0.5s'
+                }}
+              />
 
-              <motion.div
-                animate={{ scale: tabIndex === 0 ? 1.1 : 0.9, x: -40 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              >
-                <Box
-                  sx={{
-                    width: { xs: '20px', sm: '25px' }, // Smaller on mobile
-                    height: { xs: '20px', sm: '25px' },
-                    borderRadius: '50%',
-                    backgroundColor: '#000',
-                    color: 'white',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    fontFamily: 'Jost, sans-serif',
-                    fontWeight: 600,
-                    fontSize: { xs: '0.7rem', sm: '0.8rem' }, // Smaller font on mobile
-                    zIndex: 1,
-                    boxShadow: tabIndex === 0 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'box-shadow 0.3s',
-                    cursor: 'pointer'
+              {[0, 1, 2].map((step) => (
+                <motion.div
+                  key={step}
+                  animate={{
+                    scale: tabIndex === step ? 1.1 : 0.9
                   }}
-                  onClick={() => tabIndex !== 0 && handleTabChange(0)}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 >
-                  1
-                </Box>
-              </motion.div>
-
-              <motion.div
-                animate={{ scale: tabIndex === 1 ? 1.1 : 0.9, x: 40 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              >
-                <Box
-                  sx={{
-                    width: { xs: '20px', sm: '25px' }, // Smaller on mobile
-                    height: { xs: '20px', sm: '25px' },
-                    borderRadius: '50%',
-                    backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
-                    color: tabIndex === 1 ? 'white' : '#999',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    fontFamily: 'Jost, sans-serif',
-                    fontWeight: 600,
-                    fontSize: { xs: '0.7rem', sm: '0.8rem' }, // Smaller font on mobile
-                    zIndex: 1,
-                    boxShadow: tabIndex === 1 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'box-shadow 0.3s, background-color 0.3s, color 0.3s',
-                    cursor: tabIndex === 1 ? 'pointer' : 'default'
-                  }}
-                >
-              
-                  2
-                </Box>
-              </motion.div>
+                  <Box
+                    sx={{
+                      width: '25px',
+                      height: '25px',
+                      borderRadius: '50%',
+                      backgroundColor: tabIndex === step ? '#000' : '#e0e0e0',
+                      color: tabIndex === step ? 'white' : '#999',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      fontFamily: 'Jost, sans-serif',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      zIndex: 1,
+                      boxShadow: tabIndex === step ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
+                      transition: 'box-shadow 0.3s, background-color 0.3s, color 0.3s',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => handleTabChange(step)}
+                  >
+                    {step + 1}
+                  </Box>
+                </motion.div>
+              ))}
             </Box>
 
-            {/* Title - Hidden on small/short mobile screens */}
+
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.5 }}
-              sx={{
-                display: {
-                  xs: 'none', // Hide on extra small screens
-                  sm: 'block', // Show on small screens and up
-                  '@media (max-height: 600px)': {
-                    display: 'none', // Hide on short viewports regardless of width
-                  },
-                },
-              }}
             >
               <Typography
                 variant="h6"
                 align="center"
                 sx={{
-                  mt: 0.5,
-                  mb: 1,
+                  mt: 0.5, // Reduced from 1
+                  mb: 1, // Reduced from 3
                   fontFamily: 'Jost, sans-serif',
                   fontWeight: 500,
-                  fontSize: '1rem',
-                  color: '#333',
+                  fontSize: '1rem', // Reduced from 1.25rem (h6)
+                  color: '#333'
                 }}
               >
-                {tabIndex === 0 ? "Let's get to know you" : "Where should we deliver?"}
+                {tabIndex <= 1 ? "Let's get to know you" : "Where should we deliver?"}
               </Typography>
             </motion.div>
 
@@ -1064,7 +1098,7 @@ const OrderForm = ({
           {/* Form Wrapper - Handles submission and layout (scrollable fields + fixed buttons) */}
           <Box
             component="form"
-            onSubmit={handleSubmit(tabIndex === 0 ? onSubmitUserDetails : onSubmitAddressDetails)}
+            onSubmit={handleSubmit(tabIndex === 0 ? onSubmitPhoneNumber : tabIndex === 1 ? onSubmitUserDetails : onSubmitAddressDetails)}
             sx={{
               display: 'flex',
               flexDirection: 'column',
@@ -1083,22 +1117,16 @@ const OrderForm = ({
                 overflowX: 'hidden',
                 position: 'relative',
                 width: '100%',
+                // Hide scrollbar styles - fixed to use camelCase
                 '&::-webkit-scrollbar': { display: 'none' },
-                msOverflowStyle: 'none',
-                scrollbarWidth: 'none',
-                pb: '2rem',
-                // Use flexible height instead of fixed height to fill available space
-                ...(isMobile && {
-                  flex: 1, // Take up remaining space
-                  minHeight: '200px', // Minimum to ensure usability
-                  // Remove fixed height constraints
-                }),
+                msOverflowStyle: 'none',  // Changed from '-ms-overflow-style'
+                scrollbarWidth: 'none',   // Changed from 'scrollbar-width'
+                pb: '2rem',    // extra bottom padding
               }}
             >
-              <AnimatePresence mode="wait" initial={false} custom={tabIndex}>
-                {tabIndex === 0 && (
+              <AnimatePresence mode="wait" initial={false} custom={tabIndex}>                {tabIndex === 0 && (
                   <motion.div
-                    key="personalInfo"
+                    key="Phone"
                     custom={0}
                     variants={formVariants}
                     initial="initial"
@@ -1106,65 +1134,26 @@ const OrderForm = ({
                     exit="exit"
                     style={{ width: '100%' }} // Removed height: '100%'
                   >
-                    <Box sx={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '0.5rem', 
-                      width: '100%', 
-                      paddingTop: '0.5rem', 
-                      px: { xs: 0.5, sm: 1 },
-                    }}> {/* Added horizontal padding */}
-                      {/* Name field */}
-                      <Controller
-                        name="name"
-                        control={control}
-                        rules={{
-                          required: 'Name is required',
-                          minLength: {
-                            value: 3,
-                            message: 'Name must be at least 3 characters',
-                          },
+                    {isAuthenticated && (
+                      <Box 
+                        sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 1, 
+                          bgcolor: 'success.light', 
+                          color: 'success.contrastText',
+                          borderRadius: 1,
+                          p: 1,
+                          mb: 2 
                         }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Your Name"
-                            error={errors.name}
-                            helperText={errors.name ? errors.name.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              dispatch(setUserDetails({ name: e.target.value }));
-                            }}
-                          />
-                        )}
-                      />
-
-                      {/* Email field */}
-                      <Controller
-                        name="email"
-                        control={control}
-                        rules={{
-                          pattern: {
-                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                            message: 'Enter a valid email address',
-                          },
-                        }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Email (Optional)"
-                            error={errors.email}
-                            helperText={errors.email ? errors.email.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              dispatch(setUserDetails({ email: e.target.value }));
-                            }}
-                          />
-                        )}
-                      />
-
+                      >
+                        <VerifiedUserIcon color="inherit" />
+                        <Typography variant="body2">
+                          You are securely logged in
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}> {/* Added horizontal padding */}
                       {/* Phone number field with enhanced validation */}
                       <Controller
                         name="phoneNumber"
@@ -1249,6 +1238,17 @@ const OrderForm = ({
                           </Box>
                         )}
                       />
+                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                        <input
+                          type="checkbox"
+                          checked={fetchAddressConsent}
+                          onChange={(e) => setFetchAddressConsent(e.target.checked)}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Typography variant="body2">
+                          Fetch my shipping address based on past order
+                        </Typography>
+                      </Box>
 
                       {/* Removed Button from here, will be in fixed footer */}
                     </Box>
@@ -1256,6 +1256,71 @@ const OrderForm = ({
                 )}
 
                 {tabIndex === 1 && (
+                  <motion.div
+                    key="Info"
+                    custom={1}
+                    variants={formVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    style={{ width: '100%' }} // Removed height: '100%'
+                  >
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}>
+                       {/* Name field */}
+                       <Controller
+                        name="name"
+                        control={control}
+                        rules={{
+                          required: 'Name is required',
+                          minLength: {
+                            value: 3,
+                            message: 'Name must be at least 3 characters',
+                          },
+                        }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="Your Name"
+                            error={errors.name}
+                            helperText={errors.name ? errors.name.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              dispatch(setUserDetails({ name: e.target.value }));
+                            }}
+                          />
+                        )}
+                      />
+                      
+                      {/* Email field */}
+                      <Controller
+                        name="email"
+                        control={control}
+                        rules={{
+                          pattern: {
+                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                            message: 'Enter a valid email address',
+                          },
+                        }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="Email (Optional)"
+                            error={errors.email}
+                            helperText={errors.email ? errors.email.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              dispatch(setUserDetails({ email: e.target.value }));
+                            }}
+                          />
+                        )}
+                      />
+                    </Box>
+                  </motion.div>
+                )}
+
+                {tabIndex === 2 && (
                   <motion.div
                     key="shippingInfo"
                     custom={1}
@@ -1265,14 +1330,8 @@ const OrderForm = ({
                     exit="exit"
                     style={{ width: '100%' }} // Removed height: '100%'
                   >
-                    <Box sx={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '0.5rem', 
-                      paddingTop: '0.5rem', 
-                      px: { xs: 0.5, sm: 1 },
-                    }}> {/* Added horizontal padding */}
-                      <Controller
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}>
+                    <Controller
                         name="addressLine1"
                         control={control}
                         rules={{ required: 'Address is required' }}
@@ -1402,6 +1461,7 @@ const OrderForm = ({
                           />
                         </Box>
                       </Box>
+                       
                       {/* Pincode non-serviceable message */}
                       {watchedPincode?.length === 6 && !isPincodeValid && !pincodeCheckInProgress && (
                         <motion.div
@@ -1448,33 +1508,28 @@ const OrderForm = ({
             <Box
               sx={{
                 flexShrink: 0,
-                pt: { xs: 0.8, sm: 1.5 }, // Reduced padding on mobile
-                pb: { xs: 0.8, sm: 1.5 }, // Reduced padding on mobile
-                // Removed mt: 'auto' to prevent footer from being pushed down
+                pt: 1.5,
+                pb: { xs: 1, sm: 1.5 },
+                mt: 'auto',
                 borderTop: `1px solid ${theme.palette.divider}`,
                 backgroundColor: '#ffffff',
                 width: '100%',
-                boxShadow: '0 -2px 5px rgba(0,0,0,0.05)',
-                // Ensure button area is always visible on mobile
-                ...(isMobile && {
-                  pb: 0.8,
-                  position: 'relative',
-                  zIndex: 1,
-                }),
+                boxShadow: '0 -2px 5px rgba(0,0,0,0.05)' // Subtle shadow for separation
               }}
-            >
+            >              
               <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                 {tabIndex === 0 && (
                   <motion.div
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.98 }}
-                  >
-                    <BlackButton
+                  >                    
+                  <BlackButton
                       type="submit" // Changed from onClick
                       extraClass="lg"
                       isLoading={isLoading} // This isLoading is general; consider specific state if needed for UX
-                      buttonText="Next"
+                      buttonText={isAuthenticated ? "Continue to Delivery" : "Get OTP"}
                       disabled={isPaymentProcessing || isLoading}
+                      endIcon={!isAuthenticated && !isLoading ? <WhatsAppIcon /> : null}
                       sx={{
                         borderRadius: '50px',
                         px: 3,
@@ -1487,6 +1542,36 @@ const OrderForm = ({
                   </motion.div>
                 )}
                 {tabIndex === 1 && (
+                  <motion.div 
+                    whileHover={{ scale: 1.03 }} 
+                    whileTap={{ scale: 0.98 }} 
+                    // onClick={() => getValues('name') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(getValues('email')) && setTabIndex(2)}
+                  >
+                    <BlackButton
+                      extraClass="lg"
+                      isLoading={isLoading}
+                      buttonText="Next"
+                      type="submit"
+                      disabled={
+                        isPaymentProcessing ||
+                        isLoading ||
+                        purchaseInitiated ||
+                        pincodeCheckInProgress ||  // disable while checking
+                        !isPincodeValid             // disable until valid
+                      }
+                      sx={{
+                        borderRadius: '50px',
+                        px: 3,
+                        py: 0.5,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                        fontFamily: 'Jost, sans-serif',
+                        fontSize: '0.9rem'
+                      }}
+                    />
+                  </motion.div>
+                )}
+
+                {tabIndex === 2 && (
                   <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
                     <BlackButton
                       extraClass="lg"
@@ -1515,33 +1600,22 @@ const OrderForm = ({
             </Box> {/* End Fixed Button Area */}
           </Box> {/* End Form Wrapper */}
 
-          {/* Trust indicators - Compact on mobile, hidden on very small/short screens */}
+          {/* Trust indicators - Made more compact */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
-            sx={{
-              display: {
-                xs: 'block',
-                '@media (max-width: 360px)': {
-                  display: 'none', // Hide on very small screens
-                },
-                '@media (max-height: 550px)': {
-                  display: 'none', // Hide on very short viewports
-                },
-              },
-            }}
           >
             <Box
               sx={{
-                mt: { xs: 0.25, sm: 1 }, // Much smaller margin on mobile
-                pt: { xs: 0.25, sm: 1 }, // Much smaller padding on mobile
+                mt: 1, // Reduced from 5
+                pt: 1,
                 borderTop: '1px solid #f0f0f0',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: { xs: 0.25, sm: 1 }, // Much smaller gap on mobile
-                flexShrink: 0,
+                gap: 1, // Reduced from 2
+                flexShrink: 0, // Prevent shrinking
               }}
             >
               <Typography
@@ -1549,13 +1623,8 @@ const OrderForm = ({
                 sx={{
                   fontFamily: 'Jost, sans-serif',
                   color: '#666',
-                  fontSize: { xs: '0.65rem', sm: '0.8rem' }, // Smaller on mobile
+                  fontSize: '0.8rem', // Reduced from 0.9rem
                   textAlign: 'center',
-                  display: {
-                    '@media (max-height: 600px)': {
-                      display: 'none', // Hide text on short screens
-                    },
-                  },
                 }}
               >
                 Trusted by 50,000+ happy customers
@@ -1566,7 +1635,7 @@ const OrderForm = ({
                   display: 'flex',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  gap: { xs: 0.5, sm: 2 }, // Much smaller gap on mobile
+                  gap: { xs: 2, sm: 3 }, // Reduced from { xs: 2, sm: 4 }
                   width: '100%',
                 }}
               >
@@ -1576,14 +1645,14 @@ const OrderForm = ({
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: { xs: 0.25, sm: 0.5 }, // Smaller gap on mobile
+                      gap: 0.5, // Reduced from 1
                     }}
                   >
                     <Image
                       loading="eager"
                       src={`${baseImageUrl}/assets/icons/shield.png`}
-                      width={isMobile ? 14 : 24} // Even smaller icons on mobile
-                      height={isMobile ? 14 : 24}
+                      width={24} // Reduced from 32
+                      height={24} // Reduced from 32
                       alt="Secure Payment"
                       style={{ opacity: 0.7 }}
                     />
@@ -1593,15 +1662,10 @@ const OrderForm = ({
                         fontFamily: 'Jost, sans-serif',
                         color: '#666',
                         textAlign: 'center',
-                        fontSize: { xs: '0.5rem', sm: '0.6rem' }, // Smaller text on mobile
-                        display: {
-                          '@media (max-height: 600px)': {
-                            display: 'none', // Hide text on short screens
-                          },
-                        },
+                        fontSize: '0.6rem', // Reduced from 0.7rem
                       }}
                     >
-                      Secure
+                      Secure Payment
                     </Typography>
                   </Box>
                 </motion.div>
@@ -1612,14 +1676,14 @@ const OrderForm = ({
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: { xs: 0.25, sm: 0.5 }, // Smaller gap on mobile
+                      gap: 0.5, // Reduced from 1
                     }}
                   >
                     <Image
                       loading="eager"
                       src={`${baseImageUrl}/assets/icons/fast-delivery.png`}
-                      width={isMobile ? 14 : 24} // Even smaller icons on mobile
-                      height={isMobile ? 14 : 24}
+                      width={24} // Reduced from 32
+                      height={24} // Reduced from 32
                       alt="Fast Shipping"
                       style={{ opacity: 0.7 }}
                     />
@@ -1629,15 +1693,10 @@ const OrderForm = ({
                         fontFamily: 'Jost, sans-serif',
                         color: '#666',
                         textAlign: 'center',
-                        fontSize: { xs: '0.5rem', sm: '0.6rem' }, // Smaller text on mobile
-                        display: {
-                          '@media (max-height: 600px)': {
-                            display: 'none', // Hide text on short screens
-                          },
-                        },
+                        fontSize: '0.6rem', // Reduced from 0.7rem
                       }}
                     >
-                      Fast
+                      Fast Shipping
                     </Typography>
                   </Box>
                 </motion.div>
@@ -1648,14 +1707,14 @@ const OrderForm = ({
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: { xs: 0.25, sm: 0.5 }, // Smaller gap on mobile
+                      gap: 0.5, // Reduced from 1
                     }}
                   >
                     <Image
                       loading="eager"
                       src={`${baseImageUrl}/assets/icons/happiness.png`}
-                      width={isMobile ? 14 : 24} // Even smaller icons on mobile
-                      height={isMobile ? 14 : 24}
+                      width={24} // Reduced from 32
+                      height={24} // Reduced from 32
                       alt="Customer Satisfaction"
                       style={{ opacity: 0.7 }}
                     />
@@ -1665,35 +1724,21 @@ const OrderForm = ({
                         fontFamily: 'Jost, sans-serif',
                         color: '#666',
                         textAlign: 'center',
-                        fontSize: { xs: '0.5rem', sm: '0.6rem' }, // Smaller text on mobile
-                        display: {
-                          '@media (max-height: 600px)': {
-                            display: 'none', // Hide text on short screens
-                          },
-                        },
+                        fontSize: '0.6rem', // Reduced from 0.7rem
                       }}
                     >
-                      100%
+                      100% Satisfaction
                     </Typography>
                   </Box>
                 </motion.div>
               </Box>
 
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1,
-                  '@media (max-height: 600px)': {
-                    display: 'none', // Hide payment logo on short screens
-                  },
-                }}
-              >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Image
                   loading="eager"
                   src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`}
-                  width={isMobile ? 40 : 50} // Smaller on mobile
-                  height={isMobile ? 12 : 15}
+                  width={50} // Reduced from 60
+                  height={15} // Reduced from 18
                   alt="Razorpay"
                   style={{ opacity: 0.7 }}
                 />
@@ -1702,7 +1747,7 @@ const OrderForm = ({
                   sx={{
                     fontFamily: 'Jost, sans-serif',
                     color: '#666',
-                    fontSize: { xs: '0.5rem', sm: '0.6rem' }, // Smaller on mobile
+                    fontSize: '0.6rem', // Reduced from 0.7rem
                   }}
                 >
                   |
@@ -1710,14 +1755,15 @@ const OrderForm = ({
                 <Image
                   loading="eager"
                   src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`}
-                  width={isMobile ? 40 : 50} // Smaller on mobile
-                  height={isMobile ? 12 : 15}
+                  width={50} // Reduced from 60
+                  height={15} // Reduced from 18
                   alt="Shiprocket"
                   style={{ opacity: 0.7 }}
-                />
-              </Box>
+                />              </Box>
             </Box>
           </motion.div>
+          </>
+          )}
         </DialogContent>
       </Dialog>
 
