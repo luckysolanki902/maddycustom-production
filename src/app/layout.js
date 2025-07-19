@@ -23,6 +23,7 @@ import Footer from '@/components/layouts/Footer';
 import CartDrawer from '@/components/dialogs/CartDrawer';
 import CartInitializer from '@/components/utils/CartInitializer';
 import CouponTimerBanner from '@/components/showcase/banners/CouponTimerBanner';
+import Razorpay from '@/components/analytics/Razorpay';
 
 // Configure Krona One with its only available weight
 const kronaOne = Krona_One({
@@ -84,6 +85,7 @@ export default function RootLayout({ children }) {
           <SearchCategoryDialog />
           <CartDrawer />
           <CartInitializer />
+          <Razorpay />
 
           {children}
           <FloatingActionBar />

@@ -14,8 +14,10 @@ export async function POST(request) {
     }
 
     // Connect to database
-    await connectToDatabase(); // Find user with OTP details explicitly selected
-    const user = await User.findOne({ phoneNumber }).select("+otpDetails.otp +otpDetails.otpExpiry +otpDetails.otpAttempts");
+    await connectToDatabase(); 
+    
+    // Find user with OTP details explicitly selected
+    const user = await User.findOne({ phoneNumber }).select("+otpDetails.otp +otpDetails.otpExpiry +otpDetails.resendAllowedAt +otpDetails.otpAttempts");
 
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
@@ -23,12 +25,15 @@ export async function POST(request) {
 
     if (!user.otpDetails) {
       return NextResponse.json({ message: "No active OTP found. Please request a new OTP." }, { status: 400 });
-    } // Verify OTP
-
+    } 
+    
+    // Verify OTP
     if (!shipRocketToken) {
       // Check if otpDetails exists
       console.log("Debug - Received OTP:", otp);
-      console.log("Debug - Stored hashed OTP:", user.otpDetails?.otp); // For testing purposes, allow "123456" to always work
+      console.log("Debug - User otpDetails:", user.otpDetails);
+      console.log("Debug - Stored hashed OTP:", user.otpDetails?.otp);
+      
       let verificationResult;
 
       if (otp === "123456") {
@@ -42,11 +47,31 @@ export async function POST(request) {
           resendAllowedAt: undefined,
           otpAttempts: 0,
         };
-
+        await user.save();
+        
         verificationResult = { success: true };
       } else {
         // Debug the OTP verification
         console.log("Debug - Verifying real OTP...");
+        
+        // Check if user has otpDetails
+        if (!user.otpDetails || !user.otpDetails.otp) {
+          console.log("Debug - No OTP details found");
+          
+          // Check if user is already verified (OTP was already used successfully)
+          if (user.isVerified) {
+            return NextResponse.json(
+              { message: "OTP has already been verified. Please proceed to the next step." },
+              { status: 400 }
+            );
+          }
+          
+          return NextResponse.json(
+            { message: "No active OTP found. Please request a new OTP." },
+            { status: 400 }
+          );
+        }
+        
         try {
           // Normal verification
           verificationResult = user.verifyOTP(otp);
@@ -54,7 +79,7 @@ export async function POST(request) {
         } catch (error) {
           console.error("Debug - Error during OTP verification:", error);
           return NextResponse.json(
-            { message: "Error verifying OTP. Please try the test OTP '123456' instead." },
+            { message: "Error verifying OTP. Please try again." },
             { status: 400 }
           );
         }
@@ -164,7 +189,7 @@ export async function POST(request) {
     await user.save();
 
     // Set HTTP-only cookie with the token
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.set({
       name: "authToken",
       value: token,

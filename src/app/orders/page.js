@@ -178,8 +178,8 @@ export default function MyOrdersPage() {
                   {order.items.map((item, idx) => (
                     <Box key={idx} sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                       <Image
-                        src={`${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${
-                          item.thumbnail || "/products/wraps/car-wraps/window-pillar-wraps/win/win49.jpg"
+                        src={`${
+                          item.thumbnail || `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/products/wraps/car-wraps/window-pillar-wraps/win/win49.jpg`
                         }`}
                         alt={item.name}
                         width={80}

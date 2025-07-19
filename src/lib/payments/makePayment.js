@@ -7,12 +7,35 @@
  */
 export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrder }) =>
   new Promise((resolve, reject) => {
+    console.log('🎯 makePayment called with:', { 
+      customerName, 
+      customerMobile, 
+      orderId, 
+      razorpayOrderId: razorpayOrder?.id,
+      razorpayAmount: razorpayOrder?.amount 
+    });
+    
     const key      = process.env.NEXT_PUBLIC_RAZORPAY_KEY;
     const logoUrl  = `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/logos/maddy3logodark_rect.png`;
+
+    console.log('🔑 Razorpay key available:', !!key);
+    console.log('🖼️ Logo URL:', logoUrl);
 
     if (!key || !logoUrl) {
       return reject(new Error('Payment configuration error'));
     }
+
+    // Check if Razorpay is loaded
+    if (typeof window === 'undefined') {
+      return reject(new Error('Window object not available. Make sure this runs in browser.'));
+    }
+    
+    if (typeof window.Razorpay === 'undefined') {
+      console.error('Razorpay not found on window object. Available properties:', Object.keys(window));
+      return reject(new Error('Razorpay SDK not loaded. Please check your script tags.'));
+    }
+
+    console.log('✅ Razorpay SDK loaded successfully');
 
     const options = {
       key,
@@ -62,7 +85,10 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
       },
     };
 
+    console.log('💳 Creating Razorpay instance with options:', options);
     const rz = new window.Razorpay(options);
+    
+    console.log('🚀 Opening Razorpay dialog...');
     rz.open();
 
     rz.on('payment.failed', (resp) => {

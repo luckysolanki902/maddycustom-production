@@ -5,11 +5,9 @@ import User from '@/models/User';
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 import crypto from "crypto";
 
-const useShiprocket = true;
-
 export async function POST(request) {
     try {
-        const { phoneNumber, authMethod = "whatsapp", shipRocketUserConsent = false } = await request.json();
+        const { phoneNumber, authMethod = "whatsapp", shipRocketUserConsent = false, useShiprocket = false } = await request.json();
 
         // Validate phone number
         if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
@@ -32,6 +30,12 @@ export async function POST(request) {
                 name: '',
                 isVerified: false,
                 preferredAuthMethod: authMethod,
+                otpDetails: {
+                    otp: null,
+                    otpExpiry: null,
+                    resendAllowedAt: null,
+                    otpAttempts: 0,
+                }
             });
         }
 
@@ -55,14 +59,24 @@ export async function POST(request) {
 
     const isShiprocket = authMethod === "sms" && !user.addresses.length && shipRocketUserConsent && useShiprocket;
 
+    console.log('Debug - useShiprocket:', useShiprocket);
+    console.log('Debug - isShiprocket:', isShiprocket);
+    console.log('Debug - authMethod:', authMethod);
+    console.log('Debug - user addresses length:', user.addresses.length);
+    console.log('Debug - shipRocketUserConsent:', shipRocketUserConsent);
+
     // Generate OTP
     const otp = user.generateOTP({ isShiprocket });
+
+    console.log('Debug - Generated OTP:', otp);
+    console.log('Debug - OTP Details before save:', user.otpDetails);
 
     // Save the user with OTP data
     await user.save();
     
+    console.log('Debug - OTP Details after save:', user.otpDetails);
+    
     // Debug log to confirm OTP is saved
-    console.log('Debug - Generated OTP:', otp);
     console.log('Debug - Saved hashed OTP:', user.otpDetails?.otp);
         if (authMethod === "whatsapp") {
           return NextResponse.json({ message: "WhatsApp OTP deprecated ", error: smsError.message }, { status: 500 });

@@ -5,21 +5,19 @@ import {
   Dialog,
   DialogContent,
   Box,
-  TextField,
-  Autocomplete,
   Typography,
   useMediaQuery,
-  CircularProgress,
-  alpha
+  IconButton,
+  Button,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import BlackButton from '../utils/BlackButton';
-import { useForm, Controller } from 'react-hook-form';
+import CloseIcon from '@mui/icons-material/Close';
+import { useForm } from 'react-hook-form';
 import axios from 'axios';
-import indianStates from '../../lib/constants/indianStates';
 import { useSelector, useDispatch } from 'react-redux';
 import { clearCart } from '../../store/slices/cartSlice';
 import { clearUTMDetails } from '@/store/slices/utmSlice';
+import Image from 'next/image';
 import {
   resetOrderForm,
   setUserDetails,
@@ -27,11 +25,11 @@ import {
   setUserExists,
   setPrefilledAddress,
   setLastOrderId,
-  setCoupon,
-  removeCoupon,
+  setCouponApplied,
+  setManualCoupon,
   setExtraFields
 } from '../../store/slices/orderFormSlice';
-import { closeAllDialogs } from '@/store/slices/uiSlice';  // Import the new action
+import { closeAllDialogs } from '@/store/slices/uiSlice';
 import { makePayment } from '../../lib/payments/makePayment';
 import { useRouter } from 'next/navigation';
 import CustomSnackbar from '../notifications/CustomSnackbar';
@@ -40,22 +38,13 @@ import { ThemeProvider } from '@mui/material';
 import theme from '@/styles/theme';
 import { initiateCheckout, purchase } from '@/lib/metadata/facebookPixels';
 import { v4 as uuidv4 } from 'uuid';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber'; // Added
 import { debounce } from 'lodash';
-import useHistoryState from '@/hooks/useHistoryState';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
-import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 
-// Auth components
-import { useAuth } from '@/lib/auth/AuthContext';
-import { selectIsAuthenticated, selectUser } from '@/lib/auth/authSelectors';
-import AuthenticationFlow from '@/components/auth/AuthenticationFlow';
-import SavedAddressesManager from '@/components/auth/SavedAddressesManager';
-import { validateToken, resetAuthError, resetOtpState, sendOTP } from '@/store/slices/authSlice';
+// Page section components
+import MobileAuthForm from '@/components/page-sections/orderform/MobileAuthForm';
+import AddressForm from '@/components/page-sections/orderform/AddressForm';
+import TrustSection from '@/components/page-sections/orderform/TrustSection';
 
 const OrderForm = ({
   open,
@@ -76,11 +65,7 @@ const OrderForm = ({
   const utmDetails = useSelector((state) => state.utm);
   const { userDetails, addressDetails, userExists, prefilledAddress } = orderForm;
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
-  // Auth state
-  const isAuthenticated = useSelector(selectIsAuthenticated);
-  const authUser = useSelector(selectUser);
-  const { refreshUserData } = useAuth();
+  const isSmallHeight = useMediaQuery('(max-height: 650px)');
 
   // Performance optimization - serviceability cache
   const serviceabilityCache = useRef({});
@@ -94,33 +79,47 @@ const OrderForm = ({
     couponValidation: null,
   });
 
-  // Local Tab Index State - memoize to prevent rerenders
+  // Local form state
   const [tabIndex, setTabIndex] = useState(0);
-  // Authentication flow state
-  const [showAuthFlow, setShowAuthFlow] = useState(false);
-  const [authFallbackTab, setAuthFallbackTab] = useState(0);
+  const [showOtpForm, setShowOtpForm] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [isOtpVerifying, setIsOtpVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [maskedPhone, setMaskedPhone] = useState('');
+  const [resendAllowedAt, setResendAllowedAt] = useState(null);
+  const [userId, setUserId] = useState(null);
+  const [shiprocketToken, setShiprocketToken] = useState(null);
+  const [shouldSwitchToAddress, setShouldSwitchToAddress] = useState(false);
   
-  // Reset auth error and OTP state when showing auth flow
+  // Debug: Log tab index changes
   useEffect(() => {
-    if (showAuthFlow) {
-      // Reset any previous errors and initialize OTP state
-      dispatch(resetAuthError());
-    }
-  }, [showAuthFlow, dispatch]);
+    console.log('🔄 Tab index changed to:', tabIndex);
+  }, [tabIndex]);
   
-  // Address management state
-  const [showAddressManager, setShowAddressManager] = useState(false);
-  const [selectedAddressId, setSelectedAddressId] = useState(null);
-
+  // Handle switching to address tab after OTP verification
+  useEffect(() => {
+    console.log('🔄 UseEffect triggered, shouldSwitchToAddress:', shouldSwitchToAddress);
+    if (shouldSwitchToAddress) {
+      console.log('🔄 Switching to address tab via useEffect');
+      // Use setTimeout to ensure state updates properly
+      setTimeout(() => {
+        console.log('📋 Actually switching to tab 1');
+        setTabIndex(1);
+        setShouldSwitchToAddress(false);
+        console.log('✅ Tab switching completed');
+      }, 100); // Increased delay to 100ms
+    }
+  }, [shouldSwitchToAddress]);
+  
   // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-  const [fetchAddressConsent, setFetchAddressConsent] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Extract and aggregate unique extraFields from cart items - memoized
   const aggregatedExtraFields = useMemo(() => {
@@ -136,25 +135,37 @@ const OrderForm = ({
       }
     });
     return Array.from(fieldsMap.values());
-  }, [items]);  // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
+  }, [items]);
 
-  const { control, handleSubmit, setValue, watch, getValues, reset, formState: { errors, isValid } } = useForm({
+  // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
+  const { control, handleSubmit, setValue, watch, getValues, reset, formState: { errors } } = useForm({
     mode: 'onChange',
     defaultValues: useMemo(() => ({
-      name: userDetails?.name || '',
       phoneNumber: userDetails?.phoneNumber || '',
       email: userDetails?.email || '',
+      flatDetails: '', // New field for flat/house number
       addressLine1: addressDetails?.addressLine1 || '',
       addressLine2: addressDetails?.addressLine2 || '',
       city: addressDetails?.city || '',
       state: addressDetails?.state || '',
       pincode: addressDetails?.pincode || '',
       country: addressDetails?.country || 'India',
-      token: null,
       // Add any extraFields from cart items
-      ...aggregatedExtraFields,
+      ...aggregatedExtraFields.reduce((acc, field) => {
+        acc[field.fieldName] = '';
+        return acc;
+      }, {}),
     }), [userDetails, addressDetails, aggregatedExtraFields]),
   });
+
+  // Watch phone number to determine if it matches existing user
+  const watchedPhoneNumber = watch('phoneNumber');
+  const isPhoneNumberSameAsUser = useMemo(() => {
+    return userExists && userDetails?.phoneNumber && watchedPhoneNumber === userDetails.phoneNumber;
+  }, [userExists, userDetails?.phoneNumber, watchedPhoneNumber]);
+
+  // Determine if we should show CONTINUE button (user exists and phone matches) or GET OTP
+  const shouldShowContinueButton = isPhoneNumberSameAsUser;
   
   // Define showSnackbar first since it's used in validatePincode
   const showSnackbar = useCallback((message, severity = 'success') => {
@@ -165,7 +176,6 @@ const OrderForm = ({
   
   // Enhanced pincode validation with proactive serviceability check
   const validatePincode = useCallback((pincode) => {
-    // Use debounce inside the callback
     const debouncedCheck = debounce(async (pincodeToCheck) => {
       if (pincodeToCheck.length === 6 && /^\d{6}$/.test(pincodeToCheck)) {
         setPincodeCheckInProgress(true);
@@ -187,10 +197,10 @@ const OrderForm = ({
           setIsPincodeValid(isValid);
 
           if (!isValid) {
-            showSnackbar(`Pincode ${pincodeToCheck} is not serviceable. Please try a different one.`, 'warning');
+            showSnackbar(`PIN code ${pincodeToCheck} is not serviceable. Please try a different one.`, 'warning');
           }
         } catch (error) {
-          console.error('Error checking pincode:', error);
+          // Error handling silently
         } finally {
           setPincodeCheckInProgress(false);
         }
@@ -199,28 +209,169 @@ const OrderForm = ({
       }
     }, 300);
 
-    // Call the debounced function
     debouncedCheck(pincode);
-  }, [showSnackbar, setIsPincodeValid, setPincodeCheckInProgress, serviceabilityCache]);
+  }, [showSnackbar]);
 
-  // Load user addresses when authenticated - wrapped in useCallback
-  const loadUserAddresses = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) return;
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (open) {
+      console.log('🔄 Dialog opening, checking authentication state...');
+      console.log('👤 userExists:', userExists);
+      console.log('👤 userDetails:', userDetails);
       
-      const response = await axios.get('/api/user/addresses', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.data?.addresses?.length > 0) {
-        // Find primary address
-        const primaryAddress = response.data.addresses.find(addr => addr.isPrimary) || response.data.addresses[0];
+      // Check if user is already authenticated
+      if (userExists && userDetails?.phoneNumber && userDetails?.userId) {
+        console.log('✅ User already authenticated, going directly to address form');
+        // User is already logged in, go directly to address form
+        setTabIndex(1);
+        setShowOtpForm(false);
+        setOtpValue('');
+        setIsOtpVerifying(false);
+        setIsResending(false);
+        setMaskedPhone('');
+        setResendAllowedAt(null);
+        setUserId(userDetails.userId);
+        setShiprocketToken(null);
+        setIsSubmitting(false);
         
-        if (primaryAddress) {
-          // Set as prefilled address
+        console.log('✅ User already authenticated, skipping OTP verification');
+        console.log('👤 Existing user:', userDetails);
+      } else {
+        // User not authenticated, start with phone verification
+        setTabIndex(0);
+        setShowOtpForm(false);
+        setOtpValue('');
+        setIsOtpVerifying(false);
+        setIsResending(false);
+        setMaskedPhone('');
+        setResendAllowedAt(null);
+        setUserId(null);
+        setShiprocketToken(null);
+        setIsSubmitting(false);
+        
+        console.log('🔐 User not authenticated, starting OTP verification');
+      }
+      
+      // Reset form values
+      setValue('phoneNumber', userDetails?.phoneNumber || '');
+      setValue('email', userDetails?.email || '');
+      setValue('flatDetails', addressDetails?.flatDetails || '');
+      setValue('addressLine1', addressDetails?.addressLine1 || '');
+      setValue('addressLine2', addressDetails?.addressLine2 || '');
+      setValue('city', addressDetails?.city || '');
+      setValue('state', addressDetails?.state || '');
+      setValue('pincode', addressDetails?.pincode || '');
+      setValue('country', addressDetails?.country || 'India');
+      
+      // Pre-validate pincode if it exists
+      if (addressDetails?.pincode && addressDetails.pincode.length === 6) {
+        validatePincode(addressDetails.pincode);
+      }
+    }
+  }, [open, setValue, userDetails, addressDetails, validatePincode, userExists]);
+
+  // Handle mobile number submission (send OTP or skip to address if authenticated)
+  const handlePhoneSubmit = handleSubmit(async (data) => {
+    if (isSubmitting) return;
+    
+    // If user is already authenticated, skip OTP and go to address form
+    if (userExists && userDetails?.phoneNumber && userDetails?.userId) {
+      console.log('✅ User already authenticated, going directly to address form');
+      setTabIndex(1);
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const response = await axios.post('/api/auth/send-otp', {
+        phoneNumber: data.phoneNumber,
+        authMethod: 'sms',
+        useShiprocket: false, // Client-side controlled
+        shipRocketUserConsent: false
+      });
+
+      if (response.data.message === 'OTP sent successfully' || response.data.message === 'OTP sent successfully via Shiprocket') {
+        setShowOtpForm(true);
+        setMaskedPhone(response.data.maskedPhone);
+        setResendAllowedAt(response.data.resendAllowedAt);
+        setUserId(response.data.userId);
+        setShiprocketToken(response.data.shiprocketToken || null);
+        showSnackbar('OTP sent successfully!', 'success');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to send OTP. Please try again.';
+      showSnackbar(errorMessage, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  });
+
+  // Handle OTP verification
+  const handleOtpVerification = useCallback(async () => {
+    if (isOtpVerifying || otpValue.length !== 6) return;
+    
+    setIsOtpVerifying(true);
+    try {
+      console.log('🔄 Starting OTP verification...');
+      const response = await axios.post('/api/auth/verify-otp', {
+        phoneNumber: getValues('phoneNumber'),
+        otp: otpValue,
+        shiprocketToken: shiprocketToken
+      });
+
+      console.log('📡 OTP verification response:', response.data);
+
+      if (response.data.message === 'Authentication successful' || response.data.message === 'OTP verified successfully') {
+        const userData = response.data.user;
+        
+        console.log('✅ OTP verification successful, updating UI state');
+        console.log('👤 User data:', userData);
+        
+        // Clear OTP value and disable further attempts
+        setOtpValue('');
+        setShowOtpForm(false);
+        
+        // Update Redux store
+        dispatch(setUserDetails({
+          name: userData.name || '',
+          phoneNumber: userData.phoneNumber,
+          email: userData.email || '',
+          userId: userData.id || userData._id,
+        }));
+        
+        dispatch(setUserExists(true));
+        
+        // Update form values
+        // Update form values
+        setValue('phoneNumber', userData.phoneNumber);
+        setValue('email', userData.email || '');
+        
+        // If user has a primary address, prefill it
+        if (userData.addresses && userData.addresses.length > 0) {
+          const primaryAddress = userData.addresses.find(addr => addr.isPrimary) || userData.addresses[0];
+          
+          // Parse the addressLine1 to extract flatDetails if it's combined
+          let flatDetails = '';
+          let areaLocality = primaryAddress.addressLine1;
+          
+          // If addressLine1 seems to contain flat details, try to separate them
+          if (primaryAddress.addressLine1) {
+            // Look for patterns like "123A, Area" or "Flat 123, Area"
+            const addressParts = primaryAddress.addressLine1.split(',');
+            if (addressParts.length >= 2) {
+              const firstPart = addressParts[0].trim();
+              // Check if first part looks like flat/house number
+              if (/^(\d+[A-Z]?|Flat\s+\d+|House\s+\d+|Plot\s+\d+)/i.test(firstPart)) {
+                flatDetails = firstPart;
+                areaLocality = addressParts.slice(1).join(',').trim();
+              }
+            }
+          }
+          
           dispatch(setPrefilledAddress({
-            addressLine1: primaryAddress.addressLine1,
+            receiverPhoneNumber: primaryAddress.receiverPhoneNumber,
+            flatDetails: flatDetails,
+            addressLine1: areaLocality,
             addressLine2: primaryAddress.addressLine2 || '',
             city: primaryAddress.city,
             state: primaryAddress.state,
@@ -228,395 +379,157 @@ const OrderForm = ({
             country: primaryAddress.country || 'India',
           }));
           
-          setSelectedAddressId(primaryAddress._id);
-          
           // Set form values
-          setValue('addressLine1', primaryAddress.addressLine1);
+          setValue('flatDetails', flatDetails);
+          setValue('addressLine1', areaLocality);
           setValue('addressLine2', primaryAddress.addressLine2 || '');
           setValue('city', primaryAddress.city);
           setValue('state', primaryAddress.state);
           setValue('pincode', primaryAddress.pincode);
-          
-          // Validate pincode for serviceability
+          // Validate pincode
           validatePincode(primaryAddress.pincode);
         }
-      }    } catch (error) {
-      console.error('Error loading user addresses:', error);    }
-  }, [dispatch, setValue, validatePincode]);
-  
-  // Check authentication on component mount and when auth state changes
-  useEffect(() => {
-    if (open && !isAuthenticated) {
-      // Validate token on first open
-      dispatch(validateToken());
-    } else if (open && isAuthenticated && authUser) {
-      // User is authenticated, set user details from auth state
-      dispatch(setUserDetails({
-        name: authUser.name,
-        phoneNumber: authUser.phoneNumber,
-        email: authUser.email || '',
-        userId: authUser.id
-      }));
-      
-      dispatch(setUserExists(true));
-      
-      // Set form values
-      setValue('name', authUser.name || '');
-      setValue('phoneNumber', authUser.phoneNumber || '');
-      setValue('email', authUser.email || '');
-      
-      // Check if user has addresses and load them
-      if (authUser.hasPrimaryAddress) {
-        loadUserAddresses();
+        
+        // Move to address tab
+        console.log('🔄 Setting flag to switch to address tab');
+        console.log('🎯 Current shouldSwitchToAddress before:', shouldSwitchToAddress);
+        setShouldSwitchToAddress(true);
+        console.log('📋 Tab switching flag set to true');
+        
+        // Also directly set tab index as backup
+        setTimeout(() => {
+          console.log('⏰ Direct tab switch timeout triggered');
+          setTabIndex(1);
+        }, 200);
+        
+        console.log('🔄 OTP verification successful, user data:', userData);
+        showSnackbar('Successfully verified!', 'success');
       }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Invalid OTP. Please try again.';
+      showSnackbar(errorMessage, 'error');
+    } finally {
+      setIsOtpVerifying(false);
     }
-  }, [open, isAuthenticated, authUser, dispatch, setValue, loadUserAddresses]);
-  
-  // Handle authentication success
-  const handleAuthenticationSuccess = (user) => {
-    setShowAuthFlow(false);
+  }, [isOtpVerifying, otpValue, getValues, shiprocketToken, dispatch, setValue, validatePincode, showSnackbar, shouldSwitchToAddress]);
+
+  // Handle resend OTP
+  const handleResendOtp = useCallback(async () => {
+    if (isResending) return;
     
-    // Update auth state
-    refreshUserData();
-    
-    // Update form with user data
-    dispatch(setUserDetails({
-      name: user.name,
-      phoneNumber: user.phoneNumber,
-      email: user.email || '',
-      userId: user.id,
-      addressDetails: user.addressDetails,
-    }));
-    
-    dispatch(setUserExists(true));
-    
-    // Set form values
-    setValue('name', user.name || '');
-    setValue('phoneNumber', user.phoneNumber || '');
-    setValue('email', user.email || '');
-    
-    // If user has addresses, show address manager
-    if (user.hasPrimaryAddress) {
-      setShowAddressManager(true);
-    } else {
-      // Return to the fallback tab if no addresses
-      setTabIndex(authFallbackTab);
+    setIsResending(true);
+    try {
+      const response = await axios.post('/api/auth/send-otp', {
+        phoneNumber: getValues('phoneNumber'),
+        authMethod: 'sms',
+        useShiprocket: false,
+        shipRocketUserConsent: false
+      });
+
+      if (response.data.message === 'OTP sent successfully' || response.data.message === 'OTP sent successfully via Shiprocket') {
+        setResendAllowedAt(response.data.resendAllowedAt);
+        setShiprocketToken(response.data.shiprocketToken || null);
+        showSnackbar('OTP sent successfully!', 'success');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to resend OTP. Please try again.';
+      showSnackbar(errorMessage, 'error');
+    } finally {
+      setIsResending(false);
     }
-  };
-  
-  // Handle address selection
-  const handleAddressSelected = (address) => {
-    setShowAddressManager(false);
-    
-    // Set the selected address in the form
-    dispatch(setPrefilledAddress({
-      addressLine1: address.addressLine1,
-      addressLine2: address.addressLine2 || '',
-      city: address.city,
-      state: address.state,
-      pincode: address.pincode,
-      country: address.country || 'India',
-    }));
-    
-    // Update form values
-    setValue('addressLine1', address.addressLine1);
-    setValue('addressLine2', address.addressLine2 || '');
-    setValue('city', address.city);
-    setValue('state', address.state);
-    setValue('pincode', address.pincode);
-    
-    // Validate pincode for serviceability
-    validatePincode(address.pincode);
-    
-    // Return to the fallback tab
-    setTabIndex(authFallbackTab);
-  };
+  }, [isResending, getValues, showSnackbar]);
 
   // Prevent multiple form submissions
   const [purchaseInitiated, setPurchaseInitiated] = useState(false);
 
-  // Reset tabIndex when dialog opens
-  useEffect(() => {
-    if (open) {
-      setTabIndex(0);
-      setPurchaseInitiated(false);
-    }
-  }, [open]);
-
-  // Sync form values with Redux store when dialog is opened
-  useEffect(() => {
-    if (open) {
-      setValue('name', userDetails.name || '');
-      setValue('phoneNumber', userDetails.phoneNumber || '');
-      setValue('email', userDetails.email || '');
-      setValue('addressLine1', addressDetails.addressLine1 || '');
-      setValue('addressLine2', addressDetails.addressLine2 || '');
-      setValue('city', addressDetails.city || '');
-      setValue('state', addressDetails.state || '');
-      setValue('pincode', addressDetails.pincode || '');
-      setValue('country', addressDetails.country || 'India');
-
-      // Pre-validate pincode if it exists
-      if (addressDetails.pincode && addressDetails.pincode.length === 6) {
-        validatePincode(addressDetails.pincode);
-      }
-    }  }, [open, setValue, userDetails.name, userDetails.phoneNumber, userDetails.email,
-    addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
-    addressDetails.state, addressDetails.pincode, addressDetails.country, validatePincode]);
-
-  // Handle Prefilled Address
-  useEffect(() => {
-    if (userExists && prefilledAddress) {
-      dispatch(setAddressDetails(prefilledAddress));
-      dispatch(setUserExists(false));
-      dispatch(setPrefilledAddress(null));
-      setTabIndex(1);
-
-      // Pre-validate pincode from prefilled address
-      if (prefilledAddress.pincode && prefilledAddress.pincode.length === 6) {
-        validatePincode(prefilledAddress.pincode);
-      }
-    } else if (userExists && !prefilledAddress) {
-      // If there's already an address in Redux, skip to tab 1
-      const reduxAddress = addressDetails;
-      if (
-        reduxAddress.addressLine1 ||
-        reduxAddress.addressLine2 ||
-        reduxAddress.city ||
-        reduxAddress.state ||
-        reduxAddress.pincode ||
-        reduxAddress.country
-      ) {
-        setTabIndex(1);
-
-        // Pre-validate pincode from redux address
-        if (reduxAddress.pincode && reduxAddress.pincode.length === 6) {
-          validatePincode(reduxAddress.pincode);
-        }
-      }
-    }
-  }, [userExists, prefilledAddress, dispatch, addressDetails, validatePincode]);  const handleTabChange = useCallback((newValue) => {
+  // Handle tab change
+  const handleTabChange = useCallback((newValue) => {
     setTabIndex(newValue);
   }, []);
 
-  // State for formatted phone number display - memoized
-  const [formattedPhone, setFormattedPhone] = useState('');
-  const [showPhoneConfirmation, setShowPhoneConfirmation] = useState(false);
-  const [originalPhone, setOriginalPhone] = useState('');
-  
-  // Get watched pincode value from form
-  const watchedPincode = watch('pincode');
+  // Handle dialog close functions
+  const handleClose = useCallback(() => {
+    if (isPaymentProcessing) return;
 
-  // Function to format phone number - memoized to prevent rerenders
-  const formatPhoneNumber = useCallback((phone) => {
-    // Keep only digits
-    let digitsOnly = phone.replace(/\D/g, '');
-
-    // Handle common Indian prefixes
-    if (digitsOnly.length > 10) {
-      // Remove leading 0
-      if (digitsOnly.startsWith('0')) {
-        digitsOnly = digitsOnly.substring(1);
-      }
-
-      // Remove country code +91 or 91
-      if (digitsOnly.startsWith('91') && digitsOnly.length > 10) {
-        digitsOnly = digitsOnly.substring(2);
-      }
-    }
-
-    // Return the last 10 digits if longer
-    if (digitsOnly.length > 10) {
-      digitsOnly = digitsOnly.substring(digitsOnly.length - 10);
-    }
-
-    return digitsOnly;
-  }, []);
-
-  // Handle phone formatting and confirmation - memoized to prevent rerenders
-  const handlePhoneChange = useCallback((e, onChange) => {
-    const inputValue = e.target.value;
-    onChange(inputValue); // Update the raw input in the form
-
-    // If already valid 10-digit number, no need for formatting
-    if (/^\d{10}$/.test(inputValue)) {
-      setShowPhoneConfirmation(false);
-      return;
-    }
-
-    const formatted = formatPhoneNumber(inputValue);
-
-    // Only show confirmation if input isn't valid but formatted version is
-    if (formatted !== inputValue && /^\d{10}$/.test(formatted)) {
-      setFormattedPhone(formatted);
-      setOriginalPhone(inputValue);
-      setShowPhoneConfirmation(true);
+    if (tabIndex === 1) {
+      setTabIndex(0);
     } else {
-      setShowPhoneConfirmation(false);
+      onClose();
     }
-  }, [formatPhoneNumber]);
+  }, [isPaymentProcessing, tabIndex, onClose]);
 
-  const acceptFormattedPhone = useCallback(() => {
-    setValue('phoneNumber', formattedPhone, { shouldValidate: true });
-    dispatch(setUserDetails({ phoneNumber: formattedPhone }));
-    setShowPhoneConfirmation(false);
-  }, [formattedPhone, setValue, dispatch]);
+  // Handle back button
+  const handleBackButton = useCallback(() => {
+    if (isPaymentProcessing) return;
+    
+    if (tabIndex === 1) {
+      // From address tab, go back to authentication tab
+      setTabIndex(0);
+      // Reset OTP form state so user sees phone input again
+      setShowOtpForm(false);
+      setOtpValue('');
+      // If user exists, we need to show them the auth tab, not the address tab
+      // This is handled by the rendering logic below
+    } else {
+      // From authentication tab, close the dialog
+      handleClose();
+    }
+  }, [tabIndex, isPaymentProcessing, handleClose]);
 
-  // New function to fully close everything - both OrderForm and CartDrawer
   const handleFullClose = useCallback(() => {
+    if (isPaymentProcessing) return;
+    
+    setTabIndex(0);
+    setShowOtpForm(false);
+    setOtpValue('');
     onClose();
     dispatch(closeAllDialogs());
-  }, [onClose, dispatch]);
-  
-  // Pre-validate coupon in background as soon as form opens
-  useEffect(() => {
-    if (open && couponCode && subTotal > 0) {
-      // Start coupon validation in background
-      pendingOperationsRef.current.couponValidation = axios.post('/api/checkout/coupons/apply', {
-        code: couponCode,
-        totalCost: subTotal,
-        isFirstOrder: false,
-        cartItems: items,
-      }).catch(error => {
-        console.error('Background coupon validation failed:', error);
-      });
-    }
-  }, [open, couponCode, subTotal, items]);
+  }, [isPaymentProcessing, onClose, dispatch]);
 
-  const onSubmitPhoneNumber = useCallback(
-    async data => {
+  // Handle final purchase
+  const handlePurchase = useCallback(async (data) => {
+    if (purchaseInitiated || isPaymentProcessing || !isPincodeValid) return;
 
-      // Format phone number for submission if needed
-      const phoneToUse = formatPhoneNumber(data.phoneNumber);
-
-      // Client-side validation to avoid unnecessary API calls
-      if (phoneToUse.length !== 10 || !/^\d{10}$/.test(phoneToUse)) {
-        showSnackbar("Please enter a valid 10-digit mobile number", "error");
-        return;
-      }
-
-      // If user is already authenticated, proceed to next tab
-      if (isAuthenticated) {
-        // Optimistically update Redux store with user details
-        dispatch(setUserDetails({ phoneNumber: phoneToUse }));
-        setTabIndex(1);
-        return;
-      }
-
-      // Store values in redux for non-authenticated users
-      dispatch(setUserDetails({ phoneNumber: phoneToUse }));
-
-      // Save the current tab index for returning after auth flow
-      setAuthFallbackTab(0);
-
-      // Reset OTP state before showing the auth flow
-      dispatch(resetOtpState());
-      dispatch(resetAuthError());
-
-      // Send OTP directly without asking for phone again
-      const result = await dispatch(sendOTP({ phoneNumber: phoneToUse, shipRocketUserConsent: fetchAddressConsent }));
-
-      if (result?.meta?.requestStatus === "fulfilled") {
-        // set token in form
-        setValue("token", result.payload.shiprocketToken, { shouldValidate: true });
-        // After successful OTP send, show auth flow with OTP input screen directly
-        setShowAuthFlow(true);
-      } else {
-        // If sending OTP failed
-        showSnackbar(result.payload?.message || "Failed to send OTP. Please try again.", "error");
-      }
-    },
-    [dispatch, fetchAddressConsent, formatPhoneNumber, isAuthenticated, setValue, showSnackbar]
-  );
-  
-  // Optimistic user details submission - improved to directly send OTP
-  const onSubmitUserDetails = useCallback(async (data) => {
-    if (isAuthenticated) {
-      // Optimistically update Redux store with user details
-      dispatch(
-        setUserDetails({
-          name: data.name,
-          email: data.email,
-        })
-      );
-      setTabIndex(2);
-      return;
-    }
-
-    // Store values in redux for non-authenticated users
-    dispatch(
-      setUserDetails({
-        name: data.name,
-        email: data.email,
-      })
-    );
-    
-    // Save the current tab index for returning after auth flow
-    setAuthFallbackTab(1);
-    
-  }, [dispatch, isAuthenticated]);
-
-  // Optimize address submission with better parallelization
-  const onSubmitAddressDetails = useCallback(async (data) => {
-    if (purchaseInitiated) return; // Prevent multiple submissions
     setPurchaseInitiated(true);
-    setIsLoading(true);
     setIsPaymentProcessing(true);
-
-    const startTime = performance.now();
 
     try {
       const initialValidationPromises = [];
 
-      if (!isPincodeValid && data.pincode && !serviceabilityCache.current[data.pincode]) {
-        const serviceabilityPromise = axios.get(
-          `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${data.pincode}`
-        ).then(response => {
-          const isValid = response.data.serviceable;
-          serviceabilityCache.current[data.pincode] = isValid;
-          setIsPincodeValid(isValid);
-          if (!isValid) {
-            throw new Error(`The pincode ${data.pincode} is either invalid or we don't deliver to this location!`);
-          }
-        });
-        initialValidationPromises.push(serviceabilityPromise);
-      }
-
-      let couponPromise;
-      if (couponCode && !pendingOperationsRef.current.couponValidation) {
-        couponPromise = axios.post('/api/checkout/coupons/apply', {
-          code: couponCode,
-          totalCost: subTotal,
-          isFirstOrder: false, 
-          cartItems: items,
+      // If we have a coupon code, validate it
+      if (couponCode && !couponsDetails?.isValid) {
+        const couponValidationPromise = axios.post('/api/checkout/validate-coupon', {
+          couponCode,
+          subTotal,
+          items: cartItems,
         }).then(response => {
-          const couponValidation = response.data;
-          if (!couponValidation.valid) {
-            throw new Error('Your offer is no longer valid. Please update your cart.');
+          if (response.data.isValid) {
+            dispatch(setCouponApplied(response.data));
           }
-          return couponValidation;
+          return response.data;
+        }).catch(error => {
+          dispatch(setManualCoupon(null));
+          throw new Error(error.response?.data?.message || "Invalid coupon code.");
         });
-        initialValidationPromises.push(couponPromise);
-      } else if (pendingOperationsRef.current.couponValidation) {
-        initialValidationPromises.push(pendingOperationsRef.current.couponValidation);
+
+        pendingOperationsRef.current.couponValidation = couponValidationPromise;
+        initialValidationPromises.push(couponValidationPromise);
       }
 
-      if (pendingOperationsRef.current.userCheck) {
-        initialValidationPromises.push(pendingOperationsRef.current.userCheck);
-      }
+      // Prepare address line 1 by combining flat details and address line 1
+      const fullAddressLine1 = `${data.flatDetails?.trim() || ''} ${data.addressLine1?.trim() || ''}`.trim();
 
       const addAddressPayload = {
-        phoneNumber: orderForm.userDetails.phoneNumber,
+        phoneNumber: getValues('phoneNumber'),
         address: {
-          receiverName: orderForm.userDetails.name || '',
-          receiverPhoneNumber: orderForm.userDetails.phoneNumber,
-          addressLine1: data.addressLine1,
-          addressLine2: data.addressLine2,
-          city: data.city,
-          state: data.state,
-          pincode: data.pincode,
+          receiverName: userDetails?.name || 'User',
+          receiverPhoneNumber: getValues('phoneNumber'),
+          addressLine1: fullAddressLine1,
+          addressLine2: data.addressLine2?.trim() || '',
+          city: data.city?.trim() || '',
+          state: data.state?.trim() || '',
+          pincode: data.pincode?.trim() || '',
           country: data.country || 'India',
-          ...orderForm.extraFields,
         },
       };
 
@@ -628,20 +541,17 @@ const OrderForm = ({
           }
           return response.data;
         }).catch(error => {
-          console.error("Error during address addition (in parallel task):", error);
           throw new Error(error.response?.data?.message || "Failed to update address details.");
         });
 
       if (initialValidationPromises.length > 0) {
-        await Promise.all(initialValidationPromises).catch(error => {
-          throw error;
-        });
+        await Promise.all(initialValidationPromises);
       }
 
-      // Financial data is now sent directly
+      // Prepare final order payload
       const finalOrderPayload = {
-        userId: orderForm.userDetails.userId,
-        phoneNumber: orderForm.userDetails.phoneNumber,
+        userId: userId,
+        phoneNumber: getValues('phoneNumber'),
         items: cartItems.map((item) => ({
           product: item.productId,
           itemSource: item.productDetails.source || 'inhouse',
@@ -660,26 +570,21 @@ const OrderForm = ({
         })),
         paymentModeId: paymentModeConfig._id,
         address: {
-          receiverName: orderForm.userDetails.name || '',
-          receiverPhoneNumber: orderForm.userDetails.phoneNumber,
-          addressLine1: data.addressLine1,
-          addressLine2: data.addressLine2,
-          city: data.city,
-          state: data.state,
-          pincode: data.pincode,
+          receiverName: userDetails?.name || 'User',
+          receiverPhoneNumber: getValues('phoneNumber'),
+          addressLine1: fullAddressLine1,
+          addressLine2: data.addressLine2?.trim() || '',
+          city: data.city?.trim() || '',
+          state: data.state?.trim() || '',
+          pincode: data.pincode?.trim() || '',
           country: data.country || 'India',
         },
-        // Raw financial details are sent:
         totalAmount: totalCost,
-        discountAmount: discountAmountFinal || 0,
-        couponCode: couponsDetails?.couponCode || '',
-        extraChargesPayload: { // Send as an object to be processed server-side
-            mopCharges: paymentModeConfig.extraCharge || 0,
-            deliveryCharges: deliveryCost || 0,
-        },
+        mopCharges: paymentModeConfig.extraCharge || 0,
+        deliveryCharges: deliveryCost || 0,
         utmDetails: utmDetails.utmDetails || null,
         utmHistory: utmDetails.utmHistory || [],
-        extraFields: orderForm.extraFields,
+        extraFields: {},
       };
 
       const [orderCreationResponse] = await Promise.all([
@@ -696,30 +601,9 @@ const OrderForm = ({
       dispatch(setLastOrderId(createdOrderId));
 
       if (razorpayOrder && amountDueOnline > 0) {
-        initiateCheckout(
-          {
-            eventID: uuidv4(),
-            totalValue: totalCost,
-            contents: cartItems.map((item) => ({
-              productId: item.productId || item._id,
-              quantity: item.quantity,
-              price: item.priceAtPurchase,
-            })),
-            contentName: cartItems.map((item) => item.productDetails.name).join(', '),
-            contentCategory: cartItems.map((item) => item.productDetails.category),
-            numItems: cartItems.length,
-          },
-          {
-            email: orderForm.userDetails.email || '',
-            phoneNumber: orderForm.userDetails.phoneNumber,
-          }
-        ).catch(error => {
-          console.error('FB pixel tracking error (non-critical):', error);
-        });
-
         const paymentResult = await makePayment({
-          customerName: orderForm.userDetails.name || '',
-          customerMobile: orderForm.userDetails.phoneNumber,
+          customerName: getValues('phoneNumber'),
+          customerMobile: getValues('phoneNumber'),
           orderId: createdOrderId,
           razorpayOrder,
         });
@@ -733,39 +617,9 @@ const OrderForm = ({
         showSnackbar('Payment Successful!', 'success');
       } else if (amountDueOnline === 0) {
         showSnackbar('Order placed successfully! Payment will be collected on delivery.', 'success');
-      } else {
-        console.warn('Unexpected payment state:', { razorpayOrder, amountDueOnline });
-        showSnackbar('Order placed. Awaiting payment confirmation.', 'info');
       }
 
-      purchase(
-        {
-          orderId: createdOrderId,
-          totalAmount: totalCost,
-          items: cartItems.map((item) => ({
-            product: item.productId,
-            name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-              ? item.productDetails.category?.name.slice(0, -1)
-              : item.productDetails.category?.name
-              }`,
-            quantity: item.quantity,
-            priceAtPurchase: item.priceAtPurchase,
-          })),
-        },
-        {
-          email: orderForm.userDetails.email || '',
-          phoneNumber: orderForm.userDetails.phoneNumber,
-        }
-      ).catch(error => {
-        console.error('FB pixel purchase event error (non-critical):', error);
-      });
-
-      pendingOperationsRef.current = {
-        userCheck: null,
-        addressAdd: null,
-        couponValidation: null,
-      };
-
+      // Clear states
       dispatch(clearUTMDetails());
       dispatch(clearCart());
       dispatch(resetOrderForm());
@@ -778,120 +632,34 @@ const OrderForm = ({
       }, 100);
 
     } catch (error) {
-      console.error('Error during purchase process:', error);
       const errorMessage = error.response?.data?.message || error.message || 'An error occurred. Please try again.';
       showSnackbar(errorMessage, 'error');
     } finally {
       setIsLoading(false);
       setIsPaymentProcessing(false);
       setPurchaseInitiated(false);
-    }  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
-    totalCost, deliveryCost, utmDetails, cartItems, paymentModeConfig,
-    discountAmountFinal, couponsDetails, isPincodeValid, reset, handleFullClose, router,
-    serviceabilityCache, setIsLoading, setIsPaymentProcessing, setPurchaseInitiated]);// Maintained dependencies
-
-  // Handle dialog close (prevent closing during payment)
-  const handleClose = useCallback(() => {
-    if (isPaymentProcessing) return;
-
-    // if on shipping tab (index 1), go back to user details (index 0)
-    if (tabIndex === 1) {
-      setTabIndex(0);
-    } else {
-      // otherwise close the dialog
-      onClose();
     }
-  }, [isPaymentProcessing, onClose, tabIndex]);
-
-
-
-  // push history entry for this dialog (priority higher than drawer)
-  useHistoryState(open, handleClose, 'orderForm', 10);
-
-  // Animation variants for form transitions - UPDATED for performance
-  const formVariants = useMemo(() => ({
-    initial: (direction) => ({
-      x: direction > 0 ? 300 : -300,
-      opacity: 0,
-      position: 'relative',
-      zIndex: 1,
-    }),
-    animate: {
-      x: 0,
-      opacity: 1,
-      position: 'relative',
-      zIndex: 2,
-      transition: {
-        x: { type: "spring", stiffness: 300, damping: 30 },
-        opacity: { duration: 0.4 }
-      }
-    },
-    exit: (direction) => ({
-      x: direction > 0 ? -300 : 300,
-      opacity: 0,
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 0,
-      transition: {
-        x: { type: "spring", stiffness: 300, damping: 30 },
-        opacity: { duration: 0.2 }
-      }
-    })
-  }), []);
-
-  // Custom styled text field component with memoization to prevent rerenders
-  const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, type = "text", maxWidth, InputProps }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: field.name === 'name' ? 0.1 : field.name === 'email' ? 0.2 : field.name === 'phoneNumber' ? 0.3 : 0.1 * parseInt(field.name.replace(/\D/g, '') || '0') }}
-    >
-      <TextField
-        variant="outlined"
-        {...field}
-        label={label}
-        fullWidth
-        type={type}
-        error={!!error}
-        helperText={helperText}
-        disabled={disabled}
-        onChange={onChange}
-        InputLabelProps={{
-          style: {
-            fontFamily: 'Jost, sans-serif',
-            fontSize: '0.9rem',
-          },
-        }}
-        InputProps={{
-          style: {
-            fontFamily: 'Jost, sans-serif',
-            fontSize: '1rem',
-          },
-          ...InputProps
-        }}
-        sx={{
-          marginBottom: '1rem',
-          maxWidth: maxWidth,
-          '& .MuiOutlinedInput-root': {
-            borderRadius: '8px',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-            '&:hover': {
-              boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
-            },
-            '&.Mui-focused': {
-              transform: 'translateY(-2px)',
-              boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
-            }
-          },
-          '& .MuiInputLabel-shrink': {
-            transform: 'translate(14px, -12px) scale(0.75)',
-          }
-        }}
-      />
-    </motion.div>
-  ), []);
+  }, [
+    purchaseInitiated, 
+    isPaymentProcessing, 
+    isPincodeValid, 
+    couponCode, 
+    couponsDetails, 
+    subTotal, 
+    cartItems,
+    getValues,
+    userId,
+    userDetails,
+    paymentModeConfig,
+    totalCost,
+    deliveryCost,
+    utmDetails,
+    dispatch,
+    showSnackbar,
+    reset,
+    router,
+    handleFullClose
+  ]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -899,7 +667,7 @@ const OrderForm = ({
         open={open}
         onClose={(event, reason) => {
           if (reason === 'backdropClick') {
-            onClose();
+            handleClose();
           } else {
             handleClose();
           }
@@ -909,861 +677,271 @@ const OrderForm = ({
         disableEscapeKeyDown={isPaymentProcessing}
         PaperProps={{
           sx: {
-            borderRadius: '1.5rem',
+            borderRadius: isMobile ? '0' : '24px',
             overflow: 'hidden',
-            maxHeight: '88vh',
+            maxHeight: isSmallHeight ? '100vh' : '90vh',
+            height: isMobile ? '100vh' : 'auto',
+            margin: isMobile ? 0 : 2,
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           },
         }}
-      >        <DialogContent
+      >
+        <DialogContent
           sx={{
-            padding: { xs: '1.2rem', md: '1.5rem' },
-            paddingTop: { xs: '0.8rem', md: '1.2rem' },
-            background: 'linear-gradient(to bottom, #f9f9f9, #ffffff)',
-            position: 'relative',
+            padding: 0,
+            height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            height: '100%', // Ensure DialogContent takes up height for flex children
             overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
           }}
         >
-          {/* Authentication Flow */}
-          {showAuthFlow && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-            >
-              <AuthenticationFlow
-                onSuccess={handleAuthenticationSuccess}
-                onBack={() => setShowAuthFlow(false)}
-                phoneNumber={userDetails.phoneNumber}
-                shipRocketToken={getValues("token")}
-              />
-            </motion.div>
-          )}
-
-          {/* Address Manager */}
-          {showAddressManager && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-            >              <SavedAddressesManager
-                onSelectAddress={handleAddressSelected}
-                onBack={() => setShowAddressManager(false)}
-                initialSelectedAddressId={selectedAddressId}
-                validatePincode={validatePincode}
-              />
-            </motion.div>
-          )}
-
-          {/* Regular form content - shown when not in auth or address management flow */}
-          {!showAuthFlow && !showAddressManager && (
-            <>
-              {/* Logo and Stepper - Made more compact */}
-              <Box sx={{
-                position: 'relative',
-                mb: 0.5,
-                flexShrink: 0, // Prevent shrinking
-          }}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, type: 'spring', stiffness: 200 }}
-            >
-              <Image
-                loading="eager"
-                src={`${baseImageUrl}/assets/logos/md_nothing_else.png`}
-                width={60} // Reduced from 80
-                height={60} // Reduced from 80
-                alt="Logo"
-                style={{
-                  width: '60px', // Reduced from 80px
-                  height: 'auto',
-                  margin: '0 auto',
-                  display: 'block',
-                }}
-              />
-            </motion.div>
-
-            {/* Custom Stepper - Made more compact */}
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                mt: 1.5,
-                position: 'relative',
-                height: '30px',
-                gap: '40px' // <-- This controls spacing between steps
-              }}
-            >
-              {/* Progress line */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: '50%',
-                  width: '120px',
-                  height: '2px',
-                  backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
-                  transform: 'translateX(-50%) translateY(-50%)',
-                  transition: 'background-color 0.5s'
-                }}
-              />
-
-              {[0, 1, 2].map((step) => (
-                <motion.div
-                  key={step}
-                  animate={{
-                    scale: tabIndex === step ? 1.1 : 0.9
-                  }}
-                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                >
-                  <Box
-                    sx={{
-                      width: '25px',
-                      height: '25px',
-                      borderRadius: '50%',
-                      backgroundColor: tabIndex === step ? '#000' : '#e0e0e0',
-                      color: tabIndex === step ? 'white' : '#999',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      fontFamily: 'Jost, sans-serif',
-                      fontWeight: 600,
-                      fontSize: '0.8rem',
-                      zIndex: 1,
-                      boxShadow: tabIndex === step ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
-                      transition: 'box-shadow 0.3s, background-color 0.3s, color 0.3s',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => handleTabChange(step)}
-                  >
-                    {step + 1}
-                  </Box>
-                </motion.div>
-              ))}
-            </Box>
-
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-            >
-              <Typography
-                variant="h6"
-                align="center"
-                sx={{
-                  mt: 0.5, // Reduced from 1
-                  mb: 1, // Reduced from 3
-                  fontFamily: 'Jost, sans-serif',
-                  fontWeight: 500,
-                  fontSize: '1rem', // Reduced from 1.25rem (h6)
-                  color: '#333'
-                }}
-              >
-                {tabIndex <= 1 ? "Let's get to know you" : "Where should we deliver?"}
-              </Typography>
-            </motion.div>
-
-            {tabIndex === 1 && (
-              <Box
-                onClick={() => handleTabChange(0)}
-                sx={{
-                  position: 'absolute',
-                  left: '0.5rem', // Reduced from 1rem
-                  top: '0.5rem', // Reduced from 1rem
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  color: '#555',
-                  transition: 'color 0.2s',
-                  zIndex: 10,
-                  '&:hover': {
-                    color: '#000',
-                  }
-                }}
-              >
-                <motion.div whileHover={{ x: -3 }} whileTap={{ scale: 0.9 }}>
-                  <ArrowBackIcon sx={{ fontSize: '1.3rem' }} /> {/* Reduced from 1.5rem */}
-                </motion.div>
-              </Box>
-            )}
-          </Box>
-
-          {/* Form Wrapper - Handles submission and layout (scrollable fields + fixed buttons) */}
+          {/* Header */}
           <Box
-            component="form"
-            onSubmit={handleSubmit(tabIndex === 0 ? onSubmitPhoneNumber : tabIndex === 1 ? onSubmitUserDetails : onSubmitAddressDetails)}
             sx={{
               display: 'flex',
-              flexDirection: 'column',
-              flexGrow: 1,
-              overflow: 'hidden',
-              width: '100%',
-              maxWidth: '400px',
-              margin: '0 auto', // Center the form content area
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              p: isMobile ? 2 : 3,
+              borderBottom: '1px solid #e0e0e0',
+              background: 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(10px)',
+              position: 'relative',
+              zIndex: 10,
             }}
           >
-            {/* Scrollable Fields Area */}
-            <Box
-              sx={{
-                flexGrow: 1,
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                position: 'relative',
-                width: '100%',
-                // Hide scrollbar styles - fixed to use camelCase
-                '&::-webkit-scrollbar': { display: 'none' },
-                msOverflowStyle: 'none',  // Changed from '-ms-overflow-style'
-                scrollbarWidth: 'none',   // Changed from 'scrollbar-width'
-                pb: '2rem',    // extra bottom padding
-              }}
+            {/* Back Button */}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <AnimatePresence mode="wait" initial={false} custom={tabIndex}>                {tabIndex === 0 && (
-                  <motion.div
-                    key="Phone"
-                    custom={0}
-                    variants={formVariants}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    style={{ width: '100%' }} // Removed height: '100%'
-                  >
-                    {isAuthenticated && (
-                      <Box 
-                        sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 1, 
-                          bgcolor: 'success.light', 
-                          color: 'success.contrastText',
-                          borderRadius: 1,
-                          p: 1,
-                          mb: 2 
-                        }}
-                      >
-                        <VerifiedUserIcon color="inherit" />
-                        <Typography variant="body2">
-                          You are securely logged in
-                        </Typography>
-                      </Box>
-                    )}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}> {/* Added horizontal padding */}
-                      {/* Phone number field with enhanced validation */}
-                      <Controller
-                        name="phoneNumber"
-                        control={control}
-                        rules={{
-                          required: 'Mobile number is required',
-                          validate: value => {
-                            // Allow raw inputs that format to valid numbers
-                            const formatted = formatPhoneNumber(value);
-                            return /^\d{10}$/.test(formatted) || 'Please enter a valid 10-digit mobile number';
-                          }
-                        }}
-                        render={({ field }) => (
-                          <Box sx={{ position: 'relative', marginBottom: showPhoneConfirmation ? '2.5rem' : '0' }}>
-                            <StyledTextField
-                              field={field}
-                              label="Mobile Number"
-                              type="tel"
-                              error={!!errors.phoneNumber}
-                              helperText={errors.phoneNumber ? errors.phoneNumber.message : ''}
-                              disabled={isLoading || isPaymentProcessing}
-                              onChange={(e) => handlePhoneChange(e, field.onChange)}
-                            />
-
-                            {/* Phone number format confirmation message */}
-                            <AnimatePresence>
-                              {showPhoneConfirmation && (
-                                <motion.div
-                                  initial={{ opacity: 0, y: -10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: -10 }}
-                                  transition={{ duration: 0.2 }}
-                                  style={{
-                                    position: 'absolute',
-                                    width: '100%',
-                                    top: '100%',
-                                    zIndex: 5
-                                  }}
-                                >
-                                  <Box sx={{
-                                    mt: '8px',
-                                    p: '12px',
-                                    borderRadius: '12px',
-                                    backgroundColor: '#e8f5e9',         // softer green
-                                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                  }}>
-                                    <Typography
-                                      variant="caption"
-                                      sx={{
-                                        fontSize: '0.8rem',
-                                        fontWeight: 500,
-                                        color: '#2e7d32'           // dark green text
-                                      }}
-                                    >
-                                      Is <strong>{formattedPhone}</strong> the correct 10-digit number?
-                                    </Typography>
-                                    <motion.button
-                                      whileHover={{ scale: 1.05 }}
-                                      whileTap={{ scale: 0.95 }}
-                                      onClick={acceptFormattedPhone}
-                                      type="button"
-                                      style={{
-                                        backgroundColor: '#66bb6a',
-                                        color: '#fff',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        padding: '6px 12px',
-                                        fontSize: '0.75rem',
-                                        cursor: 'pointer',
-                                        fontWeight: 600,
-                                      }}
-                                    >
-                                      Yes
-                                    </motion.button>
-                                  </Box>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </Box>
-                        )}
-                      />
-                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                        <input
-                          type="checkbox"
-                          checked={fetchAddressConsent}
-                          onChange={(e) => setFetchAddressConsent(e.target.checked)}
-                          style={{ marginRight: 8 }}
-                        />
-                        <Typography variant="body2">
-                          Fetch my shipping address based on past order
-                        </Typography>
-                      </Box>
-
-                      {/* Removed Button from here, will be in fixed footer */}
-                    </Box>
-                  </motion.div>
-                )}
-
-                {tabIndex === 1 && (
-                  <motion.div
-                    key="Info"
-                    custom={1}
-                    variants={formVariants}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    style={{ width: '100%' }} // Removed height: '100%'
-                  >
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}>
-                       {/* Name field */}
-                       <Controller
-                        name="name"
-                        control={control}
-                        rules={{
-                          required: 'Name is required',
-                          minLength: {
-                            value: 3,
-                            message: 'Name must be at least 3 characters',
-                          },
-                        }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Your Name"
-                            error={errors.name}
-                            helperText={errors.name ? errors.name.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              dispatch(setUserDetails({ name: e.target.value }));
-                            }}
-                          />
-                        )}
-                      />
-                      
-                      {/* Email field */}
-                      <Controller
-                        name="email"
-                        control={control}
-                        rules={{
-                          pattern: {
-                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                            message: 'Enter a valid email address',
-                          },
-                        }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Email (Optional)"
-                            error={errors.email}
-                            helperText={errors.email ? errors.email.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              dispatch(setUserDetails({ email: e.target.value }));
-                            }}
-                          />
-                        )}
-                      />
-                    </Box>
-                  </motion.div>
-                )}
-
-                {tabIndex === 2 && (
-                  <motion.div
-                    key="shippingInfo"
-                    custom={1}
-                    variants={formVariants}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    style={{ width: '100%' }} // Removed height: '100%'
-                  >
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem', px: { xs: 0.5, sm: 1 } }}>
-                    <Controller
-                        name="addressLine1"
-                        control={control}
-                        rules={{ required: 'Address is required' }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Address"
-                            error={errors.addressLine1}
-                            helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              dispatch(setAddressDetails({ addressLine1: e.target.value }));
-                            }}
-                          />
-                        )}
-                      />
-
-                      <Controller
-                        name="city"
-                        control={control}
-                        rules={{ required: 'City is required' }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="City"
-                            error={errors.city}
-                            helperText={errors.city ? errors.city.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              dispatch(setAddressDetails({ city: e.target.value }));
-                            }}
-                          />
-                        )}
-                      />
-
-                      <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-                        <Box sx={{ flex: 2 }}>
-                          <Controller
-                            name="state"
-                            control={control}
-                            rules={{ required: 'State is required' }}
-                            render={({ field }) => (
-                              <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.3, delay: 0.3 }}
-                              >
-                                <Autocomplete
-                                  options={indianStates}
-                                  getOptionLabel={(option) => option}
-                                  value={field.value || ''}
-                                  onChange={(event, newValue) => {
-                                    field.onChange(newValue);
-                                    dispatch(setAddressDetails({ state: newValue }));
-                                  }}
-                                  disableClearable
-                                  renderInput={(params) => (
-                                    <TextField
-                                      {...params}
-                                      label="State"
-                                      error={!!errors.state}
-                                      helperText={errors.state ? errors.state.message : ''}
-                                      variant="outlined"
-                                      sx={{
-                                        marginBottom: '1rem',
-                                        '& .MuiOutlinedInput-root': {
-                                          borderRadius: '8px',
-                                          fontFamily: 'Jost, sans-serif',
-                                          transition: 'transform 0.2s, box-shadow 0.2s',
-                                          '&:hover': {
-                                            boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
-                                          },
-                                          '&.Mui-focused': {
-                                            transform: 'translateY(-2px)',
-                                            boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
-                                          }
-                                        },
-                                      }}
-                                      InputLabelProps={{
-                                        style: {
-                                          fontFamily: 'Jost, sans-serif',
-                                          fontSize: '0.9rem',
-                                        },
-                                      }}
-                                      InputProps={{
-                                        ...params.InputProps,
-                                        style: {
-                                          fontFamily: 'Jost, sans-serif',
-                                          fontSize: '1rem',
-                                        },
-                                      }}
-                                    />
-                                  )}
-                                  disabled={isLoading || isPaymentProcessing}
-                                />
-                              </motion.div>
-                            )}
-                          />
-                        </Box>
-                        <Box sx={{ flex: 1 }}>
-                          <Controller
-                            name="pincode"
-                            control={control}
-                            rules={{
-                              required: 'Pincode is required',
-                              pattern: {
-                                value: /^\d{6}$/,
-                                message: 'Invalid pincode',
-                              },
-                            }}
-                            render={({ field }) => (
-                              <StyledTextField
-                                field={field}
-                                label="Pincode"
-                                error={errors.pincode}
-                                disabled={isLoading || isPaymentProcessing}
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  dispatch(setAddressDetails({ pincode: e.target.value }));
-                                }}
-                                type="tel"
-                                maxWidth="100%"
-                              />
-                            )}
-                          />
-                        </Box>
-                      </Box>
-                       
-                      {/* Pincode non-serviceable message */}
-                      {watchedPincode?.length === 6 && !isPincodeValid && !pincodeCheckInProgress && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1,
-                              p: '12px',
-                              backgroundColor: alpha(theme.palette.error.main, 0.1),
-                              border: `1px solid ${alpha(theme.palette.error.dark, 0.2)}`,
-                              borderRadius: '8px',
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
-                              mt: 1
-                            }}
-                          >
-                            <WarningAmberIcon sx={{ color: theme.palette.error.dark, fontSize: '1.2rem' }} />
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                fontFamily: 'Jost, sans-serif',
-                                color: theme.palette.error.dark,
-                                fontSize: '0.8rem',
-                                fontWeight: 500
-                              }}
-                            >
-                              We don&apos;t deliver to this pincode yet.
-                            </Typography>
-                          </Box>
-                        </motion.div>
-                      )}
-                      {/* Removed Button from here, will be in fixed footer */}
-                    </Box>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </Box> {/* End Scrollable Fields Area */}
-
-            {/* Fixed Button Area */}
-            <Box
-              sx={{
-                flexShrink: 0,
-                pt: 1.5,
-                pb: { xs: 1, sm: 1.5 },
-                mt: 'auto',
-                borderTop: `1px solid ${theme.palette.divider}`,
-                backgroundColor: '#ffffff',
-                width: '100%',
-                boxShadow: '0 -2px 5px rgba(0,0,0,0.05)' // Subtle shadow for separation
-              }}
-            >              
-              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                {tabIndex === 0 && (
-                  <motion.div
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.98 }}
-                  >                    
-                  <BlackButton
-                      type="submit" // Changed from onClick
-                      extraClass="lg"
-                      isLoading={isLoading} // This isLoading is general; consider specific state if needed for UX
-                      buttonText={isAuthenticated ? "Continue to Delivery" : "Get OTP"}
-                      disabled={isPaymentProcessing || isLoading}
-                      endIcon={!isAuthenticated && !isLoading ? <WhatsAppIcon /> : null}
-                      sx={{
-                        borderRadius: '50px',
-                        px: 3,
-                        py: 0.5,
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
-                        fontFamily: 'Jost, sans-serif',
-                        fontSize: '0.9rem'
-                      }}
-                    />
-                  </motion.div>
-                )}
-                {tabIndex === 1 && (
-                  <motion.div 
-                    whileHover={{ scale: 1.03 }} 
-                    whileTap={{ scale: 0.98 }} 
-                    // onClick={() => getValues('name') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(getValues('email')) && setTabIndex(2)}
-                  >
-                    <BlackButton
-                      extraClass="lg"
-                      isLoading={isLoading}
-                      buttonText="Next"
-                      type="submit"
-                      disabled={
-                        isPaymentProcessing ||
-                        isLoading ||
-                        purchaseInitiated ||
-                        pincodeCheckInProgress ||  // disable while checking
-                        !isPincodeValid             // disable until valid
-                      }
-                      sx={{
-                        borderRadius: '50px',
-                        px: 3,
-                        py: 0.5,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                        fontFamily: 'Jost, sans-serif',
-                        fontSize: '0.9rem'
-                      }}
-                    />
-                  </motion.div>
-                )}
-
-                {tabIndex === 2 && (
-                  <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-                    <BlackButton
-                      extraClass="lg"
-                      isLoading={isLoading}
-                      buttonText={getPaymentButtonText(paymentModeConfig)}
-                      type="submit"
-                      disabled={
-                        isPaymentProcessing ||
-                        isLoading ||
-                        purchaseInitiated ||
-                        pincodeCheckInProgress ||  // disable while checking
-                        !isPincodeValid             // disable until valid
-                      }
-                      sx={{
-                        borderRadius: '50px',
-                        px: 3,
-                        py: 0.5,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                        fontFamily: 'Jost, sans-serif',
-                        fontSize: '0.9rem'
-                      }}
-                    />
-                  </motion.div>
-                )}
-              </Box>
-            </Box> {/* End Fixed Button Area */}
-          </Box> {/* End Form Wrapper */}
-
-          {/* Trust indicators - Made more compact */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-          >
-            <Box
-              sx={{
-                mt: 1, // Reduced from 5
-                pt: 1,
-                borderTop: '1px solid #f0f0f0',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 1, // Reduced from 2
-                flexShrink: 0, // Prevent shrinking
-              }}
-            >
-              <Typography
-                variant="subtitle2"
+              <IconButton
+                onClick={handleBackButton}
+                disabled={isPaymentProcessing}
                 sx={{
-                  fontFamily: 'Jost, sans-serif',
-                  color: '#666',
-                  fontSize: '0.8rem', // Reduced from 0.9rem
-                  textAlign: 'center',
+                  color: '#000',
+                  backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                  },
                 }}
               >
-                Trusted by 50,000+ happy customers
-              </Typography>
+                <ArrowBackIcon />
+              </IconButton>
+            </motion.div>
 
+            {/* Progress Indicator */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Box
                 sx={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: { xs: 2, sm: 3 }, // Reduced from { xs: 2, sm: 4 }
-                  width: '100%',
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  backgroundColor: (tabIndex === 0 && !userExists) ? '#000' : '#e0e0e0',
+                  transition: 'all 0.3s ease',
+                  cursor: 'pointer',
+                }}
+                onClick={() => !userExists && setTabIndex(0)}
+              />
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  backgroundColor: (tabIndex === 1 || (tabIndex === 0 && userExists)) ? '#000' : '#e0e0e0',
+                  transition: 'all 0.3s ease',
+                  cursor: 'pointer',
+                }}
+                onClick={() => setTabIndex(1)}
+              />
+            </Box>
+
+            {/* Logo (hidden on small height) */}
+            {!isSmallHeight && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <Image
+                  src={`${baseImageUrl}/assets/logos/md_nothing_else.png`}
+                  alt="MaddyCustom Logo"
+                  width={isMobile ? 32 : 40}
+                  height={isMobile ? 32 : 40}
+                  style={{
+                    opacity: 0.8,
+                    filter: 'brightness(0.7)',
+                  }}
+                />
+              </motion.div>
+            )}
+
+            {/* Close Button */}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <IconButton
+                onClick={handleFullClose}
+                disabled={isPaymentProcessing}
+                sx={{
+                  color: '#666',
+                  backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                  },
                 }}
               >
-                <motion.div whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 0.5, // Reduced from 1
-                    }}
-                  >
-                    <Image
-                      loading="eager"
-                      src={`${baseImageUrl}/assets/icons/shield.png`}
-                      width={24} // Reduced from 32
-                      height={24} // Reduced from 32
-                      alt="Secure Payment"
-                      style={{ opacity: 0.7 }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontFamily: 'Jost, sans-serif',
-                        color: '#666',
-                        textAlign: 'center',
-                        fontSize: '0.6rem', // Reduced from 0.7rem
-                      }}
-                    >
-                      Secure Payment
-                    </Typography>
-                  </Box>
-                </motion.div>
+                <CloseIcon />
+              </IconButton>
+            </motion.div>
+          </Box>
 
-                <motion.div whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 0.5, // Reduced from 1
-                    }}
-                  >
-                    <Image
-                      loading="eager"
-                      src={`${baseImageUrl}/assets/icons/fast-delivery.png`}
-                      width={24} // Reduced from 32
-                      height={24} // Reduced from 32
-                      alt="Fast Shipping"
-                      style={{ opacity: 0.7 }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontFamily: 'Jost, sans-serif',
-                        color: '#666',
-                        textAlign: 'center',
-                        fontSize: '0.6rem', // Reduced from 0.7rem
-                      }}
-                    >
-                      Fast Shipping
-                    </Typography>
-                  </Box>
+          {/* Main Content */}
+          <Box
+            sx={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            <AnimatePresence mode="wait">
+              {tabIndex === 0 && (
+                <motion.div
+                  key="mobile-auth"
+                  initial={{ opacity: 0, x: -50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -50 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+                >
+                  {console.log('🔄 Rendering MobileAuthForm tab (index 0)', { userExists, shouldShowContinueButton, watchedPhoneNumber })}
+                  <MobileAuthForm
+                    control={control}
+                    errors={errors}
+                    onSubmit={handlePhoneSubmit}
+                    isSubmitting={isSubmitting}
+                    userExists={shouldShowContinueButton}
+                    showOtpForm={showOtpForm}
+                    setShowOtpForm={setShowOtpForm}
+                    otpValue={otpValue}
+                    setOtpValue={setOtpValue}
+                    onVerifyOtp={handleOtpVerification}
+                    isOtpVerifying={isOtpVerifying}
+                    maskedPhone={maskedPhone}
+                    resendAllowedAt={resendAllowedAt}
+                    onResendOtp={handleResendOtp}
+                    isResending={isResending}
+                    // When user exists and phone matches, show continue button
+                    onContinue={shouldShowContinueButton ? () => setTabIndex(1) : undefined}
+                  />
                 </motion.div>
+              )}
 
-                <motion.div whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 0.5, // Reduced from 1
-                    }}
-                  >
-                    <Image
-                      loading="eager"
-                      src={`${baseImageUrl}/assets/icons/happiness.png`}
-                      width={24} // Reduced from 32
-                      height={24} // Reduced from 32
-                      alt="Customer Satisfaction"
-                      style={{ opacity: 0.7 }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontFamily: 'Jost, sans-serif',
-                        color: '#666',
-                        textAlign: 'center',
-                        fontSize: '0.6rem', // Reduced from 0.7rem
-                      }}
-                    >
-                      100% Satisfaction
-                    </Typography>
-                  </Box>
-                </motion.div>
-              </Box>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Image
-                  loading="eager"
-                  src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`}
-                  width={50} // Reduced from 60
-                  height={15} // Reduced from 18
-                  alt="Razorpay"
-                  style={{ opacity: 0.7 }}
-                />
-                <Typography
-                  variant="caption"
-                  sx={{
-                    fontFamily: 'Jost, sans-serif',
-                    color: '#666',
-                    fontSize: '0.6rem', // Reduced from 0.7rem
+              {tabIndex === 1 && (
+                <motion.div
+                  key="address-form"
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 50 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  style={{ 
+                    flex: 1, 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    overflow: 'auto' // Enable scrolling for address form
                   }}
                 >
-                  |
-                </Typography>
-                <Image
-                  loading="eager"
-                  src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`}
-                  width={50} // Reduced from 60
-                  height={15} // Reduced from 18
-                  alt="Shiprocket"
-                  style={{ opacity: 0.7 }}
-                />              </Box>
-            </Box>
-          </motion.div>
-          </>
-          )}
+                  {console.log('🔄 Rendering AddressForm tab (index 1 or authenticated user)')}
+                  <AddressForm
+                    control={control}
+                    errors={errors}
+                    watch={watch}
+                    isPincodeValid={isPincodeValid}
+                    pincodeCheckInProgress={pincodeCheckInProgress}
+                    validatePincode={validatePincode}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Box>
+
+          {/* Footer */}
+          <Box
+            sx={{
+              p: isMobile ? 2 : 3,
+              borderTop: '1px solid #e0e0e0',
+              background: 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            {/* Purchase Button for Address Tab */}
+            {(tabIndex === 1 || (tabIndex === 0 && userExists)) && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <Button
+                  onClick={handleSubmit(handlePurchase)}
+                  disabled={isPaymentProcessing || !isPincodeValid}
+                  variant="contained"
+                  fullWidth
+                  sx={{
+                    height: isSmallHeight ? '48px' : '56px',
+                    fontSize: isSmallHeight ? '1rem' : '1.1rem',
+                    fontWeight: 600,
+                    fontFamily: 'Orbitron, monospace',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(45deg, #000 30%, #333 90%)',
+                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                    transition: 'all 0.3s ease',
+                    color: 'white',
+                    border: 'none',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #333 30%, #000 90%)',
+                      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)',
+                      transform: 'translateY(-2px)',
+                    },
+                    '&:disabled': {
+                      background: '#ccc',
+                      boxShadow: 'none',
+                      transform: 'none',
+                      color: 'white',
+                    },
+                  }}
+                >
+                  {isPaymentProcessing ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      >
+                        <Box
+                          sx={{
+                            width: 16,
+                            height: 16,
+                            border: '2px solid #fff',
+                            borderTop: '2px solid transparent',
+                            borderRadius: '50%',
+                          }}
+                        />
+                      </motion.div>
+                      Processing...
+                    </Box>
+                  ) : (
+                    `${getPaymentButtonText(paymentModeConfig)} ₹${totalCost.toLocaleString('en-IN')}`
+                  )}
+                </Button>
+              </motion.div>
+            )}
+
+            {/* Trust Section */}
+            <TrustSection baseImageUrl={baseImageUrl} isCompact={tabIndex === 1} />
+          </Box>
         </DialogContent>
       </Dialog>
 

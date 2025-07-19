@@ -7,6 +7,7 @@ const initialState = {
     userId: '',
   },
   addressDetails: {
+    flatDetails: '',
     addressLine1: '',
     addressLine2: '',
     city: '',
