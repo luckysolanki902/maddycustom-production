@@ -18,7 +18,18 @@ const FacebookPixel = () => {
             'https://connect.facebook.net/en_US/fbevents.js');
             fbq('init', '887502090050413'); 
             fbq('track', 'PageView');
+            
+            // Signal that Facebook Pixel has loaded
+            window.fbPixelLoaded = true;
+            window.dispatchEvent(new Event('fbPixelLoaded'));
           `,
+        }}
+        onLoad={() => {
+          // Additional callback when script loads
+          if (typeof window !== 'undefined') {
+            window.fbPixelLoaded = true;
+            window.dispatchEvent(new Event('fbPixelLoaded'));
+          }
         }}
       />
     </>
