@@ -69,7 +69,7 @@ export async function GET(req) {
       // Check if this phone number already received a successful message for any abandoned cart campaign
       const existingSuccessfulCampaign = await CampaignLog.findOne({
         phoneNumber: phoneNumber,
-        campaignName: { $in: ['ac_1', 'ac2'] }, // Check both abandoned cart campaigns
+        campaignName: { $in: ['ac_1'] }, // Check both abandoned cart campaigns
         successfulCount: { $gte: 1 }
       });
 
