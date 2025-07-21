@@ -35,10 +35,82 @@ const hashData = (data) => {
  * @returns {Content} - The Content object.
  */
 const createContents = (product) => {
-  return new Content()
-    .setId(product.id || product._id)
-    .setQuantity(product.quantity || 1)
-    .setItemPrice(product.item_price || 0);
+  try {
+    const content = new Content();
+    
+    // Validate and set ID
+    if (product.id || product._id) {
+      content.setId(String(product.id || product._id));
+    }
+    
+    // Validate and set quantity
+    const quantity = parseInt(product.quantity) || 1;
+    if (quantity > 0) {
+      content.setQuantity(quantity);
+    }
+    
+    // Validate and set item price
+    const itemPrice = parseFloat(product.item_price) || 0;
+    if (itemPrice >= 0) {
+      content.setItemPrice(itemPrice);
+    }
+    
+    return content;
+  } catch (error) {
+    console.error('Error creating content:', error, product);
+    // Return a minimal valid content object
+    return new Content().setId('unknown').setQuantity(1).setItemPrice(0);
+  }
+};
+
+/**
+ * Validates event data before sending to Facebook API
+ * @param {string} eventName - The event name
+ * @param {object} options - The event options
+ * @returns {object} - Validation result with isValid and errors
+ */
+const validateEventData = (eventName, options) => {
+  const errors = [];
+  
+  // Validate event name
+  if (!eventName || typeof eventName !== 'string') {
+    errors.push('Event name is required and must be a string');
+  }
+  
+  // Validate timestamp
+  if (options.event_time && (isNaN(options.event_time) || options.event_time <= 0)) {
+    errors.push('Event time must be a valid Unix timestamp');
+  }
+  
+  // Validate value for purchase events
+  if (eventName === 'Purchase' && (!options.value || isNaN(options.value) || options.value <= 0)) {
+    errors.push('Purchase events must have a valid value greater than 0');
+  }
+  
+  // Validate currency
+  if (options.currency && typeof options.currency !== 'string') {
+    errors.push('Currency must be a string');
+  }
+  
+  // Validate contents array
+  if (options.contents && !Array.isArray(options.contents)) {
+    errors.push('Contents must be an array');
+  }
+  
+  // Validate email format
+  if (options.emails && Array.isArray(options.emails)) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    for (const email of options.emails) {
+      if (!emailRegex.test(email)) {
+        errors.push(`Invalid email format: ${email}`);
+      }
+    }
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
 };
 
 /**
@@ -57,19 +129,57 @@ export async function POST(request) {
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 1000; // in milliseconds
 
+  // Check if access token is available
+  if (!access_token) {
+    console.error('FB_PIXEL_ACCESS_TOKEN is not defined');
+    return NextResponse.json(
+      { error: 'Facebook access token not configured' },
+      { status: 500 }
+    );
+  }
+
   try {
     const { eventName, options = {} } = await request.json();
+    
+    // Log the entire request payload for debugging
+    console.log('Conversion API Request:', {
+      eventName,
+      options: {
+        ...options,
+        // Don't log sensitive data like emails/phones in production
+        emails: options.emails ? '[REDACTED]' : undefined,
+        phones: options.phones ? '[REDACTED]' : undefined,
+      }
+    });
+    
     const currentTimestamp = Math.floor(Date.now() / 1000);
+    
+    // Use client timestamp if provided, otherwise use server timestamp
+    const eventTimestamp = options.event_time || currentTimestamp;
     
     // Debug logging for fbc
     console.log('Received fbc:', options.fbc);
     console.log('Received fbp:', options.fbp);
     
-    // Validate eventName
-    const validEvents = ['Purchase', 'AddToCart', 'ViewContent', 'InitiateCheckout'];
-    if (!validEvents.includes(eventName)) {
+    // Validate the event data
+    const validation = validateEventData(eventName, options);
+    if (!validation.isValid) {
+      console.error('Event validation failed:', validation.errors);
       return NextResponse.json(
-        { message: 'Invalid event type.' },
+        { 
+          message: 'Event validation failed',
+          errors: validation.errors
+        },
+        { status: 400 }
+      );
+    }
+    
+    // Validate eventName
+    const validEvents = ['Purchase', 'AddToCart', 'ViewContent', 'InitiateCheckout', 'PageView'];
+    if (!validEvents.includes(eventName)) {
+      console.error('Invalid event type received:', eventName);
+      return NextResponse.json(
+        { message: `Invalid event type: ${eventName}. Valid events: ${validEvents.join(', ')}` },
         { status: 400 }
       );
     }
@@ -89,17 +199,27 @@ export async function POST(request) {
       .setClientIpAddress(options.client_ip_address || '')
       .setClientUserAgent(options.client_user_agent || '');
 
-    // Only set fbp and fbc if they have valid values
+    // Only set fbp and fbc if they have valid values and format
     if (options.fbp && options.fbp.trim() !== '' && options.fbp !== 'null' && options.fbp !== 'undefined') {
-      userData.setFbp(options.fbp);
-      console.log('Setting fbp:', options.fbp);
+      // Validate fbp format (should start with 'fb.' and have proper structure)
+      if (options.fbp.startsWith('fb.')) {
+        userData.setFbp(options.fbp);
+        console.log('Setting fbp:', options.fbp);
+      } else {
+        console.log('Invalid fbp format:', options.fbp);
+      }
     } else {
       console.log('No valid fbp provided');
     }
     
     if (options.fbc && options.fbc.trim() !== '' && options.fbc !== 'null' && options.fbc !== 'undefined') {
-      userData.setFbc(options.fbc);
-      console.log('Setting fbc:', options.fbc);
+      // Validate fbc format (should start with 'fb.' and have proper structure)
+      if (options.fbc.startsWith('fb.')) {
+        userData.setFbc(options.fbc);
+        console.log('Setting fbc:', options.fbc);
+      } else {
+        console.log('Invalid fbc format:', options.fbc);
+      }
     } else {
       console.log('No valid fbc provided');
     }
@@ -109,22 +229,43 @@ export async function POST(request) {
       ? options.contents.map(createContents)
       : [];
 
-    // Prepare Custom Data
+    // Prepare Custom Data with validation
     const customData = new CustomData()
-      .setCurrency(options.currency || 'INR')
-      .setValue(options.value || 0)
-      .setOrderId(eventName === 'Purchase' ? options.orderId : null)
-      .setContents(contents);
+      .setCurrency(options.currency || 'INR');
+    
+    // Only set value if it's a valid number
+    if (options.value && !isNaN(options.value) && options.value > 0) {
+      customData.setValue(parseFloat(options.value));
+    }
+    
+    // Only set orderId for Purchase events
+    if (eventName === 'Purchase' && options.orderId) {
+      customData.setOrderId(options.orderId);
+    }
+    
+    // Only set contents if they exist and are valid
+    if (contents && contents.length > 0) {
+      customData.setContents(contents);
+    }
 
     // Build the Server Event
     const serverEvent = new ServerEvent()
       .setEventName(eventName)
-      .setEventTime(currentTimestamp)
+      .setEventTime(eventTimestamp)
       .setUserData(userData)
       .setCustomData(customData)
-      .setEventSourceUrl(options.event_source_url || '')
+      .setEventSourceUrl(options.event_source_url || window?.location?.href || '')
       .setEventId(options.eventID || uuidv4())
       .setActionSource('website');
+
+    // Log the event data being sent (for debugging)
+    console.log('Sending event to Facebook:', {
+      eventName,
+      eventTime: eventTimestamp,
+      eventId: options.eventID || 'generated',
+      hasUserData: !!(hashedEmails.length || hashedPhones.length || options.fbp || options.fbc),
+      hasCustomData: !!(options.value || contents.length),
+    });
 
     // Fire the event request to Facebook
     const eventRequest = new EventRequest(access_token, pixel_id).setEvents([
@@ -140,6 +281,9 @@ export async function POST(request) {
         console.error(`Attempt ${attempt} - Error sending event to Facebook:`, {
           message: error.message,
           stack: error.stack,
+          response: error.response?.data || error.response?.body || null,
+          status: error.response?.status || null,
+          headers: error.response?.headers || null,
         });
         if (attempt < MAX_RETRIES) {
           await delay(RETRY_DELAY * attempt);
@@ -156,10 +300,16 @@ export async function POST(request) {
     console.error('Final Error sending event to Facebook:', {
       message: err.message,
       stack: err.stack,
-      response: err.response ? err.response.body : null,
+      response: err.response?.data || err.response?.body || null,
+      status: err.response?.status || null,
+      details: err.response || null,
     });
     return NextResponse.json(
-      { error: 'Failed to send event' },
+      { 
+        error: 'Failed to send event',
+        details: err.message,
+        status: err.response?.status || 500
+      },
       { status: 500 }
     );
   }
