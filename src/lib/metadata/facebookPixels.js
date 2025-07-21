@@ -1,6 +1,6 @@
 'use client';
 import { v4 as uuidv4 } from 'uuid';
-import { getFbp, getFbc, getFacebookTrackingParams } from '@/lib/utils/cookies';
+import { getFbp, getFbc, getFacebookTrackingParams, getFacebookTrackingParamsAsync } from '@/lib/utils/cookies';
 
 // 1. Get client IP address (attempt IPv6 first, then fallback to IPv4)
 const getClientIp = async () => {
@@ -55,10 +55,23 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
     const client_ip_address = await getClientIp();
     const client_user_agent = navigator.userAgent;
 
-    // Retrieve fbp and fbc from cookies
-    const { fbp, fbc } = getFacebookTrackingParams();
+    // Try to get Facebook tracking parameters with retry logic
+    let { fbp, fbc } = await getFacebookTrackingParamsAsync(3, 300); // 3 retries, 300ms delay
+    
+    // If still no parameters, try the synchronous method as fallback
+    if (!fbp && !fbc) {
+      const fallbackParams = getFacebookTrackingParams();
+      fbp = fallbackParams.fbp;
+      fbc = fallbackParams.fbc;
+    }
 
-    console.log('Facebook tracking params:', { fbp, fbc }); // Debug log
+    // Log tracking status for debugging
+    console.log('Facebook tracking params:', { 
+      fbp: fbp || 'not available', 
+      fbc: fbc || 'not available',
+      pixelLoaded: !!window.fbq,
+      reason: !fbp ? 'Ad blocker, privacy settings, or first visit' : 'OK'
+    });
 
     const eventParams = {
       eventID: eventId,
@@ -68,8 +81,8 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       event_source_url: window.location.href,
       client_ip_address,
       client_user_agent,
-      fbp, // Include fbp
-      fbc, // Include fbc
+      fbp, // Include fbp (might be null)
+      fbc, // Include fbc (might be null)
       ...otherOptions,
     };
 

@@ -157,9 +157,15 @@ export async function POST(request) {
     // Use client timestamp if provided, otherwise use server timestamp
     const eventTimestamp = options.event_time || currentTimestamp;
     
-    // Debug logging for fbc
-    console.log('Received fbc:', options.fbc);
-    console.log('Received fbp:', options.fbp);
+    // Debug logging for fbc and fbp
+    console.log('Facebook tracking parameters received:', {
+      fbp: options.fbp || 'null',
+      fbc: options.fbc || 'null',
+      fbpType: typeof options.fbp,
+      fbcType: typeof options.fbc,
+      hasUserAgent: !!options.client_user_agent,
+      hasClientIP: !!options.client_ip_address
+    });
     
     // Validate the event data
     const validation = validateEventData(eventName, options);
@@ -200,28 +206,29 @@ export async function POST(request) {
       .setClientUserAgent(options.client_user_agent || '');
 
     // Only set fbp and fbc if they have valid values and format
-    if (options.fbp && options.fbp.trim() !== '' && options.fbp !== 'null' && options.fbp !== 'undefined') {
+    // IMPORTANT: Only use real fbp values from Facebook Pixel, never auto-generated ones
+    if (options.fbp && options.fbp !== 'null' && options.fbp !== 'undefined' && options.fbp.trim() !== '') {
       // Validate fbp format (should start with 'fb.' and have proper structure)
-      if (options.fbp.startsWith('fb.')) {
+      if (options.fbp.startsWith('fb.') && options.fbp.split('.').length >= 4) {
         userData.setFbp(options.fbp);
-        console.log('Setting fbp:', options.fbp);
+        console.log('✓ Setting valid fbp from Facebook Pixel:', options.fbp);
       } else {
-        console.log('Invalid fbp format:', options.fbp);
+        console.log('✗ Invalid fbp format - skipping to avoid Facebook issues:', options.fbp);
       }
     } else {
-      console.log('No valid fbp provided');
+      console.log('ℹ No fbp available - common with ad blockers, privacy settings, or first-time visitors');
     }
     
-    if (options.fbc && options.fbc.trim() !== '' && options.fbc !== 'null' && options.fbc !== 'undefined') {
+    if (options.fbc && options.fbc !== 'null' && options.fbc !== 'undefined' && options.fbc.trim() !== '') {
       // Validate fbc format (should start with 'fb.' and have proper structure)
-      if (options.fbc.startsWith('fb.')) {
+      if (options.fbc.startsWith('fb.') && options.fbc.split('.').length >= 4) {
         userData.setFbc(options.fbc);
-        console.log('Setting fbc:', options.fbc);
+        console.log('✓ Setting valid fbc from Facebook click:', options.fbc);
       } else {
-        console.log('Invalid fbc format:', options.fbc);
+        console.log('✗ Invalid fbc format - skipping to avoid Facebook issues:', options.fbc);
       }
     } else {
-      console.log('No valid fbc provided');
+      console.log('ℹ No fbc available - user likely didn\'t come from Facebook ad (organic traffic)');
     }
 
     // Prepare Contents
@@ -259,13 +266,31 @@ export async function POST(request) {
       .setActionSource('website');
 
     // Log the event data being sent (for debugging)
+    const hasUserIdentifiers = !!(hashedEmails.length || hashedPhones.length || options.fbp || options.fbc);
     console.log('Sending event to Facebook:', {
       eventName,
       eventTime: eventTimestamp,
       eventId: options.eventID || 'generated',
-      hasUserData: !!(hashedEmails.length || hashedPhones.length || options.fbp || options.fbc),
+      hasUserData: hasUserIdentifiers,
       hasCustomData: !!(options.value || contents.length),
+      userIdentifiers: {
+        emails: hashedEmails.length,
+        phones: hashedPhones.length,
+        fbp: !!options.fbp,
+        fbc: !!options.fbc
+      }
     });
+
+    // Warn if no user identifiers are available
+    if (!hasUserIdentifiers) {
+      console.warn('⚠️ No user identifiers available (no email, phone, fbp, or fbc).');
+      console.warn('   This is normal for:');
+      console.warn('   - Users with ad blockers');
+      console.warn('   - Privacy-focused browsers');
+      console.warn('   - First-time visitors');
+      console.warn('   - Organic traffic (non-Facebook)');
+      console.warn('   Event will still be sent but attribution may be limited.');
+    }
 
     // Fire the event request to Facebook
     const eventRequest = new EventRequest(access_token, pixel_id).setEvents([
