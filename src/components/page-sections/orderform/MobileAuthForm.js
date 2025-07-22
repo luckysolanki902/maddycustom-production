@@ -13,6 +13,7 @@ const MobileAuthForm = ({
   onSubmit, 
   isSubmitting, 
   userExists, 
+  showContinueButton, // New prop to determine if continue button should be shown
   showOtpForm, 
   setShowOtpForm,
   otpValue,
@@ -27,6 +28,9 @@ const MobileAuthForm = ({
 }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isSmallHeight = useMediaQuery('(max-height: 650px)');
+  const isVerySmallHeight = useMediaQuery('(max-height: 550px)');
+  const isTinyHeight = useMediaQuery('(max-height: 480px)');
+  const isLargeScreen = useMediaQuery(theme.breakpoints.up('lg'));
   const [countdown, setCountdown] = useState(0);
 
   // Countdown timer for OTP resend
@@ -78,17 +82,17 @@ const MobileAuthForm = ({
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      style={{ width: '100%', height: '100%' }}
+      style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
     >
       <Box
         sx={{
           display: 'flex',
           flexDirection: 'column',
           height: '100%',
-          justifyContent: 'center',
-          px: isMobile ? 1.5 : 3,
-          py: isSmallHeight ? 0.5 : isMobile ? 1 : 2,
-          minHeight: isMobile ? '400px' : '500px',
+          px: isMobile ? 2.5 : isLargeScreen ? 4 : 3.5,
+          py: isTinyHeight ? 1 : isVerySmallHeight ? 1.5 : isMobile ? 2 : isLargeScreen ? 3 : 2.5,
+          overflow: 'auto',
+          justifyContent: 'space-between',
         }}
       >
         {/* Header */}
@@ -96,7 +100,7 @@ const MobileAuthForm = ({
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          style={{ textAlign: 'center', marginBottom: isSmallHeight ? 12 : isMobile ? 16 : 24 }}
+          style={{ textAlign: 'center', marginBottom: isTinyHeight ? 12 : isVerySmallHeight ? 16 : isMobile ? 20 : isLargeScreen ? 32 : 28, flexShrink: 0 }}
         >
           <Typography
             variant={isMobile ? "h5" : "h4"}
@@ -106,7 +110,7 @@ const MobileAuthForm = ({
               color: '#000',
               textAlign: 'center',
               mb: 0.5,
-              fontSize: isSmallHeight ? '1.1rem' : isMobile ? '1.25rem' : '1.8rem',
+              fontSize: isTinyHeight ? '0.85rem' : isVerySmallHeight ? '0.95rem' : isSmallHeight ? '1rem' : isMobile ? '1.1rem' : isLargeScreen ? '2rem' : '1.8rem',
               background: 'linear-gradient(45deg, #000 30%, #333 90%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -122,8 +126,8 @@ const MobileAuthForm = ({
               fontFamily: 'Jost, sans-serif',
               color: '#666',
               textAlign: 'center',
-              fontSize: isSmallHeight ? '0.75rem' : isMobile ? '0.8rem' : '0.9rem',
-              lineHeight: 1.3,
+              fontSize: isTinyHeight ? '0.65rem' : isVerySmallHeight ? '0.7rem' : isSmallHeight ? '0.75rem' : isMobile ? '0.75rem' : isLargeScreen ? '1rem' : '0.9rem',
+              lineHeight: 1.2,
               px: isMobile ? 1 : 0,
             }}
           >
@@ -134,17 +138,19 @@ const MobileAuthForm = ({
           </Typography>
         </motion.div>
 
-        {/* Feature Highlights - Only show when not in OTP form */}
-        {!showOtpForm && (
+        {/* Feature Highlights - Only show when not in OTP form and on desktop */}
+        {!showOtpForm && !isMobile && !isVerySmallHeight && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             style={{ 
-              marginBottom: isSmallHeight ? 8 : isMobile ? 12 : 16,
+              marginBottom: isLargeScreen ? 32 : 24,
+              marginTop: isLargeScreen ? 16 : 8,
               width: '100%',
-              maxWidth: '400px',
-              margin: '0 auto'
+              maxWidth: '420px',
+              margin: `${isLargeScreen ? '16px' : '8px'} auto ${isLargeScreen ? '32px' : '24px'} auto`,
+              flexShrink: 0
             }}
           >
             <Box
@@ -152,12 +158,14 @@ const MobileAuthForm = ({
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                gap: isMobile ? 2 : 3,
-                py: isMobile ? 1 : 1.5,
+                gap: 2.5,
+                py: 1,
+                px: 2,
                 px: 2,
                 backgroundColor: 'rgba(45, 45, 45, 0.05)',
                 borderRadius: '12px',
                 border: '1px solid rgba(45, 45, 45, 0.1)',
+                flexWrap: 'wrap',
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -173,7 +181,7 @@ const MobileAuthForm = ({
                   variant="caption"
                   sx={{
                     fontFamily: 'Jost, sans-serif',
-                    fontSize: isMobile ? '0.7rem' : '0.75rem',
+                    fontSize: '0.75rem',
                     color: '#2d2d2d',
                     fontWeight: 500,
                   }}
@@ -195,7 +203,7 @@ const MobileAuthForm = ({
                   variant="caption"
                   sx={{
                     fontFamily: 'Jost, sans-serif',
-                    fontSize: isMobile ? '0.7rem' : '0.75rem',
+                    fontSize: '0.75rem',
                     color: '#2d2d2d',
                     fontWeight: 500,
                   }}
@@ -217,7 +225,7 @@ const MobileAuthForm = ({
                   variant="caption"
                   sx={{
                     fontFamily: 'Jost, sans-serif',
-                    fontSize: isMobile ? '0.7rem' : '0.75rem',
+                    fontSize: '0.75rem',
                     color: '#2d2d2d',
                     fontWeight: 500,
                   }}
@@ -233,12 +241,13 @@ const MobileAuthForm = ({
         <Box sx={{ 
           display: 'flex', 
           flexDirection: 'column', 
-          justifyContent: 'center',
+          justifyContent: isMobile ? 'flex-start' : 'center',
           alignItems: 'center',
           flex: 1,
           maxWidth: '100%',
           width: '100%',
-          mt: isMobile ? 1 : 2,
+          minHeight: 0,
+          pt: isMobile ? 1 : 0,
         }}>
           <AnimatePresence mode="wait">
             {!showOtpForm ? (
@@ -248,7 +257,7 @@ const MobileAuthForm = ({
                 initial={{ opacity: 0, x: -50 }}
                 animate="phone"
                 exit={{ opacity: 0, x: -50 }}
-                style={{ width: '100%', maxWidth: '400px' }}
+                style={{ width: '100%', maxWidth: '420px' }}
               >
                 <Box
                   component="form"
@@ -256,8 +265,18 @@ const MobileAuthForm = ({
                   sx={{
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: isSmallHeight ? 1.2 : isMobile ? 1.5 : 2,
+                    gap: isTinyHeight ? 1.5 : isVerySmallHeight ? 1.8 : isMobile ? 2 : 2.5,
                     width: '100%',
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (userExists && onContinue) {
+                        onContinue();
+                      } else {
+                        onSubmit(e);
+                      }
+                    }
                   }}
                 >
                   {/* Phone Input with Enhanced Design */}
@@ -299,6 +318,7 @@ const MobileAuthForm = ({
                             placeholder="Enter your mobile number"
                             error={!!errors.phoneNumber}
                             helperText={errors.phoneNumber?.message}
+                            autoFocus
                             InputProps={{
                               startAdornment: (
                                 <InputAdornment position="start">
@@ -317,7 +337,7 @@ const MobileAuthForm = ({
                                         fontFamily: 'Orbitron, monospace',
                                         fontWeight: 600,
                                         color: '#2d2d2d',
-                                        fontSize: isSmallHeight ? '0.8rem' : '0.9rem'
+                                        fontSize: isTinyHeight ? '0.7rem' : isVerySmallHeight ? '0.75rem' : isSmallHeight ? '0.8rem' : '0.9rem'
                                       }}
                                     >
                                       +91
@@ -329,8 +349,8 @@ const MobileAuthForm = ({
                             sx={{
                               '& .MuiOutlinedInput-root': {
                                 fontFamily: 'Jost, sans-serif',
-                                fontSize: isSmallHeight ? '0.9rem' : '1rem',
-                                height: isSmallHeight ? '48px' : '56px',
+                                fontSize: isTinyHeight ? '0.8rem' : isVerySmallHeight ? '0.85rem' : isSmallHeight ? '0.9rem' : '1rem',
+                                height: isTinyHeight ? '40px' : isVerySmallHeight ? '42px' : isSmallHeight ? '44px' : isMobile ? '48px' : '52px',
                                 borderRadius: '14px',
                                 backgroundColor: '#fafbfc',
                                 border: '1px solid #e8eaed',
@@ -382,13 +402,13 @@ const MobileAuthForm = ({
                     whileTap={{ scale: 0.98 }}
                   >
                     <Button
-                      type={userExists && onContinue ? "button" : "submit"}
-                      onClick={userExists && onContinue ? onContinue : undefined}
+                      type={showContinueButton && onContinue ? "button" : "submit"}
+                      onClick={showContinueButton && onContinue ? onContinue : undefined}
                       fullWidth
                       disabled={isSubmitting}
                       sx={{
-                        mt: isSmallHeight ? 0.5 : isMobile ? 1 : 2,
-                        py: isSmallHeight ? 1.2 : isMobile ? 1.5 : 2,
+                        mt: isTinyHeight ? 0.5 : isVerySmallHeight ? 0.8 : isMobile ? 1 : 1.5,
+                        py: isTinyHeight ? 0.8 : isVerySmallHeight ? 0.9 : isMobile ? 1.2 : 1.5,
                         borderRadius: '12px',
                         fontSize: isMobile ? '1rem' : '1.1rem',
                         fontFamily: 'Orbitron, monospace',
@@ -412,7 +432,7 @@ const MobileAuthForm = ({
                         },
                       }}
                     >
-                      {isSubmitting ? 'Sending OTP...' : userExists ? 'CONTINUE' : 'GET OTP'}
+                      {isSubmitting ? 'Sending OTP...' : showContinueButton ? 'CONTINUE' : 'GET OTP'}
                     </Button>
                   </motion.div>
                 </Box>
@@ -424,13 +444,13 @@ const MobileAuthForm = ({
                 initial={{ opacity: 0, x: 50 }}
                 animate="otp"
                 exit={{ opacity: 0, x: 50 }}
-                style={{ width: '100%', maxWidth: '400px' }}
+                style={{ width: '100%', maxWidth: '420px' }}
               >
                 <Box
                   sx={{
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: isSmallHeight ? 1.2 : isMobile ? 1.5 : 2,
+                    gap: isMobile ? 2.5 : 3,
                     width: '100%',
                   }}
                 >
@@ -445,7 +465,14 @@ const MobileAuthForm = ({
                       placeholder="Enter 6-digit OTP"
                       value={otpValue}
                       onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && otpValue.length === 6) {
+                          e.preventDefault();
+                          onVerifyOtp();
+                        }
+                      }}
                       error={false}
+                      autoFocus
                       inputProps={{
                         inputMode: 'numeric',
                         pattern: '[0-9]*',
@@ -454,7 +481,7 @@ const MobileAuthForm = ({
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: '12px',
-                          fontSize: isMobile ? '1.2rem' : '1.4rem',
+                          fontSize: isMobile ? '1.1rem' : '1.3rem',
                           fontFamily: 'Orbitron, monospace',
                           fontWeight: 600,
                           background: 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)',
@@ -474,8 +501,8 @@ const MobileAuthForm = ({
                           },
                         },
                         '& .MuiOutlinedInput-input': {
-                          padding: isSmallHeight ? '12px 16px' : isMobile ? '14px 16px' : '18px 16px',
-                          fontSize: isMobile ? '1.2rem' : '1.4rem',
+                          padding: isTinyHeight ? '8px 16px' : isVerySmallHeight ? '10px 16px' : isSmallHeight ? '12px 16px' : isMobile ? '14px 16px' : '16px 16px',
+                          fontSize: isMobile ? '1.1rem' : '1.3rem',
                           fontFamily: 'Orbitron, monospace',
                           fontWeight: 600,
                           letterSpacing: '0.3em',
@@ -499,8 +526,8 @@ const MobileAuthForm = ({
                       disabled={isOtpVerifying || otpValue.length !== 6}
                       onClick={onVerifyOtp}
                       sx={{
-                        mt: isSmallHeight ? 0.5 : isMobile ? 1 : 2,
-                        py: isSmallHeight ? 1.2 : isMobile ? 1.5 : 2,
+                        mt: isTinyHeight ? 0.5 : isVerySmallHeight ? 0.8 : isMobile ? 1 : 1.5,
+                        py: isTinyHeight ? 0.8 : isVerySmallHeight ? 0.9 : isMobile ? 1.2 : 1.5,
                         borderRadius: '12px',
                         fontSize: isMobile ? '1rem' : '1.1rem',
                         fontFamily: 'Orbitron, monospace',
@@ -541,7 +568,7 @@ const MobileAuthForm = ({
                           sx={{
                             fontFamily: 'Jost, sans-serif',
                             color: '#666',
-                            fontSize: '0.85rem',
+                            fontSize: '0.8rem',
                           }}
                         >
                           Resend OTP in {countdown}s
@@ -551,7 +578,7 @@ const MobileAuthForm = ({
                           onClick={onResendOtp}
                           disabled={isResending}
                           sx={{
-                            fontSize: '0.85rem',
+                            fontSize: '0.8rem',
                             fontFamily: 'Jost, sans-serif',
                             fontWeight: 600,
                             color: '#000',

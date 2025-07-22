@@ -14,9 +14,20 @@ export const calculateTotalAmount = (cartItems, paymentModeConfig) => {
 //   Determines the payment button text based on the payment mode configuration.
 
   export const getPaymentButtonText = (paymentModeConfig) => {
-    if (paymentModeConfig?.configuration?.onlinePercentage === 100) {
+    const onlinePercentage = paymentModeConfig?.configuration?.onlinePercentage;
+    
+    if (!paymentModeConfig || onlinePercentage === undefined || onlinePercentage === null) {
       return 'Pay Now';
     }
-    return `Pay ${paymentModeConfig?.configuration?.onlinePercentage}% Now`;
+    
+    if (onlinePercentage === 100) {
+      return 'Pay Now';
+    }
+    
+    if (onlinePercentage === 0) {
+      return 'Place Order (COD)';
+    }
+    
+    return `Pay ${onlinePercentage}% Now`;
   };
   

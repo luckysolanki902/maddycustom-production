@@ -9,9 +9,10 @@ import Image from 'next/image';
 const TrustSection = ({ baseImageUrl, isCompact = false }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isSmallHeight = useMediaQuery('(max-height: 650px)');
+  const isVerySmallHeight = useMediaQuery('(max-height: 550px)');
 
-  if (isSmallHeight) {
-    return null; // Hide trust section for small height viewports
+  if (isVerySmallHeight) {
+    return null; // Hide trust section for very small height viewports
   }
 
   const containerVariants = {
@@ -47,13 +48,13 @@ const TrustSection = ({ baseImageUrl, isCompact = false }) => {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: isCompact ? 1 : 2,
-          py: isCompact ? 1.5 : 3,
-          px: isMobile ? 2 : 3,
+          gap: isCompact ? 0.8 : 1.5,
+          py: isCompact ? (isMobile ? 1 : 1.2) : (isMobile ? 2 : 2.5),
+          px: isMobile ? 1.5 : 2.5,
           background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-          borderRadius: '16px',
+          borderRadius: '12px',
           border: '1px solid #e0e0e0',
-          mt: isCompact ? 1 : 2,
+          mt: isCompact ? 0.5 : 1.5,
         }}
       >
         {/* Main Trust Text */}
@@ -65,8 +66,8 @@ const TrustSection = ({ baseImageUrl, isCompact = false }) => {
               fontWeight: 600,
               color: '#000',
               textAlign: 'center',
-              fontSize: isCompact ? (isMobile ? '0.875rem' : '0.95rem') : (isMobile ? '1rem' : '1.1rem'),
-              mb: isCompact ? 0.5 : 1,
+              fontSize: isCompact ? (isMobile ? '0.8rem' : '0.9rem') : (isMobile ? '0.95rem' : '1.05rem'),
+              mb: isCompact ? 0.3 : 0.8,
             }}
           >
             Trusted by 50,000+ Racing Enthusiasts
@@ -80,7 +81,7 @@ const TrustSection = ({ baseImageUrl, isCompact = false }) => {
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              gap: isCompact ? (isMobile ? 2 : 2.5) : (isMobile ? 3 : 4),
+              gap: isCompact ? (isMobile ? 1.5 : 2) : (isMobile ? 2.5 : 3),
               flexWrap: 'wrap',
             }}
           >

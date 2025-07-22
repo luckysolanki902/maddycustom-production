@@ -66,6 +66,14 @@ const OrderForm = ({
   const { userDetails, addressDetails, userExists, prefilledAddress } = orderForm;
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isSmallHeight = useMediaQuery('(max-height: 650px)');
+  const isVerySmallHeight = useMediaQuery('(max-height: 550px)');
+  const isTinyHeight = useMediaQuery('(max-height: 480px)');
+
+  // State declarations - moved to top to fix initialization error
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [purchaseInitiated, setPurchaseInitiated] = useState(false);
 
   // Performance optimization - serviceability cache
   const serviceabilityCache = useRef({});
@@ -90,36 +98,8 @@ const OrderForm = ({
   const [userId, setUserId] = useState(null);
   const [shiprocketToken, setShiprocketToken] = useState(null);
   const [shouldSwitchToAddress, setShouldSwitchToAddress] = useState(false);
-  
-  // Debug: Log tab index changes
-  useEffect(() => {
-    console.log('🔄 Tab index changed to:', tabIndex);
-  }, [tabIndex]);
-  
-  // Handle switching to address tab after OTP verification
-  useEffect(() => {
-    console.log('🔄 UseEffect triggered, shouldSwitchToAddress:', shouldSwitchToAddress);
-    if (shouldSwitchToAddress) {
-      console.log('🔄 Switching to address tab via useEffect');
-      // Use setTimeout to ensure state updates properly
-      setTimeout(() => {
-        console.log('📋 Actually switching to tab 1');
-        setTabIndex(1);
-        setShouldSwitchToAddress(false);
-        console.log('✅ Tab switching completed');
-      }, 100); // Increased delay to 100ms
-    }
-  }, [shouldSwitchToAddress]);
-  
-  // Snackbar state
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Extract and aggregate unique extraFields from cart items - memoized
   const aggregatedExtraFields = useMemo(() => {
@@ -157,6 +137,26 @@ const OrderForm = ({
       }, {}),
     }), [userDetails, addressDetails, aggregatedExtraFields]),
   });
+  
+  // Handle switching to address tab after OTP verification
+  useEffect(() => {
+    console.log('🔄 UseEffect triggered, shouldSwitchToAddress:', shouldSwitchToAddress);
+    if (shouldSwitchToAddress) {
+      console.log('🔄 Switching to address tab via useEffect');
+      // Use setTimeout to ensure state updates properly
+      setTimeout(() => {
+        console.log('📋 Actually switching to tab 1');
+        setTabIndex(1);
+        setShouldSwitchToAddress(false);
+        console.log('✅ Tab switching completed');
+      }, 100); // Increased delay to 100ms
+    }
+  }, [shouldSwitchToAddress]);
+  
+  // Snackbar state
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
   // Watch phone number to determine if it matches existing user
   const watchedPhoneNumber = watch('phoneNumber');
@@ -166,6 +166,19 @@ const OrderForm = ({
 
   // Determine if we should show CONTINUE button (user exists and phone matches) or GET OTP
   const shouldShowContinueButton = isPhoneNumberSameAsUser;
+
+  // Reset OTP form when phone number changes
+  useEffect(() => {
+    if (watchedPhoneNumber && watchedPhoneNumber !== userDetails?.phoneNumber) {
+      setShowOtpForm(false);
+      setOtpValue('');
+      setMaskedPhone('');
+      // Reset to mobile auth tab when phone number changes
+      setTabIndex(0);
+      // Clear userExists state for new phone number
+      dispatch(setUserExists(false));
+    }
+  }, [watchedPhoneNumber, userDetails?.phoneNumber, dispatch]);
   
   // Define showSnackbar first since it's used in validatePincode
   const showSnackbar = useCallback((message, severity = 'success') => {
@@ -439,9 +452,6 @@ const OrderForm = ({
     }
   }, [isResending, getValues, showSnackbar]);
 
-  // Prevent multiple form submissions
-  const [purchaseInitiated, setPurchaseInitiated] = useState(false);
-
   // Handle tab change
   const handleTabChange = useCallback((newValue) => {
     setTabIndex(newValue);
@@ -661,6 +671,26 @@ const OrderForm = ({
     handleFullClose
   ]);
 
+  // Add keyboard listener for enter key
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Enter' && !isPaymentProcessing) {
+        event.preventDefault();
+        if (tabIndex === 1 && isPincodeValid) {
+          handleSubmit(handlePurchase)();
+        }
+      }
+    };
+
+    if (open) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open, tabIndex, isPincodeValid, isPaymentProcessing, handleSubmit, handlePurchase]);
+
   return (
     <ThemeProvider theme={theme}>
       <Dialog
@@ -679,11 +709,13 @@ const OrderForm = ({
           sx: {
             borderRadius: isMobile ? '0' : '24px',
             overflow: 'hidden',
-            maxHeight: isSmallHeight ? '100vh' : '90vh',
             height: isMobile ? '100vh' : 'auto',
+            maxHeight: isMobile ? '100vh' : isSmallHeight ? '95vh' : '90vh',
             margin: isMobile ? 0 : 2,
             background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
       >
@@ -695,6 +727,7 @@ const OrderForm = ({
             flexDirection: 'column',
             overflow: 'hidden',
             background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+            flex: 1,
           }}
         >
           {/* Header */}
@@ -703,12 +736,14 @@ const OrderForm = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              p: isMobile ? 2 : 3,
+              p: isMobile ? '12px 16px' : '16px 24px',
               borderBottom: '1px solid #e0e0e0',
               background: 'rgba(255, 255, 255, 0.9)',
               backdropFilter: 'blur(10px)',
               position: 'relative',
               zIndex: 10,
+              minHeight: isMobile ? '56px' : '64px',
+              flexShrink: 0,
             }}
           >
             {/* Back Button */}
@@ -806,6 +841,7 @@ const OrderForm = ({
               flexDirection: 'column',
               overflow: 'hidden',
               position: 'relative',
+              minHeight: 0, // Important for flex children to shrink
             }}
           >
             <AnimatePresence mode="wait">
@@ -816,15 +852,28 @@ const OrderForm = ({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
-                  style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+                  style={{ 
+                    flex: 1, 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    minHeight: 0,
+                    overflow: 'hidden'
+                  }}
                 >
-                  {console.log('🔄 Rendering MobileAuthForm tab (index 0)', { userExists, shouldShowContinueButton, watchedPhoneNumber })}
+                  {console.log('🔄 Rendering MobileAuthForm tab (index 0)', { 
+                    userExists, 
+                    shouldShowContinueButton, 
+                    watchedPhoneNumber,
+                    userDetailsPhone: userDetails?.phoneNumber,
+                    isPhoneNumberSameAsUser
+                  })}
                   <MobileAuthForm
                     control={control}
                     errors={errors}
                     onSubmit={handlePhoneSubmit}
                     isSubmitting={isSubmitting}
-                    userExists={shouldShowContinueButton}
+                    userExists={userExists} // Pass actual userExists state
+                    showContinueButton={shouldShowContinueButton} // Add separate prop for continue button
                     showOtpForm={showOtpForm}
                     setShowOtpForm={setShowOtpForm}
                     otpValue={otpValue}
@@ -852,7 +901,8 @@ const OrderForm = ({
                     flex: 1, 
                     display: 'flex', 
                     flexDirection: 'column',
-                    overflow: 'auto' // Enable scrolling for address form
+                    minHeight: 0,
+                    overflow: 'auto'
                   }}
                 >
                   {console.log('🔄 Rendering AddressForm tab (index 1 or authenticated user)')}
@@ -863,6 +913,7 @@ const OrderForm = ({
                     isPincodeValid={isPincodeValid}
                     pincodeCheckInProgress={pincodeCheckInProgress}
                     validatePincode={validatePincode}
+                    onSubmit={handleSubmit(handlePurchase)}
                   />
                 </motion.div>
               )}
@@ -872,14 +923,15 @@ const OrderForm = ({
           {/* Footer */}
           <Box
             sx={{
-              p: isMobile ? 2 : 3,
+              p: isMobile ? '12px 16px 16px' : '16px 24px 20px',
               borderTop: '1px solid #e0e0e0',
               background: 'rgba(255, 255, 255, 0.9)',
               backdropFilter: 'blur(10px)',
+              flexShrink: 0,
             }}
           >
-            {/* Purchase Button for Address Tab */}
-            {(tabIndex === 1 || (tabIndex === 0 && userExists)) && (
+            {/* Purchase Button for Address Tab Only */}
+            {tabIndex === 1 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -891,8 +943,8 @@ const OrderForm = ({
                   variant="contained"
                   fullWidth
                   sx={{
-                    height: isSmallHeight ? '48px' : '56px',
-                    fontSize: isSmallHeight ? '1rem' : '1.1rem',
+                    height: isMobile ? (isTinyHeight ? '40px' : isVerySmallHeight ? '42px' : '46px') : '50px',
+                    fontSize: isMobile ? (isTinyHeight ? '0.8rem' : isVerySmallHeight ? '0.85rem' : '0.95rem') : '1.05rem',
                     fontWeight: 600,
                     fontFamily: 'Orbitron, monospace',
                     borderRadius: '12px',
@@ -901,6 +953,7 @@ const OrderForm = ({
                     transition: 'all 0.3s ease',
                     color: 'white',
                     border: 'none',
+                    mb: 1,
                     '&:hover': {
                       background: 'linear-gradient(45deg, #333 30%, #000 90%)',
                       boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)',
