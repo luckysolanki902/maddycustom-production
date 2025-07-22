@@ -638,7 +638,7 @@ const OrderForm = ({
       handleFullClose();
 
       setTimeout(() => {
-        router.push(`/orders/myorder/${createdOrderId}`);
+        router.push(`/orders/success/${createdOrderId}`);
       }, 100);
 
     } catch (error) {

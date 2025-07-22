@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
-import { Dialog, DialogContent, Box, IconButton, Button, Typography, CircularProgress, alpha } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { Dialog, DialogContent, Box, IconButton, alpha } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
-import { setUserDetails, setUserExists, setLoginDialogShown } from "../../store/slices/orderFormSlice";
-import { sendOTP, verifyOTP, resetAuthError, decrementOtpTimer, resetOtpState } from "@/store/slices/authSlice";
+import { setLoginDialogShown } from "../../store/slices/orderFormSlice";
 import CustomSnackbar from "../notifications/CustomSnackbar";
 import CloseIcon from "@mui/icons-material/Close";
 import Image from "next/image";
-import OtpInput from "../auth/OtpInput";
+import MobileAuth from "../auth/MobileAuth";
 import { usePathname } from "next/navigation";
 
 const LoginDialog = () => {
@@ -22,13 +21,7 @@ const LoginDialog = () => {
   const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector(state => state.userBehavior);
   const isUserPhoneNumberValid = useSelector(state => state.orderForm.userDetails?.phoneNumber?.length === 10);
 
-  const { isLoading, error, otpDetails = { waitTime: 0 } } = useSelector(state => state.auth);
-
   const [open, setOpen] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [otpValue, setOtpValue] = useState("");
-  const [showOtpInput, setShowOtpInput] = useState(false);
-
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
@@ -39,16 +32,7 @@ const LoginDialog = () => {
     setSnackbarOpen(true);
   };
 
-  useEffect(() => {
-    let timerId;
-    if (otpDetails && otpDetails.waitTime > 0) {
-      timerId = setInterval(() => {
-        dispatch(decrementOtpTimer());
-      }, 1000);
-    }
-    return () => clearInterval(timerId);
-  }, [dispatch, otpDetails]);
-
+  // Show dialog based on user behavior conditions
   useEffect(() => {
     if (
         timeSpentOnWebsite >= 30 &&
@@ -69,49 +53,15 @@ const LoginDialog = () => {
     dispatch(setLoginDialogShown(true));
   };
 
-  const handleSendOtp = async () => {
-    if (phoneNumber.length !== 10) {
-      showSnackbar("Please enter a valid 10-digit number", "error");
-      return;
-    }
-    dispatch(resetAuthError());
-    dispatch(resetOtpState());
-    const result = await dispatch(sendOTP({ phoneNumber }));
-    if (result.meta.requestStatus === "fulfilled") {
-      setShowOtpInput(true);
-      showSnackbar("OTP sent successfully", "success");
-    } else {
-      showSnackbar(result.payload?.message || "Failed to send OTP", "error");
-    }
+  const handleAuthSuccess = (user) => {
+    setOpen(false);
   };
 
-  const handleVerifyOtp = async () => {
-    if (otpValue.length !== 6) return;
-    const result = await dispatch(verifyOTP({ phoneNumber, otp: otpValue }));
-    if (result.meta.requestStatus === "fulfilled") {
-      handleAuthenticationSuccess(result.payload.user);
-    } else {
-      showSnackbar(result.payload?.message || "Invalid OTP", "error");
-    }
+  const handleAuthError = (message) => {
+    showSnackbar(message, "error");
   };
 
-  const handleAuthenticationSuccess = useCallback(
-    user => {
-      dispatch(
-        setUserDetails({
-          name: user.name,
-          phoneNumber: user.phoneNumber,
-          email: user.email || "",
-          userId: user.id,
-        })
-      );
-      dispatch(setUserExists(true));
-      showSnackbar("Welcome to MaddyCustom!", "success");
-      setOpen(false);
-    },
-    [dispatch]
-  );
-
+  // Don't render if cart drawer is open
   if (isCartDrawerOpen) return null;
 
   return (
@@ -169,106 +119,31 @@ const LoginDialog = () => {
             style={{ marginBottom: "1.5rem" }}
           />
 
-          {!showOtpInput ? (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: "1.2rem", width: "100%" }}>
-              <input
-                value={phoneNumber}
-                onChange={e => {
-                  const value = e.target.value.replace(/\D/g, "").slice(0, 10);
-                  setPhoneNumber(value);
-                }}
-                type="tel"
-                placeholder="Enter Mobile Number"
-                style={{
-                  borderRadius: "1rem",
-                  border: "1px solid rgba(0,0,0,0.1)",
-                  padding: "0.9rem 1.2rem",
-                  fontSize: "1rem",
-                  fontFamily: "Jost",
-                  background: "rgba(255, 255, 255, 0.7)",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
-                  transition: "all 0.3s",
-                  color: "black"
-                }}
-              />
-
-              <Button
-                variant="contained"
-                onClick={handleSendOtp}
-                disabled={isLoading}
-                sx={{
-                  borderRadius: "2rem",
-                  py: 1.2,
-                  fontWeight: 600,
-                  textTransform: "none",
-                  background: "#222",
-                  color: "#fff",
-                  boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
-                  "&:hover": {
-                    background: "#000",
-                  },
-                }}
-              >
-                {isLoading ? <CircularProgress size={24} color="inherit" /> : "Get OTP"}
-              </Button>
-            </Box>
-          ) : (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: "1.2rem", width: "100%" }}>
-              <Typography variant="body2" align="center" sx={{ fontFamily: "Jost", fontWeight: 500 }}>
-                Enter the 6-digit code sent to <strong>{phoneNumber}</strong>
-              </Typography>
-
-              <OtpInput length={6} value={otpValue} onChange={setOtpValue} disabled={isLoading} />
-
-              {error && (
-                <Typography color="error" variant="body2" align="center">
-                  {error}
-                </Typography>
-              )}
-
-              <Button
-                variant="contained"
-                onClick={handleVerifyOtp}
-                disabled={otpValue.length !== 6 || isLoading}
-                sx={{
-                  borderRadius: "2rem",
-                  py: 1.2,
-                  fontWeight: 600,
-                  textTransform: "none",
-                  background: "#222",
-                  color: "#fff",
-                  boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
-                  "&:hover": {
-                    background: "#000",
-                  },
-                }}
-              >
-                {isLoading ? <CircularProgress size={24} color="inherit" /> : "Verify & Continue"}
-              </Button>
-
-              <Button
-                variant="text"
-                onClick={async () => {
-                  if (otpDetails?.waitTime > 0) return;
-                  await dispatch(sendOTP({ phoneNumber }));
-                  setOtpValue("");
-                  showSnackbar("OTP resent", "info");
-                }}
-                disabled={otpDetails?.waitTime > 0 || isLoading}
-                sx={{
-                  fontFamily: "Jost",
-                  textTransform: "none",
-                  color: "#555",
-                  "&:hover": {
-                    color: "#000",
-                    textDecoration: "underline",
-                  },
-                }}
-              >
-                {otpDetails?.waitTime > 0 ? `Resend OTP in ${otpDetails.waitTime}s` : "Resend OTP"}
-              </Button>
-            </Box>
-          )}
+          <MobileAuth
+            onSuccess={handleAuthSuccess}
+            onError={handleAuthError}
+            onClose={handleClose}
+            showCloseButton={true}
+            showSnackbar={showSnackbar}
+            title="Welcome Back!"
+            subtitle="Sign in to access your personalized experience"
+            containerStyle={{ 
+              width: "100%", 
+              maxWidth: "400px" 
+            }}
+            buttonStyle={{
+              borderRadius: "2rem",
+              py: 1.2,
+              fontWeight: 600,
+              textTransform: "none",
+              background: "#222",
+              color: "#fff",
+              boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
+              "&:hover": {
+                background: "#000",
+              },
+            }}
+          />
         </DialogContent>
       </Dialog>
 
