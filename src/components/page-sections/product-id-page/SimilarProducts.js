@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Box, Typography, useMediaQuery, Skeleton, Fade, Card, CardContent, CardMedia } from "@mui/material";
+import { ArrowForward } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import Image from "next/image";
 import AddToCartButton from "../../utils/AddToCartButton";
@@ -28,30 +29,62 @@ const ViewAllCard = styled(Card)(({ theme }) => ({
   position: "sticky",
   right: 0,
   zIndex: 10,
-  width: 200,
+  width: 120,
+  minWidth: 120,
   flexShrink: 0,
-  borderRadius: 12,
-  background: "linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)",
-  color: "#1a1a1a",
+  borderRadius: 16,
+  background: "rgba(255, 255, 255, 0.95)",
+  backdropFilter: "blur(20px)",
+  border: "1px solid rgba(45, 45, 45, 0.08)",
+  color: "#2d2d2d",
   cursor: "pointer",
-  transition: "all 0.3s ease",
-  boxShadow: "-8px 0 24px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)",
-  border: "1px solid #d0d7de",
+  transition: "all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.02)",
+  overflow: "hidden",
+  position: "relative",
   "&:hover": {
-    transform: "translateY(-6px)",
-    boxShadow: "-12px 4px 32px rgba(0,0,0,0.18), 0 8px 20px rgba(0,0,0,0.12)",
-    background: "linear-gradient(135deg, #ffffff 0%, #f1f3f4 100%)",
-    borderColor: "#8b949e",
+    boxShadow: "0 16px 48px rgba(45, 45, 45, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08)",
+    background: "rgba(45, 45, 45, 0.98)",
+    color: "#ffffff",
+    borderColor: "rgba(45, 45, 45, 0.2)",
+    "& .view-all-icon": {
+      transform: "translateX(4px)",
+    },
+    "& .view-all-text": {
+      fontWeight: 600,
+    },
+    transition: "all 1s ease",
   },
   "&::before": {
     content: '""',
     position: "absolute",
-    left: -20,
+    left: -30,
     top: 0,
     bottom: 0,
-    width: 20,
-    background: "linear-gradient(to right, transparent, rgba(255,255,255,0.1))",
+    width: 30,
+    background: "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 100%)",
     pointerEvents: "none",
+    zIndex: 1,
+  },
+  "&::after": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%, rgba(45, 45, 45, 0.05) 100%)",
+    opacity: 0,
+    transition: "opacity 0.3s ease",
+    pointerEvents: "none",
+    zIndex: 2,
+  },
+  "&:hover::after": {
+    opacity: 1,
+  },
+  [theme.breakpoints.down('sm')]: {
+    width: 100,
+    minWidth: 100,
   },
 }));
 
@@ -220,7 +253,7 @@ function SimilarProductsBase({ currentProduct, variant, category }) {
               {products.map((p, i) => (
                 <ProductCard key={`${p._id}-${i}`} product={p} />
               ))}
-              {/* Fixed View All Card */}
+              {/* Minimal View All Card */}
               <ViewAllCard onClick={handleViewAllClick}>
                 <CardContent
                   sx={{
@@ -229,13 +262,58 @@ function SimilarProductsBase({ currentProduct, variant, category }) {
                     alignItems: "center",
                     justifyContent: "center",
                     height: "100%",
-                    minHeight: 200,
+                    minHeight: { xs: 160, sm: 180 },
                     textAlign: "center",
+                    position: "relative",
+                    zIndex: 3,
+                    p: { xs: 1.5, sm: 2 },
                   }}
                 >
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    View All
-                  </Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: { xs: 0.5, sm: 1 },
+                    }}
+                  >
+                    <Typography 
+                      variant="body2" 
+                      className="view-all-text"
+                      sx={{ 
+                        fontWeight: 500,
+                        fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                        lineHeight: 1.2,
+                        transition: "all 0.3s ease",
+                        letterSpacing: "0.025em",
+                      }}
+                    >
+                      View
+                    </Typography>
+                    <Typography 
+                      variant="body2" 
+                      className="view-all-text"
+                      sx={{ 
+                        fontWeight: 500,
+                        fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                        lineHeight: 1.2,
+                        transition: "all 0.3s ease",
+                        letterSpacing: "0.025em",
+                        mt: -0.5,
+                      }}
+                    >
+                      All
+                    </Typography>
+                    <ArrowForward 
+                      className="view-all-icon"
+                      sx={{ 
+                        fontSize: { xs: 16, sm: 18 },
+                        mt: { xs: 0.5, sm: 1 },
+                        transition: "transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+                        opacity: 0.8,
+                      }} 
+                    />
+                  </Box>
                 </CardContent>
               </ViewAllCard>
             </ScrollContainer>

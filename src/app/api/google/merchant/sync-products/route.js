@@ -4,7 +4,7 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Catalogue from '@/models/meta/Catalogue';
 import { NextResponse } from 'next/server';
 import { initializeContentApi } from '@/lib/merchant/googleContentApi';
-
+export const maxDuration = 60 * 5; // 5 minutes
 export async function GET() {
   try {
     // 1. Connect
@@ -26,7 +26,7 @@ export async function GET() {
         offerId:            feedData.id,
         title:              feedData.title,
         description:        feedData.description,
-        availability:       feedData.availability || 'in stock',
+        availability:       'in stock',
         condition:          feedData.condition   || 'new',
         price: {
           value:    numeric.toFixed(2),
