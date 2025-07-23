@@ -14,7 +14,7 @@ import {
   removeItem,
   setDefaultWrapFinish
 } from '../../store/slices/cartSlice';
-import { openCartDrawer } from '../../store/slices/uiSlice';
+import { openCartDrawer, openRecommendationDrawer } from '../../store/slices/uiSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
 
 export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, smaller = false, insertionDetails = {} }) {
@@ -44,7 +44,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   });
   useEffect(() => {
     dispatch(setDefaultWrapFinish());
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     // No additional logic needed here as useSpring tracks cartItem changes.
@@ -79,6 +79,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     // Check: if limited and adding one would exceed maxAllowed, do nothing.
     if (isLimited && (currentQuantity + 1) > maxAllowed) return;
 
+    // Check if cart is empty before adding
+    const wasCartEmpty = cartItems.length === 0;
+
     setLastAction('increment');
     dispatch(addItem({ 
       productId: product._id, 
@@ -86,8 +89,10 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       insertionDetails 
     }));
 
-    // Optionally show cart drawer on add
-    // goToCart();
+    // Show recommendation drawer if cart was empty and product has designGroupId
+    if (wasCartEmpty && product.designGroupId) {
+      dispatch(openRecommendationDrawer({ product }));
+    }
 
     // Track AddToCart event
     try {
