@@ -17,7 +17,7 @@ const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
             loop={true}
             speed={500}
             simulateTouch={true}
-            autoplay={{ delay: 3000, disableOnInteraction: false }}
+            autoplay={{ delay: 5000, disableOnInteraction: false }}
         >
             {images.map((url, index) => (
                 <SwiperSlide key={index}>
