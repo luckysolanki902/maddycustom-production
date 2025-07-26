@@ -1,15 +1,15 @@
-// /app/api/products-xml/route.js
+// /app/api/meta/pixel-products-xml/route.js
 
 import connectToDatabase from '@/lib/middleware/connectToDb';
-import Product from '@/models/Product';
-import SpecificCategory from '@/models/SpecificCategory';
+import Catalogue from '@/models/meta/Catalogue';
+import CatalogueCycle from '@/models/meta/CatalogueCycle';
 import { NextResponse } from 'next/server';
 import { create } from 'xmlbuilder2';
 
 /**
- * GET /api/products-xml
+ * GET /api/meta/pixel-products-xml
  * 
- * Retrieves all products with specificCategoryCode of 'win', 'bw', or 'tw',
+ * Retrieves products from the latest completed catalogue cycle,
  * transforms the data into XML format as per Facebook's RSS XML specifications,
  * and returns it as an XML response.
  */
@@ -18,40 +18,36 @@ export async function GET() {
     // Establish a connection to the database
     await connectToDatabase();
 
-    // Define the specificCategoryCodes to filter
-    const specificCategoryCodes = ['win', 'bw', 'tw'];
+    // Get the latest completed catalogue cycle
+    const latestCycle = await CatalogueCycle.findOne({ 
+      status: 'completed' 
+    }).sort({ startedAt: -1 });
 
-    // Fetch SpecificCategory documents matching the specified codes
-    const specificCategories = await SpecificCategory.find({
-      specificCategoryCode: { $in: specificCategoryCodes },
-    }).select('_id'); // Select only the _id field for efficiency
+    if (!latestCycle) {
+      return new NextResponse('No completed catalogue cycle found. Please run the catalogue generation first.', { status: 400 });
+    }
 
-    // Extract the IDs of the matched SpecificCategories
-    const specificCategoryIds = specificCategories.map(cat => cat._id);
+    // Fetch catalogue entries from the latest completed cycle
+    const catalogueEntries = await Catalogue.find({ 
+      cycleId: latestCycle._id,
+      processed: true 
+    }).lean();
 
-    // Fetch Products that belong to the matched SpecificCategories
-    const products = await Product.find({
-      specificCategory: { $in: specificCategoryIds },
-      available: true, // Assuming you only want available products
-    })
-      .populate('specificCategoryVariant') // Populate the specificCategoryVariant field
-      .lean(); // Use lean() for faster Mongoose queries by returning plain JavaScript objects
+    if (catalogueEntries.length === 0) {
+      return new NextResponse('No processed catalogue entries found in the latest cycle.', { status: 400 });
+    }
 
-    // Transform the product data to include only required fields
-    const xmlProducts = products.map(product => ({
-      'g:id': product._id,
-      'g:title': product.title,
-      'g:description': product.specificCategoryVariant && product.specificCategoryVariant.productDescription
-        ? product.specificCategoryVariant.productDescription.replace('{uniqueName}', product.name)
-        : '',
-      'g:availability': 'in stock', // Static value as per requirements
-      'g:condition': 'new',         // Static value as per requirements
-      'g:price': `${product.price} INR`, // Ensure format: number + space + currency code
-      'g:link': `https://www.maddycustom.com/shop${product.pageSlug}`,
-      'g:image_link': product.images[0]
-        ? `https://d26w01jhwuuxpo.cloudfront.net${product.images[0].startsWith('/') ? product.images[0] : '/' + product.images[0]}`
-        : '',
-      'g:brand': 'Maddy Custom', // Static value as per requirements
+    // Transform the catalogue feed data to XML products
+    const xmlProducts = catalogueEntries.map(entry => ({
+      'g:id': entry.feedData.id,
+      'g:title': entry.feedData.title,
+      'g:description': entry.feedData.description,
+      'g:availability': entry.feedData.availability,
+      'g:condition': entry.feedData.condition,
+      'g:price': entry.feedData.price,
+      'g:link': entry.feedData.link,
+      'g:image_link': entry.feedData.image_link,
+      'g:brand': entry.feedData.brand,
     }));
 
     // Build the XML structure using xmlbuilder2
@@ -63,11 +59,11 @@ export async function GET() {
       });
 
     const channel = root.ele('channel');
-    channel.ele('title').txt('My Deal Shop Products');
-    channel.ele('description').txt('Product Feed for Facebook');
-    channel.ele('link').txt('https://www.mydealsshop.foo');
+    channel.ele('title').txt('Maddy Custom Products');
+    channel.ele('description').txt('Product Feed for Facebook from Maddy Custom');
+    channel.ele('link').txt('https://www.maddycustom.com');
     channel.ele('atom:link', {
-      href: 'https://www.mydealsshop.foo/pages/test-feed',
+      href: 'https://www.maddycustom.com/api/meta/pixel-products-xml',
       rel: 'self',
       type: 'application/rss+xml',
     }).up();
@@ -89,6 +85,9 @@ export async function GET() {
       status: 200,
       headers: {
         'Content-Type': 'application/rss+xml',
+        'X-Catalogue-Cycle-ID': latestCycle._id.toString(),
+        'X-Total-Products': xmlProducts.length.toString(),
+        'X-Generated-At': new Date().toISOString(),
         // Removed 'Content-Disposition' to allow direct fetching by Facebook
       },
     });

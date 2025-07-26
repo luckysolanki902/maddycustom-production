@@ -22,6 +22,14 @@ const CatalogueCycleSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // Track any processing errors that occurred during processing
+  processingErrors: [{
+    message: String,
+    timestamp: {
+      type: Date,
+      default: Date.now,
+    },
+  }],
 }, { timestamps: true });
 
 export default mongoose.models.CatalogueCycle ||
