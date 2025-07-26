@@ -33,6 +33,11 @@ const CatalogueSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  // Track if this entry has been synced to Google Merchant
+  googleSynced: {
+    type: Boolean,
+    default: false,
+  },
 }, { timestamps: true });
 
 export default mongoose.models.Catalogue || mongoose.model('Catalogue', CatalogueSchema);
