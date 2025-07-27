@@ -707,15 +707,16 @@ const OrderForm = ({
         disableEscapeKeyDown={isPaymentProcessing}
         PaperProps={{
           sx: {
-            borderRadius: isMobile ? '0' : '24px',
+            borderRadius: isMobile ? '21px' : '20px',
             overflow: 'hidden',
-            height: isMobile ? '100vh' : 'auto',
-            maxHeight: isMobile ? '100vh' : isSmallHeight ? '95vh' : '90vh',
-            margin: isMobile ? 0 : 2,
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            height: 'auto',
+            maxHeight: isSmallHeight ? '95vh' : '90vh',
+            margin: isMobile ? 0 : 1,
+            background: '#ffffff',
+            boxShadow: isMobile ? 'none' : '0 8px 32px rgba(0, 0, 0, 0.1)',
             display: 'flex',
             flexDirection: 'column',
+            fontFamily: 'Jost, sans-serif',
           },
         }}
       >
@@ -726,8 +727,9 @@ const OrderForm = ({
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+            background: '#ffffff',
             flex: 1,
+            fontFamily: 'Jost, sans-serif',
           }}
         >
           {/* Header */}
@@ -736,101 +738,76 @@ const OrderForm = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              p: isMobile ? '12px 16px' : '16px 24px',
-              borderBottom: '1px solid #e0e0e0',
-              background: 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(10px)',
-              position: 'relative',
-              zIndex: 10,
-              minHeight: isMobile ? '56px' : '64px',
+              p: isMobile ? '16px 20px' : '20px 24px',
+              borderBottom: '1px solid #f0f0f0',
+              background: '#ffffff',
               flexShrink: 0,
             }}
           >
             {/* Back Button */}
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <IconButton
+              onClick={handleBackButton}
+              disabled={isPaymentProcessing}
+              sx={{
+                color: '#666',
+                backgroundColor: 'transparent',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                },
+                p: 1,
+              }}
             >
-              <IconButton
-                onClick={handleBackButton}
-                disabled={isPaymentProcessing}
-                sx={{
-                  color: '#000',
-                  backgroundColor: 'rgba(0, 0, 0, 0.05)',
-                  '&:hover': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                  },
-                }}
-              >
-                <ArrowBackIcon />
-              </IconButton>
-            </motion.div>
+              <ArrowBackIcon fontSize="small" />
+            </IconButton>
 
             {/* Progress Indicator */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <Box
                 sx={{
-                  width: 8,
-                  height: 8,
+                  width: 6,
+                  height: 6,
                   borderRadius: '50%',
                   backgroundColor: (tabIndex === 0 && !userExists) ? '#000' : '#e0e0e0',
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
                 }}
-                onClick={() => !userExists && setTabIndex(0)}
               />
               <Box
                 sx={{
-                  width: 8,
-                  height: 8,
+                  width: 6,
+                  height: 6,
                   borderRadius: '50%',
                   backgroundColor: (tabIndex === 1 || (tabIndex === 0 && userExists)) ? '#000' : '#e0e0e0',
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
                 }}
-                onClick={() => setTabIndex(1)}
               />
             </Box>
 
-            {/* Logo (hidden on small height) */}
-            {!isSmallHeight && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                <Image
-                  src={`${baseImageUrl}/assets/logos/md_nothing_else.png`}
-                  alt="MaddyCustom Logo"
-                  width={isMobile ? 32 : 40}
-                  height={isMobile ? 32 : 40}
-                  style={{
-                    opacity: 0.8,
-                    filter: 'brightness(0.7)',
-                  }}
-                />
-              </motion.div>
-            )}
+            {/* Logo */}
+            <Image
+              src={`${baseImageUrl}/assets/logos/md_nothing_else.png`}
+              alt="MaddyCustom Logo"
+              width={isMobile ? 28 : 32}
+              height={isMobile ? 28 : 32}
+              style={{
+                opacity: 0.8,
+              }}
+            />
 
             {/* Close Button */}
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <IconButton
+              onClick={handleFullClose}
+              disabled={isPaymentProcessing}
+              sx={{
+                color: '#666',
+                backgroundColor: 'transparent',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                },
+                p: 1,
+              }}
             >
-              <IconButton
-                onClick={handleFullClose}
-                disabled={isPaymentProcessing}
-                sx={{
-                  color: '#666',
-                  backgroundColor: 'rgba(0, 0, 0, 0.05)',
-                  '&:hover': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                  },
-                }}
-              >
-                <CloseIcon />
-              </IconButton>
-            </motion.div>
+              <CloseIcon fontSize="small" />
+            </IconButton>
           </Box>
 
           {/* Main Content */}
@@ -840,18 +817,17 @@ const OrderForm = ({
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              position: 'relative',
-              minHeight: 0, // Important for flex children to shrink
+              minHeight: 0,
             }}
           >
             <AnimatePresence mode="wait">
               {tabIndex === 0 && (
                 <motion.div
                   key="mobile-auth"
-                  initial={{ opacity: 0, x: -50 }}
+                  initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
                   style={{ 
                     flex: 1, 
                     display: 'flex', 
@@ -860,20 +836,13 @@ const OrderForm = ({
                     overflow: 'hidden'
                   }}
                 >
-                  {console.log('🔄 Rendering MobileAuthForm tab (index 0)', { 
-                    userExists, 
-                    shouldShowContinueButton, 
-                    watchedPhoneNumber,
-                    userDetailsPhone: userDetails?.phoneNumber,
-                    isPhoneNumberSameAsUser
-                  })}
                   <MobileAuthForm
                     control={control}
                     errors={errors}
                     onSubmit={handlePhoneSubmit}
                     isSubmitting={isSubmitting}
-                    userExists={userExists} // Pass actual userExists state
-                    showContinueButton={shouldShowContinueButton} // Add separate prop for continue button
+                    userExists={userExists}
+                    showContinueButton={shouldShowContinueButton}
                     showOtpForm={showOtpForm}
                     setShowOtpForm={setShowOtpForm}
                     otpValue={otpValue}
@@ -884,7 +853,6 @@ const OrderForm = ({
                     resendAllowedAt={resendAllowedAt}
                     onResendOtp={handleResendOtp}
                     isResending={isResending}
-                    // When user exists and phone matches, show continue button
                     onContinue={shouldShowContinueButton ? () => setTabIndex(1) : undefined}
                   />
                 </motion.div>
@@ -893,10 +861,10 @@ const OrderForm = ({
               {tabIndex === 1 && (
                 <motion.div
                   key="address-form"
-                  initial={{ opacity: 0, x: 50 }}
+                  initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 50 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
                   style={{ 
                     flex: 1, 
                     display: 'flex', 
@@ -905,7 +873,6 @@ const OrderForm = ({
                     overflow: 'auto'
                   }}
                 >
-                  {console.log('🔄 Rendering AddressForm tab (index 1 or authenticated user)')}
                   <AddressForm
                     control={control}
                     errors={errors}
@@ -923,73 +890,63 @@ const OrderForm = ({
           {/* Footer */}
           <Box
             sx={{
-              p: isMobile ? '12px 16px 16px' : '16px 24px 20px',
-              borderTop: '1px solid #e0e0e0',
-              background: 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(10px)',
+              p: isMobile ? '16px 20px' : '20px 24px',
+              borderTop: '1px solid #f0f0f0',
+              background: '#ffffff',
               flexShrink: 0,
             }}
           >
             {/* Purchase Button for Address Tab Only */}
             {tabIndex === 1 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <Button
-                  onClick={handleSubmit(handlePurchase)}
-                  disabled={isPaymentProcessing || !isPincodeValid}
-                  variant="contained"
-                  fullWidth
-                  sx={{
-                    height: isMobile ? (isTinyHeight ? '40px' : isVerySmallHeight ? '42px' : '46px') : '50px',
-                    fontSize: isMobile ? (isTinyHeight ? '0.8rem' : isVerySmallHeight ? '0.85rem' : '0.95rem') : '1.05rem',
-                    fontWeight: 600,
-                    fontFamily: 'Orbitron, monospace',
-                    borderRadius: '12px',
-                    background: 'linear-gradient(45deg, #000 30%, #333 90%)',
-                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                    transition: 'all 0.3s ease',
+              <Button
+                onClick={handleSubmit(handlePurchase)}
+                disabled={isPaymentProcessing || !isPincodeValid}
+                variant="contained"
+                fullWidth
+                sx={{
+                  height: isMobile ? '48px' : '52px',
+                  fontSize: '16px',
+                  fontWeight: 500,
+                  fontFamily: 'Jost, sans-serif',
+                  borderRadius: '12px',
+                  backgroundColor: '#000',
+                  color: 'white',
+                  border: 'none',
+                  mb: 2,
+                  textTransform: 'none',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    backgroundColor: '#333',
+                    boxShadow: 'none',
+                  },
+                  '&:disabled': {
+                    backgroundColor: '#ccc',
                     color: 'white',
-                    border: 'none',
-                    mb: 1,
-                    '&:hover': {
-                      background: 'linear-gradient(45deg, #333 30%, #000 90%)',
-                      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)',
-                      transform: 'translateY(-2px)',
-                    },
-                    '&:disabled': {
-                      background: '#ccc',
-                      boxShadow: 'none',
-                      transform: 'none',
-                      color: 'white',
-                    },
-                  }}
-                >
-                  {isPaymentProcessing ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      >
-                        <Box
-                          sx={{
-                            width: 16,
-                            height: 16,
-                            border: '2px solid #fff',
-                            borderTop: '2px solid transparent',
-                            borderRadius: '50%',
-                          }}
-                        />
-                      </motion.div>
-                      Processing...
-                    </Box>
-                  ) : (
-                    `${getPaymentButtonText(paymentModeConfig)} ₹${totalCost.toLocaleString('en-IN')}`
-                  )}
-                </Button>
-              </motion.div>
+                  },
+                }}
+              >
+                {isPaymentProcessing ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box
+                      sx={{
+                        width: 16,
+                        height: 16,
+                        border: '2px solid #fff',
+                        borderTop: '2px solid transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        '@keyframes spin': {
+                          '0%': { transform: 'rotate(0deg)' },
+                          '100%': { transform: 'rotate(360deg)' },
+                        },
+                      }}
+                    />
+                    Processing...
+                  </Box>
+                ) : (
+                  `${getPaymentButtonText(paymentModeConfig)} ₹${totalCost.toLocaleString('en-IN')}`
+                )}
+              </Button>
             )}
 
             {/* Trust Section */}

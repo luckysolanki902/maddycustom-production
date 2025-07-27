@@ -6,9 +6,6 @@ import { motion } from 'framer-motion';
 import { Controller } from 'react-hook-form';
 import theme from '@/styles/theme';
 import indianStates from '@/lib/constants/indianStates';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import HomeIcon from '@mui/icons-material/Home';
-import PinDropIcon from '@mui/icons-material/PinDrop';
 
 const AddressForm = ({ 
   control, 
@@ -73,49 +70,40 @@ const AddressForm = ({
   const createTextFieldSx = (hasIcon = false) => ({
     '& .MuiOutlinedInput-root': {
       fontFamily: 'Jost, sans-serif',
-      fontSize: isTinyHeight ? '0.8rem' : isVerySmallHeight ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-      height: isTinyHeight ? '40px' : isVerySmallHeight ? '42px' : isMobile ? '46px' : '50px',
-      borderRadius: '14px',
+      fontSize: '16px',
+      height: isMobile ? '44px' : '52px',
+      borderRadius: '12px',
       backgroundColor: '#fafbfc',
       border: '1px solid #e8eaed',
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      ...(hasIcon && {
-        paddingLeft: '8px',
-      }),
+      transition: 'all 0.2s ease',
       '&:hover': {
         backgroundColor: '#f8f9fa',
         borderColor: '#dadce0',
-        transform: 'translateY(-1px)',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
       },
       '&.Mui-focused': {
         backgroundColor: '#fff',
         borderColor: '#2d2d2d',
-        boxShadow: '0 0 0 3px rgba(45, 45, 45, 0.1)',
-        transform: 'translateY(-1px)',
+        boxShadow: '0 0 0 2px rgba(45, 45, 45, 0.1)',
       },
       '& .MuiOutlinedInput-notchedOutline': {
         border: 'none',
       },
     },
-    '& .MuiOutlinedInput-notchedOutline': {
-      border: 'none',
-    },
     '& .MuiInputLabel-root': {
       fontFamily: 'Jost, sans-serif',
-      fontSize: isTinyHeight ? '0.75rem' : isVerySmallHeight ? '0.8rem' : isMobile ? '0.85rem' : '0.9rem',
-      fontWeight: 500,
-      color: '#5f6368',
+      fontSize: isMobile ? '15px' : '16px',
+      fontWeight: 400,
+      color: '#666',
       backgroundColor: 'transparent',
       padding: '0 4px',
-      transform: `translate(14px, ${isTinyHeight ? '10px' : isVerySmallHeight ? '12px' : '16px'}) scale(1)`,
+      transform: `translate(14px, ${isMobile ? '14px' : '16px'}) scale(1)`,
       '&.MuiInputLabel-shrink': {
         transform: 'translate(14px, -9px) scale(0.75)',
         backgroundColor: '#fff',
         padding: '0 8px',
         borderRadius: '4px',
         color: '#2d2d2d',
-        fontWeight: 600,
+        fontWeight: 500,
       },
       '&.Mui-focused': {
         color: '#2d2d2d',
@@ -126,7 +114,7 @@ const AddressForm = ({
     },
     '& .MuiFormHelperText-root': {
       fontFamily: 'Jost, sans-serif',
-      fontSize: '0.7rem',
+      fontSize: '13px',
       marginLeft: '4px',
       marginTop: '4px',
     },
@@ -152,18 +140,31 @@ const AddressForm = ({
           display: 'flex',
           flexDirection: 'column',
           height: '100%',
-          // margin: '0 auto',
-          px: isMobile ? 2.5 : 4,
-          py: isTinyHeight ? 1.5 : isVerySmallHeight ? 2 : isMobile ? 2 : 2.5,
+          px: isMobile ? 3 : 4,
+          py: isMobile ? 3 : 4,
           overflow: 'auto',
         }}
       >
+        {/* Simple Subheading */}
+        <Typography
+          sx={{
+            fontFamily: 'Jost, sans-serif',
+            fontSize: '18px',
+            fontWeight: 500,
+            color: '#333',
+            mb: 3,
+            textAlign: 'left',
+          }}
+        >
+          Where should we deliver?
+        </Typography>
+
         {/* Form Fields */}
         <Box
           sx={{
             display: 'flex',
             flexDirection: 'column',
-            gap: isTinyHeight ? 1.2 : isVerySmallHeight ? 1.5 : isMobile ? 2.5 : 3.5,
+            gap: isMobile ? 2.5 : 3,
             flex: 1,
           }}
         >
@@ -185,7 +186,7 @@ const AddressForm = ({
                   ref={flatDetailsRef}
                   fullWidth
                   label="Flat/House Number & Building Name"
-                  placeholder="e.g., 123A, Speed Tower"
+                  placeholder="e.g., 12A, Green Heights Apartment"
                   error={!!errors.flatDetails}
                   helperText={errors.flatDetails?.message}
                   autoFocus
@@ -195,12 +196,7 @@ const AddressForm = ({
                       handleFieldNavigation('flatDetails', addressLine1Ref);
                     }
                   }}
-                  InputProps={{
-                    startAdornment: (
-                      <HomeIcon sx={{ color: '#9ca3af', mr: 1.5, fontSize: 18 }} />
-                    ),
-                  }}
-                  sx={createTextFieldSx(true)}
+                  sx={createTextFieldSx()}
                 />
               )}
             />
@@ -224,7 +220,7 @@ const AddressForm = ({
                   ref={addressLine1Ref}
                   fullWidth
                   label="Area/Sector/Locality"
-                  placeholder="e.g., Sector 62, Speedway Colony"
+                  placeholder="e.g., Andheri West, Bandra"
                   error={!!errors.addressLine1}
                   helperText={errors.addressLine1?.message}
                   onKeyDown={(e) => {
@@ -233,12 +229,7 @@ const AddressForm = ({
                       handleFieldNavigation('addressLine1', cityRef);
                     }
                   }}
-                  InputProps={{
-                    startAdornment: (
-                      <LocationOnIcon sx={{ color: '#9ca3af', mr: 1.5, fontSize: 18 }} />
-                    ),
-                  }}
-                  sx={createTextFieldSx(true)}
+                  sx={createTextFieldSx()}
                 />
               )}
             />
@@ -311,23 +302,20 @@ const AddressForm = ({
                       width: '100%',
                       '& .MuiAutocomplete-inputRoot': {
                         fontFamily: 'Jost, sans-serif',
-                        fontSize: isTinyHeight ? '0.8rem' : isVerySmallHeight ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                        height: isTinyHeight ? '40px' : isVerySmallHeight ? '42px' : isMobile ? '46px' : '50px',
-                        borderRadius: '14px',
+                        fontSize: '16px',
+                        height: isMobile ? '44px' : '52px',
+                        borderRadius: '12px',
                         backgroundColor: '#fafbfc',
                         border: '1px solid #e8eaed',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transition: 'all 0.2s ease',
                         '&:hover': {
                           backgroundColor: '#f8f9fa',
                           borderColor: '#dadce0',
-                          transform: 'translateY(-1px)',
-                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
                         },
                         '&.Mui-focused': {
                           backgroundColor: '#fff',
                           borderColor: '#2d2d2d',
-                          boxShadow: '0 0 0 3px rgba(45, 45, 45, 0.1)',
-                          transform: 'translateY(-1px)',
+                          boxShadow: '0 0 0 2px rgba(45, 45, 45, 0.1)',
                         },
                       },
                       '& .MuiOutlinedInput-notchedOutline': {
@@ -379,64 +367,48 @@ const AddressForm = ({
                         }
                       }}
                       InputProps={{
-                        startAdornment: (
-                          <PinDropIcon sx={{ color: '#9ca3af', mr: 1.5, fontSize: 18 }} />
-                        ),
                         endAdornment: pincodeCheckInProgress ? (
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          >
-                            <Box
-                              sx={{
-                                width: 18,
-                                height: 18,
-                                border: '2px solid #e5e7eb',
-                                borderTop: '2px solid #2d2d2d',
-                                borderRadius: '50%',
-                                mr: 1,
-                              }}
-                            />
-                          </motion.div>
+                          <Box
+                            sx={{
+                              width: 18,
+                              height: 18,
+                              border: '2px solid #e5e7eb',
+                              borderTop: '2px solid #2d2d2d',
+                              borderRadius: '50%',
+                              mr: 1,
+                              animation: 'spin 1s linear infinite',
+                              '@keyframes spin': {
+                                '0%': { transform: 'rotate(0deg)' },
+                                '100%': { transform: 'rotate(360deg)' },
+                              },
+                            }}
+                          />
                         ) : (
                           field.value && field.value.length === 6 && isPincodeValid && (
-                            <motion.div
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                            <Box
+                              sx={{
+                                width: 20,
+                                height: 20,
+                                borderRadius: '50%',
+                                backgroundColor: '#10b981',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                mr: 1,
+                              }}
                             >
-                              <Box
-                                sx={{
-                                  width: 24,
-                                  height: 24,
-                                  borderRadius: '50%',
-                                  backgroundColor: '#2d2d2d',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  mr: 1,
-                                  boxShadow: '0 2px 8px rgba(45, 45, 45, 0.3)',
-                                }}
-                              >
-                                <Typography sx={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>✓</Typography>
-                              </Box>
-                            </motion.div>
+                              <Typography sx={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>✓</Typography>
+                            </Box>
                           )
                         ),
                       }}
+                      sx={createTextFieldSx()}
                       onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                        field.onChange(value);
-                        if (value.length === 6 && validatePincode) {
-                          validatePincode(value);
+                        field.onChange(e);
+                        if (e.target.value.length === 6) {
+                          validatePincode(e.target.value);
                         }
                       }}
-                      inputProps={{
-                        inputMode: 'numeric',
-                        pattern: '[0-9]*',
-                        maxLength: 6,
-                      }}
-                      sx={createTextFieldSx(true)}
                     />
                   )}
                 />

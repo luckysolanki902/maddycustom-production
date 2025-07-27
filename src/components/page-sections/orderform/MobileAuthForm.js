@@ -105,19 +105,15 @@ const MobileAuthForm = ({
           <Typography
             variant={isMobile ? "h5" : "h4"}
             sx={{
-              fontFamily: 'Orbitron, monospace',
-              fontWeight: 700,
+              fontFamily: 'Jost, sans-serif',
+              fontWeight: 600,
               color: '#000',
               textAlign: 'center',
               mb: 0.5,
               fontSize: isTinyHeight ? '0.85rem' : isVerySmallHeight ? '0.95rem' : isSmallHeight ? '1rem' : isMobile ? '1.1rem' : isLargeScreen ? '2rem' : '1.8rem',
-              background: 'linear-gradient(45deg, #000 30%, #333 90%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textShadow: '0 1px 2px rgba(0,0,0,0.1)',
             }}
           >
-            {showOtpForm ? 'Verify Your Number' : 'Transform Your Ride'}
+            {showOtpForm ? 'Verify Your Number' : 'Enter Your Phone Number'}
           </Typography>
           
           <Typography
@@ -334,8 +330,8 @@ const MobileAuthForm = ({
                                     <Typography
                                       variant="body2"
                                       sx={{
-                                        fontFamily: 'Orbitron, monospace',
-                                        fontWeight: 600,
+                                        fontFamily: 'Jost, sans-serif',
+                                        fontWeight: 500,
                                         color: '#2d2d2d',
                                         fontSize: isTinyHeight ? '0.7rem' : isVerySmallHeight ? '0.75rem' : isSmallHeight ? '0.8rem' : '0.9rem'
                                       }}
@@ -411,7 +407,7 @@ const MobileAuthForm = ({
                         py: isTinyHeight ? 0.8 : isVerySmallHeight ? 0.9 : isMobile ? 1.2 : 1.5,
                         borderRadius: '12px',
                         fontSize: isMobile ? '1rem' : '1.1rem',
-                        fontFamily: 'Orbitron, monospace',
+                        fontFamily: 'Jost, sans-serif',
                         fontWeight: 600,
                         textTransform: 'none',
                         letterSpacing: '0.5px',
@@ -482,7 +478,7 @@ const MobileAuthForm = ({
                         '& .MuiOutlinedInput-root': {
                           borderRadius: '12px',
                           fontSize: isMobile ? '1.1rem' : '1.3rem',
-                          fontFamily: 'Orbitron, monospace',
+                          fontFamily: 'Jost, sans-serif',
                           fontWeight: 600,
                           background: 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -503,7 +499,7 @@ const MobileAuthForm = ({
                         '& .MuiOutlinedInput-input': {
                           padding: isTinyHeight ? '8px 16px' : isVerySmallHeight ? '10px 16px' : isSmallHeight ? '12px 16px' : isMobile ? '14px 16px' : '16px 16px',
                           fontSize: isMobile ? '1.1rem' : '1.3rem',
-                          fontFamily: 'Orbitron, monospace',
+                          fontFamily: 'Jost, sans-serif',
                           fontWeight: 600,
                           letterSpacing: '0.3em',
                           textAlign: 'center',
@@ -530,7 +526,7 @@ const MobileAuthForm = ({
                         py: isTinyHeight ? 0.8 : isVerySmallHeight ? 0.9 : isMobile ? 1.2 : 1.5,
                         borderRadius: '12px',
                         fontSize: isMobile ? '1rem' : '1.1rem',
-                        fontFamily: 'Orbitron, monospace',
+                        fontFamily: 'Jost, sans-serif',
                         fontWeight: 600,
                         textTransform: 'none',
                         letterSpacing: '0.5px',
