@@ -10,7 +10,7 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import { NextResponse } from 'next/server';
 
 // Set maximum timeout to 5 minutes for this cron API
-export const maxDuration = 600; // 5 minutes in seconds
+export const maxDuration = 300; // 5 minutes in seconds
 
 export async function GET() {
   const startTime = Date.now();

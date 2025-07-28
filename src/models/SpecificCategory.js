@@ -144,6 +144,23 @@ const SpecificCategorySchema = new mongoose.Schema(
       type: [LetterMappingGroupSchema],
       default: [],
     },
+      // temproary-review-count
+    tempReviewCount: {
+      type: Number,
+      default: 33,
+    },
+    // 
+
+    tempReviewDistribution: {
+      type: Object,
+      default: {
+        1: 0,
+        2: 0,
+        3: 9,
+        4: 11,
+        5: 13
+      }, // e.g., { "3": 0, "4": 0, "5": 0 }
+    },
   },
   { timestamps: true }
 );
