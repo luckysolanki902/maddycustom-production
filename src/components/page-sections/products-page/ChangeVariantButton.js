@@ -68,7 +68,7 @@ export default function ChangeVariantButton({ category }) {
         dispatch(
           setHasSeenVariantPopup({ categoryId: category._id, hasSeen: true })
         );
-      }, 3000);
+      }, 2000);
 
       return () => clearTimeout(timer);
     }

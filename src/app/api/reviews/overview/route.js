@@ -4,6 +4,7 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Review from '@/models/Review';
 import mongoose from 'mongoose';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
+import SpecificCategory from '@/models/SpecificCategory';
 
 const disableFakeAddition = false; // Toggle to disable dummy reviews
 
@@ -27,34 +28,15 @@ export async function GET(request) {
       );
     }
 
-    // Build query to fetch approved reviews based on the review source.
+    // Always fetch real reviews using specificCategoryId (categoryId)
     const approvedQuery = { status: 'approved' };
-    if (fetchReviewSource === 'variant') {
-      if (!variantId) {
-        return NextResponse.json(
-          { message: 'variantId is required for variant overview.' },
-          { status: 400 }
-        );
-      }
-      approvedQuery.specificCategoryVariant = new mongoose.Types.ObjectId(variantId);
-    } else if (fetchReviewSource === 'specCat') {
-      if (!categoryId) {
-        return NextResponse.json(
-          { message: 'categoryId is required for specific category (specCat) overview.' },
-          { status: 400 }
-        );
-      }
-      approvedQuery.specificCategory = new mongoose.Types.ObjectId(categoryId);
-    } else {
-      // 'product'
-      if (!productId) {
-        return NextResponse.json(
-          { message: 'productId is required for product overview.' },
-          { status: 400 }
-        );
-      }
-      approvedQuery.product = new mongoose.Types.ObjectId(productId);
+    if (!categoryId) {
+      return NextResponse.json(
+        { message: 'categoryId (specificCategoryId) is required for reviews.' },
+        { status: 400 }
+      );
     }
+    approvedQuery.specificCategory = new mongoose.Types.ObjectId(categoryId);
 
     // Compute the real star distribution from approved reviews.
     const starAggregation = await Review.aggregate([
@@ -67,34 +49,22 @@ export async function GET(request) {
       },
     ]);
 
-    // Calculate the sum of ratings and total approved review count.
-    let sumRatings = starAggregation.reduce(
-      (acc, curr) => acc + curr._id * curr.count,
-      0
-    );
-    let totalApprovedCount = await Review.countDocuments(approvedQuery);
-
     // Prepare a dummy distribution object (default is empty).
     let dummyDistObj = {};
 
-    // Optionally add dummy stats only for variants.
-    if (!disableFakeAddition && fetchReviewSource === 'variant') {
-      const variantDoc = await SpecificCategoryVariant.findById(variantId);
-      if (variantDoc) {
-        const dummyCount = variantDoc.tempReviewCount || 0;
-        dummyDistObj = variantDoc.tempReviewDistribution || {};
-        totalApprovedCount += dummyCount;
-        // Add dummy ratings to the sum.
-        Object.entries(dummyDistObj).forEach(([starStr, cnt]) => {
-          const star = parseInt(starStr, 10);
-          const count = parseInt(cnt, 10);
-          sumRatings += star * count;
-        });
+    if (!disableFakeAddition) {
+      if (fetchReviewSource === 'variant') {
+        const variantDoc = await SpecificCategoryVariant.findById(variantId);
+        if (variantDoc) {
+          dummyDistObj = variantDoc.tempReviewDistribution || {};
+        }
+      } else if (fetchReviewSource === 'specCat') {
+        const specCatDoc = await SpecificCategory.findById(categoryId);
+        if (specCatDoc) {
+          dummyDistObj = specCatDoc.tempReviewDistribution || {};
+        }
       }
     }
-
-    const averageRating =
-      totalApprovedCount > 0 ? sumRatings / totalApprovedCount : 0;
 
     // Merge the real aggregation with any dummy distribution.
     const finalStarCounts = [5, 4, 3, 2, 1].map((star) => {
@@ -103,12 +73,17 @@ export async function GET(request) {
       return { star, count: realCount + dummyCount };
     });
 
+    // Calculate total count and sum from merged star counts
+    const totalMergedCount = finalStarCounts.reduce((acc, curr) => acc + curr.count, 0);
+    const sumMergedRatings = finalStarCounts.reduce((acc, curr) => acc + curr.star * curr.count, 0);
+    const averageRating = totalMergedCount > 0 ? sumMergedRatings / totalMergedCount : 0;
 
+    // For display, also show the merged count
     return NextResponse.json(
       {
         averageRating,
         starCounts: finalStarCounts,
-        totalApprovedCount,
+        totalApprovedCount: totalMergedCount,
       },
       { status: 200 }
     );

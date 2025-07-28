@@ -5,7 +5,7 @@ import Catalogue from '@/models/meta/Catalogue';
 import CatalogueCycle from '@/models/meta/CatalogueCycle';
 import { NextResponse } from 'next/server';
 import { initializeContentApi } from '@/lib/merchant/googleContentApi';
-export const maxDuration = 600
+export const maxDuration = 300 // 5 minutes in seconds
 export async function GET() {
   try {
     // 1. Connect
