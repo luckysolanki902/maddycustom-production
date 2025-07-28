@@ -14,8 +14,9 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
 // Swiper
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Controller } from "swiper/modules";
+import { Controller, EffectFade, FreeMode } from "swiper/modules";
 import "swiper/css";
+import "swiper/css/effect-fade";
 
 /**
  * Minimal ImageGallery:
@@ -50,10 +51,46 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
     [isFullView]
   );
 
+  // ------------------ Keyboard Navigation ------------------
+  const handleKeyDown = useCallback(
+    (event) => {
+      if (!isFullView) return;
+      
+      if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const newIndex = (currentIndex - 1 + images.length) % images.length;
+        setCurrentIndex(newIndex);
+        if (fullMainSwiperRef.current) {
+          fullMainSwiperRef.current.slideTo(newIndex, 300);
+        }
+        if (fullThumbSwiperRef.current) {
+          fullThumbSwiperRef.current.slideTo(newIndex, 300);
+        }
+      } else if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+        event.preventDefault();
+        const newIndex = (currentIndex + 1) % images.length;
+        setCurrentIndex(newIndex);
+        if (fullMainSwiperRef.current) {
+          fullMainSwiperRef.current.slideTo(newIndex, 300);
+        }
+        if (fullThumbSwiperRef.current) {
+          fullThumbSwiperRef.current.slideTo(newIndex, 300);
+        }
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        handleCloseFullView();
+      }
+    },
+    [isFullView, currentIndex, images.length]
+  );
+
   useEffect(() => {
     if (isFullView) {
       window.history.pushState({ fullView: true }, "");
       window.addEventListener("popstate", handlePopState);
+      window.addEventListener("keydown", handleKeyDown);
+      // Prevent body scroll when in fullscreen
+      document.body.style.overflow = "hidden";
     } else {
       if (window.history.state && window.history.state.fullView) {
         // If the current history state is from this fullscreen,
@@ -61,11 +98,14 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
         window.history.back();
       }
       window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("keydown", handleKeyDown);
     }
     return () => {
       window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "unset";
     };
-  }, [isFullView, handlePopState]);
+  }, [isFullView, handlePopState, handleKeyDown]);
 
   // ------------------ Normal View Logic ------------------
   const handleOpenFullView = (index) => {
@@ -82,12 +122,21 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
   const handleChangeIndexNormal = (newIndex) => {
     setCurrentIndex(newIndex);
 
-    // Slide main and thumb swipers
+    // Slide main and thumb swipers with better sync
     if (normalMainSwiperRef.current) {
       normalMainSwiperRef.current.slideTo(newIndex, 300);
     }
     if (normalThumbSwiperRef.current) {
-      normalThumbSwiperRef.current.slideTo(newIndex, 300);
+      // Center the selected thumbnail in view
+      const thumbSwiper = normalThumbSwiperRef.current;
+      const slides = thumbSwiper.slides;
+      if (slides[newIndex]) {
+        const slideOffset = slides[newIndex].offsetLeft;
+        const swiperWidth = thumbSwiper.width;
+        const slideWidth = slides[newIndex].offsetWidth;
+        const centerOffset = slideOffset - (swiperWidth / 2) + (slideWidth / 2);
+        thumbSwiper.translateTo(-centerOffset, 300);
+      }
     }
   };
 
@@ -96,7 +145,7 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
     setIsFullView(false);
   };
 
-  const handleChangeIndexFull = (newIndex) => {
+  const handleChangeIndexFull = useCallback((newIndex) => {
     setCurrentIndex(newIndex);
 
     // Slide main and thumb swipers in fullscreen
@@ -106,7 +155,7 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
     if (fullThumbSwiperRef.current) {
       fullThumbSwiperRef.current.slideTo(newIndex, 300);
     }
-  };
+  }, []);
 
   // ------------------ Render ------------------
   return (
@@ -121,6 +170,7 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
             modules={[Controller]}
             slidesPerView={1}
             speed={300}
+            allowTouchMove={true}
             className={styles.mainSwiper}
           >
             {images.map((url, index) => (
@@ -142,13 +192,16 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
             ))}
           </Swiper>
 
-          {/* Thumbnails + custom arrow buttons */}
+          {/* Thumbnails */}
           <div className={styles.thumbnailRowContainer}>
             <Swiper
               onSwiper={(swiper) => (normalThumbSwiperRef.current = swiper)}
               slidesPerView="auto"
-              spaceBetween={10}
+              spaceBetween={isSmallDevice ? 8 : 12}
               speed={300}
+              centeredSlides={false}
+              freeMode={true}
+              modules={[FreeMode]}
               className={styles.thumbSwiper}
             >
               {images.map((url, index) => (
@@ -171,27 +224,31 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
               ))}
             </Swiper>
 
-            {/* Next/Prev Buttons (Desktop only) */}
+            {/* Modern Arrow Buttons (PC only) */}
             {!isSmallDevice && images.length > 1 && (
-              <div className={styles.thumbArrowsContainer}>
-                <IconButton
+              <div className={styles.modernArrowContainer}>
+                <button
+                  type="button"
                   onClick={() =>
                     handleChangeIndexNormal(
                       (currentIndex - 1 + images.length) % images.length
                     )
                   }
-                  className={styles.thumbArrowButton}
+                  className={styles.modernArrowButton}
+                  aria-label="Previous image"
                 >
-                  <ArrowBackIosNewIcon sx={{zIndex: 2}}/>
-                </IconButton>
-                <IconButton
+                  <ArrowBackIosNewIcon />
+                </button>
+                <button
+                  type="button"
                   onClick={() =>
                     handleChangeIndexNormal((currentIndex + 1) % images.length)
                   }
-                  className={styles.thumbArrowButton}
+                  className={styles.modernArrowButton}
+                  aria-label="Next image"
                 >
-                  <ArrowForwardIosIcon sx={{zIndex: 2}}/>
-                </IconButton>
+                  <ArrowForwardIosIcon />
+                </button>
               </div>
             )}
           </div>
@@ -209,12 +266,25 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
               aria-label="Close Full View"
               sx={{
                 position: "absolute",
-                top: isSmallDevice ? 10 : 8,
-                [isSmallDevice ? "right" : "left"]: isSmallDevice ? 10 : 6,
+                top: isSmallDevice ? 16 : 20,
+                [isSmallDevice ? "right" : "right"]: isSmallDevice ? 16 : 20,
+                zIndex: 10001,
+                backgroundColor: "rgba(0, 0, 0, 0.7) !important",
+                color: "#fff !important",
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.9) !important",
+                }
               }}
             >
               <CloseIcon />
             </IconButton>
+
+            {/* Navigation Hints */}
+            {!isSmallDevice && (
+              <div className={styles.navigationHints}>
+                <span>Use arrow keys or click thumbnails to navigate • ESC to close</span>
+              </div>
+            )}
 
             <div
               className={
@@ -228,9 +298,11 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                 onSwiper={(swiper) => (fullMainSwiperRef.current = swiper)}
                 onSlideChange={(swiper) => setCurrentIndex(swiper.activeIndex)}
                 slidesPerView={1}
-                speed={300}
+                speed={400}
+                effect="fade"
+                modules={[EffectFade]}
+                allowTouchMove={true}
                 className={styles.fullMainSwiper}
-                
               >
                 {images.map((url, index) => (
                   <SwiperSlide key={`f-main-${index}`}>
@@ -249,42 +321,127 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                 ))}
               </Swiper>
 
+              {/* Navigation Arrows for Main Image */}
+              {images.length > 1 && (
+                <>
+                  <IconButton
+                    className={styles.navArrowLeft}
+                    onClick={() => {
+                      const newIndex = (currentIndex - 1 + images.length) % images.length;
+                      handleChangeIndexFull(newIndex);
+                    }}
+                    sx={{
+                      position: "absolute",
+                      left: isSmallDevice ? 10 : 20,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      zIndex: 10000,
+                      backgroundColor: "rgba(0, 0, 0, 0.6) !important",
+                      color: "#fff !important",
+                      "&:hover": {
+                        backgroundColor: "rgba(0, 0, 0, 0.8) !important",
+                      }
+                    }}
+                  >
+                    <ArrowBackIosNewIcon />
+                  </IconButton>
+                  <IconButton
+                    className={styles.navArrowRight}
+                    onClick={() => {
+                      const newIndex = (currentIndex + 1) % images.length;
+                      handleChangeIndexFull(newIndex);
+                    }}
+                    sx={{
+                      position: "absolute",
+                      right: isSmallDevice ? 10 : !isSmallDevice ? 240 : 20,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      zIndex: 10000,
+                      backgroundColor: "rgba(0, 0, 0, 0.6) !important",
+                      color: "#fff !important",
+                      "&:hover": {
+                        backgroundColor: "rgba(0, 0, 0, 0.8) !important",
+                      }
+                    }}
+                  >
+                    <ArrowForwardIosIcon />
+                  </IconButton>
+                </>
+              )}
+
               {/* Fullscreen Thumbnails */}
-              {!isSmallDevice &&
-                (
-                  // ===== DESKTOP: Thumbs on Right w/ Vertical Arrows =====
-                  <div className={styles.fullThumbColumnContainer}>
-                    <Swiper
-                      onSwiper={(swiper) => (fullThumbSwiperRef.current = swiper)}
-                      slidesPerView="auto"
-                      direction="vertical"
-                      spaceBetween={10}
-                      speed={300}
-                      className={styles.fullThumbSwiperColumn}
-                    >
-                      {images.map((url, idx) => (
-                        <SwiperSlide key={`f-thumb-${idx}`} style={{ height: "auto" }}>
-                          <div
-                            className={`${styles.thumbWrapper} ${currentIndex === idx ? styles.activeThumb : ""
-                              }`}
-                            onClick={() => handleChangeIndexFull(idx)}
-                          >
-                            <Image
-                              src={url}
-                              alt={`full-thumb-${idx}`}
-                              width={180}
-                              height={80}
-                              className={styles.thumbnailImage}
-                              style={{ maxWidth: "100%", height: "auto" }}
-                            />
-                          </div>
-                        </SwiperSlide>
-                      ))}
-                    </Swiper>
-
-
+              {!isSmallDevice ? (
+                // ===== DESKTOP: Improved Thumbs on Right =====
+                <div className={styles.fullThumbColumnContainer}>
+                  <div className={styles.thumbnailHeader}>
+                    <span>{currentIndex + 1} / {images.length}</span>
                   </div>
-                )}
+                  <Swiper
+                    onSwiper={(swiper) => (fullThumbSwiperRef.current = swiper)}
+                    slidesPerView="auto"
+                    direction="vertical"
+                    spaceBetween={12}
+                    speed={300}
+                    centeredSlides={false}
+                    freeMode={true}
+                    modules={[FreeMode]}
+                    className={styles.fullThumbSwiperColumn}
+                  >
+                    {images.map((url, idx) => (
+                      <SwiperSlide key={`f-thumb-${idx}`} style={{ height: "auto" }}>
+                        <div
+                          className={`${styles.thumbWrapper} ${styles.fullThumbWrapper} ${currentIndex === idx ? styles.activeThumb : ""
+                            }`}
+                          onClick={() => handleChangeIndexFull(idx)}
+                        >
+                          <Image
+                            src={url}
+                            alt={`full-thumb-${idx}`}
+                            width={180}
+                            height={80}
+                            className={styles.thumbnailImage}
+                            style={{ maxWidth: "100%", height: "auto" }}
+                          />
+                          {currentIndex === idx && (
+                            <div className={styles.activeIndicator} />
+                          )}
+                        </div>
+                      </SwiperSlide>
+                    ))}
+                  </Swiper>
+                </div>
+              ) : (
+                // ===== MOBILE: Horizontal Thumbs at Bottom =====
+                <div className={styles.fullThumbRowContainer}>
+                  <Swiper
+                    onSwiper={(swiper) => (fullThumbSwiperRef.current = swiper)}
+                    slidesPerView="auto"
+                    spaceBetween={8}
+                    speed={300}
+                    centeredSlides={true}
+                    className={styles.fullThumbSwiperRow}
+                  >
+                    {images.map((url, idx) => (
+                      <SwiperSlide key={`f-thumb-mobile-${idx}`} style={{ width: "auto" }}>
+                        <div
+                          className={`${styles.thumbWrapper} ${currentIndex === idx ? styles.activeThumb : ""
+                            }`}
+                          onClick={() => handleChangeIndexFull(idx)}
+                        >
+                          <Image
+                            src={url}
+                            alt={`full-thumb-mobile-${idx}`}
+                            width={120}
+                            height={60}
+                            className={styles.thumbnailImage}
+                            style={{ maxWidth: "100%", height: "auto" }}
+                          />
+                        </div>
+                      </SwiperSlide>
+                    ))}
+                  </Swiper>
+                </div>
+              )}
             </div>
           </div>
         </div>
