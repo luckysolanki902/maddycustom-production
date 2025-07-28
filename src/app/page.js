@@ -67,9 +67,11 @@ const HomePage = async () => {
         <FlexibleLargePoster
           items={[
             {
-              pcImage: "car_floor_mats_pc.jpg",
-              phoneImage: "car_floor_mats_mobile.jpg",
-              link: "/shop/accessories/car-care/car-floor-mats/universal-car-mats",
+              pcImage: "pc static split banner 1.jpg",
+              phoneImage: "mobile static split banner 1.jpg",
+              link: "/wraps/car-wraps/roof-wraps/suv",
+              pcImage2: "pc static split banner 2.jpg",
+              phoneImage2: "mobile static split banner 2a.jpg",
             },
           ]}
         />

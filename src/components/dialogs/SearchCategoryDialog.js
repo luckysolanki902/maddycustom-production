@@ -287,7 +287,7 @@ export default function SearchCategoryDialog() {
                         <Typography variant="body1" component="span" sx={{ fontFamily: 'Jost' }}>
                           {text}
                         </Typography>
-                        {['keychain', 'fuel', 'pillar', 'bonnet'].some((w) =>
+                        {['fuel', 'pillar', 'bonnet', 'roof'].some((w) =>
                           text.toLowerCase().includes(w)
                         ) && (
                           <Image
