@@ -18,8 +18,9 @@ export default function HeroSection() {
         const images = [
             ...(isEOMPeriod ? [`${baseUrl}/assets/carousels/homepage-main/eom2.png`] : []),
             `${baseUrl}/assets/carousels/homepage-main/first-three-products-banner.jpg`,
-            `${baseUrl}/assets/carousels/homepage-main/mat.jpg`,
+            `${baseUrl}/assets/carousels/homepage-main/roofwrap.jpg`,
             `${baseUrl}/assets/carousels/homepage-main/car-pillar-wraps-shinobi.jpg`,
+            `${baseUrl}/assets/carousels/homepage-main/mat.jpg`,
             `${baseUrl}/assets/carousels/homepage-main/bonnet-strip-wraps-assassin.jpg`,
             `${baseUrl}/assets/carousels/homepage-main/tank-wraps-peace.jpg`
         ];

@@ -31,7 +31,7 @@ export async function GET(req) {
       return {
         id: variant._id,
         name: variant.name,
-        image: firstImage,
+        image: categoryId !== '68873c6d72ae4d82180671e6' ? firstImage : null,
         pageSlug: variant.pageSlug,
         variantInfo: variant.variantInfo,
         variantCode: variant.variantCode,
