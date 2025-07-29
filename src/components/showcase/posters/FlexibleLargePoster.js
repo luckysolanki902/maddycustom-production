@@ -21,11 +21,17 @@ register();
  *   {
  *      pcImage: "somePcImage.jpg",
  *      phoneImage: "somePhoneImage.jpg",
- *      link: "/some-route"
+ *      link: "/some-route",
+ *      // For split mode:
+ *      pcImage2: "somePcImage2.jpg", (optional)
+ *      phoneImage2: "somePhoneImage2.jpg", (optional)
+ *      link1: "/first-route", (optional, defaults to link)
+ *      link2: "/second-route" (optional, defaults to link)
  *   }
  * 
  * For each item, the component displays either the pcImage or the phoneImage
  * based on screen size, wrapped in a <Link> (leading to the item's link).
+ * If split mode (pcImage2/phoneImage2 exists), uses link1 and link2 for separate links.
  */
 export default function FlexibleLargePosterCarousel({ items = [], splitGap = 0 }) {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -41,8 +47,13 @@ export default function FlexibleLargePosterCarousel({ items = [], splitGap = 0 }
       >
         {items.map((item, index) => {
           const hasSplit = (isSmallScreen ? item.phoneImage2 : item.pcImage2);
-          const imageFile1 =item.pcImage;
-          const imageFile2 =  item.pcImage2;
+          const imageFile1 = isSmallScreen ? item.phoneImage : item.pcImage;
+          const imageFile2 = isSmallScreen ? item.phoneImage2 : item.pcImage2;
+          
+          // Determine links for split mode
+          const link1 = item.link1 || item.link;
+          const link2 = item.link2 || item.link;
+          
           if (hasSplit) {
             // Split poster: two images side by side
             return (
@@ -50,31 +61,59 @@ export default function FlexibleLargePosterCarousel({ items = [], splitGap = 0 }
                 <div
                   style={{
                     display: "flex",
-                    gap: splitGap,
                     width: "100%",
-                    maxWidth: "100%",
+                    height: "auto",
+                    gap: splitGap,
                   }}
                 >
-                  <Link href={item.link} style={{ flex: 1, maxWidth: "50%", display: "block" }}>
-                    <Image
-                      src={`${baseImageUrl}/assets/posters/${imageFile1}`}
-                      alt={`poster-image1-${index}`}
-                      width={621}
-                      height={547}
-                      style={{ width: "100%", height: "auto", objectFit: "cover" }}
-                      priority={index === 0 ? true : false}
-                    />
-                  </Link>
-                  <Link href={item.link2 || item.link} style={{ flex: 1, maxWidth: "50%", display: "block" }}>
-                    <Image
-                      src={`${baseImageUrl}/assets/posters/${imageFile2}`}
-                      alt={`poster-image2-${index}`}
-                      width={621}
-                      height={547}
-                      style={{ width: "100%", height: "auto", objectFit: "cover" }}
-                      priority={index === 0 ? true : false}
-                    />
-                  </Link>
+                  <div style={{ 
+                    flex: 1, 
+                    width: "50%", 
+                    padding: isSmallScreen ? "4px" : "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}>
+                    <Link href={link1} style={{ display: "block", width: "100%" }}>
+                      <Image
+                        src={`${baseImageUrl}/assets/posters/${imageFile1}`}
+                        alt={`poster-image1-${index}`}
+                        width={621}
+                        height={547}
+                        style={{ 
+                          width: "100%", 
+                          height: "auto", 
+                          objectFit: "contain",
+                          borderRadius: isSmallScreen ? "8px" : "12px"
+                        }}
+                        priority={index === 0 ? true : false}
+                      />
+                    </Link>
+                  </div>
+                  <div style={{ 
+                    flex: 1, 
+                    width: "50%", 
+                    padding: isSmallScreen ? "8px" : "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}>
+                    <Link href={link2} style={{ display: "block", width: "100%" }}>
+                      <Image
+                        src={`${baseImageUrl}/assets/posters/${imageFile2}`}
+                        alt={`poster-image2-${index}`}
+                        width={621}
+                        height={547}
+                        style={{ 
+                          width: "100%", 
+                          height: "auto", 
+                          objectFit: "contain",
+                          borderRadius: isSmallScreen ? "8px" : "12px"
+                        }}
+                        priority={index === 0 ? true : false}
+                      />
+                    </Link>
+                  </div>
                 </div>
               </SwiperSlide>
             );
