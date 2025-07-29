@@ -69,7 +69,8 @@ const HomePage = async () => {
             {
               pcImage: "pc static split banner 1.jpg",
               phoneImage: "mobile static split banner 1.jpg",
-              link: "/wraps/car-wraps/roof-wraps/suv",
+              link1: "/shop/accessories/car-care/car-floor-mats/universal-car-mats",
+              link2: "/shop/wraps/car-wraps/roof-wraps/suv",
               pcImage2: "pc static split banner 2.jpg",
               phoneImage2: "mobile static split banner 2a.jpg",
             },
