@@ -1,6 +1,9 @@
 import React from 'react';
 import { createMetadata } from '@/lib/metadata/create-metadata';
-import { Container, Typography, Paper, Box, Divider, Grid } from '@mui/material';
+import { Container, Typography, Paper, Box, Divider, Grid, Card, Chip, Stack } from '@mui/material';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import SecurityIcon from '@mui/icons-material/Security';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 export async function generateMetadata() {
     return createMetadata({
@@ -9,63 +12,101 @@ export async function generateMetadata() {
     });
 }
 
-const Section = ({ title, children }) => {
+const Section = ({ title, children, icon }) => {
   return (
-    <Paper 
+    <Card 
       elevation={0} 
       sx={{ 
-        my: { xs: 3, md: 4 }, 
-        p: { xs: 2, sm: 3 }, 
-        backgroundColor: '#333333',
-        borderLeft: '4px solid #4a4a4a',
-        borderRadius: '2px',
-        transition: 'transform 0.2s ease-in-out',
+        my: { xs: 2, md: 3 }, 
+        p: { xs: 3, sm: 4 }, 
+        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '16px',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(10px)',
         '&:hover': {
-          transform: { xs: 'none', md: 'translateX(5px)' }
+          transform: 'translateY(-4px)',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
         }
       }}
     >
-      <Typography 
-        variant="h5" 
-        component="h2" 
-        sx={{ 
-          mb: 2, 
-          fontWeight: 600, 
-          color: '#f5f5f5',
-          borderBottom: '1px solid #4a4a4a',
-          pb: 1,
-          display: 'inline-block',
-          fontSize: { xs: '1.25rem', sm: '1.5rem' }
-        }}
-      >
-        {title}
-      </Typography>
+      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
+        {icon && (
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: '12px',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff'
+            }}
+          >
+            {icon}
+          </Box>
+        )}
+        <Typography 
+          variant="h5" 
+          component="h2" 
+          sx={{ 
+            fontWeight: 700, 
+            color: '#ffffff',
+            fontSize: { xs: '1.25rem', sm: '1.5rem' },
+            letterSpacing: '-0.025em'
+          }}
+        >
+          {title}
+        </Typography>
+      </Stack>
       {children}
-    </Paper>
+    </Card>
   );
 };
 
 const NumberedItem = ({ number, text }) => {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
-      <Typography 
-        variant="h6" 
-        component="span" 
-        sx={{ 
-          color: '#a0a0a0', 
-          fontWeight: 700, 
-          mr: { xs: 1, sm: 2 },
-          fontSize: { xs: '1rem', sm: '1.1rem' }
+    <Box sx={{ 
+      display: 'flex', 
+      alignItems: 'flex-start', 
+      mb: 2.5,
+      '&:last-child': { mb: 0 }
+    }}>
+      <Box
+        sx={{
+          width: 32,
+          height: 32,
+          borderRadius: '50%',
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          mr: 2,
+          flexShrink: 0,
+          mt: 0.25
         }}
       >
-        {number}
-      </Typography>
+        <Typography 
+          variant="body2"
+          sx={{ 
+            color: '#ffffff', 
+            fontWeight: 700,
+            fontSize: '0.875rem'
+          }}
+        >
+          {number}
+        </Typography>
+      </Box>
       <Typography 
         variant="body1" 
         sx={{ 
-          color: '#e0e0e0',
-          fontSize: { xs: '0.9rem', sm: '1rem' },
-          fontWeight: 400
+          color: 'rgba(255, 255, 255, 0.85)',
+          fontSize: { xs: '0.95rem', sm: '1rem' },
+          fontWeight: 400,
+          lineHeight: 1.7,
+          flex: 1
         }}
       >
         {text}
@@ -76,92 +117,170 @@ const NumberedItem = ({ number, text }) => {
 
 const TermsAndConditionsPage = () => {
   return (
-    <Box sx={{ backgroundColor: '#2d2d2d', minHeight: '100vh', py: { xs: 4, sm: 6 } }}>
-      <Container maxWidth="md" sx={{ px: { xs: 2, sm: 3, md: 4 } }}>
+    <Box sx={{ 
+      background: 'linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%)',
+      minHeight: '100vh', 
+      py: { xs: 6, sm: 8 } 
+    }}>
+      <Container maxWidth="lg" sx={{ px: { xs: 3, sm: 4, md: 6 } }}>
         {/* Header */}
-        <Box sx={{ mb: { xs: 4, sm: 6 }, textAlign: 'center' }}>
+        <Box sx={{ mb: { xs: 6, sm: 8 }, textAlign: 'center' }}>
           <Typography 
-            variant="h2" 
+            variant="h1" 
             component="h1" 
             sx={{ 
-              fontWeight: 800, 
+              fontWeight: 900, 
               color: '#ffffff',
-              letterSpacing: '0.5px',
-              mb: 2,
-              fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }
+              letterSpacing: '-0.05em',
+              mb: 3,
+              fontSize: { xs: '2.5rem', sm: '3.5rem', md: '4rem' },
+              background: 'linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.7) 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              lineHeight: 1.1
             }}
           >
             Refund & Replacement Policy
           </Typography>
-          <Divider sx={{ backgroundColor: '#4a4a4a', height: '2px', width: '80px', mx: 'auto', mb: { xs: 3, sm: 4 } }} />
+          
+          {/* Delivery Highlight */}
+          <Box sx={{ mb: 4 }}>
+            <Chip
+              icon={<LocalShippingIcon />}
+              label="✨ 7 Days Fast Delivery"
+              sx={{
+                backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                color: '#22c55e',
+                border: '1px solid rgba(34, 197, 94, 0.3)',
+                fontWeight: 600,
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                py: 2,
+                px: 1,
+                height: 'auto',
+                '& .MuiChip-icon': {
+                  color: '#22c55e'
+                }
+              }}
+            />
+          </Box>
+          
           <Typography 
-            variant="subtitle1" 
+            variant="h6" 
             sx={{ 
-              color: '#b0b0b0', 
+              color: 'rgba(255, 255, 255, 0.7)', 
               fontWeight: 400,
-              fontSize: { xs: '0.95rem', sm: '1.1rem' },
-              maxWidth: '700px',
+              fontSize: { xs: '1rem', sm: '1.125rem' },
+              maxWidth: '800px',
               mx: 'auto',
               lineHeight: 1.6,
-              px: { xs: 1, sm: 0 }
+              px: { xs: 2, sm: 0 }
             }}
           >
-            At MaddyCustom, we strive to deliver high-quality products and a seamless customer experience. 
-            {/* While we do not offer refunds, we are happy to assist you with replacements under the following conditions: */}
+            At MaddyCustom, we strive to deliver high-quality products and a seamless customer experience.
+            Your satisfaction is our priority.
           </Typography>
         </Box>
 
+        {/* Fast Delivery Feature Card */}
+        <Card 
+          elevation={0}
+          sx={{
+            mb: { xs: 4, sm: 6 },
+            p: { xs: 3, sm: 4 },
+            background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)',
+            border: '1px solid rgba(34, 197, 94, 0.2)',
+            borderRadius: '20px',
+            textAlign: 'center'
+          }}
+        >
+          <LocalShippingIcon sx={{ fontSize: 48, color: '#22c55e', mb: 2 }} />
+          <Typography 
+            variant="h4" 
+            sx={{ 
+              fontWeight: 800, 
+              color: '#22c55e', 
+              mb: 1,
+              fontSize: { xs: '1.5rem', sm: '2rem' }
+            }}
+          >
+            7 Days Fast Delivery
+          </Typography>
+          <Typography 
+            variant="body1" 
+            sx={{ 
+              color: 'rgba(255, 255, 255, 0.8)',
+              fontSize: { xs: '1rem', sm: '1.125rem' },
+              maxWidth: '600px',
+              mx: 'auto',
+              lineHeight: 1.6
+            }}
+          >
+            Experience lightning-fast delivery with our commitment to get your custom products to you within 7 days. 
+            Quality meets speed at MaddyCustom.
+          </Typography>
+        </Card>
+
         {/* Policy Sections */}
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <Section title="Damaged Product">
-              <Box sx={{ pl: { xs: 0.5, sm: 1 } }}>
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+          <Grid item xs={12} md={6}>
+            <Section 
+              title="Damaged Product Protection" 
+              icon={<SecurityIcon />}
+            >
+              <Box>
                 <NumberedItem 
-                  number="01." 
-                  text="If your order arrives damaged, we will replace it at no additional cost." 
+                  number="1" 
+                  text="If your order arrives damaged, we will replace it at no additional cost to you." 
                 />
                 <NumberedItem 
-                  number="02." 
+                  number="2" 
                   text="Please report the issue within 48 hours of delivery along with clear photos of the damaged product and packaging." 
                 />
                 <NumberedItem 
-                  number="03." 
-                  text="Once verified, we will dispatch a replacement promptly." 
+                  number="3" 
+                  text="Once verified by our quality team, we will dispatch a replacement promptly within 2-3 business days." 
                 />
               </Box>
             </Section>
           </Grid>
           
-          <Grid item xs={12}>
-            <Section title="Size Mismatch">
-              <Box sx={{ pl: { xs: 0.5, sm: 1 } }}>
+          <Grid item xs={12} md={6}>
+            <Section 
+              title="Size Mismatch Policy" 
+              icon={<SwapHorizIcon />}
+            >
+              <Box>
                 <NumberedItem 
-                  number="01." 
-                  text="In case you receive a product with an incorrect size, we offer a replacement." 
+                  number="1" 
+                  text="In case you receive a product with an incorrect size, we offer a hassle-free replacement." 
                 />
                 <NumberedItem 
-                  number="02." 
+                  number="2" 
                   text={
-                    <Box component="span" sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap' }}>
-                      A reshipping charge of 
+                    <Box component="span">
+                      A minimal reshipping charge of{' '}
                       <Typography 
                         component="span" 
                         sx={{ 
-                          px: 1, 
-                          color: '#ffffff', 
+                          color: '#22c55e', 
                           fontWeight: 700, 
-                          fontSize: { xs: '0.95rem', sm: '1.05rem' }
+                          fontSize: { xs: '1rem', sm: '1.125rem' },
+                          backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                          px: 1,
+                          py: 0.25,
+                          borderRadius: '4px'
                         }}
                       >
                         ₹100
-                      </Typography> 
-                      will apply.
+                      </Typography>{' '}
+                      will apply to cover logistics.
                     </Box>
                   } 
                 />
                 <NumberedItem 
-                  number="03." 
-                  text="Requests must be made within 3 days of delivery, and the original product must be returned in unused condition." 
+                  number="3" 
+                  text="Requests must be made within 3 days of delivery, and the original product must be returned in unused, pristine condition." 
                 />
               </Box>
             </Section>
@@ -169,38 +288,55 @@ const TermsAndConditionsPage = () => {
         </Grid>
         
         {/* Contact Information */}
-        <Paper 
+        <Card 
           elevation={0} 
           sx={{ 
-            backgroundColor: '#3a3a3a',
-            p: { xs: 2, sm: 3 }, 
-            mt: 2,
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            p: { xs: 3, sm: 4 }, 
+            mt: { xs: 4, sm: 6 },
             textAlign: 'center',
-            borderRadius: '2px'
+            borderRadius: '16px'
           }}
         >
           <Typography 
-            variant="body1" 
+            variant="h6" 
             sx={{ 
-              color: '#d0d0d0',
-              fontSize: { xs: '0.95rem', sm: '1.05rem' }
+              color: '#ffffff',
+              fontSize: { xs: '1.125rem', sm: '1.25rem' },
+              fontWeight: 600,
+              mb: 1
             }}
           >
-            For any concerns or claims, contact us. We&apos;re here to help!
+            Need Help?
           </Typography>
-        </Paper>
+          <Typography 
+            variant="body1" 
+            sx={{ 
+              color: 'rgba(255, 255, 255, 0.8)',
+              fontSize: { xs: '1rem', sm: '1.125rem' },
+              lineHeight: 1.6
+            }}
+          >
+            For any concerns or claims, contact us immediately. We&apos;re here to help make things right!
+          </Typography>
+        </Card>
 
         {/* Brand Tagline */}
-        <Box sx={{ mt: { xs: 4, sm: 6 }, textAlign: 'center' }}>
+        <Box sx={{ mt: { xs: 6, sm: 8 }, textAlign: 'center' }}>
           <Typography 
-            variant="h4" 
+            variant="h3" 
             sx={{ 
-              fontWeight: 800, 
+              fontWeight: 900, 
               fontStyle: 'italic',
-              color: '#a0a0a0',
-              letterSpacing: '1px',
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.4) 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '2px',
               textTransform: 'uppercase',
-              fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+              fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' },
+              lineHeight: 1.2
             }}
           >
             #OwnUniqueness
