@@ -4,18 +4,38 @@ export default async function sitemap() {
   
     const baseUrl = 'https://www.maddycustom.com';
   
-    // Core pages of your site
-    const staticRoutes = [
+    // 1. Home page - highest priority at the top
+    const homeRoute = [
       {
         url: `${baseUrl}/`,
         lastModified: new Date(),
-        changeFrequency: 'yearly',
+        changeFrequency: 'daily',
         priority: 1,
+      },
+    ];
+
+    // 2. Dynamic variant pages with proper lastModified dates - sorted by latest first
+    const variantRoutes = variants
+      .sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified))
+      .map((variant) => ({
+        url: `${baseUrl}/shop${variant.pageSlug}`,
+        lastModified: new Date(variant.lastModified),
+        changeFrequency: 'weekly',
+        priority: 0.9,
+      }));
+
+    // 3. Other static pages - ordered by importance
+    const otherStaticRoutes = [
+      {
+        url: `${baseUrl}/shop`,
+        lastModified: new Date(),
+        changeFrequency: 'daily',
+        priority: 0.85,
       },
       {
         url: `${baseUrl}/orders/track`,
         lastModified: new Date(),
-        changeFrequency: 'monthly',
+        changeFrequency: 'weekly',
         priority: 0.7,
       },
       {
@@ -25,28 +45,36 @@ export default async function sitemap() {
         priority: 0.6,
       },
       {
-        url: `${baseUrl}/termsandconditions`,
+        url: `${baseUrl}/contact-us`,
         lastModified: new Date(),
         changeFrequency: 'monthly',
         priority: 0.6,
       },
+      {
+        url: `${baseUrl}/faqs`,
+        lastModified: new Date(),
+        changeFrequency: 'monthly',
+        priority: 0.5,
+      },
+      {
+        url: `${baseUrl}/termsandconditions`,
+        lastModified: new Date(),
+        changeFrequency: 'monthly',
+        priority: 0.4,
+      },
     ];
   
-    // Dynamic product and variant pages
-    const productRoutes = products.map((product) => ({
-      url: `${baseUrl}/shop${product.pageSlug}`,
-      lastModified: new Date(),  // Use the current date for lastModified
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    }));
+    // 4. Dynamic product pages with proper lastModified dates - sorted by latest first
+    const productRoutes = products
+      .sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified))
+      .map((product) => ({
+        url: `${baseUrl}/shop${product.pageSlug}`,
+        lastModified: new Date(product.lastModified),
+        changeFrequency: 'weekly',
+        priority: 0.8,
+      }));
   
-    const variantRoutes = variants.map((variant) => ({
-      url: `${baseUrl}/shop${variant.pageSlug}`,
-      lastModified: new Date(),  // Use the current date for lastModified
-      changeFrequency: 'daily',
-      priority: 0.9,
-    }));
-  
-    return [...staticRoutes, ...productRoutes, ...variantRoutes];
+    // Return in the specified order: home > variant routes > other static routes > product routes
+    return [...homeRoute, ...variantRoutes, ...otherStaticRoutes, ...productRoutes];
   }
   

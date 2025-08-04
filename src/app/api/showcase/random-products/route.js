@@ -23,10 +23,13 @@ export async function GET(request) {
 
   try {
     // Find the specific category using its unique code
-    const specificCategory = await SpecificCategory.findOne({ specificCategoryCode: categoryCode });
+    const specificCategory = await SpecificCategory.findOne({ 
+      specificCategoryCode: categoryCode,
+      available: true 
+    });
     if (!specificCategory) {
       return NextResponse.json(
-        { message: "Category not found." },
+        { message: "Category not found or not available." },
         { status: 404 }
       );
     }

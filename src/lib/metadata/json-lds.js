@@ -12,7 +12,11 @@ export function generateProductSchema({ product, currency = 'INR' }) {
       sku: product.sku,
       brand: {
         '@type': 'Brand',
-        name: 'Maddy Custom',
+        name: 'MaddyCustom',
+      },
+      manufacturer: {
+        '@type': 'Organization',
+        name: 'MaddyCustom',
       },
       offers: {
         '@type': 'Offer',
@@ -21,7 +25,12 @@ export function generateProductSchema({ product, currency = 'INR' }) {
         price: product.price,
         itemCondition: 'https://schema.org/NewCondition',
         availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        seller: {
+          '@type': 'Organization',
+          name: 'MaddyCustom',
+        },
       },
+      category: 'Vehicle Accessories',
     };
   }
   
@@ -32,17 +41,23 @@ export function generateProductSchema({ product, currency = 'INR' }) {
     return {
       '@context': 'https://schema.org',
       '@type': 'WebSite',
-      name: 'Maddy Custom',
+      name: 'MaddyCustom',
+      alternateName: 'Maddy Custom',
       url: 'https://www.maddycustom.com',
       description: mainDescription,
       publisher: {
         '@type': 'Organization',
-        name: 'Maddy Custom',
+        name: 'MaddyCustom',
         logo: {
           '@type': 'ImageObject',
-          url: `/images/metadata/500500.png`,
+          url: 'https://www.maddycustom.com/images/metadata/500500.png',
         },
       },
+      // potentialAction: {
+      //   '@type': 'SearchAction',
+      //   target: 'https://www.maddycustom.com/shop?search={search_term_string}',
+      //   'query-input': 'required name=search_term_string',
+      // },
     };
 }
 
@@ -51,19 +66,37 @@ export function generateProductSchema({ product, currency = 'INR' }) {
     return {
       '@context': 'https://schema.org',
       '@type': 'Organization',
-      name: 'Maddy Custom',
+      name: 'MaddyCustom',
+      alternateName: 'Maddy Custom',
       url: 'https://www.maddycustom.com',
-      logo: `/images/metadata/500500.png`,
+      logo: 'https://www.maddycustom.com/images/metadata/500500.png',
       description: mainDescription,
+      foundingDate: '2020',
+      founder: {
+        '@type': 'Person',
+        name: 'Harshit Yadav',
+      },
+      areaServed: {
+        '@type': 'Country',
+        name: 'India',
+      },
+      serviceType: [
+        'Vehicle Customization',
+        'Car Wraps',
+        'Bike Wraps',
+        'Vehicle Accessories',
+        'Car Accessories',
+        'Bike Accessories'
+      ],
       sameAs: [
-        // 'https://www.facebook.com/maddycustom',
         'https://www.instagram.com/maddycustom',
-        // 'https://www.twitter.com/maddycustom',
       ],
       contactPoint: {
         '@type': 'ContactPoint',
         telephone: '+91-8112673988',
-        contactType: 'Founder',
+        contactType: 'Customer Service',
+        areaServed: 'IN',
+        availableLanguage: ['English', 'Hindi'],
       },
     };
   }

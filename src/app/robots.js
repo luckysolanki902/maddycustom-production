@@ -7,9 +7,28 @@ export default function robots() {
           disallow: [
             '/api/',  
             '/order/myorders/',
+            '/user/',
+            '/my-garage/',
+            '/viewcart/',
             '/error',
             '/not-found',
-            '/bike/'
+            '/test/',
+            '/private/',
+            '/*?*utm_*',
+            '/*?*session*',
+            '/*?*sid=*',
+          ],
+        },
+        {
+          userAgent: 'Googlebot',
+          allow: '/',
+          disallow: [
+            '/api/',  
+            '/order/myorders/',
+            '/user/',
+            '/my-garage/',
+            '/viewcart/',
+            '/private/',
           ],
         },
       ],
@@ -18,6 +37,7 @@ export default function robots() {
         'https://www.maddycustom.com/seo/sitemaps/video-sitemap.xml',
         'https://www.maddycustom.com/seo/sitemaps/image-sitemap.xml',
       ],
+      host: 'https://www.maddycustom.com',
     };
   }
   
