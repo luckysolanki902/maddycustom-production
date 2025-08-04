@@ -23,7 +23,7 @@ import KeychainImageGrid from '@/components/page-sections/homepage/KeychainImage
 
 export async function generateMetadata() {
   return createMetadata({
-    title: "MaddyCustom - India's Leading Vehicle Personalization Experts",
+    title: "MaddyCustom - India's Leading Vehicle Personalization & Custom Car/Bike Wraps Experts",
     canonical: 'https://www.maddycustom.com',
   });
 }
