@@ -18,7 +18,7 @@
     },
     {
       "path": "/api/google/merchant/sync-products",
-      "schedule": "0 2,10,18 * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }

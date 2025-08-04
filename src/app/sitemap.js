@@ -1,6 +1,63 @@
+import connectToDatabase from '@/lib/middleware/connectToDb';
+import Product from '@/models/Product';
+import SpecificCategory from '@/models/SpecificCategory';
+import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
+
 export default async function sitemap() {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/seo/sitemap-data`);
-    const { products, variants } = await response.json();
+    let products = [];
+    let variants = [];
+
+    try {
+        // Connect to database directly during build
+        await connectToDatabase();
+
+        // Fetch products with availability filtering
+        const productsData = await Product.find(
+            { available: true },
+            { pageSlug: 1, updatedAt: 1, specificCategory: 1, specificCategoryVariant: 1 }
+        )
+        .populate({
+            path: 'specificCategory',
+            select: 'available',
+            match: { available: true }
+        })
+        .populate({
+            path: 'specificCategoryVariant', 
+            select: 'available pageSlug updatedAt',
+            match: { available: true }
+        })
+        .lean()
+        .exec();
+
+        // Filter products where all entities are available
+        const availableProducts = productsData.filter(product => {
+            if (!product.specificCategory || product.specificCategory.available !== true) {
+                return false;
+            }
+            if (product.specificCategoryVariant && product.specificCategoryVariant.available !== true) {
+                return false;
+            }
+            return true;
+        });
+
+        // Prepare products array
+        products = availableProducts.map(product => ({
+            pageSlug: product.pageSlug,
+            lastModified: product.updatedAt
+        }));
+
+        // Prepare variants array 
+        variants = availableProducts
+            .filter(product => product.specificCategoryVariant && product.specificCategoryVariant.pageSlug)
+            .map(product => ({
+                pageSlug: product.specificCategoryVariant.pageSlug,
+                lastModified: product.specificCategoryVariant.updatedAt || product.updatedAt
+            }));
+
+    } catch (error) {
+        console.error('Error fetching sitemap data:', error);
+        // Fallback to empty arrays if database connection fails during build
+    }
   
     const baseUrl = 'https://www.maddycustom.com';
   
