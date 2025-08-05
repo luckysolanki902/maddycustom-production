@@ -82,7 +82,6 @@ export async function GET() {
         existingValidUntil.getMonth() === endOfMonth.getMonth() &&
         existingValidUntil.getDate() === endOfMonth.getDate()
       ) {
-        console.log(`EOM offer is already active for this month. Valid until: ${existingOffer.validUntil.toISOString()}`);
         
         return NextResponse.json({
           message: "End of Month offer is already active for this month",
@@ -95,7 +94,6 @@ export async function GET() {
     }
     
     // If we reach here, the offer needs to be activated for this month
-    console.log(`Activating EOM offer from ${now.toISOString()} until ${endOfMonth.toISOString()}`);
     
     // Calculate days remaining in month for discount validity
     const daysRemaining = daysUntilEndOfMonth + 1; // +1 because we include the current day
@@ -117,7 +115,6 @@ export async function GET() {
       );
 
       // Format dates for the log
-      console.log(`EOM offer activated successfully. Valid from ${result.validFrom.toISOString()} to ${result.validUntil.toISOString()}`);
 
       // Return success response
       return NextResponse.json({

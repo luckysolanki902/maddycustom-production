@@ -267,7 +267,6 @@ export default function ProductsPage({
 
   // Improved product distribution logic with complete row calculation
   const [firstHalf, secondHalf] = useMemo(() => {
-    console.log({currentProducts})
     if (!SHOW_TOP_BOUGHT || currentPage !== 1) return [currentProducts, []];
     
     const columnsPerRow = getColumnsPerRow();

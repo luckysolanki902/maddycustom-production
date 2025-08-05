@@ -38,11 +38,9 @@ export async function GET(request) {
       endOfMonth.setTime(now.getTime() + (forceDays * 24 * 60 * 60 * 1000));
     }
     
-    console.log(`TEST API: Force activating EOM offer from ${now.toISOString()} until ${endOfMonth.toISOString()}`);
     
     // If reset flag is true, deactivate before activating
     if (forceReset) {
-      console.log("TEST API: Resetting offer state before activation");
       await Offer.findByIdAndUpdate(
         offerId,
         { isActive: false },
@@ -80,7 +78,6 @@ export async function GET(request) {
       );
 
       // Format dates for the log
-      console.log(`TEST API: EOM offer activated successfully. Valid from ${result.validFrom.toISOString()} to ${result.validUntil.toISOString()}`);
 
       // Return success response
       return NextResponse.json({
@@ -96,7 +93,6 @@ export async function GET(request) {
       
       // Try with a workaround for the validation issue
       if (validationError.message.includes("validUntil must be after validFrom")) {
-        console.log("TEST API: Trying workaround for validation error...");
         
         // First update with validFrom null
         await Offer.findByIdAndUpdate(

@@ -40,7 +40,6 @@ const FacebookPageViewTracker = () => {
           event_source_url: currentUrl,
         });
 
-        console.log('PageView tracked to Conversion API for:', currentUrl);
       } catch (error) {
         console.error('Error tracking PageView:', error);
       }

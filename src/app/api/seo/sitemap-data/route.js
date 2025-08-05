@@ -46,7 +46,7 @@ export async function GET() {
       variant.specificCategory && variant.specificCategory.available === true
     );
 
-    console.log(`Found ${filteredProducts.length} available products and ${filteredVariants.length} available variants`);
+    console.info(`Found ${filteredProducts.length} available products and ${filteredVariants.length} available variants`);
 
     return NextResponse.json({
       products: filteredProducts.map(({ pageSlug, updatedAt }) => ({

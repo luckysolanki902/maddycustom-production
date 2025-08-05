@@ -43,7 +43,6 @@ const FacebookClickIdHandler = () => {
             // Also set fbc for backward compatibility
             document.cookie = `fbc=${fbc}; path=/; max-age=7776000; SameSite=Lax`; // 90 days
             
-            console.log('Facebook Click ID captured and stored:', fbc);
           }
           
           // DO NOT remove fbclid from URL - keep it for subsequent page views

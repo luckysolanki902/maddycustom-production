@@ -38,7 +38,6 @@ export async function GET() {
       });
     }
     
-    console.log(`Today is the last day of the month (${lastDayOfMonth}). Deactivating EOM offer.`);
     
     // Get the current offer to check if it's already deactivated
     const currentOffer = await Offer.findById(offerId);
@@ -70,7 +69,6 @@ export async function GET() {
     );
 
     // Log deactivation for monitoring
-    console.log(`EOM offer deactivated successfully at ${now.toISOString()}`);
 
     // Return success response
     return NextResponse.json({
