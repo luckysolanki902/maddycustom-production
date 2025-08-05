@@ -496,7 +496,7 @@ export default function ProductsPage({
           )}
           
           {/* Extra ribbon of TopBoughtProducts for 'win' variant */}
-          {stableVariantCode === 'win' && (
+          {/* {stableVariantCode === 'win' && (
             <StableTopBought 
               singleVariantCode="ucmat" 
               containerStyle={{ 
@@ -506,7 +506,7 @@ export default function ProductsPage({
                 backgroundColor: '#f9f9f9'
               }}
             />
-          )}
+          )} */}
 
           <ScrollToTop />
         </div>
