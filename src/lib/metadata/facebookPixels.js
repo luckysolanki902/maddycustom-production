@@ -1,26 +1,82 @@
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import { getFbp, getFbc, getFacebookTrackingParams, getFacebookTrackingParamsAsync } from '@/lib/utils/cookies';
+import { enhanceEventData } from '@/lib/utils/userDataEnhancer';
 
-// 1. Get client IP address (attempt IPv6 first, then fallback to IPv4)
+// Enhanced IP address detection with better IPv6 support and fallback
 const getClientIp = async () => {
   try {
-    // Try IPv6
-    const response = await fetch('https://api64.ipify.org?format=json');
-    const data = await response.json();
-    return data.ip;
-  } catch (error) {
-    console.error('Error fetching IPv6 address:', error);
-    // Fallback to IPv4
-    try {
-      const response = await fetch('https://api.ipify.org?format=json');
-      const data = await response.json();
-      return data.ip;
-    } catch (err) {
-      console.error('Error fetching IPv4 address:', err);
-      return '';
+    // Try IPv6 first (Meta's recommendation for better matching)
+    const ipv6Response = await fetch('https://api64.ipify.org?format=json', {
+      timeout: 3000 // 3 second timeout
+    });
+    
+    if (ipv6Response.ok) {
+      const ipv6Data = await ipv6Response.json();
+      if (ipv6Data.ip && isValidIPv6(ipv6Data.ip)) {
+        console.log('Using IPv6 address for better Facebook matching');
+        return ipv6Data.ip;
+      }
     }
+  } catch (error) {
+    console.log('IPv6 detection failed, falling back to IPv4:', error.message);
   }
+
+  // Fallback to IPv4
+  try {
+    const ipv4Response = await fetch('https://api.ipify.org?format=json', {
+      timeout: 3000 // 3 second timeout
+    });
+    
+    if (ipv4Response.ok) {
+      const ipv4Data = await ipv4Response.json();
+      if (ipv4Data.ip && isValidIPv4(ipv4Data.ip)) {
+        console.log('Using IPv4 address');
+        return ipv4Data.ip;
+      }
+    }
+  } catch (error) {
+    console.error('IPv4 detection also failed:', error.message);
+  }
+
+  // Final fallback - try to get IP from headers (if available)
+  try {
+    // This might work in some server environments
+    const response = await fetch('/api/get-client-ip', { 
+      method: 'GET',
+      timeout: 2000 
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return data.ip || '';
+    }
+  } catch (error) {
+    console.log('Header-based IP detection failed:', error.message);
+  }
+
+  console.warn('Could not detect client IP address - this may affect event match quality');
+  return ''; // Return empty string instead of null
+};
+
+/**
+ * Validates IPv6 address format
+ * @param {string} ip - IP address to validate
+ * @returns {boolean} - Whether IP is valid IPv6
+ */
+const isValidIPv6 = (ip) => {
+  // Basic IPv6 validation - contains colons and proper format
+  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$|^(?:[0-9a-fA-F]{1,4}:)*::[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4})*$/;
+  return ipv6Regex.test(ip) && ip.includes(':');
+};
+
+/**
+ * Validates IPv4 address format
+ * @param {string} ip - IP address to validate  
+ * @returns {boolean} - Whether IP is valid IPv4
+ */
+const isValidIPv4 = (ip) => {
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  return ipv4Regex.test(ip) && !ip.includes(':');
 };
 
 /**
@@ -51,9 +107,23 @@ const sendToServer = async (eventName, options) => {
 const trackEvent = async (name, formData = {}, otherOptions = {}) => {
   try {
     const eventId = otherOptions.eventID || uuidv4(); // Allow passing eventID
-    const eventTime = Math.floor(Date.now() / 1000);
+    const eventTime = Math.floor(Date.now() / 1000); // Use current timestamp in seconds
     const client_ip_address = await getClientIp();
     const client_user_agent = navigator.userAgent;
+
+    // Enhance event data with automatically collected user data
+    const { userData: autoUserData, enhancedData } = enhanceEventData(name, otherOptions, {
+      eventID: eventId,
+      event_time: eventTime,
+      event_name: name,
+      action_source: 'website',
+      event_source_url: window.location.href,
+      client_ip_address,
+      client_user_agent,
+    });
+
+    // Merge with provided form data (form data takes precedence)
+    const finalUserData = { ...autoUserData, ...formData };
 
     // Try to get Facebook tracking parameters with retry logic
     let { fbp, fbc } = await getFacebookTrackingParamsAsync(3, 300); // 3 retries, 300ms delay
@@ -65,39 +135,59 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       fbc = fallbackParams.fbc;
     }
 
-    // Log tracking status for debugging
-    console.log('Facebook tracking params:', { 
-      fbp: fbp || 'not available', 
-      fbc: fbc || 'not available',
-      pixelLoaded: !!window.fbq,
-      reason: !fbp ? 'Ad blocker, privacy settings, or first visit' : 'OK'
-    });
-
-    const eventParams = {
-      eventID: eventId,
-      event_time: eventTime,
-      event_name: name,
-      action_source: 'website',
-      event_source_url: window.location.href,
-      client_ip_address,
-      client_user_agent,
-      fbp, // Include fbp (might be null)
-      fbc, // Include fbc (might be null)
-      ...otherOptions,
-    };
-
-    // Include user identifiers if provided
-    if (formData.email) {
-      eventParams.emails = [formData.email];
+    // Only log tracking status for non-PageView events
+    if (name !== 'PageView') {
+      console.log(`Facebook tracking params [${name}]:`, { 
+        fbp: fbp || 'not available', 
+        fbc: fbc || 'not available',
+        pixelLoaded: !!window.fbq,
+        reason: !fbp ? 'Ad blocker, privacy settings, or first visit' : 'OK',
+        userDataQuality: {
+          email: !!finalUserData.email,
+          phone: !!finalUserData.phoneNumber,
+          externalIds: enhancedData.external_ids?.length || 0
+        }
+      });
     }
 
-    if (formData.phoneNumber) {
-      eventParams.phones = [formData.phoneNumber];
+    // Enhanced event parameters with better data structure
+    const eventParams = {
+      ...enhancedData,
+      fbp: fbp || null, // Send null instead of undefined
+      fbc: fbc || null, // Send null instead of undefined
+    };
+
+    // Add user identifiers from final merged data
+    if (finalUserData.email) {
+      eventParams.emails = [finalUserData.email.trim().toLowerCase()];
+    }
+
+    if (finalUserData.phoneNumber) {
+      // Normalize phone number
+      const normalizedPhone = finalUserData.phoneNumber.replace(/[^\d+]/g, '');
+      eventParams.phones = [normalizedPhone];
+    }
+
+    if (finalUserData.firstName) {
+      eventParams.first_name = finalUserData.firstName;
     }
 
     // Send event to Facebook Pixel (client-side)
     if (window.fbq) {
-      window.fbq('track', name, eventParams);
+      // Create pixel event parameters (exclude server-specific fields)
+      const pixelParams = { ...eventParams };
+      delete pixelParams.eventID;
+      delete pixelParams.event_time;
+      delete pixelParams.event_name;
+      delete pixelParams.action_source;
+      delete pixelParams.client_ip_address;
+      delete pixelParams.client_user_agent;
+      delete pixelParams.fbp;
+      delete pixelParams.fbc;
+      delete pixelParams.external_ids;
+      delete pixelParams.first_name; // Don't send PII to client-side pixel
+      
+      window.fbq('track', name, pixelParams, { eventID: eventId });
     }
 
     // Send event to server-side Conversion API
@@ -120,10 +210,15 @@ export const addToCart = async (product) => {
         id: product.id || product._id,
         quantity: product.quantity || 1,
         item_price: product.price || 0,
+        brand: product.brand,
+        category: product.category,
+        title: product.name
       }],
       content_name: product.name,
       content_category: product.category,
       content_type: 'product',
+      content_ids: [product.id || product._id],
+      num_items: 1
     });
   } catch (error) {
     console.error('Error in addToCart function:', error);
@@ -146,7 +241,15 @@ export const purchase = async (order, userData = {}) => {
         id: item.product || item._id,
         quantity: item.quantity,
         item_price: item.priceAtPurchase,
+        brand: item.brand,
+        category: item.category,
+        title: item.name
       })),
+      content_name: order.items.map(item => item.name).join(', '),
+      content_category: 'purchase',
+      content_type: 'product',
+      content_ids: order.items.map(item => item.product || item._id),
+      num_items: order.items.length
     });
   } catch (error) {
     console.error('Error in purchase function:', error);
@@ -165,9 +268,14 @@ export const viewContent = async (product, userData = {}) => {
       content_ids: [product.id || product._id],
       content_category: product.category,
       content_type: 'product',
+      value: product.price,
+      currency: 'INR',
       contents: [{
         id: product.id || product._id,
         item_price: product.price || 0,
+        brand: product.brand,
+        category: product.category,
+        title: product.name
       }],
     });
   } catch (error) {
@@ -208,10 +316,14 @@ export const initiateCheckout = async (checkoutData, userData = {}) => {
         id: item.productId || item._id,
         quantity: item.quantity,
         item_price: item.price || 0,
+        brand: item.brand,
+        category: item.category,
+        title: item.name
       })),
       content_name: checkoutData.contentName,
-      content_category: checkoutData.contentCategory,
+      content_category: checkoutData.contentCategory || 'checkout',
       content_type: 'product',
+      content_ids: checkoutData.contents.map(item => item.productId || item._id),
       num_items: checkoutData.numItems,
     });
   } catch (error) {

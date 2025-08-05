@@ -64,6 +64,79 @@ const createContents = (product) => {
 };
 
 /**
+ * Normalizes phone number for better matching
+ * @param {string} phone - The phone number to normalize
+ * @returns {string} - The normalized phone number
+ */
+const normalizePhoneNumber = (phone) => {
+  if (!phone) return '';
+  // Remove all non-digit characters except + at the beginning
+  let normalized = phone.replace(/[^\d+]/g, '');
+  // Remove leading zeros after country code
+  if (normalized.startsWith('+')) {
+    const parts = normalized.split('');
+    let countryCode = '+';
+    let i = 1;
+    // Extract country code (1-4 digits after +)
+    while (i < parts.length && i <= 4) {
+      countryCode += parts[i];
+      i++;
+    }
+    // Remove leading zeros from the rest
+    let number = parts.slice(i).join('').replace(/^0+/, '');
+    normalized = countryCode + number;
+  } else {
+    // Remove leading zeros
+    normalized = normalized.replace(/^0+/, '');
+  }
+  return normalized;
+};
+
+/**
+ * Extracts external ID from URL for better event matching
+ * @param {string} url - The URL to extract external ID from
+ * @returns {string|null} - The extracted external ID or null
+ */
+const extractExternalId = (url) => {
+  try {
+    const urlObj = new URL(url);
+    // Try to extract meaningful identifiers from URL
+    const pathParts = urlObj.pathname.split('/').filter(Boolean);
+    const searchParams = urlObj.searchParams;
+    
+    // Check for product IDs, user IDs, session IDs, etc.
+    const possibleIds = [
+      searchParams.get('id'),
+      searchParams.get('product_id'),
+      searchParams.get('user_id'),
+      searchParams.get('session_id'),
+      pathParts[pathParts.length - 1], // Last path segment
+    ].filter(Boolean);
+    
+    return possibleIds[0] || null;
+  } catch (error) {
+    return null;
+  }
+};
+
+/**
+ * Validates and sanitizes timestamp to ensure it's not in the future
+ * @param {number} timestamp - The timestamp to validate
+ * @returns {number} - The validated timestamp
+ */
+const validateTimestamp = (timestamp) => {
+  const now = Math.floor(Date.now() / 1000);
+  const sevenDaysAgo = now - (7 * 24 * 60 * 60); // 7 days in seconds
+  
+  // If timestamp is in the future or too old, use current time
+  if (!timestamp || timestamp > now || timestamp < sevenDaysAgo) {
+    return now;
+  }
+  
+  return timestamp;
+};
+
+/**
  * Validates event data before sending to Facebook API
  * @param {string} eventName - The event name
  * @param {object} options - The event options
@@ -71,15 +144,25 @@ const createContents = (product) => {
  */
 const validateEventData = (eventName, options) => {
   const errors = [];
+  const warnings = [];
   
   // Validate event name
   if (!eventName || typeof eventName !== 'string') {
     errors.push('Event name is required and must be a string');
   }
   
-  // Validate timestamp
-  if (options.event_time && (isNaN(options.event_time) || options.event_time <= 0)) {
-    errors.push('Event time must be a valid Unix timestamp');
+  const now = Math.floor(Date.now() / 1000);
+  const sevenDaysAgo = now - (7 * 24 * 60 * 60);
+  
+  // Validate timestamp more thoroughly
+  if (options.event_time) {
+    if (isNaN(options.event_time) || options.event_time <= 0) {
+      errors.push('Event time must be a valid Unix timestamp');
+    } else if (options.event_time > now) {
+      warnings.push(`Event timestamp ${options.event_time} is in the future, will be adjusted to current time`);
+    } else if (options.event_time < sevenDaysAgo) {
+      warnings.push(`Event timestamp ${options.event_time} is older than 7 days, will be adjusted to current time`);
+    }
   }
   
   // Validate value for purchase events
@@ -97,19 +180,30 @@ const validateEventData = (eventName, options) => {
     errors.push('Contents must be an array');
   }
   
-  // Validate email format
+  // Validate email format (but make it optional and forgiving)
   if (options.emails && Array.isArray(options.emails)) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     for (const email of options.emails) {
-      if (!emailRegex.test(email)) {
-        errors.push(`Invalid email format: ${email}`);
+      if (email && email.trim() && !emailRegex.test(email.trim())) {
+        warnings.push(`Email format may be invalid, but will still be processed: ${email}`);
+        // Don't add to errors - just warn, as email is optional
+      }
+    }
+  }
+  
+  // Validate phone numbers
+  if (options.phones && Array.isArray(options.phones)) {
+    for (const phone of options.phones) {
+      if (!phone || typeof phone !== 'string' || phone.length < 10) {
+        warnings.push(`Phone number too short or invalid: ${phone}`);
       }
     }
   }
   
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
+    warnings
   };
 };
 
@@ -141,36 +235,47 @@ export async function POST(request) {
   try {
     const { eventName, options = {} } = await request.json();
     
-    // Log the entire request payload for debugging
-    console.log('Conversion API Request:', {
-      eventName,
-      options: {
-        ...options,
-        // Don't log sensitive data like emails/phones in production
-        emails: options.emails ? '[REDACTED]' : undefined,
-        phones: options.phones ? '[REDACTED]' : undefined,
-      }
-    });
+    // Only log detailed info for non-PageView events
+    const isPageView = eventName === 'PageView';
     
+    if (!isPageView) {
+      // Log the entire request payload for debugging (only for non-PageView)
+      console.log(`Conversion API Request [${eventName}]:`, {
+        eventName,
+        options: {
+          ...options,
+          // Don't log sensitive data in production
+          emails: options.emails ? `[${options.emails.length} emails]` : undefined,
+          phones: options.phones ? `[${options.phones.length} phones]` : undefined,
+        }
+      });
+    }
+    
+    // Validate and fix timestamp
     const currentTimestamp = Math.floor(Date.now() / 1000);
+    const eventTimestamp = validateTimestamp(options.event_time || currentTimestamp);
     
-    // Use client timestamp if provided, otherwise use server timestamp
-    const eventTimestamp = options.event_time || currentTimestamp;
+    // Log timestamp correction if needed
+    if (options.event_time && options.event_time !== eventTimestamp) {
+      console.warn(`Timestamp corrected from ${options.event_time} to ${eventTimestamp} (future/old timestamp detected)`);
+    }
     
-    // Debug logging for fbc and fbp
-    console.log('Facebook tracking parameters received:', {
-      fbp: options.fbp || 'null',
-      fbc: options.fbc || 'null',
-      fbpType: typeof options.fbp,
-      fbcType: typeof options.fbc,
-      hasUserAgent: !!options.client_user_agent,
-      hasClientIP: !!options.client_ip_address
-    });
+    if (!isPageView) {
+      // Debug logging for fbc and fbp (only for non-PageView)
+      console.log(`Facebook tracking parameters [${eventName}]:`, {
+        fbp: options.fbp || 'null',
+        fbc: options.fbc || 'null',
+        fbpType: typeof options.fbp,
+        fbcType: typeof options.fbc,
+        hasUserAgent: !!options.client_user_agent,
+        hasClientIP: !!options.client_ip_address
+      });
+    }
     
     // Validate the event data
     const validation = validateEventData(eventName, options);
     if (!validation.isValid) {
-      console.error('Event validation failed:', validation.errors);
+      console.error(`Event validation failed [${eventName}]:`, validation.errors);
       return NextResponse.json(
         { 
           message: 'Event validation failed',
@@ -178,6 +283,11 @@ export async function POST(request) {
         },
         { status: 400 }
       );
+    }
+    
+    // Log warnings
+    if (validation.warnings && validation.warnings.length > 0 && !isPageView) {
+      console.warn(`Event validation warnings [${eventName}]:`, validation.warnings);
     }
     
     // Validate eventName
@@ -190,106 +300,248 @@ export async function POST(request) {
       );
     }
 
-    // Prepare hashed user data
+    // Prepare enhanced user data for better matching
     const hashedEmails = options.emails
       ? options.emails.map((email) => hashData(email.trim().toLowerCase()))
       : [];
+    
     const hashedPhones = options.phones
-      ? options.phones.map((phone) => hashData(phone.trim()))
+      ? options.phones.map((phone) => hashData(normalizePhoneNumber(phone)))
       : [];
 
-    // Prepare User Data
+    // Hash external IDs for privacy
+    const hashedExternalIds = options.external_ids
+      ? options.external_ids.map((id) => hashData(String(id)))
+      : [];
+
+    // Prepare User Data with enhanced matching
     const userData = new UserData()
-      .setEmails(hashedEmails) // hashed emails
-      .setPhones(hashedPhones) // hashed phone numbers
+      .setEmails(hashedEmails)
+      .setPhones(hashedPhones)
       .setClientIpAddress(options.client_ip_address || '')
       .setClientUserAgent(options.client_user_agent || '');
 
-    // Only set fbp and fbc if they have valid values and format
-    // IMPORTANT: Only use real fbp values from Facebook Pixel, never auto-generated ones
+    // Add external IDs for better cross-device tracking
+    if (hashedExternalIds.length > 0) {
+      userData.setExternalIds(hashedExternalIds);
+    }
+
+    // Add first name if available (Meta recommends this for better matching)
+    if (options.first_name) {
+      userData.setFirstNames([hashData(options.first_name.trim().toLowerCase())]);
+    }
+
+    // Add last name if available (additional matching signal)
+    if (options.last_name) {
+      userData.setLastNames([hashData(options.last_name.trim().toLowerCase())]);
+    }
+
+    // Add date of birth if available (YYYYMMDD format)
+    if (options.date_of_birth) {
+      userData.setDateOfBirths([hashData(options.date_of_birth)]);
+    }
+
+    // Add gender if available (m/f)
+    if (options.gender && ['m', 'f'].includes(options.gender.toLowerCase())) {
+      userData.setGenders([hashData(options.gender.toLowerCase())]);
+    }
+
+    // Add city if available
+    if (options.city) {
+      userData.setCities([hashData(options.city.trim().toLowerCase())]);
+    }
+
+    // Add state if available
+    if (options.state) {
+      userData.setStates([hashData(options.state.trim().toLowerCase())]);
+    }
+
+    // Add country if available
+    if (options.country) {
+      userData.setCountryCodes([hashData(options.country.trim().toLowerCase())]);
+    }
+
+    // Add zip code if available  
+    if (options.zip_code) {
+      userData.setZipCodes([hashData(options.zip_code.trim())]);
+    }
+
+    // Add additional URL-based external ID for better matching
+    const urlExternalId = extractExternalId(options.event_source_url || '');
+    if (urlExternalId && !hashedExternalIds.includes(hashData(urlExternalId))) {
+      const allExternalIds = [...hashedExternalIds, hashData(urlExternalId)];
+      userData.setExternalIds(allExternalIds);
+    }
+
+    // Enhanced fbp and fbc validation and setting
+    let fbpSet = false, fbcSet = false;
+    
     if (options.fbp && options.fbp !== 'null' && options.fbp !== 'undefined' && options.fbp.trim() !== '') {
-      // Validate fbp format (should start with 'fb.' and have proper structure)
       if (options.fbp.startsWith('fb.') && options.fbp.split('.').length >= 4) {
         userData.setFbp(options.fbp);
-        console.log('✓ Setting valid fbp from Facebook Pixel:', options.fbp);
+        fbpSet = true;
+        if (!isPageView) {
+          console.log(`✓ Setting valid fbp [${eventName}]:`, options.fbp);
+        }
       } else {
-        console.log('✗ Invalid fbp format - skipping to avoid Facebook issues:', options.fbp);
+        if (!isPageView) {
+          console.log(`✗ Invalid fbp format [${eventName}] - skipping:`, options.fbp);
+        }
       }
-    } else {
-      console.log('ℹ No fbp available - common with ad blockers, privacy settings, or first-time visitors');
     }
     
     if (options.fbc && options.fbc !== 'null' && options.fbc !== 'undefined' && options.fbc.trim() !== '') {
-      // Validate fbc format (should start with 'fb.' and have proper structure)
       if (options.fbc.startsWith('fb.') && options.fbc.split('.').length >= 4) {
         userData.setFbc(options.fbc);
-        console.log('✓ Setting valid fbc from Facebook click:', options.fbc);
+        fbcSet = true;
+        if (!isPageView) {
+          console.log(`✓ Setting valid fbc [${eventName}]:`, options.fbc);
+        }
       } else {
-        console.log('✗ Invalid fbc format - skipping to avoid Facebook issues:', options.fbc);
+        if (!isPageView) {
+          console.log(`✗ Invalid fbc format [${eventName}] - skipping:`, options.fbc);
+        }
       }
-    } else {
-      console.log('ℹ No fbc available - user likely didn\'t come from Facebook ad (organic traffic)');
     }
 
-    // Prepare Contents
+    // Prepare Contents with enhanced data
     const contents = options.contents
-      ? options.contents.map(createContents)
+      ? options.contents.map((product) => {
+          const content = createContents(product);
+          
+          // Add additional content fields for better matching
+          if (product.brand) {
+            content.setBrand(String(product.brand));
+          }
+          if (product.category) {
+            content.setCategory(String(product.category));
+          }
+          if (product.title || product.name) {
+            content.setTitle(String(product.title || product.name));
+          }
+          
+          return content;
+        })
       : [];
 
-    // Prepare Custom Data with validation
+    // Prepare Custom Data with enhanced fields
     const customData = new CustomData()
       .setCurrency(options.currency || 'INR');
     
-    // Only set value if it's a valid number
+    // Set value with proper validation
     if (options.value && !isNaN(options.value) && options.value > 0) {
       customData.setValue(parseFloat(options.value));
     }
     
-    // Only set orderId for Purchase events
-    if (eventName === 'Purchase' && options.orderId) {
-      customData.setOrderId(options.orderId);
+    // Set content fields for better matching
+    if (options.content_name) {
+      customData.setContentName(String(options.content_name));
+    }
+    if (options.content_category) {
+      customData.setContentCategory(String(options.content_category));
+    }
+    if (options.content_type) {
+      customData.setContentType(String(options.content_type));
+    }
+    if (options.content_ids && Array.isArray(options.content_ids)) {
+      customData.setContentIds(options.content_ids.map(String));
     }
     
-    // Only set contents if they exist and are valid
+    // Set order ID for Purchase events
+    if (eventName === 'Purchase' && options.orderId) {
+      customData.setOrderId(String(options.orderId));
+    }
+    
+    // Set contents if available
     if (contents && contents.length > 0) {
       customData.setContents(contents);
+      customData.setNumItems(contents.length);
     }
 
-    // Build the Server Event
+    // Build the Server Event with corrected timestamp
     const serverEvent = new ServerEvent()
       .setEventName(eventName)
-      .setEventTime(eventTimestamp)
+      .setEventTime(eventTimestamp) // Use validated timestamp
       .setUserData(userData)
       .setCustomData(customData)
-      .setEventSourceUrl(options.event_source_url || window?.location?.href || '')
+      .setEventSourceUrl(options.event_source_url || '')
       .setEventId(options.eventID || uuidv4())
       .setActionSource('website');
 
-    // Log the event data being sent (for debugging)
-    const hasUserIdentifiers = !!(hashedEmails.length || hashedPhones.length || options.fbp || options.fbc);
-    console.log('Sending event to Facebook:', {
-      eventName,
-      eventTime: eventTimestamp,
-      eventId: options.eventID || 'generated',
-      hasUserData: hasUserIdentifiers,
-      hasCustomData: !!(options.value || contents.length),
-      userIdentifiers: {
-        emails: hashedEmails.length,
-        phones: hashedPhones.length,
-        fbp: !!options.fbp,
-        fbc: !!options.fbc
-      }
-    });
+    // Enhanced logging for event quality assessment
+    const hasUserIdentifiers = !!(
+      hashedEmails.length || 
+      hashedPhones.length || 
+      fbpSet || 
+      fbcSet || 
+      hashedExternalIds.length ||
+      options.first_name ||
+      options.last_name ||
+      options.city ||
+      options.state ||
+      options.country ||
+      options.zip_code
+    );
+    
+    const matchQualityScore = calculateMatchQuality(
+      hashedEmails.length, 
+      hashedPhones.length, 
+      fbpSet, 
+      fbcSet, 
+      hashedExternalIds.length > 0,
+      !!options.first_name,
+      !!options.last_name,
+      !!options.city,
+      !!options.state,
+      !!options.country,
+      !!options.zip_code,
+      !!options.date_of_birth,
+      !!options.gender
+    );
+    
+    if (!isPageView) {
+      console.log(`Sending event to Facebook [${eventName}]:`, {
+        eventName,
+        eventTime: eventTimestamp,
+        eventId: options.eventID || 'generated',
+        matchQualityScore: `${matchQualityScore}/10`,
+        hasUserData: hasUserIdentifiers,
+        hasCustomData: !!(options.value || contents.length),
+        userIdentifiers: {
+          emails: hashedEmails.length,
+          phones: hashedPhones.length,
+          fbp: fbpSet,
+          fbc: fbcSet,
+          externalIds: hashedExternalIds.length,
+          firstName: !!options.first_name,
+          lastName: !!options.last_name,
+          city: !!options.city,
+          state: !!options.state,
+          country: !!options.country,
+          zipCode: !!options.zip_code,
+          dateOfBirth: !!options.date_of_birth,
+          gender: !!options.gender
+        },
+        customDataFields: {
+          value: !!options.value,
+          contentName: !!options.content_name,
+          contentCategory: !!options.content_category,
+          contentIds: !!(options.content_ids && options.content_ids.length),
+          contents: contents.length
+        }
+      });
+    }
 
-    // Warn if no user identifiers are available
-    if (!hasUserIdentifiers) {
-      console.warn('⚠️ No user identifiers available (no email, phone, fbp, or fbc).');
-      console.warn('   This is normal for:');
-      console.warn('   - Users with ad blockers');
-      console.warn('   - Privacy-focused browsers');
-      console.warn('   - First-time visitors');
-      console.warn('   - Organic traffic (non-Facebook)');
-      console.warn('   Event will still be sent but attribution may be limited.');
+    // Enhanced warning system
+    if (!hasUserIdentifiers && !isPageView) {
+      console.warn(`⚠️ Low match quality for ${eventName} - No user identifiers available`);
+      console.warn('   Consider implementing:');
+      console.warn('   - Email/phone collection on forms');
+      console.warn('   - Enhanced e-commerce tracking');
+      console.warn('   - Better Facebook Pixel integration');
+    } else if (matchQualityScore < 7 && !isPageView) {
+      console.warn(`⚠️ Medium match quality for ${eventName} (${matchQualityScore}/10)`);
+      console.warn('   Consider adding more user identifiers for better attribution');
     }
 
     // Fire the event request to Facebook
@@ -303,13 +555,18 @@ export async function POST(request) {
         response = await eventRequest.execute();
         break; // success, break the retry loop
       } catch (error) {
-        console.error(`Attempt ${attempt} - Error sending event to Facebook:`, {
+        const errorDetails = {
           message: error.message,
           stack: error.stack,
           response: error.response?.data || error.response?.body || null,
           status: error.response?.status || null,
           headers: error.response?.headers || null,
-        });
+        };
+        
+        if (!isPageView) {
+          console.error(`Attempt ${attempt} - Error sending ${eventName} to Facebook:`, errorDetails);
+        }
+        
         if (attempt < MAX_RETRIES) {
           await delay(RETRY_DELAY * attempt);
         } else {
@@ -317,18 +574,24 @@ export async function POST(request) {
         }
       }
     }
+    
     return NextResponse.json(
       { message: 'Event sent successfully', response },
       { status: 200 }
     );
   } catch (err) {
-    console.error('Final Error sending event to Facebook:', {
+    const errorDetails = {
       message: err.message,
       stack: err.stack,
       response: err.response?.data || err.response?.body || null,
       status: err.response?.status || null,
       details: err.response || null,
-    });
+    };
+    
+    if (eventName !== 'PageView') {
+      console.error(`Final Error sending ${eventName || 'unknown event'} to Facebook:`, errorDetails);
+    }
+    
     return NextResponse.json(
       { 
         error: 'Failed to send event',
@@ -339,3 +602,61 @@ export async function POST(request) {
     );
   }
 }
+
+/**
+ * Calculates match quality score based on available user identifiers
+ * @param {number} emailCount - Number of emails
+ * @param {number} phoneCount - Number of phones
+ * @param {boolean} hasFbp - Has Facebook browser ID
+ * @param {boolean} hasFbc - Has Facebook click ID
+ * @param {boolean} hasExternalId - Has external ID
+ * @param {boolean} hasFirstName - Has first name
+ * @param {boolean} hasLastName - Has last name
+ * @param {boolean} hasCity - Has city
+ * @param {boolean} hasState - Has state
+ * @param {boolean} hasCountry - Has country
+ * @param {boolean} hasZipCode - Has zip code
+ * @param {boolean} hasDateOfBirth - Has date of birth
+ * @param {boolean} hasGender - Has gender
+ * @returns {number} - Match quality score (1-10)
+ */
+const calculateMatchQuality = (
+  emailCount, 
+  phoneCount, 
+  hasFbp, 
+  hasFbc, 
+  hasExternalId, 
+  hasFirstName = false,
+  hasLastName = false,
+  hasCity = false,
+  hasState = false,
+  hasCountry = false,
+  hasZipCode = false,
+  hasDateOfBirth = false,
+  hasGender = false
+) => {
+  let score = 0;
+  
+  // Primary identifiers (most valuable)
+  score += emailCount > 0 ? 4 : 0;      // Email is the most valuable
+  score += phoneCount > 0 ? 3 : 0;      // Phone is very valuable
+  
+  // Facebook identifiers (valuable for attribution)
+  score += hasFbc ? 2 : 0;              // Click ID is more valuable than browser ID
+  score += hasFbp ? 1 : 0;              // Browser ID
+  
+  // Secondary identifiers (enhance matching)
+  score += hasExternalId ? 1 : 0;       // External ID for cross-device
+  score += hasFirstName ? 0.5 : 0;      // First name
+  score += hasLastName ? 0.5 : 0;       // Last name
+  
+  // Demographic data (additional signals)
+  score += hasCity ? 0.3 : 0;           // City
+  score += hasState ? 0.3 : 0;          // State
+  score += hasCountry ? 0.2 : 0;        // Country
+  score += hasZipCode ? 0.4 : 0;        // Zip code (more specific than city)
+  score += hasDateOfBirth ? 0.5 : 0;    // Date of birth
+  score += hasGender ? 0.2 : 0;         // Gender
+  
+  return Math.min(Math.round(score * 10) / 10, 10); // Round to 1 decimal, cap at 10
+};

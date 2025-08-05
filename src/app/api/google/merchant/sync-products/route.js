@@ -83,7 +83,7 @@ export async function GET() {
     // 6. Limit to SYNC_LIMIT products
     const productsToSync = sortedProducts.slice(0, SYNC_LIMIT);
 
-    console.log(`Processing ${productsToSync.length} products out of ${availableProducts.length} available`);
+    console.info(`Processing ${productsToSync.length} products out of ${availableProducts.length} available`);
 
     // 7. Process products
     const startTime = Date.now();
@@ -99,7 +99,7 @@ export async function GET() {
       const category = product.specificCategory;
 
       // Log current progress (minimal logging)
-      console.log(`Syncing ${i + 1}/${productsToSync.length}: ${product.title}`);
+      console.info(`Syncing ${i + 1}/${productsToSync.length}: ${product.title}`);
 
       // Build product description
       const description = variant?.productDescription
@@ -211,12 +211,12 @@ export async function GET() {
           { lastSyncedToGoogle: currentTime }
         );
       } catch (updateError) {
-        console.log(`Failed to update lastSyncedToGoogle for ${offerId}`);
+        console.info(`Failed to update lastSyncedToGoogle for ${offerId}`);
       }
 
       // Check time limit
       if (Date.now() - startTime > maxProcessingTime) {
-        console.log('Time limit reached, stopping sync');
+        console.info('Time limit reached, stopping sync');
         break;
       }
     }
@@ -225,7 +225,7 @@ export async function GET() {
     const successfulSyncs = results.filter(r => r.status === 'Inserted' || r.status === 'Updated').length;
     const failedSyncs = results.filter(r => r.status.startsWith('Failed')).length;
 
-    console.log(`Sync completed: ${successfulSyncs} successful, ${failedSyncs} failed`);
+    console.info(`Sync completed: ${successfulSyncs} successful, ${failedSyncs} failed`);
 
     return NextResponse.json({
       message: 'Google Merchant sync completed',

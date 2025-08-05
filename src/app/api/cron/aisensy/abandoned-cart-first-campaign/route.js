@@ -74,7 +74,6 @@ export async function GET(req) {
       });
 
       if (existingSuccessfulCampaign) {
-        console.log(`Skipping ${phoneNumber} - already received successful campaign: ${existingSuccessfulCampaign.campaignName}`);
         skippedCount++;
         continue;
       }

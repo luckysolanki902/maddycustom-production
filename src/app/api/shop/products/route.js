@@ -195,7 +195,6 @@ export async function POST(request) {
         const diffInDays = Math.floor((currentDate - createdDate) / (1000 * 60 * 60 * 24));
         isNewLaunch = diffInDays <= 20;
       }
-      console.log({isNewLaunch});
 
       // unique tags
       const uniqueTagsPipeline = [
