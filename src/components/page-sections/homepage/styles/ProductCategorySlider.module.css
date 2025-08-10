@@ -5,7 +5,7 @@
     overflow-x: hidden;
     padding: 1rem;
     margin: auto;
-    margin-top: 50px;
+    margin-top: 40px;
     margin-bottom: 0;
     display: flex;
     gap: 1rem;
@@ -38,12 +38,11 @@ display: none;
   
   .card {
     width: fit-content;
-    height: 50px;
+    height: 40px;
     background-color: #555555;
     color: #ffffff;
     padding: 0.7rem 2rem;
     border-radius: 3px;
-    font-size: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -66,13 +65,13 @@ display: none;
       align-items: center;
           margin-top: 0px;
     }
-    
+ 
     .cardRow {
       align-items: center;
       width: 100%;
     }
     .cardText {
-      font-size: 1rem;
+      font-size: 0.8rem;
       padding: 0;
       font-weight: 300;
     }
@@ -80,7 +79,12 @@ display: none;
   @media(max-width:768px){
     .card {
      padding: 0.7rem 0.7rem;
+     height: 35px;
+
     }
+     .cardImg{
+        height: 35px
+      }
     }
   
   
@@ -88,7 +92,7 @@ display: none;
   @media (max-width:480px) {
    
     .cardText {
-      font-size: 1rem;
+      font-size: 0.8rem;
       padding: 0;
       font-weight: 300;
     }

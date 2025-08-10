@@ -1,16 +1,16 @@
 import React from 'react';
 import HeroCarousel from '@/components/page-sections/homepage/HeroCarousel';
+import NewArrival from '@/components/page-sections/homepage/NewArrival';
+import CategoryGrid from '@/components/page-sections/homepage/CategoryGrid';
 import styles from '@/styles/home.module.css';
 import CategorySearchBox from '@/components/utils/CategorySearchBox';
 // import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
 import { createMetadata } from '@/lib/metadata/create-metadata';
-import {
-  fetchSearchCategories,
-  fetchDisplayAssets,
-} from '@/lib/utils/fetchutils';
+import { fetchSearchCategories, fetchDisplayAssets, fetchOurUniqueProducts } from '@/lib/utils/fetchutils';
 
 import { Box } from '@mui/material';
 import ProductCategorySlider from '@/components/page-sections/homepage/ProductCategorySlider';
+import SingleCategorySlider from '@/components/showcase/carousels/SingleCategoryCarousel';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -19,28 +19,19 @@ export async function generateMetadata() {
   });
 }
 
-const [
-  // happyCustomersData,
-  searchCategoriesData,
-  displayAssetsData,
-] = await Promise.all([
-  fetchSearchCategories(),
-  fetchDisplayAssets('homepage'),
-]);
 const HomePage = async () => {
-  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+  // Fetch all needed data inside component to avoid any module namespace quirks
+  const [searchCategoriesData, displayAssetsData, uniqueProductsData] = await Promise.all([
+    fetchSearchCategories(),
+    fetchDisplayAssets('homepage'),
+    fetchOurUniqueProducts()
+  ]);
 
-  // Destructure categories and variants from searchCategoriesData
   const { categories, variants } = searchCategoriesData;
-  
-  // Destructure display assets
   const { assets: displayAssets = [] } = displayAssetsData;
-  // Filter assets for hero carousel
-  const heroCarouselAssets = displayAssets.filter(asset => 
-    asset.componentName === 'hero-carousel' && 
-    asset.componentType === 'carousel'
+  const heroCarouselAssets = displayAssets.filter(
+    asset => asset.componentName === 'hero-carousel' && asset.componentType === 'carousel'
   );
-  console.log('hero carousel assets:', { heroCarouselAssets });
 
   return (
     <>
@@ -59,16 +50,17 @@ const HomePage = async () => {
             assets={heroCarouselAssets}
           />
         </div>
-
-                <ProductCategorySlider position="belowHero" />
-
+        <ProductCategorySlider position="belowHero" />
 
 
+  {/* New Arrivals Section */}
+  <NewArrival assets={displayAssets} />
 
+  {/* Category Grid Section */}
+  <CategoryGrid assets={displayAssets} />
 
+  <SingleCategorySlider  products={uniqueProductsData}/>
 
-
-        {/* <ProductSlider slides={randomProductsData} /> */}
 
 
       </main>

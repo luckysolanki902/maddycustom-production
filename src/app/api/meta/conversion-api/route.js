@@ -260,18 +260,7 @@ export async function POST(request) {
       console.warn(`Timestamp corrected from ${options.event_time} to ${eventTimestamp} (future/old timestamp detected)`);
     }
     
-    if (!isPageView) {
-      // Debug logging for fbc and fbp (only for non-PageView)
-      console.log(`Facebook tracking parameters [${eventName}]:`, {
-        fbp: options.fbp || 'null',
-        fbc: options.fbc || 'null',
-        fbpType: typeof options.fbp,
-        fbcType: typeof options.fbc,
-        hasUserAgent: !!options.client_user_agent,
-        hasClientIP: !!options.client_ip_address
-      });
-    }
-    
+
     // Validate the event data
     const validation = validateEventData(eventName, options);
     if (!validation.isValid) {
