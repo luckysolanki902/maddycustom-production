@@ -7,10 +7,13 @@ import CategorySearchBox from '@/components/utils/CategorySearchBox';
 // import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { fetchSearchCategories, fetchDisplayAssets, fetchOurUniqueProducts } from '@/lib/utils/fetchutils';
-
+import WhyMaddy from '@/components/page-sections/homepage/WhyMaddy'
+import CarIntExt from '@/components/page-sections/homepage/CarIntExt'
 import { Box } from '@mui/material';
 import ProductCategorySlider from '@/components/page-sections/homepage/ProductCategorySlider';
 import SingleCategorySlider from '@/components/showcase/carousels/SingleCategoryCarousel';
+import VoiceOfOurCustomers from '@/components/page-sections/homepage/VoiceOfCustomers';
+import ProductImageSlider from '@/components/page-sections/homepage/ProductImageSlider';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -44,23 +47,38 @@ const HomePage = async () => {
         <div className={styles.carouselPadding}>
           {/* Render ProductCategoryBox above HeroCarousel only on screens larger than 1200px only*/}
           <ProductCategorySlider position="aboveHero" />
-          
+
           {/* Logo and Main Carousel */}
-          <HeroCarousel 
+          <HeroCarousel
             assets={heroCarouselAssets}
           />
         </div>
         <ProductCategorySlider position="belowHero" />
 
 
-  {/* New Arrivals Section */}
-  <NewArrival assets={displayAssets} />
+        {/* New Arrivals Section */}
+        <NewArrival assets={displayAssets} />
 
-  {/* Category Grid Section */}
-  <CategoryGrid assets={displayAssets} />
+        {/* Category Grid Section */}
+        <CategoryGrid assets={displayAssets} />
 
-  <SingleCategorySlider  products={uniqueProductsData}/>
+        <SingleCategorySlider products={uniqueProductsData} />
 
+        {/* Interior Section */}
+        <CarIntExt 
+          type="interior"
+          assets={displayAssets}
+        />
+
+        {/* Exterior Section */}
+        <CarIntExt 
+          type="exterior"
+          assets={displayAssets}
+        />
+
+        <WhyMaddy />
+        <VoiceOfOurCustomers />
+        <ProductImageSlider/>
 
 
       </main>

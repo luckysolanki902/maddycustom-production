@@ -1,3 +1,26 @@
+
+/* Top full-width brand strip */
+.brandStrip{
+  width:100%;
+  background:#2d2d2d;
+  margin:0;                /* no margins, spans full width */
+}
+.brandStripInner{
+  max-width:1280px;
+  margin:0 auto;
+  padding:10px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.brandStripText{
+  color:#fff;
+  letter-spacing:.18em;
+  font-weight:700;
+  font-size:.9rem;
+  text-transform:uppercase;
+}
+
 .footer {
   background-color: #424242;
   color: #fff;
@@ -96,6 +119,9 @@ flex-direction: column;
   color: white;
   outline: none;
   min-width: 180px;
+}
+.subscribeInput::placeholder{
+  color: rgba(255, 255, 255, 0.619)
 }
 
 .subscribeButton {
