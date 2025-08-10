@@ -70,13 +70,10 @@ export const getCookie = (name) => {
         pixelStatus: window.fbq ? 'loaded' : 'not loaded or blocked'
       };
       
-      console.log('Facebook tracking debug:', debugInfo);
       
       // Additional helpful info
       if (!fbp && !window.fbq) {
-        console.log('💡 Tip: Facebook Pixel appears to be blocked or not loaded');
       } else if (!fbp && window.fbq) {
-        console.log('💡 Tip: Facebook Pixel loaded but _fbp cookie not set (privacy settings?)');
       }
     }
     

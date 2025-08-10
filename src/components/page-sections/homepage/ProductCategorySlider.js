@@ -1,17 +1,42 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useMediaQuery } from "@mui/material";
 import styles from "./styles/ProductCategorySlider.module.css";
 import Image from "next/image";
+
 const ProductCategorySlider = ({ position = "default" }) => {
-  // Use 1000px as the breakpoint.
-  const isMobile = useMediaQuery("(max-width: 500px)");
-const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-  // If position is "aboveHero" and screen is 1000px or below, hide this instance.
+  const [isMobile, setIsMobile] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    // Set client flag to prevent hydration mismatch
+    setIsClient(true);
+    
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth <= 500);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+
+  // Don't conditionally render until client is ready to prevent hydration mismatch
+  if (!isClient) {
+    return (
+      <div className={styles.cardContainer} style={{ opacity: 0 }}>
+        <div className={styles.cardRow}></div>
+      </div>
+    );
+  }
+
+  // If position is "aboveHero" and screen is 500px or below, hide this instance.
   if (position === "aboveHero" && isMobile) return null;
-  // If position is "belowHero" and screen is above 1000px, hide this instance.
+  // If position is "belowHero" and screen is above 500px, hide this instance.
   if (position === "belowHero" && !isMobile) return null;
 
   const cardData = [

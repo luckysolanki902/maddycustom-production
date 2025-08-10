@@ -14,12 +14,10 @@ const getClientIp = async () => {
     if (ipv6Response.ok) {
       const ipv6Data = await ipv6Response.json();
       if (ipv6Data.ip && isValidIPv6(ipv6Data.ip)) {
-        console.log('Using IPv6 address for better Facebook matching');
         return ipv6Data.ip;
       }
     }
   } catch (error) {
-    console.log('IPv6 detection failed, falling back to IPv4:', error.message);
   }
 
   // Fallback to IPv4
@@ -31,12 +29,11 @@ const getClientIp = async () => {
     if (ipv4Response.ok) {
       const ipv4Data = await ipv4Response.json();
       if (ipv4Data.ip && isValidIPv4(ipv4Data.ip)) {
-        console.log('Using IPv4 address');
         return ipv4Data.ip;
       }
     }
   } catch (error) {
-    console.error('IPv4 detection also failed:', error.message);
+    // console.error('IPv4 detection also failed:', error.message);
   }
 
   // Final fallback - try to get IP from headers (if available)
@@ -51,10 +48,8 @@ const getClientIp = async () => {
       return data.ip || '';
     }
   } catch (error) {
-    console.log('Header-based IP detection failed:', error.message);
   }
 
-  console.warn('Could not detect client IP address - this may affect event match quality');
   return ''; // Return empty string instead of null
 };
 
@@ -94,7 +89,7 @@ const sendToServer = async (eventName, options) => {
     if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
     await res.json();
   } catch (error) {
-    console.error('Error sending event to server:', error);
+    // console.error('Error sending event to server:', error);
   }
 };
 
@@ -135,20 +130,7 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       fbc = fallbackParams.fbc;
     }
 
-    // Only log tracking status for non-PageView events
-    if (name !== 'PageView') {
-      console.log(`Facebook tracking params [${name}]:`, { 
-        fbp: fbp || 'not available', 
-        fbc: fbc || 'not available',
-        pixelLoaded: !!window.fbq,
-        reason: !fbp ? 'Ad blocker, privacy settings, or first visit' : 'OK',
-        userDataQuality: {
-          email: !!finalUserData.email,
-          phone: !!finalUserData.phoneNumber,
-          externalIds: enhancedData.external_ids?.length || 0
-        }
-      });
-    }
+
 
     // Enhanced event parameters with better data structure
     const eventParams = {
@@ -193,7 +175,7 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
     // Send event to server-side Conversion API
     await sendToServer(name, eventParams);
   } catch (error) {
-    console.error('Error tracking event:', error);
+    // console.error('Error tracking event:', error);
   }
 };
 
@@ -221,7 +203,7 @@ export const addToCart = async (product) => {
       num_items: 1
     });
   } catch (error) {
-    console.error('Error in addToCart function:', error);
+    // console.error('Error in addToCart function:', error);
   }
 };
 
@@ -252,7 +234,7 @@ export const purchase = async (order, userData = {}) => {
       num_items: order.items.length
     });
   } catch (error) {
-    console.error('Error in purchase function:', error);
+    // console.error('Error in purchase function:', error);
   }
 };
 
@@ -279,7 +261,7 @@ export const viewContent = async (product, userData = {}) => {
       }],
     });
   } catch (error) {
-    console.error('Error in viewContent function:', error);
+    // console.error('Error in viewContent function:', error);
   }
 };
 
@@ -297,7 +279,7 @@ export const pageView = async (userData = {}, pageData = {}) => {
       ...pageData,
     });
   } catch (error) {
-    console.error('Error in pageView function:', error);
+    // console.error('Error in pageView function:', error);
   }
 };
 
@@ -327,6 +309,6 @@ export const initiateCheckout = async (checkoutData, userData = {}) => {
       num_items: checkoutData.numItems,
     });
   } catch (error) {
-    console.error('Error in initiateCheckout function:', error);
+    // console.error('Error in initiateCheckout function:', error);
   }
 };

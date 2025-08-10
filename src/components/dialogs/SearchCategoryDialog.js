@@ -73,18 +73,11 @@ export default function SearchCategoryDialog() {
   const inputRef = useRef(null);
   // Track whether we've pushed a history state (for mobile only)
   const pushedStateRef = useRef(false);
+  // Track if we've already initiated a fetch to prevent duplicate requests
+  const fetchInitiatedRef = useRef(false);
 
   // Cache expiry time (1 hour = 3600000 ms)
   const CACHE_EXPIRY_TIME = 3600000;
-
-  // Check if cached data is valid (exists and not expired)
-  const isCacheValid = useCallback(() => {
-    if (!searchCategoriesCache?.data || !searchCategoriesCache?.lastFetched) {
-      return false;
-    }
-    const now = Date.now();
-    return (now - searchCategoriesCache.lastFetched) < CACHE_EXPIRY_TIME;
-  }, [searchCategoriesCache?.data, searchCategoriesCache?.lastFetched, CACHE_EXPIRY_TIME]);
 
   // Determine if we're on mobile (using a width threshold)
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1000;
@@ -113,16 +106,22 @@ export default function SearchCategoryDialog() {
         pushedStateRef.current = true;
       }
 
-      // Check if we have valid cached data
-      if (isCacheValid()) {
+      // Check if we have valid cached data inline to avoid dependency issues
+      const hasValidCache = searchCategoriesCache?.data && 
+        searchCategoriesCache?.lastFetched && 
+        (Date.now() - searchCategoriesCache.lastFetched) < CACHE_EXPIRY_TIME;
+
+      if (hasValidCache) {
         // Use cached data immediately
         const cachedData = searchCategoriesCache.data;
         setCategories(cachedData.categories || []);
         setVariants(cachedData.variants || []);
         const catNames = (cachedData.categories || []).map((c) => c.name);
         setSuggestions(catNames.slice(0, 10));
-      } else {
-        // Cache is invalid or doesn't exist, fetch new data
+        fetchInitiatedRef.current = false; // Reset fetch flag when using cache
+      } else if (!fetchInitiatedRef.current && !searchCategoriesCache?.isLoading) {
+        // Cache is invalid or doesn't exist, fetch new data only if not already fetching
+        fetchInitiatedRef.current = true;
         dispatch(setSearchCategoriesLoading(true));
         fetchSearchCategories()
           .then((data) => {
@@ -143,10 +142,12 @@ export default function SearchCategoryDialog() {
               setSuggestions(catNames.slice(0, 10));
             }
             dispatch(setSearchCategoriesLoading(false));
+            fetchInitiatedRef.current = false;
           })
           .catch((err) => {
             console.error(err);
             dispatch(setSearchCategoriesLoading(false));
+            fetchInitiatedRef.current = false;
           });
       }
 
@@ -164,8 +165,11 @@ export default function SearchCategoryDialog() {
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
       }
+    } else {
+      // Reset fetch flag when dialog closes
+      fetchInitiatedRef.current = false;
     }
-  }, [isOpen, isMobile, handleClose, dispatch, searchCategoriesCache, isCacheValid]);
+  }, [isOpen, isMobile, handleClose, dispatch, searchCategoriesCache?.data, searchCategoriesCache?.lastFetched, searchCategoriesCache?.isLoading, CACHE_EXPIRY_TIME]);
 
   // Also try to focus using another useEffect (as a backup)
   useEffect(() => {
@@ -266,6 +270,8 @@ export default function SearchCategoryDialog() {
                 height={24}
                 alt="Back"
                 style={{ cursor: 'pointer' }}
+                loading='eager'
+                priority
               />
             </IconButton>
           </motion.div>
