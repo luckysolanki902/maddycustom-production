@@ -13,7 +13,10 @@ body {
     color: rgb(0, 0, 0);
     -webkit-tap-highlight-color: transparent;
 }
-
+:root {
+    --global-horizontal-padding: 2rem;
+    --global-horizontal-padding-phone: 1rem;
+}
 
 
 body::-webkit-scrollbar {
@@ -197,11 +200,6 @@ input[name="helmetOption"] {
 
 /* Paddingtop for fixed topbar */
 body{
-    padding-top: 4.6rem;
+    padding-top: 3.5rem;
 }
 
-@media (max-width: 1000px) {
-    body {
-        padding-top: 4.6rem;
-    }
-}

@@ -3,95 +3,190 @@
     justify-content: center;
     margin: 40px auto;
     overflow: hidden;
+    margin-bottom: 45px;
 }
 
 .searchBoxSubContainer {
     display: flex;
     align-items: center;
-    border-radius: 0.8rem;
+    border-radius: 1rem;
     overflow: hidden;
     background-color: white;
-    border: 1px solid black;
-    padding:0.5rem 2rem;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    padding: 0.75rem 1.5rem;
     width: 96%;
     margin: auto;
     max-width: 1000px;
-
-
+    transition: all 0.3s ease;
 }
 
-.nonDialogInputField{
-max-width: 900px;
+.searchBoxSubContainer:focus-within {
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.nonDialogInputField {
+    max-width: 900px;
 }
 
 .searchIcon {
-    margin-left: 5px;
-    margin-right: 20px;
+    margin-right: 16px;
     width: 1.5rem;
     height: auto;
-    transform: translateY(10%);
+    opacity: 0.7;
+    transition: all 0.2s ease;
 }
 
-.searchIcon img {
-    width: 1.5rem;
-    height: auto;
+.searchBoxSubContainer:focus-within .searchIcon {
+    opacity: 1;
 }
 
+.searchheader {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: linear-gradient(to right, #ffffff, #f8f9fa);
+    border-bottom: 1px solid #f0f0f0;
+}
 
 .inputField {
-    /* color: #4c4c4c; */
     background-color: white;
     outline: none;
     border: none;
     flex: 1;
-    /* height: 4.625rem; */
     padding: 0.5rem;
-    /* padding-left: 20px; */
-    font-size: 0.9rem;
+    font-size: 1.1rem;
     font-style: normal;
     font-weight: 400;
-    line-height: 0.43531rem;
-    letter-spacing: 0.133rem;
-    font-family: 'Jost';
-    
+    line-height: 1.5;
+    letter-spacing: 0.02rem;
+    font-family: 'Jost', sans-serif;
+    color: #333;
 }
 
 .inputField::placeholder {
-    color: #636363;
-    font-size: 1rem;
-    font-style: normal;
+    color: #9ca3af;
+    font-size: 1.1rem;
     font-weight: 400;
-    line-height: 0.43531rem;
-    letter-spacing: 0.133rem;
-    font-family: 'Jost';
+    opacity: 0.8;
 }
 
-@media screen and (min-width: 700px) {
-    .inputField {
-        padding: 0rem;
+.dialogInputField {
+    font-size: 1.2rem;
+}
+
+.suggestionBox {
+    border-radius: 1rem;
+    overflow: hidden;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+}
+
+.suggestionItem {
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+}
+
+.suggestionItem:hover {
+    background-color: #f5f7fa !important;
+    transform: translateX(4px);
+}
+
+.typewriterContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    color: #9ca3af;
+    z-index: 1;
+}
+
+/* Skeleton Loading Animation */
+.skeletonItem {
+    background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 0.5rem;
+    height: 3.5rem;
+    margin-bottom: 0.75rem;
+    width: 100%;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
     }
-    .searchBoxSubContainer{
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.newLabel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(45deg, #2d2d2d, #4a4a4a);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 1rem;
+    margin-left: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@media screen and (min-width: 768px) {
+    .searchBoxSubContainer {
+        padding: 1rem 2rem;
+    }
+    
+    .inputField {
+        font-size: 1.2rem;
+    }
+    
+    .suggestionBox {
         padding: 1rem;
     }
 
+    .typewriterContainer{
+        padding-left: 0.6rem;
+    }
 }
 
-
-
-@media screen and (max-width: 350px) {
-    .inputField::placeholder {
+@media screen and (max-width: 480px) {
+    .searchBoxSubContainer {
+        padding: 0.6rem 1rem;
+    }
+    
+    .inputField {
         font-size: 1rem;
     }
+    
     .searchIcon {
-        margin-left: 5px;
         margin-right: 10px;
-        width: 1rem;
-        height: auto;
-    }
-
-    .searchIcon img {
-        width: 1rem;
-        height: auto;
     }
 }
 
@@ -221,6 +316,7 @@ max-width: 900px;
     }
     .searchBoxContainer{
         padding: 0 1rem;
+        margin-bottom: 45px;
     }
     .searchIcon {
         width: 1rem;
