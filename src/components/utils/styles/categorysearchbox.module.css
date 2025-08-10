@@ -1,227 +1,160 @@
-.searchBoxContainer {
-    display: flex;
-    justify-content: center;
-    margin: 40px auto;
-    overflow: hidden;
+/* Base variable definition for consistent transparency */
+:root {
+    --searchBoxBgColor: rgba(255, 255, 255, 0.92);
+    --searchBoxShadow: rgba(0, 0, 0, 0.1);
+    --searchBoxInnerBgColor: rgba(250, 250, 250, 0.95);
 }
 
-.searchBoxSubContainer {
+/* Main wrapper for the search box - handles positioning and animation */
+.searchBoxWrapper {
+    position: fixed;
+    top: 60px; /* Exact topbar height: 40px logo + 20px padding */
+    left: 0;
+    width: 100%;
+    z-index: 998;
+    will-change: transform;
+    background-color: var(--searchBoxBgColor);
+    backdrop-filter: blur(12px);
+    transition: background-color 0.3s ease;
+    backface-visibility: hidden; /* Prevent flickering */
+    transform: translateZ(0); /* Force hardware acceleration */
+    margin-top: 0; /* Remove any default margin */
+}
+
+/* Container background with padding */
+.containerBackground {
+    width: 100%;
+    padding: 4px 16px; /* Reduced top/bottom padding to eliminate gap */
+    background-color: transparent;
+    margin: 0;
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+/* Enhanced shadow when sticky for better visual separation */
+.searchBoxWrapper.sticky .containerBackground {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background-color: rgba(255, 255, 255, 0.98);
+}
+
+/* The actual search box with border */
+.searchBox {
     display: flex;
     align-items: center;
-    border-radius: 0.8rem;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 16px;
+    padding: 0.5rem 1.5rem;
+    width: 92%;
+    margin: 0.1rem auto 0.2rem; /* Reduced margins to eliminate gap */
+    background-color: var(--searchBoxInnerBgColor);
+    box-sizing: border-box;
+    transition: all 0.25s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.searchBox:hover, .searchBox:focus-within {
+    border-color: #bdbdbd;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Inner container for search elements */
+.searchBoxInner {
+    display: flex;
+    align-items: center;
+    border-radius: 12px;
     overflow: hidden;
-    background-color: white;
-    border: 1px solid black;
-    padding:0.5rem 2rem;
-    width: 96%;
+    width: 100vw;
     margin: auto;
     max-width: 1000px;
-
-
+    margin-right: 30px;
+    background-color: transparent;
 }
 
-.nonDialogInputField{
-max-width: 900px;
-}
-
+/* Search icon styling */
 .searchIcon {
-    margin-left: 5px;
-    margin-right: 20px;
-    width: 1.5rem;
+    margin-left: -5px;
+    margin-right: 10px;
+    width: 1.3rem;
     height: auto;
     transform: translateY(10%);
+    color: #555;
 }
 
 .searchIcon img {
-    width: 1.5rem;
+    width: 1.3rem;
     height: auto;
+    opacity: 0.8;
 }
 
-
+/* Input field styles */
 .inputField {
-    /* color: #4c4c4c; */
-    background-color: white;
+    background-color: transparent;
     outline: none;
     border: none;
     flex: 1;
-    /* height: 4.625rem; */
     padding: 0.5rem;
-    /* padding-left: 20px; */
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-style: normal;
-    font-weight: 400;
-    line-height: 0.43531rem;
-    letter-spacing: 0.133rem;
-    font-family: 'Jost';
+    font-weight: 300;
+    line-height: 1.2;
+    letter-spacing: 0.03rem;
+    font-family: 'Jost', sans-serif;
+    color: #333;
 }
 
-.inputField::placeholder {
-    color: #636363;
-    font-size: 1rem;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 0.43531rem;
-    letter-spacing: 0.133rem;
-    font-family: 'Jost';
+.inputFieldLimited {
+    max-width: 900px;
 }
 
+/* Responsive design */
 @media screen and (min-width: 700px) {
     .inputField {
-        padding: 0rem;
-    }
-    .searchBoxSubContainer{
-        padding: 1rem;
+        padding: 0.3rem;
     }
 
-}
-
-
-
-@media screen and (max-width: 350px) {
-    .inputField::placeholder {
-        font-size: 1rem;
+    .searchBoxInner {
+        padding: 0.8rem;
     }
-    .searchIcon {
-        margin-left: 5px;
-        margin-right: 10px;
-        width: 1rem;
-        height: auto;
-    }
-
-    .searchIcon img {
-        width: 1rem;
-        height: auto;
-    }
-}
-
-.predictionsoff {
-    display: none;
-}
-
-.predictionson {
-    display: auto;
-}
-
-@keyframes heightRaise {
-    0% {
-        scale: 0.3;
-    }
-
-    100% {
-        height: 1;
-    }
-}
-
-.unexpandedWhite {
-    width: 100%;
-    height: auto;
-    /* transition: all 0.3s ease; */
-}
-
-.expandWhite {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100vh;
-    max-height: 100vh;
-    background-color: white;
-    overflow: hidden;
-    /* padding-top: 10px; */
-    z-index: 99;
-    animation: heightRaise 0.3s ease;
-}
-
-
-.predContainer {
-    width: 90%;
-    margin: auto;
-    /* background-color: #eaeaea; */
-    border-radius: 0.6rem;
-    margin-top: 0px;
-    padding-bottom: 2rem;
-}
-
-.predContainer::-webkit-scrollbar {
-    display: none;
-}
-
-
-
-.minisearch {
-    margin-right: 22px;
-    display: flex;
-    align-items: center;
-
-}
-
-.pred {
-    color: black;
-    display: flex;
-    padding-left: 10px;
-    padding-top: 5px;
-    /* border: 1px solid black; */
-    align-items: center;
-
-}
-
-.pred h2 {
-    color: black;
-    display: flex;
-    padding-left: 10px;
-    padding-top: 5px;
-    /* border: 1px solid black; */
-    align-items: center;
-    font-size: 1rem;
-    font-weight: 300;
-    margin: 0.5rem;
-    align-self: center;
-}
-
-.pred:hover {
-    background-color: rgba(128, 128, 128, 0.1);
-    /* Gray with 50% opacity */
-    border-radius: 0.5rem;
-    /* Adjust the border radius */
-}
-
-
-
-.hideclose {
-    display: none;
-}
-
-.showclose {
-    display: flex;
-    align-items: center;
-    /* display: inline; */
-    margin: 10px;
-    z-index: 400;
-    margin-bottom: -20px;
-}
-
-.showHeading {
-    margin-left: 30px;
-    font-size: 1rem;
-    transform: translateY(-5%);
-}
-
-.new {
-    height: 100%;
-    width: auto;
 }
 
 @media screen and (max-width: 700px) {
-    .inputField{
-        padding: 0rem;
+    .searchBoxWrapper {
+        top: 60px; /* Ensure consistent positioning on mobile */
     }
-    .searchBoxSubContainer{
-        padding: 0.6rem 1rem;
+    
+    .containerBackground {
+        padding: 2px 0; /* Further reduced padding on small screens */
     }
-    .searchBoxContainer{
-        padding: 0 1rem;
+
+    .inputField {
+        padding: 0.2rem;
+        font-size: 0.9rem;
     }
+
+    .searchBoxInner {
+        padding: 0.3rem 0.8rem;
+    }
+
+    .searchBox {
+        padding: 0.3rem 1.2rem;
+        margin: 0.1rem auto 0.2rem; /* Consistent reduced margins */
+        border-radius: 14px;
+    }
+
     .searchIcon {
+        width: 1.1rem;
+        height: auto;
+    }
+
+    .searchIcon img {
+        width: 1.1rem;
+        height: auto;
+    }
+}
+
+@media screen and (max-width: 350px) {
+    .searchIcon {
+        margin-left: 0;
+        margin-right: 8px;
         width: 1rem;
         height: auto;
     }
@@ -230,17 +163,9 @@ max-width: 900px;
         width: 1rem;
         height: auto;
     }
-
-}
-
-
-
-@media screen and (min-width: 1300px) {
-    .suggestionBox{
-        padding-left: 3rem;
-    }
-    .searchheader{
-        margin-left: 4rem;
+    
+    .searchBox {
+        padding: 0.3rem 1rem;
+        width: 95%;
     }
 }
-

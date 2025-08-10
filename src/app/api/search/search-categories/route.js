@@ -5,7 +5,8 @@ import SpecificCategory from '@/models/SpecificCategory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import { NextResponse } from 'next/server';
 
-export const revalidate = 3600; // seconds
+// Conditional revalidation: enable caching only in production
+export const revalidate = process.env.NODE_ENV === 'development' ? 0 : 3600; // No cache in dev, 1 hour in prod
 
 export async function GET(request) {
   try {

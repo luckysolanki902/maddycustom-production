@@ -1,6 +1,47 @@
-.bigPoster{
-    /* filter: hue-rotate(100deg); */
+/* home.module.css */
+
+
+@media (width < 1001px) {
+    .main {
+        padding-top: 4rem;
+    }
 }
+
+@media (width < 701px) {
+    .main {
+        padding-top: 1.5rem;
+    }
+}
+
+@media (width < 600px) {
+    .main {
+        padding-top: 1rem;
+    }
+}
+
+.trustedSection {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin: 32px 0;
+}
+
+.trustedBadge {
+    background-color: #424242;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.trustedCount {
+    font-size: 1.25rem;
+    color: #424242;
+    font-weight: 500;
+}
+
 .chooseDiv {
     margin-top: 50px;
     color: #181725;
@@ -26,48 +67,100 @@
     margin: 20px 0;
 }
 
+.bestSellers {
+    margin-right: 2rem;
+    margin-left: 2rem;
+}
+
+.bonnetwrap {
+    margin-right: 2rem;
+    margin-left: 4rem;
+    margin-top: 2rem;
+}
+
 @media (width < 600px) {
-    .featuredHead img{
+    .featuredHead img {
         width: 50%;
     }
 }
 
-.bigPoster{
+.bigPoster {
     margin-top: 3rem;
     margin-bottom: 5rem;
 }
-.winCarouselImg{
+
+.winCarouselImg {
     filter: drop-shadow(0px 4px 7px rgba(0, 0, 0, 0.5));
 }
 
 .doubleGrid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr); /* 2 columns */
-    gap: 2rem; /* gap between items */
-    margin: 2rem; /* margin around the grid */
+    grid-template-columns: repeat(2, 1fr);
+    /* 2 columns */
+    gap: 2rem;
+    /* gap between items */
+    margin: 2rem;
+    /* margin around the grid */
     margin-top: 5rem;
     margin-bottom: 6rem;
-  }
-  
-  .doubleGrid img {
-    width: 100%;
-    height: auto;
-  }
-  
-  @media (max-width: 600px) {
-    .doubleGrid {
-      grid-template-columns: 1fr; /* 1 column per row on smaller screens */
-      margin: 1rem;
-      gap: 3rem;
-      margin-bottom: 3rem;
-    }
-  
-.bigPoster{
-    margin-top: 5rem;
-    margin-bottom: 5rem;
-}
+    margin-left: 4rem;
+    margin-right: 4rem;
 }
 
+.doubleGrid img {
+    width: 100%;
+    height: auto;
+}
+
+/* default: show it */
+.nomorebanner {
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .doubleGrid {
+        grid-template-columns: 1fr;
+        /* 1 column per row on smaller screens */
+        margin: 1rem;
+        gap: 3rem;
+        margin-bottom: 3rem;
+    }
+
+    .bigPoster {
+        margin-top: 5rem;
+        margin-bottom: 5rem;
+    }
+
+    .nomorebanner {
+        display: none;
+    }
+
+    .trustedBadge {
+        background-color: #424242;
+        color: #fff;
+        padding: 8px 10px;
+        border-radius: 2px;
+        font-size: 1rem;
+        font-weight: 400;
+    }
+
+    .trustedSection {
+        margin: 20px 0;
+        gap: 12px;
+        margin-left: 12px;
+        margin-right: 12px;
+    }
+
+    .bestSellers {
+        margin-right: 1rem;
+        margin-left: 1rem;
+    }
+
+    .bonnetwrap {
+        margin-right: 1rem;
+        margin-left: 1rem;
+    }
+}
 
 .featuredHead2 {
     display: flex;
@@ -273,6 +366,34 @@
     }
 }
 
+@media (width< 1000px) {
+    .doubleGrid {
+        margin-left: 1.7rem;
+        margin-right: 1.7rem;
+    }
+}
 
+.stickySearch {
+    position: sticky;
+    top: 3.5rem;
+    /* Match the body padding-top value */
+    left: 0;
+    z-index: 1000;
+    /* High z-index to ensure it stays on top */
+    width: 100%;
+    background-color: white;
+    /* Ensure it has a background to hide content below */
+}
 
+/* Add padding to the first carousel element to prevent overlap with search box */
+.carouselPadding {
+    margin-top: 3.5rem;
+    /* Add space for the search box when it's present */
+}
 
+@media (min-width: 1001px) {
+    .carouselPadding {
+        margin-top: 0;
+        /* No padding needed on desktop where search box doesn't appear */
+    }
+}

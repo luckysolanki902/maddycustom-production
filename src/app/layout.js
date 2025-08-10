@@ -4,6 +4,7 @@ import '@/styles/globals.css';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { generateWebsiteSchema, generateOrganizationSchema } from '@/lib/metadata/json-lds';
 import ReduxProvider from '@/components/layouts/ReduxProvider';
+import { ScrollProvider } from '@/contexts/ScrollContext';
 import FloatingActionBar from '@/components/utils/FloatingActionButton';
 import TopLoadingBar from '@/components/utils/TopLoadingBar';
 import AnalyticsHead from '@/components/layouts/AnalyticsHead';
@@ -75,23 +76,25 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <ReduxProvider>
-          <UTMCapture />
-          <CouponTimerBanner/>
-          {/* <UTMLogger /> */}
-          <TopLoadingBar />
-          <Topbar />
-          <Sidebar />
-          <SearchCategoryDialog />
-          <CartDrawer />
-          <CartInitializer />
+          <ScrollProvider>
+            <UTMCapture />
+            <CouponTimerBanner/>
+            {/* <UTMLogger /> */}
+            <TopLoadingBar />
+            <Topbar />
+            <Sidebar />
+            <SearchCategoryDialog />
+            <CartDrawer />
+            <CartInitializer />
 
-          {children}
-          <FloatingActionBar />
-          <Footer />
-          <TimeTracker />
-          <LoginDialog />
-          <PathnameTracker />
-          <ScrollChecker />
+            {children}
+            <FloatingActionBar />
+            <Footer />
+            <TimeTracker />
+            <LoginDialog />
+            <PathnameTracker />
+            <ScrollChecker />
+          </ScrollProvider>
         </ReduxProvider>
       </body>
     </html>

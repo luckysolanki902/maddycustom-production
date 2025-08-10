@@ -13,12 +13,20 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  Fade,
 } from '@mui/material';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { closeSearchDialog } from '@/store/slices/uiSlice';
+import { 
+  setSearchCategoriesLoading, 
+  setSearchCategories 
+} from '@/store/slices/persistentUiSlice';
 import searchStyles from './styles/categorysearchbox.module.css';
+import { typewriterStrings } from '@/lib/constants/typewriterCategories';
+import Typewriter from 'typewriter-effect';
+import { motion } from 'framer-motion';
 
 const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="down" ref={ref} {...props} />;
@@ -27,12 +35,12 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 async function fetchSearchCategories() {
   try {
     const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
-    const res = await fetch(`${BASE_URL}/api/search/search-categories`, {
-      cache: 'no-store',
+    const res = await fetch(`/api/search/search-categories`, {
+      next: { revalidate: 3600 },
     });
     if (!res.ok) {
       console.error(`Failed to fetch search categories. Status: ${res.status}`);
-      throw new Error('Failed to fetch search categories');
+      // throw new Error('Failed to fetch search categories');
     }
     return res.json();
   } catch (error) {
@@ -41,12 +49,23 @@ async function fetchSearchCategories() {
   }
 }
 
+// Skeleton component for loading state
+const SkeletonLoader = () => {
+  return Array(5).fill(0).map((_, index) => (
+    <div key={index} className={searchStyles.skeletonItem}></div>
+  ));
+};
+
 export default function SearchCategoryDialog() {
   const dispatch = useDispatch();
   const router = useRouter();
   const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isOpen = useSelector((state) => state.ui.isSearchDialogOpen);
-  const [isLoading, setIsLoading] = useState(false);
+  const searchCategoriesCache = useSelector((state) => state.persistentUi?.searchCategories || {
+    data: null,
+    lastFetched: null,
+    isLoading: false
+  });
   const [searchText, setSearchText] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -54,6 +73,18 @@ export default function SearchCategoryDialog() {
   const inputRef = useRef(null);
   // Track whether we've pushed a history state (for mobile only)
   const pushedStateRef = useRef(false);
+
+  // Cache expiry time (1 hour = 3600000 ms)
+  const CACHE_EXPIRY_TIME = 3600000;
+
+  // Check if cached data is valid (exists and not expired)
+  const isCacheValid = useCallback(() => {
+    if (!searchCategoriesCache?.data || !searchCategoriesCache?.lastFetched) {
+      return false;
+    }
+    const now = Date.now();
+    return (now - searchCategoriesCache.lastFetched) < CACHE_EXPIRY_TIME;
+  }, [searchCategoriesCache?.data, searchCategoriesCache?.lastFetched, CACHE_EXPIRY_TIME]);
 
   // Determine if we're on mobile (using a width threshold)
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1000;
@@ -81,22 +112,43 @@ export default function SearchCategoryDialog() {
         window.history.pushState({ searchDialog: true }, '');
         pushedStateRef.current = true;
       }
-      setIsLoading(true);
-      fetchSearchCategories()
-        .then((data) => {
-          if (data?.categories && data?.variants) {
-            setCategories(data.categories);
-            setVariants(data.variants);
-            const catNames = data.categories.map((c) => c.name);
-            const varNames = data.variants.map((v) => v.name);
-            setSuggestions([...catNames, ...varNames].slice(0, 10));
-          }
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.error(err);
-          setIsLoading(false);
-        });
+
+      // Check if we have valid cached data
+      if (isCacheValid()) {
+        // Use cached data immediately
+        const cachedData = searchCategoriesCache.data;
+        setCategories(cachedData.categories || []);
+        setVariants(cachedData.variants || []);
+        const catNames = (cachedData.categories || []).map((c) => c.name);
+        setSuggestions(catNames.slice(0, 10));
+      } else {
+        // Cache is invalid or doesn't exist, fetch new data
+        dispatch(setSearchCategoriesLoading(true));
+        fetchSearchCategories()
+          .then((data) => {
+            if (data?.categories) {
+              const categoriesData = data.categories;
+              const variantsData = data.variants || [];
+              
+              // Update Redux cache
+              dispatch(setSearchCategories({
+                categories: categoriesData,
+                variants: variantsData
+              }));
+              
+              // Update local state
+              setCategories(categoriesData);
+              setVariants(variantsData);
+              const catNames = categoriesData.map((c) => c.name);
+              setSuggestions(catNames.slice(0, 10));
+            }
+            dispatch(setSearchCategoriesLoading(false));
+          })
+          .catch((err) => {
+            console.error(err);
+            dispatch(setSearchCategoriesLoading(false));
+          });
+      }
 
       // Delay focus until the Dialog is fully rendered
       setTimeout(() => {
@@ -113,7 +165,7 @@ export default function SearchCategoryDialog() {
         return () => window.removeEventListener('popstate', handlePopState);
       }
     }
-  }, [isOpen, isMobile, handleClose]);
+  }, [isOpen, isMobile, handleClose, dispatch, searchCategoriesCache, isCacheValid]);
 
   // Also try to focus using another useEffect (as a backup)
   useEffect(() => {
@@ -129,47 +181,33 @@ export default function SearchCategoryDialog() {
     const inputValue = e.target.value;
     setSearchText(inputValue);
 
-    if (!categories.length || !variants.length) return;
+    if (!categories.length) return;
 
     if (inputValue.trim() !== '') {
       const lower = inputValue.toLowerCase();
       const catFiltered = categories
         .filter((cat) => cat.name.toLowerCase().includes(lower))
         .map((c) => c.name);
-      const varFiltered = variants
-        .filter((v) => v.name.toLowerCase().includes(lower))
-        .map((v) => v.name);
-      setSuggestions([...catFiltered, ...varFiltered].slice(0, 10));
+      setSuggestions(catFiltered.slice(0, 10));
     } else {
       const catNames = categories.map((c) => c.name);
-      const varNames = variants.map((v) => v.name);
-      setSuggestions([...catNames, ...varNames].slice(0, 10));
+      setSuggestions(catNames.slice(0, 10));
     }
   };
 
   // Clicking a suggestion navigates accordingly and then closes the dialog
-  const handleSuggestionClick = (suggestion) => {
-    const variantObj = variants.find(
-      (v) => v.name.toLowerCase() === suggestion.toLowerCase()
+  const handleSuggestionClick = useCallback((suggestion) => {
+    const categoryObj = categories.find(
+      (c) => c.name.toLowerCase() === suggestion.toLowerCase()
     );
-    if (variantObj && variantObj.pageSlug) {
-      router.push(`/shop/${variantObj.pageSlug}`);
-    } else {
-      const categoryObj = categories.find(
-        (c) => c.name.toLowerCase() === suggestion.toLowerCase()
-      );
-      if (categoryObj) {
-        const firstVariant = variants.find(
-          (v) => String(v.specificCategory) === String(categoryObj.id)
-        );
-        if (firstVariant?.pageSlug) {
-          router.push(`/shop/${firstVariant.pageSlug}`);
-        }
-      }
+    
+    if (categoryObj && categoryObj.pageSlug) {
+      router.push(`/shop/${categoryObj.pageSlug}`);
     }
+    
     // For route navigation on mobile, skip the history back step
     handleClose(true);
-  };
+  }, [categories, router, handleClose]);
 
   // Pressing Enter picks the first suggestion
   const handleKeyDown = useCallback(
@@ -178,7 +216,7 @@ export default function SearchCategoryDialog() {
         handleSuggestionClick(suggestions[0]);
       }
     },
-    [suggestions]
+    [suggestions, handleSuggestionClick]
   );
 
   useEffect(() => {
@@ -192,122 +230,265 @@ export default function SearchCategoryDialog() {
     };
   }, [isOpen, handleKeyDown]);
 
+  const isNewItem = (text) => {
+    return [ 'freshener', 'bonnet'].some((w) =>
+      text.toLowerCase().includes(w)
+    );
+  };
+
   return (
     <Dialog
       fullScreen
       open={isOpen}
-      onClose={() => handleClose()} // Closes on tapping outside or pressing ESC
+      onClose={() => handleClose()}
       TransitionComponent={Transition}
+      sx={{ zIndex: 9999 }}
       PaperProps={{ style: { backgroundColor: 'white' } }}
     >
       <AppBar
-        sx={{ position: 'relative', backgroundColor: 'white', boxShadow: 'none' }}
+        sx={{ 
+          position: 'relative', 
+          backgroundColor: 'white', 
+          boxShadow: 'none',
+          borderBottom: '1px solid #f0f0f0'
+        }}
       >
         <Toolbar className={searchStyles.searchheader}>
-          <IconButton edge="start" color="inherit" onClick={() => handleClose()}>
-            <Image
-              src={`${baseUrl}/assets/icons/left-arrow.png`}
-              width={24}
-              height={24}
-              alt="Back"
-              style={{ cursor: 'pointer' }}
-            />
-          </IconButton>
-          <Typography
-            sx={{ ml: 2, flex: 1, color: 'black', fontFamily: 'Jost' }}
-            variant="h6"
-            component="div"
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            Customize your vehicle, your way!
-          </Typography>
+            <IconButton edge="start" color="inherit" onClick={() => handleClose()}>
+              <Image
+                src={`${baseUrl}/assets/icons/left-arrow.png`}
+                width={24}
+                height={24}
+                alt="Back"
+                style={{ cursor: 'pointer' }}
+              />
+            </IconButton>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            style={{ flex: 1 }}
+          >
+            <Typography
+              sx={{ 
+                ml: 2, 
+                flex: 1, 
+                color: '#333',
+                fontWeight: 500,
+                fontFamily: 'Jost' 
+              }}
+              variant="h6"
+              component="div"
+            >
+              Customize your vehicle, your way!
+            </Typography>
+          </motion.div>
         </Toolbar>
       </AppBar>
 
       <Box
         sx={{
-          p: 2,
+          p: { xs: 1.5, sm: 2 },
           position: 'relative',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
+          bgcolor: '#fafafa'
         }}
       >
-        {/* Search Input */}
-        <Box
-          className={searchStyles.searchBoxSubContainer}
-          sx={{ display: 'flex', alignItems: 'center', mb: 2 }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <Image
-            src={`${baseUrl}/assets/icons/search.png`}
-            width={24}
-            height={24}
-            alt="search"
-            style={{ marginRight: 16 }}
-          />
-          <input
-            ref={inputRef}
-            type="text"
-            spellCheck={false}
-            onChange={handleInputChange}
-            className={`${searchStyles.inputField} ${searchStyles.dialogInputField}`}
-            value={searchText}
-            placeholder="Search..."
-            style={{
-              flex: 1,
-              fontSize: '1.2rem',
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
+          <Box
+            className={searchStyles.searchBoxSubContainer}
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              mb: 2,
+              mt: { xs: 1, sm: 2 }
             }}
-          />
-        </Box>
-
-        {/* Suggestions List */}
-        <Box sx={{ flex: 1, overflowY: 'auto' }} className={searchStyles.suggestionBox}>
-          {suggestions.length ? (
-            <List>
-              {suggestions.map((text, i) => (
-                <ListItem
-                  key={i}
-                  sx={{ cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5' } }}
-                  onClick={() => handleSuggestionClick(text)}
-                >
-                  <ListItemIcon>
-                    <Image
-                      src={`${baseUrl}/assets/icons/thin-search.png`}
-                      width={25}
-                      height={25}
-                      alt="thin search"
-                      priority
-                    />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={
-                      <Box display="flex" alignItems="center">
-                        <Typography variant="body1" component="span" sx={{ fontFamily: 'Jost' }}>
-                          {text}
-                        </Typography>
-                        {['fuel', 'pillar', 'bonnet', 'roof'].some((w) =>
-                          text.toLowerCase().includes(w)
-                        ) && (
-                          <Image
-                            src={`${baseUrl}/assets/icons/new.png`}
-                            width={30}
-                            height={30}
-                            alt="New"
-                            style={{ marginLeft: 8 }}
-                          />
-                        )}
-                      </Box>
-                    }
+          >
+            <Image
+              src={`${baseUrl}/assets/icons/search.png`}
+              width={24}
+              height={24}
+              alt="search"
+              className={searchStyles.searchIcon}
+            />
+            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+              {searchText === '' && (
+                <div className={searchStyles.typewriterContainer}>
+                  <Typewriter
+                    options={{
+                      strings: typewriterStrings,
+                      autoStart: true,
+                      loop: true,
+                      delay: 40,
+                      deleteSpeed: 10,
+                      wrapperClassName: 'typewriter-text'
+                    }}
                   />
-                </ListItem>
-              ))}
-            </List>
+                </div>
+              )}
+              <input
+                ref={inputRef}
+                type="text"
+                spellCheck={false}
+                onChange={handleInputChange}
+                className={`${searchStyles.inputField} ${searchStyles.dialogInputField}`}
+                value={searchText}
+                placeholder=""
+                style={{
+                  flex: 1,
+                  fontSize: '1.2rem',
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  position: 'relative',
+                  zIndex: 2
+                }}
+              />
+            </div>
+          </Box>
+        </motion.div>
+
+        <Box 
+          sx={{ 
+            flex: 1, 
+            overflowY: 'auto',
+            mt: 1,
+            px: { xs: 0.5, sm: 1 }
+          }} 
+          className={searchStyles.suggestionBox}
+        >
+          {searchCategoriesCache?.isLoading ? (
+            <Fade in={searchCategoriesCache?.isLoading} timeout={500}>
+              <div>
+                <SkeletonLoader />
+              </div>
+            </Fade>
+          ) : suggestions.length ? (
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: {
+                    staggerChildren: 0.05
+                  }
+                }
+              }}
+            >
+              <List>
+                {suggestions.map((text, i) => (
+                  <motion.div
+                    key={i}
+                    variants={{
+                      hidden: { opacity: 0, x: -10 },
+                      visible: { opacity: 1, x: 0 }
+                    }}
+                  >
+                    <ListItem
+                      className={searchStyles.suggestionItem}
+                      sx={{ 
+                        cursor: 'pointer',
+                        backgroundColor: 'white',
+                        mb: 1,
+                        borderRadius: '12px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                      }}
+                      onClick={() => handleSuggestionClick(text)}
+                    >
+                      <ListItemIcon sx={{ minWidth: '40px' }}>
+                        <Image
+                          src={`${baseUrl}/assets/icons/thin-search.png`}
+                          width={20}
+                          height={20}
+                          alt="search"
+                          priority
+                        />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Box display="flex" alignItems="center">
+                            <Typography 
+                              variant="body1" 
+                              component="span" 
+                              sx={{ 
+                                fontFamily: 'Jost',
+                                fontWeight: 500
+                              }}
+                            >
+                              {text}
+                            </Typography>
+                            {isNewItem(text) && (
+                              <span className={searchStyles.newLabel}>New</span>
+                            )}
+                          </Box>
+                        }
+                      />
+                    </ListItem>
+                  </motion.div>
+                ))}
+              </List>
+            </motion.div>
           ) : (
-            <Typography variant="body1" align="center" sx={{ mt: 4, fontFamily: 'Jost' }}>
-              {isLoading ? 'Loading Categories...' : 'No results found'}
-            </Typography>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Box 
+                sx={{ 
+                  mt: 8, 
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 2 
+                }}
+              >
+                <Image
+                  src={`${baseUrl}/assets/icons/search.png`}
+                  width={60}
+                  height={60}
+                  alt="search"
+                  style={{ opacity: 0.5, marginBottom: '1rem' }}
+                />
+                <Typography 
+                  variant="body1" 
+                  align="center" 
+                  sx={{ 
+                    fontFamily: 'Jost',
+                    color: '#666',
+                    fontWeight: 500 
+                  }}
+                >
+                  No matching categories found
+                </Typography>
+                <Typography
+                  variant="body2"
+                  align="center"
+                  sx={{
+                    fontFamily: 'Jost',
+                    color: '#888',
+                    mt: 1
+                  }}
+                >
+                  Try a different search term
+                </Typography>
+              </Box>
+            </motion.div>
           )}
         </Box>
       </Box>

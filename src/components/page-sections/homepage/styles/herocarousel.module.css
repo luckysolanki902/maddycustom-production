@@ -1,0 +1,19 @@
+.carouseldiv {
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+padding: 0 var(--global-horizontal-padding);
+}
+
+@media (max-width: 768px) {
+  .carouseldiv {
+    padding: 0 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .carouseldiv {
+padding: 0 var(--global-horizontal-padding-phone);
+
+  }
+}

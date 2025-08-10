@@ -1,0 +1,108 @@
+[
+  {
+    "_note": "Sample DisplayAsset documents for testing HeroCarousel - Insert these into your MongoDB database",
+    "componentName": "hero-carousel",
+    "componentType": "carousel",
+    "content": "First Three Products Banner",
+    "media": {
+      "desktop": "/assets/carousels/homepage-main/first-three-products-banner.jpg",
+      "mobile": "/assets/carousels/homepage-main/mobile/first-three-products-banner.jpg"
+    },
+    "useSameMediaForAllDevices": false,
+    "mediaType": "image",
+    "page": "homepage",
+    "position": "1",
+    "recurringRule": "none",
+    "isActive": true
+  },
+  {
+    "componentName": "hero-carousel", 
+    "componentType": "carousel",
+    "content": "End of Month Special Offer",
+    "media": {
+      "desktop": "/assets/carousels/homepage-main/eom2.png",
+      "mobile": "/assets/carousels/homepage-main/mobile/eom2.png"
+    },
+    "useSameMediaForAllDevices": false,
+    "mediaType": "image",
+    "page": "homepage",
+    "position": "0",
+    "recurringRule": "last-5-days-of-month",
+    "isActive": true
+  },
+  {
+    "componentName": "hero-carousel",
+    "componentType": "carousel", 
+    "content": "Roof Wrap Collection",
+    "media": {
+      "desktop": "/assets/carousels/homepage-main/roofwrap.jpg",
+      "mobile": "/assets/carousels/homepage-main/mobile/roofwrap.jpg"
+    },
+    "useSameMediaForAllDevices": false,
+    "mediaType": "image",
+    "page": "homepage",
+    "position": "2",
+    "recurringRule": "none",
+    "isActive": true
+  },
+  {
+    "componentName": "hero-carousel",
+    "componentType": "carousel",
+    "content": "Car Pillar Wraps Shinobi",
+    "media": {
+      "desktop": "/assets/carousels/homepage-main/car-pillar-wraps-shinobi.jpg",
+      "mobile": "/assets/carousels/homepage-main/mobile/car-pillar-wraps-shinobi.jpg"
+    },
+    "useSameMediaForAllDevices": false,
+    "mediaType": "image", 
+    "page": "homepage",
+    "position": "3",
+    "recurringRule": "none",
+    "isActive": true
+  },
+  {
+    "componentName": "hero-carousel",
+    "componentType": "carousel",
+    "content": "Premium Car Mats",
+    "media": {
+      "desktop": "/assets/carousels/homepage-main/mat.jpg",
+      "mobile": "/assets/carousels/homepage-main/mobile/mat.jpg"
+    },
+    "useSameMediaForAllDevices": false,
+    "mediaType": "image",
+    "page": "homepage", 
+    "position": "4",
+    "recurringRule": "none",
+    "isActive": true
+  },
+  {
+    "componentName": "hero-carousel",
+    "componentType": "carousel",
+    "content": "Bonnet Strip Wraps Assassin",
+    "media": {
+      "desktop": "/assets/carousels/homepage-main/bonnet-strip-wraps-assassin.jpg",
+      "mobile": "/assets/carousels/homepage-main/mobile/bonnet-strip-wraps-assassin.jpg"
+    },
+    "useSameMediaForAllDevices": false,
+    "mediaType": "image",
+    "page": "homepage",
+    "position": "5", 
+    "recurringRule": "none",
+    "isActive": true
+  },
+  {
+    "componentName": "hero-carousel",
+    "componentType": "carousel",
+    "content": "Tank Wraps Peace Collection",
+    "media": {
+      "desktop": "/assets/carousels/homepage-main/tank-wraps-peace.jpg",
+      "mobile": "/assets/carousels/homepage-main/mobile/tank-wraps-peace.jpg"
+    },
+    "useSameMediaForAllDevices": false,
+    "mediaType": "image",
+    "page": "homepage",
+    "position": "6",
+    "recurringRule": "none", 
+    "isActive": true
+  }
+]

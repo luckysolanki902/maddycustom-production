@@ -20,6 +20,7 @@ import variantPreferenceReducer from './slices/variantPreferenceSlice';
 import userBehaviorSlice from './slices/userBehaviorSlice';
 import uiReducer from './slices/uiSlice';
 import persistentUiReducer from './slices/persistentUiSlice'; // Import the new slice
+import displayAssetsReducer from './slices/displayAssetsSlice'; // Import display assets slice
 
 const rootReducer = combineReducers({
   cart: cartReducer,
@@ -29,13 +30,15 @@ const rootReducer = combineReducers({
   userBehavior: userBehaviorSlice,
   ui: uiReducer,
   persistentUi: persistentUiReducer, // Add the new reducer
+  displayAssets: displayAssetsReducer, // Add display assets reducer
 });
 
 const persistConfig = {
-  key: 'root_v4', // Consider incrementing key if structure changes significantly, e.g., 'root_v5'
+  key: 'root_v6', // Incremented to handle new displayAssets structure
   storage,
-  // Add 'persistentUi' to the whitelist
-  whitelist: ['cart', 'orderForm', 'utm', 'variantPreference', 'userBehavior', 'persistentUi'],
+  // Add 'displayAssets' to the whitelist for caching
+  whitelist: ['cart', 'orderForm', 'utm', 'variantPreference', 'userBehavior', 'persistentUi', 'displayAssets'],
+
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

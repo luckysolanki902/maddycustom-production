@@ -1,25 +1,16 @@
 import React from 'react';
-import HeroSection from '@/components/page-sections/homepage/HeroSection';
+import HeroCarousel from '@/components/page-sections/homepage/HeroCarousel';
 import styles from '@/styles/home.module.css';
-import ChooseCategory from '@/components/page-sections/homepage/ChoseCategory';
 import CategorySearchBox from '@/components/utils/CategorySearchBox';
-import OurUniqueProductCarousel from '@/components/showcase/carousels/OurUniqueProductCarousel';
-import FlexibleLargePoster from '@/components/showcase/posters/FlexibleLargePoster';
-import HalfBikes from '@/components/page-sections/homepage/halfBikes';
 // import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
-import Image from 'next/image';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import {
-  fetchOurUniqueProducts,
-  fetchRandomProducts,
-  // fetchHappyCustomers,
   fetchSearchCategories,
-  fetchFeaturedproducts,
+  fetchDisplayAssets,
 } from '@/lib/utils/fetchutils';
-import ProductSlider from '@/components/showcase/sliders/ProductSlider';
-import FeaturedProducts from '@/components/page-sections/homepage/FeaturedProducts';
-import { Box, Typography } from '@mui/material';
-import KeychainImageGrid from '@/components/page-sections/homepage/KeychainImageGrid';
+
+import { Box } from '@mui/material';
+import ProductCategorySlider from '@/components/page-sections/homepage/ProductCategorySlider';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -29,105 +20,56 @@ export async function generateMetadata() {
 }
 
 const [
-  ourUniqueProductsData,
-  randomProductsData, // Now using the new generic endpoint
-  featuredBikeWrapsData,
   // happyCustomersData,
   searchCategoriesData,
+  displayAssetsData,
 ] = await Promise.all([
-  fetchOurUniqueProducts(),
-  fetchRandomProducts('f', 10), // Pass your specific category slug here
-  fetchFeaturedproducts('caf'),
-  // fetchHappyCustomers(null),
   fetchSearchCategories(),
+  fetchDisplayAssets('homepage'),
 ]);
-
 const HomePage = async () => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-  // Fetch all necessary data concurrently
 
   // Destructure categories and variants from searchCategoriesData
   const { categories, variants } = searchCategoriesData;
+  
+  // Destructure display assets
+  const { assets: displayAssets = [] } = displayAssetsData;
+  // Filter assets for hero carousel
+  const heroCarouselAssets = displayAssets.filter(asset => 
+    asset.componentName === 'hero-carousel' && 
+    asset.componentType === 'carousel'
+  );
+  console.log('hero carousel assets:', { heroCarouselAssets });
 
   return (
     <>
 
-      <main>
-        {/* Logo and Main Carousel */}
-        <HeroSection />
-
-        {/* SearchBox */}
-        <div className={styles.chooseDiv}>CHOOSE</div>
+      <main className={styles.main}>
+        {/* SearchBox for phone and tab only */}
         <CategorySearchBox categories={categories} variants={variants} />
 
-        {/* Category cards like Helmet, Tank, Bonnet to choose from */}
-        <ChooseCategory />
-
-        {/* <KeychainImageGrid /> */}
-        <FlexibleLargePoster
-          items={[
-            {
-              pcImage: "pc static split banner 1.jpg",
-              phoneImage: "mobile static split banner 1.jpg",
-              link1: "/shop/accessories/car-care/car-floor-mats/universal-car-mats",
-              link2: "/shop/wraps/car-wraps/roof-wraps/suv",
-              pcImage2: "pc static split banner 2.jpg",
-              phoneImage2: "mobile static split banner 2a.jpg",
-            },
-          ]}
-        />
-        <Box
-          sx={{
-            marginBottom: { xs: '2rem', md: '2.5rem', lg: '5rem' },
-            width: '100%',
-            height: 0,
-          }}
-        ></Box>
-
-
-        {/* Our Unique Products */}
-        <OurUniqueProductCarousel products={ourUniqueProductsData} />
-
-        <div className={styles.doubleGrid}>
-          <Image src={`${baseImageUrl}/assets/posters/first-brand-surprise-banner.png`} alt='doublegrid' width={1000} height={500}></Image>
-          <Image src={`${baseImageUrl}/assets/posters/tank-cap-wrap-banner.png`} alt='doublegrid' width={1000} height={500}></Image>
-        </div>
-        <ProductSlider slides={randomProductsData} />
-
-        {/* Bonnet Strip Wrap Poster */}
-        <FlexibleLargePoster
-          items={[
-            {
-              pcImage: "bonnetstrippc.jpg",
-              phoneImage: "bonnetstripphone.jpg",
-              link: "/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps",
-            },
-            {
-              pcImage: "caf_pc.png",
-              phoneImage: "caf_phone.png",
-              link: "/shop/accessories/car-care/car-air-freshners/hanging-bottle-car-fresheners",
-            },
-          ]}
-        />
-
-
-
-        {/* Featured Products */}
-        <FeaturedProducts data={featuredBikeWrapsData} />
-
-        {/* Happy Customers */}
-        {/* <div className={styles.featuredHead} style={{marginBottom:'-2rem', marginTop:'1rem'}}>
-          <Image
-            width={940}
-            height={256}
-            alt='heading - featured products'
-            src={`${baseImageUrl}/assets/icons/happycustomers.png`}
+        {/* Add the carousel padding class to prevent content overlap */}
+        <div className={styles.carouselPadding}>
+          {/* Render ProductCategoryBox above HeroCarousel only on screens larger than 1200px only*/}
+          <ProductCategorySlider position="aboveHero" />
+          
+          {/* Logo and Main Carousel */}
+          <HeroCarousel 
+            assets={heroCarouselAssets}
           />
-        </div> */}
-        {/* <HappyCustomers data={happyCustomersData} noHeading={true} noShadow={true} /> */}
+        </div>
 
-        {/* Animated Half Bikes */}
-        <HalfBikes />
+                <ProductCategorySlider position="belowHero" />
+
+
+
+
+
+
+
+        {/* <ProductSlider slides={randomProductsData} /> */}
+
 
       </main>
     </>

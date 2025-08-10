@@ -183,17 +183,26 @@ export async function fetchHappyCustomers(parentSpecificCategoryId) {
 
 /**
  * Fetch search categories for the CategorySearchBox.
- * This function uses both the Next.js revalidate option (60 seconds) and
- * custom cache control headers for additional caching hints.
+ * This function uses both the Next.js revalidate option and
+ * custom cache control headers for additional caching hints (disabled in development).
  */
 export async function fetchSearchCategories() {
   try {
-    const res = await fetch(`${BASE_URL}/api/search/search-categories`, {
-      next: { revalidate: 300 },
-      headers: {
-        'Cache-Control': 'public, max-age=60, immutable',
-      },
-    });
+    // Determine cache configuration based on environment
+    const isDevelopment = process.env.NEXT_PUBLIC_NODE_ENV === 'development';
+    const fetchOptions = isDevelopment 
+      ? { 
+          cache: 'no-store' // No caching in development
+        } 
+      : { 
+          next: { revalidate: 300 },
+          headers: {
+            'Cache-Control': 'public, max-age=60, immutable',
+          },
+        };
+
+    const res = await fetch(`${BASE_URL}/api/search/search-categories`, fetchOptions);
+    
     if (!res.ok) {
       console.error(`Failed to fetch search categories. Status: ${res.status}`);
       throw new Error('Failed to fetch search categories');
@@ -202,5 +211,30 @@ export async function fetchSearchCategories() {
   } catch (error) {
     console.error('Error fetching search categories:', error.message);
     throw error;
+  }
+}
+
+/**
+ * Fetch display assets for a specific page.
+ * Uses Next.js revalidation to cache responses for 30 minutes (disabled in development).
+ */
+export async function fetchDisplayAssets(page = 'homepage') {
+  try {
+    // Determine cache configuration based on environment
+    const isDevelopment = process.env.NEXT_PUBLIC_NODE_ENV === 'development';
+    const fetchOptions = isDevelopment 
+      ? { cache: 'no-store' } // No caching in development
+      : { next: { revalidate: 1800 } }; // 30 minutes cache in production
+    
+    const res = await fetch(`${BASE_URL}/api/display-assets?page=${page}`, fetchOptions);
+    
+    if (!res.ok) {
+      console.error(`Failed to fetch display assets. Status: ${res.status}`);
+      return { assets: [] };
+    }
+    return await res.json();
+  } catch (error) {
+    console.error('Error fetching display assets:', error.message);
+    return { assets: [] };
   }
 }
