@@ -1,0 +1,28 @@
+/* horizontal flex + scroll‐snap */
+.sliderContainer {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;  /* room for scrollbar */
+  margin: 16px 0;
+}
+
+/* each image is a snap point */
+.imageWrapper {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  margin-right: 3px;
+}
+
+/* hide last margin */
+.imageWrapper:last-child {
+  margin-right: 0;
+}
+
+/* custom webkit scrollbar */
+.sliderContainer::-webkit-scrollbar {
+  display: none;
+}
+

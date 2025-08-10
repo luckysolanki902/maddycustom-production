@@ -1,0 +1,51 @@
+.carouselContainer {
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  position: relative;
+  overflow: hidden;
+}
+
+.swiper {
+  width: 100%;
+  height: auto;
+}
+
+.slide {
+  width: 100%;
+  height: auto;
+}
+
+.imageWrapper {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  overflow: hidden;
+}
+
+/* Custom pagination styles */
+:global(.custom-bullet) {
+  background: rgba(255, 255, 255, 0.5) !important;
+  opacity: 1 !important;
+  width: 12px !important;
+  height: 12px !important;
+  margin: 0 6px !important;
+  transition: all 0.3s ease !important;
+}
+
+:global(.custom-bullet-active) {
+  background: #fff !important;
+  transform: scale(1.2) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .imageWrapper {
+    height: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .imageWrapper {
+    height: 220px;
+  }
+}

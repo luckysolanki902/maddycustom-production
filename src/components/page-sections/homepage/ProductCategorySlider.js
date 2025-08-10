@@ -40,7 +40,7 @@ const ProductCategorySlider = ({ position = "default" }) => {
   if (position === "belowHero" && !isMobile) return null;
 
   const cardData = [
-    { name: "Wraps", link: "/shop/wraps/car-wraps/window-pillar-wraps/win-wraps" ,image:"/assets/icons/half_helmet.png" },
+    { name: "Pillar Wraps", link: "/shop/wraps/car-wraps/window-pillar-wraps/win-wraps" ,image:"/assets/icons/half_helmet.png" },
     // { name: "Key Chains", link: "/shop/accessories/minimal-personalization/keychains/realistic-functional-keychains" },
     { name: "Air Freshener", link: "/shop/accessories/car-care/car-air-freshners/hanging-bottle-car-fresheners" },
     { name: "Tank Wraps", link: "/shop/wraps/bike-wraps/tank-wraps/slim-tank-wraps" },

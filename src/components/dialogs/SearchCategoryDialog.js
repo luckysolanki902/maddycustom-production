@@ -32,6 +32,11 @@ const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="down" ref={ref} {...props} />;
 });
 
+// Global flag to prevent multiple simultaneous requests
+let globalFetchInProgress = false;
+let globalDataCache = null;
+let globalCacheTimestamp = null;
+
 async function fetchSearchCategories() {
   try {
     const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -75,6 +80,8 @@ export default function SearchCategoryDialog() {
   const pushedStateRef = useRef(false);
   // Track if we've already initiated a fetch to prevent duplicate requests
   const fetchInitiatedRef = useRef(false);
+  // Track if we've already loaded data for this session
+  const dataLoadedRef = useRef(false);
 
   // Cache expiry time (1 hour = 3600000 ms)
   const CACHE_EXPIRY_TIME = 3600000;
@@ -100,76 +107,132 @@ export default function SearchCategoryDialog() {
 
   // When dialog opens, fetch categories/variants and (if mobile) push history state
   useEffect(() => {
-    if (isOpen) {
-      if (isMobile && !pushedStateRef.current) {
-        window.history.pushState({ searchDialog: true }, '');
-        pushedStateRef.current = true;
-      }
-
-      // Check if we have valid cached data inline to avoid dependency issues
-      const hasValidCache = searchCategoriesCache?.data && 
-        searchCategoriesCache?.lastFetched && 
-        (Date.now() - searchCategoriesCache.lastFetched) < CACHE_EXPIRY_TIME;
-
-      if (hasValidCache) {
-        // Use cached data immediately
-        const cachedData = searchCategoriesCache.data;
-        setCategories(cachedData.categories || []);
-        setVariants(cachedData.variants || []);
-        const catNames = (cachedData.categories || []).map((c) => c.name);
-        setSuggestions(catNames.slice(0, 10));
-        fetchInitiatedRef.current = false; // Reset fetch flag when using cache
-      } else if (!fetchInitiatedRef.current && !searchCategoriesCache?.isLoading) {
-        // Cache is invalid or doesn't exist, fetch new data only if not already fetching
-        fetchInitiatedRef.current = true;
-        dispatch(setSearchCategoriesLoading(true));
-        fetchSearchCategories()
-          .then((data) => {
-            if (data?.categories) {
-              const categoriesData = data.categories;
-              const variantsData = data.variants || [];
-              
-              // Update Redux cache
-              dispatch(setSearchCategories({
-                categories: categoriesData,
-                variants: variantsData
-              }));
-              
-              // Update local state
-              setCategories(categoriesData);
-              setVariants(variantsData);
-              const catNames = categoriesData.map((c) => c.name);
-              setSuggestions(catNames.slice(0, 10));
-            }
-            dispatch(setSearchCategoriesLoading(false));
-            fetchInitiatedRef.current = false;
-          })
-          .catch((err) => {
-            console.error(err);
-            dispatch(setSearchCategoriesLoading(false));
-            fetchInitiatedRef.current = false;
-          });
-      }
-
-      // Delay focus until the Dialog is fully rendered
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-        }
-      }, 100);
-
-      if (isMobile) {
-        const handlePopState = () => {
-          handleClose();
-        };
-        window.addEventListener('popstate', handlePopState);
-        return () => window.removeEventListener('popstate', handlePopState);
-      }
-    } else {
-      // Reset fetch flag when dialog closes
+    if (!isOpen) {
+      // Reset flags when dialog closes
       fetchInitiatedRef.current = false;
+      dataLoadedRef.current = false;
+      return;
     }
-  }, [isOpen, isMobile, handleClose, dispatch, searchCategoriesCache?.data, searchCategoriesCache?.lastFetched, searchCategoriesCache?.isLoading, CACHE_EXPIRY_TIME]);
+
+    // Prevent multiple executions for the same dialog session
+    if (dataLoadedRef.current) {
+      console.log('Data already loaded for this session, skipping...');
+      return;
+    }
+
+    console.log('Dialog opened, checking data...');
+
+    // Handle mobile history state
+    if (isMobile && !pushedStateRef.current) {
+      window.history.pushState({ searchDialog: true }, '');
+      pushedStateRef.current = true;
+    }
+
+    // Check for valid cache first (independent of Redux)
+    const now = Date.now();
+    const hasValidGlobalCache = globalDataCache && globalCacheTimestamp && 
+                               (now - globalCacheTimestamp) < CACHE_EXPIRY_TIME;
+
+    if (hasValidGlobalCache) {
+      console.log('Using global cache...');
+      setCategories(globalDataCache.categories || []);
+      setVariants(globalDataCache.variants || []);
+      const catNames = (globalDataCache.categories || []).map((c) => c.name);
+      setSuggestions(catNames.slice(0, 10));
+      dataLoadedRef.current = true;
+      return;
+    }
+
+    // Check Redux cache as fallback
+    const hasValidReduxCache = searchCategoriesCache?.data && 
+                              searchCategoriesCache?.lastFetched && 
+                              (now - searchCategoriesCache.lastFetched) < CACHE_EXPIRY_TIME;
+
+    if (hasValidReduxCache) {
+      console.log('Using Redux cache...');
+      const cachedData = searchCategoriesCache.data;
+      setCategories(cachedData.categories || []);
+      setVariants(cachedData.variants || []);
+      const catNames = (cachedData.categories || []).map((c) => c.name);
+      setSuggestions(catNames.slice(0, 10));
+      dataLoadedRef.current = true;
+      
+      // Update global cache
+      globalDataCache = cachedData;
+      globalCacheTimestamp = searchCategoriesCache.lastFetched;
+      return;
+    }
+
+    // Need to fetch new data
+    if (globalFetchInProgress || fetchInitiatedRef.current) {
+      console.log('Fetch already in progress, skipping...');
+      return;
+    }
+
+    console.log('Fetching new data...');
+    fetchInitiatedRef.current = true;
+    globalFetchInProgress = true;
+    dispatch(setSearchCategoriesLoading(true));
+
+    const fetchData = async () => {
+      try {
+        const data = await fetchSearchCategories();
+        if (data?.categories) {
+          const categoriesData = data.categories;
+          const variantsData = data.variants || [];
+          
+          // Update global cache
+          globalDataCache = { categories: categoriesData, variants: variantsData };
+          globalCacheTimestamp = Date.now();
+          
+          // Update Redux cache
+          dispatch(setSearchCategories({
+            categories: categoriesData,
+            variants: variantsData
+          }));
+          
+          // Update local state
+          setCategories(categoriesData);
+          setVariants(variantsData);
+          const catNames = categoriesData.map((c) => c.name);
+          setSuggestions(catNames.slice(0, 10));
+          dataLoadedRef.current = true;
+          
+          console.log('Data fetched successfully');
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      } finally {
+        dispatch(setSearchCategoriesLoading(false));
+        fetchInitiatedRef.current = false;
+        globalFetchInProgress = false;
+      }
+    };
+
+    fetchData();
+
+    // Focus input after dialog opens
+    const focusTimeout = setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 100);
+
+    // Handle mobile back button
+    if (isMobile) {
+      const handlePopState = () => {
+        handleClose();
+      };
+      window.addEventListener('popstate', handlePopState);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+        clearTimeout(focusTimeout);
+      };
+    }
+
+    return () => clearTimeout(focusTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Also try to focus using another useEffect (as a backup)
   useEffect(() => {

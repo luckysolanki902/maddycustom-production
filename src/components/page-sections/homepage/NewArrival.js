@@ -23,25 +23,24 @@ export default function NewArrival({ assets = [], loading = false, title = "New 
     [assets]
   );
 
-  // subtle animations - reduced complexity and made more robust
+  // More robust animations - simplified to prevent glitches
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
       opacity: 1, 
       transition: { 
-        duration: 0.3, 
-        ease: "easeOut", 
-        staggerChildren: 0.03,
-        delayChildren: 0.1
+        duration: 0.4, 
+        ease: "easeOut"
       } 
     },
   };
+  
   const itemVariants = { 
-    hidden: { opacity: 0, y: 8 }, 
+    hidden: { opacity: 0, y: 10 }, 
     visible: { 
       opacity: 1, 
       y: 0, 
-      transition: { duration: 0.25, ease: "easeOut" } 
+      transition: { duration: 0.4, ease: "easeOut" } 
     } 
   };
 
@@ -68,10 +67,11 @@ export default function NewArrival({ assets = [], loading = false, title = "New 
 
     return (
       <motion.div 
-        variants={itemVariants} 
         className={styles.card} 
-        whileHover={{ y: -2, transition: { duration: 0.15 } }}
-        layout
+        whileHover={{ y: -2, transition: { duration: 0.2 } }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
       >
         <Link href={asset?.link || "#"} className={styles.link} aria-label={asset?.content || "New arrival"}>
           <div className={styles.imageWrap}>
@@ -95,7 +95,13 @@ export default function NewArrival({ assets = [], loading = false, title = "New 
   };
 
   const SkeletonCard = () => (
-    <motion.div className={styles.card} variants={itemVariants} aria-hidden layout>
+    <motion.div 
+      className={styles.card} 
+      aria-hidden
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       <div className={`${styles.imageWrap} ${styles.skeleton}`} />
       <div className={styles.content}>
         <div className={`${styles.skTitle} ${styles.skeleton}`} />
@@ -109,12 +115,26 @@ export default function NewArrival({ assets = [], loading = false, title = "New 
       className={`${styles.section} ${jost.className}`}
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: true, margin: "-60px", amount: 0.1 }}
+      viewport={{ once: true, margin: "-30px", amount: 0.15 }}
       variants={containerVariants}
     >
-      <motion.h2 variants={itemVariants} className={styles.heading}>{title}</motion.h2>
+      <motion.h2 
+        className={styles.heading}
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
+        {title}
+      </motion.h2>
 
-      <motion.div variants={itemVariants} className={styles.carouselWrap}>
+      <motion.div 
+        className={styles.carouselWrap}
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
         <Swiper {...swiperSettings} className={styles.naSwiper}>
           {loading
             ? Array.from({ length: 8 }).map((_, i) => (
