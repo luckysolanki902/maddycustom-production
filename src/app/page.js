@@ -8,7 +8,7 @@ import CategorySearchBox from '@/components/utils/CategorySearchBox';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { fetchSearchCategories, fetchDisplayAssets, fetchOurUniqueProducts } from '@/lib/utils/fetchutils';
 import WhyMaddy from '@/components/page-sections/homepage/WhyMaddy'
-import CarIntExt from '@/components/page-sections/homepage/CarIntExt'
+import CarIntExtWrapper from '@/components/page-sections/homepage/CarIntExtWrapper';
 import { Box } from '@mui/material';
 import ProductCategorySlider from '@/components/page-sections/homepage/ProductCategorySlider';
 import SingleCategorySlider from '@/components/showcase/carousels/SingleCategoryCarousel';
@@ -64,17 +64,8 @@ const HomePage = async () => {
 
         <SingleCategorySlider products={uniqueProductsData} />
 
-        {/* Interior Section */}
-        <CarIntExt 
-          type="interior"
-          assets={displayAssets}
-        />
-
-        {/* Exterior Section */}
-        <CarIntExt 
-          type="exterior"
-          assets={displayAssets}
-        />
+        {/* Interior & Exterior Sections */}
+        <CarIntExtWrapper assets={displayAssets} />
 
         <WhyMaddy />
         <VoiceOfOurCustomers />
