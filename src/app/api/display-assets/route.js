@@ -14,7 +14,6 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const page = searchParams.get('page');
     const componentName = searchParams.get('componentName');
-    console.log('query parameters:', { page, componentName });
     // Build query object
     let query = { isActive: true };
     
@@ -31,10 +30,8 @@ export async function GET(request) {
       .sort({ position: 1, createdAt: 1 })
       .lean();
 
-      console.log({ assets });
 
     if (!assets || assets.length === 0) {
-      console.log('No display assets found');
       return NextResponse.json({ 
         assets: [],
         message: 'No display assets found' 
@@ -66,10 +63,7 @@ export async function GET(request) {
 
         return processedAsset;
       });
-console.log({     assets: filteredAssets,
-      count: filteredAssets.length,
-      timestamp: new Date().toISOString()
-    });
+
     
     // Create response with appropriate cache headers
     const response = NextResponse.json({ 

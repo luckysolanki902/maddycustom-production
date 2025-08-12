@@ -33,12 +33,21 @@ export async function GET(request) {
       // console.warn('No specific category variants found.');
     }
 
+    // Create a map of category ID to first variant's pageSlug
+    const categoryToFirstVariantSlug = {};
+    variants.forEach(variant => {
+      const categoryId = variant.specificCategory.toString();
+      if (!categoryToFirstVariantSlug[categoryId]) {
+        categoryToFirstVariantSlug[categoryId] = variant.pageSlug;
+      }
+    });
+
     // Structure the response
     const responseData = {
       categories: categories.map(category => ({
         id: category._id,
         name: category.name,
-        pageSlug: category.pageSlug,
+        pageSlug: categoryToFirstVariantSlug[category._id.toString()] || category.pageSlug, // Use first variant's slug or fallback
         subCategory: category.subCategory,
         // Add other necessary fields if needed
       })),

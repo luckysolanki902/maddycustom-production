@@ -1,12 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import NoMarginCarousel from '@/components/showcase/carousels/NoMarginCarousel';
 import styles from './styles/CarIntExt.module.css';
 
 const ProductCard = ({ product }) => {
   if (!product) return null;
+
+  const imageUrl = product.image 
+    ? `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${product.image.startsWith('/') ? '' : '/'}${product.image}`
+    : null;
 
   return (
     <motion.div 
@@ -17,6 +22,18 @@ const ProductCard = ({ product }) => {
       transition={{ duration: 0.4 }}
       whileHover={{ y: -2 }}
     >
+      {imageUrl && (
+        <div className={styles.productImageWrapper}>
+          <Image 
+            src={imageUrl}
+            alt={product.name}
+            width={300}
+            height={200}
+            className={styles.productImage}
+            style={{ height: 'auto' }}
+          />
+        </div>
+      )}
       <div className={styles.productName}>
         {product.name}
       </div>
@@ -30,18 +47,18 @@ const ProductCard = ({ product }) => {
 export default function CarIntExt({ 
   type = 'interior', // 'interior' or 'exterior'
   assets = [], // Display assets array to filter from
+  products = [], // Products data passed from parent
+  loading = false, // Loading state passed from parent
+  error = null, // Error state passed from parent
   className = ""
 }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
   // Capitalize the heading
   const heading = type.charAt(0).toUpperCase() + type.slice(1);
 
   // Filter carousel images from assets based on component name and type
   const carouselImages = useMemo(() => {
-    const componentName = `car-${type}-carousel`;
+    // Match the actual component names from your database
+    const componentName = type === 'interior' ? 'car-interiors' : 'car-exteriors';
     const filteredAssets = assets.filter(
       asset => asset.componentName === componentName && asset.componentType === 'carousel'
     );
@@ -53,29 +70,6 @@ export default function CarIntExt({
       useSameMediaForAllDevices: asset.useSameMediaForAllDevices
     }));
   }, [assets, type]);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/products/car-${type}s?limit=6`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch ${type} products`);
-        }
-        
-        const data = await response.json();
-        setProducts(data.products || []);
-      } catch (err) {
-        console.error(`Error fetching ${type} products:`, err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, [type]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -105,7 +99,19 @@ export default function CarIntExt({
       viewport={{ once: true, amount: 0.2 }}
       variants={containerVariants}
     >
-      {/* Carousel */}
+
+
+      {/* Content Section */}
+      <div className={styles.contentContainer}>
+        <motion.h2 
+          className={styles.heading}
+          variants={itemVariants}
+          style={{ marginTop: heading.toLowerCase() === 'exterior' ? '-1rem' : '' }}
+        >
+          {heading}
+        </motion.h2>
+
+              {/* Carousel */}
       <motion.div variants={itemVariants}>
         <NoMarginCarousel 
           images={carouselImages}
@@ -115,26 +121,20 @@ export default function CarIntExt({
         />
       </motion.div>
 
-      {/* Content Section */}
-      <div className={styles.contentContainer}>
-        <motion.h2 
-          className={styles.heading}
-          variants={itemVariants}
-        >
-          {heading}
-        </motion.h2>
-
         {loading ? (
           <motion.div 
-            className={styles.loadingGrid}
+            className={styles.productsContainer}
             variants={itemVariants}
           >
-            {Array(6).fill(0).map((_, index) => (
-              <div key={index} className={styles.skeletonCard}>
-                <div className={styles.skeletonName}></div>
-                <div className={styles.skeletonPrice}></div>
-              </div>
-            ))}
+            <div className={styles.loadingWrapper}>
+              {Array(6).fill(0).map((_, index) => (
+                <div key={index} className={styles.skeletonCard}>
+                  <div className={styles.skeletonImage}></div>
+                  <div className={styles.skeletonName}></div>
+                  <div className={styles.skeletonPrice}></div>
+                </div>
+              ))}
+            </div>
           </motion.div>
         ) : error ? (
           <motion.div 
@@ -145,17 +145,19 @@ export default function CarIntExt({
           </motion.div>
         ) : (
           <motion.div 
-            className={styles.productsGrid}
-            variants={containerVariants}
+            className={styles.productsContainer}
+            variants={itemVariants}
           >
-            {products.map((product, index) => (
-              <motion.div
-                key={product._id || index}
-                variants={itemVariants}
-              >
-                <ProductCard product={product} />
-              </motion.div>
-            ))}
+            <div className={styles.productsWrapper}>
+              {products.map((product, index) => (
+                <motion.div
+                  key={product._id || index}
+                  variants={itemVariants}
+                >
+                  <ProductCard product={product} />
+                </motion.div>
+              ))}
+            </div>
           </motion.div>
         )}
       </div>

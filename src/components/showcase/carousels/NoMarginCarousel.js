@@ -90,8 +90,13 @@ export default function NoMarginCarousel({
               <Image
                 src={imageSrc}
                 alt={`Carousel slide ${index + 1}`}
-                fill
-                style={{ objectFit: 'cover' }}
+                width={1920}
+                height={800}
+                style={{ 
+                  width: '100%', 
+                  height: 'auto',
+                  display: 'block'
+                }}
                 priority={index === 0}
                 sizes="100vw"
                 unoptimized={process.env.NODE_ENV === "development"}

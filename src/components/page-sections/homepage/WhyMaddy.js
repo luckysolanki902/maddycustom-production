@@ -80,6 +80,7 @@ export default function WhyMaddy() {
                   alt={card.title}
                   width={112}
                   height={112}
+                  style={{width: '80px', height: 'auto'}}
                   priority
                   unoptimized={process.env.NODE_ENV === "development"}
                 />

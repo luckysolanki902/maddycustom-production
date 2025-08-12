@@ -414,6 +414,7 @@ export default function SearchCategoryDialog() {
                 onChange={handleInputChange}
                 className={`${searchStyles.inputField} ${searchStyles.dialogInputField}`}
                 value={searchText}
+                autoFocus
                 placeholder=""
                 style={{
                   flex: 1,
