@@ -167,7 +167,9 @@ const ProductCard = memo(function ProductCard({ product }) {
           fill
           sizes="200px"
           style={{ 
-            objectFit: 'cover',          }}
+            objectFit: 'cover',
+            filter: productData.isAvailable ? 'none' : 'grayscale(0.3) opacity(0.8)'
+          }}
           loading="lazy"
         />
       </CardMedia>

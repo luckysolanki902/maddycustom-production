@@ -258,8 +258,8 @@
     text-align: center;
     display: inline-flex;
     flex-direction: column;
-    justify-content: end;
-    align-items: end;
+    justify-content: flex-end;
+    align-items: flex-end;
     font-weight: 500;
 }
 

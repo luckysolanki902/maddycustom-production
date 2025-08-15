@@ -27,10 +27,10 @@ const ProductCard = ({ product }) => {
           <Image 
             src={imageUrl}
             alt={product.name}
-            width={300}
-            height={200}
+            width={500}
+            height={500}
             className={styles.productImage}
-            style={{ height: 'auto' }}
+            style={{ height: '200', objectFit: 'cover' }}
           />
         </div>
       )}
@@ -39,6 +39,59 @@ const ProductCard = ({ product }) => {
       </div>
       <div className={styles.productPrice}>
         ₹{product.price}
+      </div>
+    </motion.div>
+  );
+};
+
+const ComingSoonCard = () => {
+  return (
+    <motion.div 
+      className={styles.comingSoonCard}
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4 }}
+      whileHover={{ 
+        y: -4,
+        scale: 1.02,
+        transition: { duration: 0.3 }
+      }}
+    >
+      <div className={styles.comingSoonImageWrapper}>
+        <motion.div 
+          className={styles.comingSoonIcon}
+          transition={{ 
+            duration: 3,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </motion.div>
+
+      </div>
+      <div className={styles.comingSoonContent}>
+        <motion.div 
+          className={styles.comingSoonTitle}
+          animate={{ 
+            backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+          }}
+          transition={{ 
+            duration: 3,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        >
+          More Coming Soon
+        </motion.div>
+        {/* <div className={styles.comingSoonSubtitle}>
+          Exciting new designs in the works
+        </div> */}
       </div>
     </motion.div>
   );
@@ -122,10 +175,7 @@ export default function CarIntExt({
       </motion.div>
 
         {loading ? (
-          <motion.div 
-            className={styles.productsContainer}
-            variants={itemVariants}
-          >
+          <div className={styles.productsContainer}>
             <div className={styles.loadingWrapper}>
               {Array(6).fill(0).map((_, index) => (
                 <div key={index} className={styles.skeletonCard}>
@@ -135,7 +185,7 @@ export default function CarIntExt({
                 </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         ) : error ? (
           <motion.div 
             className={styles.errorMessage}
@@ -144,21 +194,30 @@ export default function CarIntExt({
             <p>Failed to load {type} products. Please try again later.</p>
           </motion.div>
         ) : (
-          <motion.div 
-            className={styles.productsContainer}
-            variants={itemVariants}
-          >
+          <div className={styles.productsContainer}>
             <div className={styles.productsWrapper}>
               {products.map((product, index) => (
                 <motion.div
                   key={product._id || index}
-                  variants={itemVariants}
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
                 >
                   <ProductCard product={product} />
                 </motion.div>
               ))}
+              {/* Coming Soon Card */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.3, delay: (products.length) * 0.05 }}
+              >
+                <ComingSoonCard />
+              </motion.div>
             </div>
-          </motion.div>
+          </div>
         )}
       </div>
     </motion.section>

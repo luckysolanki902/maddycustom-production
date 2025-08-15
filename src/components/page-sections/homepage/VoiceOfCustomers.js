@@ -6,12 +6,11 @@ import styles from "./styles/VoiceOfCustomers.module.css";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Pagination, Navigation, Autoplay } from 'swiper/modules';
+import { Pagination, Autoplay } from 'swiper/modules';
 
 // Import Swiper styles
 import 'swiper/css';
 import 'swiper/css/pagination';
-import 'swiper/css/navigation';
 
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '';
 
@@ -67,7 +66,7 @@ export default function VoiceOfOurCustomers() {
       <h2 className={styles.heading}>The Voice Of Our Customers</h2>
       <div className={styles.sliderContainer}>
         <Swiper
-          modules={[Pagination, Navigation, Autoplay]}
+          modules={[Pagination, Autoplay]}
           spaceBetween={30}
           slidesPerView={1}
           breakpoints={{
@@ -89,7 +88,6 @@ export default function VoiceOfOurCustomers() {
             dynamicBullets: true,
             dynamicMainBullets: 2,
           }}
-          navigation={true}
           loop={true}
           autoplay={{
             delay: 3000,

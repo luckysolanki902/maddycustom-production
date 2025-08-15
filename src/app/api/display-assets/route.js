@@ -3,8 +3,7 @@ import DisplayAsset from '@/models/DisplayAssets';
 import { NextResponse } from 'next/server';
 import { shouldDisplayAsset } from '@/lib/utils/displayAssetUtils';
 
-// Conditional revalidation: enable caching only in production
-export const revalidate = process.env.NODE_ENV === 'development' ? 0 : 1800; // No cache in dev, 30 minutes in prod 
+export const revalidate = 300;  
 
 export async function GET(request) {
   try {

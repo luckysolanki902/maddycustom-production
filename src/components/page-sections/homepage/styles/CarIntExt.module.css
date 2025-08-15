@@ -63,9 +63,10 @@
 
 .productImage {
   width: 100%;
-  height: auto;
+  height: 150;
   border-radius: 0.2rem;
   display: block;
+  object-fit: cover;
 }
 
 .productName {
@@ -84,12 +85,110 @@
   color: #424242;
 }
 
+/* Coming Soon Card */
+.comingSoonCard {
+  flex: 0 0 auto;
+  width: 280px;
+  text-align: center;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  background: transparent;
+  border-radius: 8px;
+  /* border: 2px solid #e9ecef; */
+  position: relative;
+  overflow: hidden;
+  /* box-shadow: 0 2px 8px rgba(45, 45, 45, 0.08); */
+  height: auto;
+}
+
+
+
+.comingSoonCard:hover::before {
+  left: 100%;
+}
+
+.comingSoonCard:hover {
+  /* box-shadow: 0 8px 24px rgba(45, 45, 45, 0.15); */
+  transform: translateY(-2px);
+}
+
+.comingSoonImageWrapper {
+  width: 100%;
+  height: 180px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f1f3f4 0%, #e9ecef 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  /* border: 1px solid #dee2e6; */
+}
+
+.comingSoonIcon {
+  color: #6c757d;
+  opacity: 0.8;
+  z-index: 2;
+  position: relative;
+}
+
+.sparkles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.sparkle {
+  position: absolute;
+  font-size: 12px;
+  z-index: 1;
+  color: #adb5bd;
+}
+
+.comingSoonContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.comingSoonTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2d2d2d;
+  text-align: center;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.comingSoonSubtitle {
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
 /* Loading skeleton */
 .loadingWrapper {
   display: flex;
   gap: 20px;
   padding: 8px 0;
   overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.loadingWrapper::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
 }
 
 .skeletonCard {
@@ -166,7 +265,8 @@
   }
   
   .productCard,
-  .skeletonCard {
+  .skeletonCard,
+  .comingSoonCard {
     width: 240px;
     padding: 12px;
   }
@@ -177,6 +277,18 @@
   
   .productPrice {
     font-size: 0.9rem;
+  }
+
+  .comingSoonImageWrapper {
+    height: 150px;
+  }
+
+  .comingSoonTitle {
+    font-size: 1rem;
+  }
+
+  .comingSoonSubtitle {
+    font-size: 0.85rem;
   }
 }
 
@@ -201,7 +313,8 @@
   }
   
   .productCard,
-  .skeletonCard {
+  .skeletonCard,
+  .comingSoonCard {
     width: 200px;
     padding: 10px;
   }
@@ -216,5 +329,26 @@
   
   .skeletonImage {
     height: 150px;
+  }
+
+  .comingSoonImageWrapper {
+    height: 120px;
+  }
+
+  .comingSoonIcon svg {
+    width: 36px;
+    height: 36px;
+  }
+
+  .comingSoonTitle {
+    font-size: 0.95rem;
+  }
+
+  .comingSoonSubtitle {
+    font-size: 0.8rem;
+  }
+
+  .sparkle {
+    font-size: 10px;
   }
 }
