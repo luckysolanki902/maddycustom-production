@@ -6,12 +6,35 @@ import "swiper/css/pagination";
 import "swiper/css/navigation";
 import { register } from "swiper/element/bundle";
 import Image from "next/image";
+import Link from "next/link";
 import { useMediaQuery } from "@mui/material";
 
 register();
 
-const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
+const FullWidthRoundCornerLandscapeCarousel = ({ 
+  images, // Legacy prop - array of image URLs
+  slides   // New prop - array of objects with { url, link, alt }
+}) => {
     const isMobile = useMediaQuery('(max-width: 768px)');
+    
+    // Process data - support both legacy images prop and new slides prop
+    const carouselData = slides || (images ? images.map((url, index) => ({ 
+      url, 
+      link: null, 
+      alt: `carousel-image-${index}` 
+    })) : []);
+
+    const SlideContent = ({ slide, index }) => (
+      <Image
+        priority={index === 0} // Only prioritize first image
+        unoptimized={process.env.NODE_ENV === "development"}
+        src={slide.url}
+        alt={slide.alt || `carousel-image-${index}`}
+        width={1242 * 2}
+        height={547 * 2}
+        style={{ width: "100%", height: "auto", cursor: slide.link ? "pointer" : "default" }}
+      />
+    );
     
     return (
         <div style={{ position: 'relative' }}>
@@ -36,17 +59,15 @@ const FullWidthRoundCornerLandscapeCarousel = ({ images }) => {
                 }}
                 className="hero-swiper"
             >
-                {images.map((url, index) => (
+                {carouselData.map((slide, index) => (
                     <SwiperSlide key={index}>
-                        <Image
-                            priority={true}
-                            unoptimized={process.env.NODE_ENV === "development"}
-                            src={url}
-                            alt={`carousel-image-${index}`}
-                            width={1242 * 2}
-                            height={547 * 2}
-                            style={{ width: "100%", height: "auto", cursor: "pointer" }}
-                        />
+                        {slide.link ? (
+                            <Link href={slide.link} style={{ display: 'block', width: '100%' }}>
+                                <SlideContent slide={slide} index={index} />
+                            </Link>
+                        ) : (
+                            <SlideContent slide={slide} index={index} />
+                        )}
                     </SwiperSlide>
                 ))}
             </Swiper>

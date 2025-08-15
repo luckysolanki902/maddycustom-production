@@ -2,6 +2,8 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategory from '@/models/SpecificCategory';
 import Product from '@/models/Product';
 
+export const revalidate = 3600; // 1 hour edge cache
+
 export async function GET(request) {
   try {
     await connectToDatabase();
@@ -25,7 +27,6 @@ export async function GET(request) {
           classificationTags: { $in: [classificationTag] },
           available: true
         }).select('_id name pageSlug');
-        console.log(specificCategories);
         if (specificCategories.length > 0) {
           // Get one product from each specific category
           for (const category of specificCategories.slice(0, limit)) {

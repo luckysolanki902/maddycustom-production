@@ -21,7 +21,7 @@ const cardData = [
   {
     title: "Value Choice",
     image: `${baseImageUrl}/assets/icons/maddy-valuechoice.png`,
-    details: ["Affordable styling option", "Cost-effective", "Stylish look on a budget"],
+    details: ["Affordable styling", "Cost-effective", "Stylish look on a budget"],
   },
   {
     title: "Seamless Fit",
@@ -31,17 +31,55 @@ const cardData = [
 ];
 
 const containerVariants = {
-  hidden: { opacity: 0, y: 12 },
+  hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.45, ease: "easeOut", when: "beforeChildren", staggerChildren: 0.06 },
+    transition: { 
+      duration: 0.6, 
+      ease: "easeOut", 
+      when: "beforeChildren", 
+      staggerChildren: 0.08 
+    },
   },
 };
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" } },
+  hidden: { opacity: 0, y: 24, scale: 0.95 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    scale: 1,
+    transition: { 
+      duration: 0.5, 
+      ease: [0.25, 0.46, 0.45, 0.94] 
+    } 
+  },
+};
+
+const iconVariants = {
+  hidden: { scale: 0, rotate: -180 },
+  visible: { 
+    scale: 1, 
+    rotate: 0,
+    transition: { 
+      duration: 0.6, 
+      ease: "easeOut",
+      delay: 0.2 
+    } 
+  },
+};
+
+const listItemVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: { 
+    opacity: 1, 
+    x: 0,
+    transition: { 
+      duration: 0.4, 
+      ease: "easeOut" 
+    } 
+  },
 };
 
 export default function WhyMaddy() {
@@ -69,12 +107,24 @@ export default function WhyMaddy() {
             key={i}
             className={styles.card}
             variants={cardVariants}
-            whileHover={{ y: -4 }}
-            transition={{ duration: 0.18 }}
+            whileHover={{ 
+              y: -8, 
+              scale: 1.02,
+              transition: { duration: 0.3, ease: "easeOut" }
+            }}
+            whileTap={{ scale: 0.98 }}
           >
             {/* Icon block (no absolute) */}
             <div className={styles.iconBlock}>
-              <div className={styles.iconInner}>
+              <motion.div 
+                className={styles.iconInner}
+                variants={iconVariants}
+                whileHover={{ 
+                  scale: 1.05, 
+                  rotate: 5,
+                  transition: { duration: 0.3 }
+                }}
+              >
                 <Image
                   src={card.image}
                   alt={card.title}
@@ -84,22 +134,48 @@ export default function WhyMaddy() {
                   priority
                   unoptimized={process.env.NODE_ENV === "development"}
                 />
-              </div>
+              </motion.div>
             </div>
 
             {/* Content block */}
             <div className={styles.contentBox}>
-              <h3 className={styles.title}>{card.title}</h3>
-              <ul className={styles.list}>
+              <motion.h3 
+                className={styles.title}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+              >
+                {card.title}
+              </motion.h3>
+              <motion.ul 
+                className={styles.list}
+                initial="hidden"
+                whileInView="visible"
+                variants={{
+                  visible: {
+                    transition: { staggerChildren: 0.08, delayChildren: 0.4 }
+                  }
+                }}
+              >
                 {card.details.map((line, j) => (
-                  <li className={styles.listItem} key={j}>
-                    <svg className={styles.tick} viewBox="0 0 20 20" width="16" height="16" aria-hidden>
-                      <path d="M7.5 13.2 4.8 10.5l-1.3 1.3 4 4 9-9-1.3-1.3-7.7 7.7z" fill="currentColor" />
-                    </svg>
+                  <motion.li 
+                    className={styles.listItem} 
+                    key={j}
+                    variants={listItemVariants}
+                    whileHover={{
+                      x: 4,
+                      transition: { duration: 0.2 }
+                    }}
+                  >
+                    <div className={styles.tick}>
+                      <svg viewBox="0 0 20 20" width="12" height="12" aria-hidden>
+                        <path d="M7.5 13.2 4.8 10.5l-1.3 1.3 4 4 9-9-1.3-1.3-7.7 7.7z" fill="currentColor" />
+                      </svg>
+                    </div>
                     <span>{line}</span>
-                  </li>
+                  </motion.li>
                 ))}
-              </ul>
+              </motion.ul>
             </div>
           </motion.article>
         ))}

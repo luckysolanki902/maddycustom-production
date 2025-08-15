@@ -32,9 +32,6 @@ const HomePage = async () => {
 
   const { categories, variants } = searchCategoriesData;
   const { assets: displayAssets = [] } = displayAssetsData;
-  const heroCarouselAssets = displayAssets.filter(
-    asset => asset.componentName === 'hero-carousel' && asset.componentType === 'carousel'
-  );
 
   return (
     <>
@@ -50,7 +47,7 @@ const HomePage = async () => {
 
           {/* Logo and Main Carousel */}
           <HeroCarousel
-            assets={heroCarouselAssets}
+            assets={displayAssets}
           />
         </div>
         <ProductCategorySlider position="belowHero" />

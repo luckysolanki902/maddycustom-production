@@ -10,9 +10,15 @@ const FALLBACK_IMAGES = {
   mobile: `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/carousels/homepage-main/mobile/first-three-products-banner.jpg`
 };
 
-export default function HeroCarousel({ 
+export default function HeroCarousel({
   assets = [] // Assets passed from parent component (homepage)
 }) {
+  const heroCarouselAssets = useMemo(() => 
+    assets.filter(
+      asset => asset.componentName === 'hero-carousel' && asset.componentType === 'carousel'
+    ), 
+    [assets]
+  );
   // Use state and effect to handle client-side media query detection
   const [isMobile, setIsMobile] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -20,51 +26,64 @@ export default function HeroCarousel({
   useEffect(() => {
     // Set client flag to prevent hydration mismatch
     setIsClient(true);
-    
+
     // Check initial screen size
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth <= 500);
     };
-    
+
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
-    
+
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
   // Process images for carousel based on passed assets - using useMemo to prevent re-renders
-  const carouselImages = useMemo(() => {
-    if (assets.length > 0) {
-      return assets.map(asset => {
+  const carouselData = useMemo(() => {
+    if (heroCarouselAssets.length > 0) {
+      return heroCarouselAssets.map(asset => {
         // Use appropriate media based on device type and asset configuration
+        let imageUrl;
         if (asset.useSameMediaForAllDevices || !asset.media?.mobile) {
-          return asset.media?.desktop || FALLBACK_IMAGES.desktop;
+          imageUrl = asset.media?.desktop || FALLBACK_IMAGES.desktop;
+        } else {
+          // On server or before client hydration, default to desktop image to prevent mismatch
+          if (!isClient) {
+            imageUrl = asset.media?.desktop || FALLBACK_IMAGES.desktop;
+          } else {
+            imageUrl = isMobile ?
+              (asset.media?.mobile || asset.media?.desktop || FALLBACK_IMAGES.mobile) :
+              (asset.media?.desktop || FALLBACK_IMAGES.desktop);
+          }
         }
-        // On server or before client hydration, default to desktop image to prevent mismatch
-        if (!isClient) {
-          return asset.media?.desktop || FALLBACK_IMAGES.desktop;
-        }
-        return isMobile ? 
-          (asset.media?.mobile || asset.media?.desktop || FALLBACK_IMAGES.mobile) : 
-          (asset.media?.desktop || FALLBACK_IMAGES.desktop);
+        
+        return {
+          url: imageUrl,
+          link: asset.link,
+          alt: asset.content || `carousel-image`
+        };
       });
     } else {
       // Show fallback image - default to desktop on server to prevent hydration mismatch
-      return [(!isClient || !isMobile) ? FALLBACK_IMAGES.desktop : FALLBACK_IMAGES.mobile];
+      return [{
+        url: (!isClient || !isMobile) ? FALLBACK_IMAGES.desktop : FALLBACK_IMAGES.mobile,
+        link: null,
+        alt: 'carousel-image'
+      }];
     }
-  }, [assets, isMobile, isClient]);
+  }, [heroCarouselAssets, isMobile, isClient]);
 
 
   return (
-    <motion.div 
+    <motion.div
       id='hero-carousel'
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4, ease: 'easeOut', delay: 0.1 }}
     >
       <div className={styles.carouseldiv}>
-        <FullWidthRoundCornerLandscapeCarousel 
-          images={carouselImages}
+        <FullWidthRoundCornerLandscapeCarousel
+          slides={carouselData}
         />
       </div>
     </motion.div>

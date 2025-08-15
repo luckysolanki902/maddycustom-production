@@ -21,6 +21,7 @@ import userBehaviorSlice from './slices/userBehaviorSlice';
 import uiReducer from './slices/uiSlice';
 import persistentUiReducer from './slices/persistentUiSlice'; // Import the new slice
 import displayAssetsReducer from './slices/displayAssetsSlice'; // Import display assets slice
+import navigationReducer from './slices/navigationSlice'; // Import navigation slice
 
 const rootReducer = combineReducers({
   cart: cartReducer,
@@ -31,6 +32,7 @@ const rootReducer = combineReducers({
   ui: uiReducer,
   persistentUi: persistentUiReducer, // Add the new reducer
   displayAssets: displayAssetsReducer, // Add display assets reducer
+  navigation: navigationReducer, // Add navigation reducer (not persisted for real-time state)
 });
 
 const persistConfig = {

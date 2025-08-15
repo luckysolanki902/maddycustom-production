@@ -1,179 +1,123 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { usePathname, useSearchParams, useRouter } from 'next/navigation';
+import { useEffect, useRef, useCallback } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
+import { updateProgress, completeNavigation, cancelNavigation } from '@/store/slices/navigationSlice';
+import { useNavigationDetection } from './NavigationDetectionManager';
 
 const TopLoadingBar = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const timeoutRef = useRef(null);
+  const dispatch = useDispatch();
+  const { isLoading, progress, loadingActive } = useSelector(state => state.navigation);
   const intervalRef = useRef(null);
-  const isNavigatingRef = useRef(false);
+  const timeoutRef = useRef(null);
+  const progressRef = useRef(0);
 
-  const startLoading = useCallback(() => {
-    if (isNavigatingRef.current) return; // Prevent double triggers
-    
-    isNavigatingRef.current = true;
-    
-    // Clear any existing timers
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    
-    // Start immediately with no delay
-    setIsLoading(true);
-    setProgress(30); // Immediate substantial progress
-    
-    // Very fast incremental progress
+  // Initialize navigation detection
+  useNavigationDetection();
+
+  // Ultra-fast progress simulation
+  const simulateProgress = useCallback(() => {
+    if (!loadingActive) return;
+
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    // Start with immediate progress
     let currentProgress = 30;
+    progressRef.current = currentProgress;
+    dispatch(updateProgress(currentProgress));
+
+    // Very aggressive progress updates
     intervalRef.current = setInterval(() => {
-      currentProgress += Math.random() * 8 + 2; // 2-10% increments
+      if (!loadingActive) {
+        clearInterval(intervalRef.current);
+        return;
+      }
+
+      // Exponential slowdown as we approach 95%
+      const increment = currentProgress < 50 
+        ? Math.random() * 15 + 10  // 10-25% increments early
+        : currentProgress < 75
+        ? Math.random() * 10 + 5   // 5-15% increments middle
+        : Math.random() * 5 + 2;   // 2-7% increments late
+
+      currentProgress = Math.min(currentProgress + increment, 95);
+      progressRef.current = currentProgress;
+      
+      dispatch(updateProgress(currentProgress));
+
+      // Stop at 95% and wait for completion
       if (currentProgress >= 95) {
-        currentProgress = 95; // Cap at 95% until completion
         clearInterval(intervalRef.current);
       }
-      setProgress(currentProgress);
-    }, 50); // Very fast updates every 50ms
-  }, []);
+    }, 30); // Ultra-fast 30ms updates for smooth animation
 
-  const finishLoading = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
+  }, [dispatch, loadingActive]);
+
+  // Safety timeout to prevent stuck loading bar
+  const setSafetyTimeout = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
     
-    // Immediate completion
-    setProgress(100);
-    
-    // Quick hide
+    // Auto-complete after 10 seconds if stuck
     timeoutRef.current = setTimeout(() => {
-      setIsLoading(false);
-      setProgress(0);
-      isNavigatingRef.current = false;
-    }, 150);
+      console.warn('⚠️ Navigation loading timeout - auto-completing');
+      dispatch(completeNavigation());
+    }, 10000);
+  }, [dispatch]);
+
+  // Start progress simulation when loading begins
+  useEffect(() => {
+    if (isLoading && loadingActive) {
+      simulateProgress();
+      setSafetyTimeout();
+    } else {
+      // Clear interval when loading stops
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isLoading, loadingActive, simulateProgress, setSafetyTimeout]);
+
+  // Handle completion with fade-out
+  useEffect(() => {
+    if (progress === 100 && !loadingActive) {
+      // Small delay to show 100% before hiding
+      const fadeTimeout = setTimeout(() => {
+        // Reset progress after fade-out animation
+        dispatch(updateProgress(0));
+      }, 200);
+
+      return () => clearTimeout(fadeTimeout);
+    }
+  }, [progress, loadingActive, dispatch]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, []);
-
-  // Enhanced router navigation detection
-  useEffect(() => {
-    const originalPush = router.push;
-    const originalReplace = router.replace;
-    const originalBack = router.back;
-    const originalForward = router.forward;
-
-    // Override router methods to detect programmatic navigation
-    router.push = (...args) => {
-      startLoading();
-      return originalPush.apply(router, args);
-    };
-
-    router.replace = (...args) => {
-      startLoading();
-      return originalReplace.apply(router, args);
-    };
-
-    router.back = (...args) => {
-      startLoading();
-      return originalBack.apply(router, args);
-    };
-
-    router.forward = (...args) => {
-      startLoading();
-      return originalForward.apply(router, args);
-    };
-
-    return () => {
-      // Restore original methods
-      router.push = originalPush;
-      router.replace = originalReplace;
-      router.back = originalBack;
-      router.forward = originalForward;
-    };
-  }, [router, startLoading]);
-
-  // Route change detection - most reliable
-  useEffect(() => {
-    startLoading();
-    
-    // Quick finish simulation
-    const timer = setTimeout(finishLoading, 200);
-    
-    return () => {
-      clearTimeout(timer);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [pathname, searchParams, startLoading, finishLoading]);
-
-  // Aggressive click detection for instant feedback
-  useEffect(() => {
-    const handleMouseDown = (e) => {
-      const target = e.target;
-      const link = target.closest('a[href], button[type="submit"], [role="button"], .MuiListItem-root, .MuiButton-root, .MuiIconButton-root');
-      
-      if (link) {
-        const href = link.getAttribute('href');
-        const isListItem = link.classList.contains('MuiListItem-root');
-        const isButton = link.tagName === 'BUTTON' || link.classList.contains('MuiButton-root') || link.classList.contains('MuiIconButton-root');
-        
-        // Check if it's an internal navigation or interactive element
-        if ((href && (href.startsWith('/') || href.startsWith(window.location.origin))) || isListItem || isButton) {
-          startLoading();
-        }
-      }
-    };
-
-    const handleClick = (e) => {
-      const target = e.target;
-      const clickable = target.closest(`
-        a[href], 
-        button, 
-        [role="button"], 
-        .MuiListItem-root, 
-        .MuiButton-root, 
-        .MuiIconButton-root,
-        .MuiMenuItem-root,
-        [data-testid*="button"],
-        [class*="button"],
-        [class*="Button"],
-        [class*="clickable"],
-        [onclick]
-      `);
-      
-      if (clickable) {
-        startLoading();
-      }
-    };
-
-    const handleFormSubmit = () => {
-      startLoading();
-    };
-
-    // Use both mousedown and click for comprehensive coverage
-    document.addEventListener('mousedown', handleMouseDown, { capture: true, passive: true });
-    document.addEventListener('click', handleClick, { capture: true, passive: true });
-    document.addEventListener('submit', handleFormSubmit, { capture: true, passive: true });
-    
-    // Also listen for popstate (back/forward buttons)
-    const handlePopState = () => {
-      startLoading();
-    };
-    window.addEventListener('popstate', handlePopState);
-
-    // Listen for programmatic navigation (router.push calls)
-    const handleRouterPush = () => {
-      startLoading();
-    };
-    
-    // Custom event for router navigation
-    window.addEventListener('beforeunload', handleRouterPush);
-
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown, { capture: true });
-      document.removeEventListener('click', handleClick, { capture: true });
-      document.removeEventListener('submit', handleFormSubmit, { capture: true });
-      window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('beforeunload', handleRouterPush);
-    };
-  }, [startLoading]);
 
   return (
     <AnimatePresence mode="wait">
@@ -184,16 +128,16 @@ const TopLoadingBar = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.1 }} // Faster appearance
             style={{
               position: 'fixed',
               top: 0,
               left: 0,
               right: 0,
-              height: '8px',
-              background: 'linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.02) 100%)',
+              height: '6px',
+              background: 'linear-gradient(180deg, rgba(45,45,45,0.08) 0%, rgba(45,45,45,0.02) 100%)',
               zIndex: 1599,
-              backdropFilter: 'blur(2px)'
+              backdropFilter: 'blur(3px)'
             }}
           />
           
@@ -201,21 +145,25 @@ const TopLoadingBar = () => {
           <motion.div
             initial={{ scaleX: 0, opacity: 0 }}
             animate={{ scaleX: 1, opacity: 1 }}
-            exit={{ opacity: 0, scaleX: 0.8 }}
+            exit={{ 
+              opacity: 0, 
+              scaleX: 0.95,
+              transition: { duration: 0.15 }
+            }}
             transition={{ 
-              scaleX: { duration: 0.12, ease: "easeOut" },
-              opacity: { duration: 0.1 }
+              scaleX: { duration: 0.08, ease: "easeOut" }, // Faster appearance
+              opacity: { duration: 0.06 }
             }}
             style={{
               position: 'fixed',
               top: 0,
               left: 0,
               right: 0,
-              height: '4px',
+              height: '3px',
               zIndex: 1600,
               transformOrigin: 'left',
-              background: 'linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%)',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              background: '#f8f9fa',
+              boxShadow: '0 1px 4px rgba(45, 45, 45, 0.12)',
               overflow: 'hidden'
             }}
           >
@@ -224,46 +172,46 @@ const TopLoadingBar = () => {
               initial={{ width: '0%' }}
               animate={{ width: `${progress}%` }}
               transition={{ 
-                duration: 0.1, 
-                ease: [0.25, 0.1, 0.25, 1] // Custom cubic bezier for addictive feel
+                duration: 0.05, // Ultra-fast transitions
+                ease: [0.23, 1, 0.32, 1] // Smooth easing
               }}
               style={{
                 height: '100%',
-                background: 'linear-gradient(90deg, #424242 0%, #666666 25%, #888888 50%, #666666 75%, #424242 100%)',
+                background: 'linear-gradient(90deg, #2d2d2d 0%, #495057 50%, #6c757d 100%)',
                 borderRadius: '0 2px 2px 0',
                 position: 'relative',
                 overflow: 'hidden',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 3px rgba(0,0,0,0.2)'
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(45,45,45,0.15)'
               }}
             >
-              {/* Primary shimmer effect */}
+              {/* Ultra-fast shimmer effect */}
               <motion.div
-                animate={{ x: ['-120%', '320%'] }}
+                animate={{ x: ['-150%', '350%'] }}
                 transition={{
-                  duration: 0.8,
+                  duration: 0.6, // Faster shimmer
                   repeat: Infinity,
                   ease: "easeInOut",
-                  repeatDelay: 0.2
+                  repeatDelay: 0.1
                 }}
                 style={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
                   height: '100%',
-                  width: '40%',
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)',
+                  width: '50%',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
                   borderRadius: '2px'
                 }}
               />
               
-              {/* Secondary glow effect */}
+              {/* Pulsing glow effect */}
               <motion.div
                 animate={{ 
-                  opacity: [0.3, 0.8, 0.3],
-                  scale: [1, 1.05, 1]
+                  opacity: [0.2, 0.6, 0.2],
+                  scale: [1, 1.04, 1]
                 }}
                 transition={{
-                  duration: 1.2,
+                  duration: 0.8, // Faster pulse
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
@@ -277,15 +225,28 @@ const TopLoadingBar = () => {
                   borderRadius: '2px'
                 }}
               />
+
+              {/* Leading edge highlight */}
+              <motion.div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  height: '100%',
+                  width: '8px',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 100%)',
+                  borderRadius: '0 2px 2px 0'
+                }}
+              />
             </motion.div>
             
-            {/* Trailing sparkle effects */}
+            {/* Racing sparkle effects */}
             <motion.div
               animate={{ 
-                x: ['-50px', `${typeof window !== 'undefined' ? window.innerWidth : 1200}px`] 
+                x: ['-80px', `${typeof window !== 'undefined' ? window.innerWidth + 80 : 1280}px`] 
               }}
               transition={{
-                duration: 2,
+                duration: 1.5, // Faster racing sparkles
                 repeat: Infinity,
                 ease: "linear"
               }}
@@ -293,8 +254,31 @@ const TopLoadingBar = () => {
                 position: 'absolute',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                width: '3px',
-                height: '3px',
+                width: '4px',
+                height: '4px',
+                background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, transparent 70%)',
+                borderRadius: '50%',
+                boxShadow: '0 0 8px rgba(255,255,255,0.8), 0 0 4px rgba(26,115,232,0.6)'
+              }}
+            />
+
+            {/* Secondary sparkle */}
+            <motion.div
+              animate={{ 
+                x: ['-120px', `${typeof window !== 'undefined' ? window.innerWidth + 120 : 1320}px`] 
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "linear",
+                delay: 0.3
+              }}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '2px',
+                height: '2px',
                 background: 'radial-gradient(circle, rgba(255,255,255,0.9) 0%, transparent 70%)',
                 borderRadius: '50%',
                 boxShadow: '0 0 6px rgba(255,255,255,0.6)'
@@ -307,14 +291,14 @@ const TopLoadingBar = () => {
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             exit={{ scaleX: 0, opacity: 0 }}
-            transition={{ duration: 0.15, delay: 0.05 }}
+            transition={{ duration: 0.1, delay: 0.02 }}
             style={{
               position: 'fixed',
-              top: '4px',
+              top: '3px',
               left: 0,
               right: 0,
               height: '1px',
-              background: 'linear-gradient(90deg, transparent 0%, rgba(66,66,66,0.3) 50%, transparent 100%)',
+              background: 'linear-gradient(90deg, transparent 0%, rgba(26,115,232,0.4) 50%, transparent 100%)',
               zIndex: 1600,
               transformOrigin: 'left'
             }}

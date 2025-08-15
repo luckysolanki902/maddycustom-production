@@ -1,14 +1,11 @@
-/* Base variable definition for consistent transparency */
-:root {
-    --searchBoxBgColor: rgba(255, 255, 255, 0.92);
-    --searchBoxShadow: rgba(0, 0, 0, 0.1);
-    --searchBoxInnerBgColor: rgba(250, 250, 250, 0.95);
-}
-
 /* Main wrapper for the search box - handles positioning and animation */
 .searchBoxWrapper {
     position: fixed;
     top: 60px; /* Exact topbar height: 40px logo + 20px padding */
+    /* CSS custom properties for consistent transparency */
+    --searchBoxBgColor: rgba(255, 255, 255, 0.92);
+    --searchBoxShadow: rgba(0, 0, 0, 0.1);
+    --searchBoxInnerBgColor: rgba(250, 250, 250, 0.95);
     left: 0;
     width: 100%;
     z-index: 998;

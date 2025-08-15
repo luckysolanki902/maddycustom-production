@@ -2,39 +2,47 @@
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 32px 16px 40px;
+  padding: 60px 16px 80px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 48px;
+  background: #ffffff;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
 }
 
 .headWrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .heading {
-  font-size: 2.25rem;
-  line-height: 1.15;
+  font-size: 3rem;
+  line-height: 1.1;
   margin: 0;
-  color: #2d2d2d;
-  font-weight: 800;
-  letter-spacing: -.25px;
+  color: #2d2d2dd5;
+  font-weight: 900;
+  letter-spacing: -1px;
 }
 
 .subhead {
   margin: 0;
-  max-width: 760px;
-  color: #6b7280;
-  font-size: 1rem;
+  max-width: 600px;
+  color: #6c757d;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  font-weight: 500;
 }
 
 .accentBar {
-  width: 96px;
-  height: 4px;
+  width: 120px;
+  height: 6px;
   background: #2d2d2d;
   border-radius: 999px;
 }
@@ -43,12 +51,22 @@
 .cardRow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
+  gap: 24px;
+  position: relative;
+  z-index: 1;
 }
 
 @media (max-width:1000px) {
   .cardRow {
     grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .cardRow {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
 
@@ -58,6 +76,19 @@
   flex-direction: column;
   align-items: stretch;
   height: 100%;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 4px 16px rgba(45, 45, 45, 0.08);
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(45, 45, 45, 0.15);
+  border-color: #2d2d2d;
 }
 
 /* Icon block sits above visually using natural flow + negative margin on content */
@@ -67,87 +98,176 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  background: #fff;
-    padding: 14px;
-    margin-bottom: 1rem;
+  background: transparent;
+  padding: 24px;
+  margin-bottom: 0;
 }
 
 .iconInner {
-  /* background:#fff; */
-  border-radius: 0.2rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(45, 45, 45, 0.08);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
 
-  /* box-shadow:0 10px 24px rgba(0,0,0,.12), 0 1px 0 rgba(0,0,0,.06); */
+.card:hover .iconInner {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(45, 45, 45, 0.12);
+  border-color: #dee2e6;
 }
 
 /* Content box pulls up toward the icon */
 .contentBox {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  background: #404040e2;
-  color: #fff;
+  gap: 16px;
+  align-items: center;
+  background: transparent;
+  color: #2d2d2d;
   flex: 1;
-  margin-top: -24px;
-  /* creates the "float" overlap without absolute */
-  padding: 44px 18px 18px;
-  /* leave room for icon above */
-  border-radius: 0.2rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 255, 255, .04);
+  padding: 0 24px 32px;
+  text-align: center;
 }
 
 /* Text */
 .title {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: #fff;
+  color: #2d2d2d;
+  line-height: 1.3;
+  letter-spacing: -0.5px;
 }
 
 .list {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .listItem {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #f1f5f9;
-  font-size: .95rem;
-  line-height: 1.35;
+  gap: 12px;
+  color: #495057;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  font-weight: 500;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.listItem:hover {
+  background: #e9ecef;
+  transform: translateX(4px);
+  border-color: #dee2e6;
 }
 
 .tick {
   flex: 0 0 auto;
-  color: #b9f28b;
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .25));
+  width: 18px;
+  height: 18px;
+  background: #2d2d2d;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
 }
 
 /* Mobile tweaks */
 @media (max-width:768px) {
   .container {
-    padding: 24px 12px 32px;
+    padding: 48px 16px 64px;
+    gap: 36px;
+    border-radius: 6px;
   }
 
   .heading {
-    font-size: 1.75rem;
+    font-size: 2.5rem;
+    letter-spacing: -0.5px;
   }
 
   .subhead {
-    font-size: .95rem;
+    font-size: 1rem;
+  }
+
+  .iconBlock {
+    padding: 20px;
   }
 
   .iconInner {
-    padding: 10px;
+    padding: 16px;
+    border-radius: 6px;
   }
 
   .contentBox {
-    padding: 40px 14px 16px;
-    border-radius: 0.2rem;
-    margin-top: -20px;
+    padding: 0 20px 24px;
+  }
+
+  .title {
+    font-size: 1.125rem;
+  }
+
+  .listItem {
+    font-size: 0.9rem;
+    padding: 6px 10px;
+  }
+
+  .tick {
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 40px 12px 56px;
+    gap: 32px;
+    border-radius: 4px;
+  }
+
+  .heading {
+    font-size: 2rem;
+    letter-spacing: -0.25px;
+  }
+
+  .subhead {
+    font-size: 0.95rem;
+  }
+
+  .cardRow {
+    gap: 12px;
+  }
+
+  .iconBlock {
+    padding: 16px;
+  }
+
+  .iconInner {
+    padding: 12px;
+    border-radius: 4px;
+  }
+
+  .contentBox {
+    padding: 0 16px 20px;
+    gap: 12px;
   }
 
   .title {
@@ -155,6 +275,23 @@
   }
 
   .listItem {
-    font-size: .9rem;
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    gap: 8px;
+  }
+
+  .list {
+    gap: 8px;
+  }
+
+  .tick {
+    width: 14px;
+    height: 14px;
+    font-size: 9px;
+  }
+
+  .accentBar {
+    width: 100px;
+    height: 5px;
   }
 }

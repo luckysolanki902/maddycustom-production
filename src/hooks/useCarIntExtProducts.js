@@ -12,7 +12,7 @@ export const useCarIntExtProducts = (limit = 6) => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/products/car-interior-exterior?limit=${limit}`);
+        const response = await fetch(`/api/products/car-interior-exterior?limit=${limit}`, {next: { revalidate: 3600 }});
         
         if (!response.ok) {
           throw new Error('Failed to fetch car interior/exterior products');

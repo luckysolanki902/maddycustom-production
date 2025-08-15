@@ -23,6 +23,7 @@ const ScrollContainer = styled(Box)(({ theme }) => ({
   msOverflowStyle: "none",
   scrollbarWidth: "none",
   position: "relative",
+
 }));
 
 const ViewAllCard = styled(Card)(({ theme }) => ({
@@ -159,6 +160,7 @@ function SimilarProductsBase({ currentProduct, variant, category }) {
           limit: DISPLAY_LIMIT, // Only fetch limited products
           tagFilter: null,
           sortBy: "default",
+          next: { revalidate: 6000 },
         }),
       });
 
@@ -230,7 +232,7 @@ function SimilarProductsBase({ currentProduct, variant, category }) {
 
   return (
     <SimilarProductsContext.Provider value={{ insertionDetails }}>
-      <Box sx={{ width: "100%", px: 1, mt: 4 }}>
+      <Box sx={{ width: "100%", px: 1, mt: 4, maxWidth: 1399, m: 'auto' }}>
         {/* Header with skeleton */}
         {loadingInit && !isInitialized && !sectionTitle ? (
           <Skeleton variant="text" width={200} height={32} sx={{ mb: 1 }} />
