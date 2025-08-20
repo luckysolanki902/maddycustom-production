@@ -5,26 +5,34 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import NoMarginCarousel from '@/components/showcase/carousels/NoMarginCarousel';
 import styles from './styles/CarIntExt.module.css';
+import { useRouter } from 'next/navigation';
 
 const ProductCard = ({ product }) => {
+  const router = useRouter();
   if (!product) return null;
 
-  const imageUrl = product.image 
+  const imageUrl = product.image
     ? `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${product.image.startsWith('/') ? '' : '/'}${product.image}`
     : null;
 
+
+  const handleClick = () => {
+    router.push(`/shop/${product.productListPageSlug}`);
+  };
+
   return (
-    <motion.div 
+    <motion.div
       className={styles.productCard}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.4 }}
       whileHover={{ y: -2 }}
+      onClick={handleClick}
     >
       {imageUrl && (
         <div className={styles.productImageWrapper}>
-          <Image 
+          <Image
             src={imageUrl}
             alt={product.name}
             width={500}
@@ -46,42 +54,42 @@ const ProductCard = ({ product }) => {
 
 const ComingSoonCard = () => {
   return (
-    <motion.div 
+    <motion.div
       className={styles.comingSoonCard}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.4 }}
-      whileHover={{ 
+      whileHover={{
         y: -4,
         scale: 1.02,
         transition: { duration: 0.3 }
       }}
     >
       <div className={styles.comingSoonImageWrapper}>
-        <motion.div 
+        <motion.div
           className={styles.comingSoonIcon}
-          transition={{ 
+          transition={{
             duration: 3,
             repeat: Infinity,
             ease: "easeInOut"
           }}
         >
           <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-            <path d="M2 17l10 5 10-5"/>
-            <path d="M2 12l10 5 10-5"/>
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
           </svg>
         </motion.div>
 
       </div>
       <div className={styles.comingSoonContent}>
-        <motion.div 
+        <motion.div
           className={styles.comingSoonTitle}
-          animate={{ 
+          animate={{
             backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
           }}
-          transition={{ 
+          transition={{
             duration: 3,
             repeat: Infinity,
             ease: "linear"
@@ -97,7 +105,7 @@ const ComingSoonCard = () => {
   );
 };
 
-export default function CarIntExt({ 
+export default function CarIntExt({
   type = 'interior', // 'interior' or 'exterior'
   assets = [], // Display assets array to filter from
   products = [], // Products data passed from parent
@@ -115,7 +123,7 @@ export default function CarIntExt({
     const filteredAssets = assets.filter(
       asset => asset.componentName === componentName && asset.componentType === 'carousel'
     );
-    
+
     // Map to the media format expected by NoMarginCarousel
     return filteredAssets.map(asset => ({
       desktop: asset.media?.desktop,
@@ -137,15 +145,15 @@ export default function CarIntExt({
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
       transition: { duration: 0.4 }
     }
   };
 
   return (
-    <motion.section 
+    <motion.section
       className={`${styles.section} ${className}`}
       initial="hidden"
       whileInView="visible"
@@ -156,7 +164,7 @@ export default function CarIntExt({
 
       {/* Content Section */}
       <div className={styles.contentContainer}>
-        <motion.h2 
+        <motion.h2
           className={styles.heading}
           variants={itemVariants}
           style={{ marginTop: heading.toLowerCase() === 'exterior' ? '-1rem' : '' }}
@@ -164,15 +172,15 @@ export default function CarIntExt({
           {heading}
         </motion.h2>
 
-              {/* Carousel */}
-      <motion.div variants={itemVariants}>
-        <NoMarginCarousel 
-          images={carouselImages}
-          autoplay={true}
-          autoplayDelay={5000}
-          showPagination={true}
-        />
-      </motion.div>
+        {/* Carousel */}
+        <motion.div variants={itemVariants}>
+          <NoMarginCarousel
+            images={carouselImages}
+            autoplay={true}
+            autoplayDelay={5000}
+            showPagination={true}
+          />
+        </motion.div>
 
         {loading ? (
           <div className={`${styles.productsContainer} ${type === 'exterior' ? styles.exteriorProducts : ''}`}>
@@ -187,7 +195,7 @@ export default function CarIntExt({
             </div>
           </div>
         ) : error ? (
-          <motion.div 
+          <motion.div
             className={styles.errorMessage}
             variants={itemVariants}
           >
