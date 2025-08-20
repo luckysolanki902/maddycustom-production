@@ -175,7 +175,7 @@ export default function CarIntExt({
       </motion.div>
 
         {loading ? (
-          <div className={styles.productsContainer}>
+          <div className={`${styles.productsContainer} ${type === 'exterior' ? styles.exteriorProducts : ''}`}>
             <div className={styles.loadingWrapper}>
               {Array(6).fill(0).map((_, index) => (
                 <div key={index} className={styles.skeletonCard}>
@@ -194,7 +194,7 @@ export default function CarIntExt({
             <p>Failed to load {type} products. Please try again later.</p>
           </motion.div>
         ) : (
-          <div className={styles.productsContainer}>
+          <div className={`${styles.productsContainer} ${type === 'exterior' ? styles.exteriorProducts : ''}`}>
             <div className={styles.productsWrapper}>
               {products.map((product, index) => (
                 <motion.div
