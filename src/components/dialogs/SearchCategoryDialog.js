@@ -76,6 +76,8 @@ export default function SearchCategoryDialog() {
   const [categories, setCategories] = useState([]);
   const [variants, setVariants] = useState([]);
   const inputRef = useRef(null);
+  const suggestionBoxRef = useRef(null);
+  const [scrolled, setScrolled] = useState(false);
   // Track whether we've pushed a history state (for mobile only)
   const pushedStateRef = useRef(false);
   // Track if we've already initiated a fetch to prevent duplicate requests
@@ -224,14 +226,31 @@ export default function SearchCategoryDialog() {
         handleClose();
       };
       window.addEventListener('popstate', handlePopState);
+      // attach scroll listener to suggestion box when opened
+      const el = suggestionBoxRef.current;
+      const onScroll = () => {
+        if (!el) return;
+        setScrolled(el.scrollTop > 6);
+      };
+      if (el) el.addEventListener('scroll', onScroll);
       return () => {
         window.removeEventListener('popstate', handlePopState);
+        if (el) el.removeEventListener('scroll', onScroll);
         clearTimeout(focusTimeout);
       };
     }
 
     return () => clearTimeout(focusTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // Generic scroll listener for suggestionBox (desktop & mobile)
+  useEffect(() => {
+    const el = suggestionBoxRef.current;
+    if (!el) return;
+    const onScroll = () => setScrolled(el.scrollTop > 6);
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
   }, [isOpen]);
 
   // Also try to focus using another useEffect (as a backup)
@@ -314,7 +333,9 @@ export default function SearchCategoryDialog() {
     >
       <AppBar
         sx={{ 
-          position: 'relative', 
+          position: 'sticky',
+          top: 0,
+          zIndex: 1200,
           backgroundColor: 'white', 
           boxShadow: 'none',
           borderBottom: '1px solid #f0f0f0'
@@ -366,10 +387,12 @@ export default function SearchCategoryDialog() {
         sx={{
           p: { xs: 1.5, sm: 2 },
           position: 'relative',
-          height: '100%',
+          height: '100vh',
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
-          bgcolor: '#fafafa'
+          bgcolor: '#fafafa',
+          overflow: 'hidden'
         }}
       >
         <motion.div
@@ -393,7 +416,7 @@ export default function SearchCategoryDialog() {
               alt="search"
               className={searchStyles.searchIcon}
             />
-            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
               {searchText === '' && (
                 <div className={searchStyles.typewriterContainer}>
                   <Typewriter
@@ -408,14 +431,17 @@ export default function SearchCategoryDialog() {
                   />
                 </div>
               )}
-              <input
+              <textarea
                 ref={inputRef}
-                type="text"
+                rows={1}
+                inputMode="text"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
                 spellCheck={false}
                 onChange={handleInputChange}
                 className={`${searchStyles.inputField} ${searchStyles.dialogInputField}`}
                 value={searchText}
-                autoFocus
                 placeholder=""
                 style={{
                   flex: 1,
@@ -424,7 +450,10 @@ export default function SearchCategoryDialog() {
                   outline: 'none',
                   background: 'transparent',
                   position: 'relative',
-                  zIndex: 2
+                  zIndex: 2,
+                  resize: 'none',
+                  overflow: 'hidden',
+                  lineHeight: '1.2'
                 }}
               />
             </div>
@@ -436,9 +465,11 @@ export default function SearchCategoryDialog() {
             flex: 1, 
             overflowY: 'auto',
             mt: 1,
-            px: { xs: 0.5, sm: 1 }
+            px: { xs: 0.5, sm: 1 },
+            position: 'relative'
           }} 
-          className={searchStyles.suggestionBox}
+          className={`${searchStyles.suggestionBox} ${scrolled ? searchStyles.scrolledTop : ''}`}
+          ref={suggestionBoxRef}
         >
           {searchCategoriesCache?.isLoading ? (
             <Fade in={searchCategoriesCache?.isLoading} timeout={500}>

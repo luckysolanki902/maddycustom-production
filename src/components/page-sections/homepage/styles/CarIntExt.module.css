@@ -61,7 +61,7 @@
   transition: transform 0.2s ease;
   background: #fff;
   border-radius: 0.2rem;
-  min-height: 240px;
+  /* min-height: 240px; */
   display: flex;
   flex-direction: column;
 }
@@ -118,7 +118,7 @@
   overflow: hidden;
   /* box-shadow: 0 2px 8px rgba(45, 45, 45, 0.08); */
   height: auto;
-  min-height: 240px;
+  /* min-height: 240px; */
   display: flex;
   flex-direction: column;
 }

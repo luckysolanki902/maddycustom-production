@@ -220,6 +220,7 @@ export default function CarIntExt({
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
+                  style={{height: 'fit-content'}}
                 >
                   <ProductCard product={product} />
                 </motion.div>

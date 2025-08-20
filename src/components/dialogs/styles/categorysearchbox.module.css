@@ -50,6 +50,14 @@
     border-bottom: 1px solid #f0f0f0;
 }
 
+/* Make header + search sticky at top of dialog */
+.searchheader.sticky {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: #fff; /* keep solid to avoid bleed-through */
+}
+
 .inputField {
     background-color: white;
     outline: none;
@@ -65,6 +73,13 @@
     color: #333;
 }
 
+/* textarea behaves like single-line input */
+textarea.inputField {
+    padding: 0.35rem 0.5rem;
+    line-height: 1.2;
+    min-height: 1.8rem;
+}
+
 .inputField::placeholder {
     color: #9ca3af;
     font-size: 1.1rem;
@@ -78,9 +93,38 @@
 
 .suggestionBox {
     border-radius: 1rem;
-    overflow: hidden;
+    overflow: auto;
     margin-top: 0.5rem;
     padding: 0.5rem;
+    height: calc(100vh - 180px); /* fill remaining dialog space under header */
+    box-sizing: border-box;
+    /* hide scrollbars while keeping scroll functionality */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+}
+
+.suggestionBox::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+}
+
+/* top subtle gradient when suggestion list is scrolled */
+.suggestionBox.scrolledTop::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 12px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0));
+    pointer-events: none;
+    z-index: 45;
+}
+
+.searchBoxSubContainer {
+    position: sticky;
+    top: 64px; /* below the AppBar */
+    z-index: 60;
+    background: white;
 }
 
 .suggestionItem {
@@ -95,6 +139,15 @@
 .suggestionItem:hover {
     background-color: #f5f7fa !important;
     transform: translateX(4px);
+}
+
+/* Disable hover translations/animations on touch devices (mobile) */
+@media screen and (max-width: 700px) {
+    .suggestionItem:hover {
+        background-color: transparent !important;
+        transform: none !important;
+        transition: none !important;
+    }
 }
 
 .typewriterContainer {
