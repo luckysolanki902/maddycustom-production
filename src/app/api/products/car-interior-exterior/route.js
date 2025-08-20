@@ -37,12 +37,11 @@ export async function GET(request) {
                 available: true,
               })
               .populate('specificCategory', 'name pageSlug')
-              .select('name price specificCategory images')
+              .select('name price specificCategory images pageSlug')
               .lean();
 
               if (product) {
-                const productSlug = product.specificCategory?.pageSlug;
-                const productListPageSlug = productSlug ? productSlug.split('/').slice(0, -1).join('/') : null;
+                const productListPageSlug = product?.pageSlug.split('/').slice(0, -1).join('/');
                 
                 results[type].push({
                   _id: product._id,
