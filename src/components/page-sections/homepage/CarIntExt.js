@@ -118,18 +118,25 @@ export default function CarIntExt({
 
   // Filter carousel images from assets based on component name and type
   const carouselImages = useMemo(() => {
-    // Match the actual component names from your database
-    const componentName = type === 'interior' ? 'car-interiors' : 'car-exteriors';
+    // Match the actual component names from your database - they have -carousel suffix
+    const componentName = type === 'interior' ? 'car-interiors-carousel' : 'car-exteriors-carousel';
     const filteredAssets = assets.filter(
       asset => asset.componentName === componentName && asset.componentType === 'carousel'
     );
 
     // Map to the media format expected by NoMarginCarousel
-    return filteredAssets.map(asset => ({
+    const processedImages = filteredAssets.map(asset => ({
       desktop: asset.media?.desktop,
       mobile: asset.media?.mobile,
       useSameMediaForAllDevices: asset.useSameMediaForAllDevices
     }));
+
+    // Debug log for mobile
+    console.log(`${type} carousel images:`, processedImages);
+    console.log(`Looking for componentName: ${componentName}`);
+    console.log('Available assets:', assets.map(a => ({ name: a.componentName, type: a.componentType })));
+    
+    return processedImages;
   }, [assets, type]);
 
   const containerVariants = {
@@ -137,18 +144,18 @@ export default function CarIntExt({
     visible: {
       opacity: 1,
       transition: {
-        duration: 0.6,
-        staggerChildren: 0.1
+        duration: 0.3,
+        staggerChildren: 0.05
       }
     }
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 10 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.4 }
+      transition: { duration: 0.3 }
     }
   };
 
@@ -173,7 +180,10 @@ export default function CarIntExt({
         </motion.h2>
 
         {/* Carousel */}
-        <motion.div variants={itemVariants}>
+        <motion.div 
+          variants={itemVariants}
+          className={styles.carouselWrapper}
+        >
           <NoMarginCarousel
             images={carouselImages}
             autoplay={true}

@@ -3,6 +3,8 @@
   margin-left: calc(-50vw + 50%);
   position: relative;
   overflow: hidden;
+  display: block !important;
+  visibility: visible !important;
 }
 
 .swiper {
@@ -39,13 +41,45 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .carouselContainer {
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    position: relative;
+    overflow: hidden;
+    display: block !important;
+    visibility: visible !important;
+  }
+  
+  .swiper {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+  }
+  
   .imageWrapper {
     height: auto;
+    display: block !important;
   }
 }
 
 @media (max-width: 480px) {
+  .carouselContainer {
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    position: relative;
+    overflow: hidden;
+    display: block !important;
+    visibility: visible !important;
+  }
+  
+  .swiper {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+  }
+  
   .imageWrapper {
     height: auto;
+    display: block !important;
   }
 }

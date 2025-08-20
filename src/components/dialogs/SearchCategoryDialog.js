@@ -335,6 +335,7 @@ export default function SearchCategoryDialog() {
                 style={{ cursor: 'pointer' }}
                 loading='eager'
                 priority
+                
               />
             </IconButton>
           </motion.div>
@@ -352,7 +353,7 @@ export default function SearchCategoryDialog() {
                 fontWeight: 500,
                 fontFamily: 'Jost' 
               }}
-              variant="h6"
+              variant="h7"
               component="div"
             >
               Customize your vehicle, your way!
