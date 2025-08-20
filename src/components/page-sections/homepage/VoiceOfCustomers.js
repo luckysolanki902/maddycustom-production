@@ -16,47 +16,97 @@ const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '';
 
 const testimonials = [
 
+
   {
+
     handle: "@the_venom_4.0",
+
     avatar: "6fkITk9WjM.jpg",
+
     comment: "Great wrap quality and my bike looks amazing now. Really happy with the work!",
+
+    name: 'Sandeep Kumar'
+
   },
 
+
   {
+
     handle: "@rider_4u_",
+
     avatar: "58nzGUw7Z7.jpg",
+
     comment: "Super happy with how my bike looks. The team did a great job!",
+
+    name: 'Khilan Nathwani'
+
   },
 
+
   {
+
     handle: "@iam_v.jay",
+
     avatar: "jK5eub3DcY.jpg",
+
     comment: "My car looks brand new! Everyone asks where I got it wrapped.",
+
+    name: 'Vijay Jangid'
+
   },
 
+
   {
+
     handle: "@riderkundan07",
+
     avatar: "ob4uxJDsHS.jpg",
+
     comment: "They really understood what I wanted and made it look awesome.",
+
+    name: 'Kundan Gupta'
+
   },
 
+
   {
+
     handle: "@the_mudaccer_",
+
     avatar: "p9WK0DM78c.jpg",
+
     comment: "My ride looks so much better now. Totally worth it!",
+
+    name: 'Mudasir Mushtaq'
+
   },
 
+
   {
+
     handle: "@jr_kulkarni_",
+
     avatar: "rEoO9kH68s.jpg",
+
     comment: "Very professional and the wrap quality is top notch.",
+
+    name: 'Prathamesh Kulkarni'
+
   },
 
+
   {
+
     handle: "@pixomonk",
+
     avatar: "ZKWgUDAT8m.jpg",
+
     comment: "The wrap looks cool and I get a lot of compliments!",
+
+    name: 'Shivanshu Mishra'
+
   },
+
 
 ];
 
@@ -105,7 +155,7 @@ export default function VoiceOfOurCustomers() {
                   <div className={styles.quoteIconTop}>
                     <FormatQuoteIcon />
                   </div>
-                  
+
                   <div className={styles.avatar}>
                     <Image
                       src={`${baseImageUrl}/assets/happy-customers/${t.avatar}`}
@@ -115,14 +165,14 @@ export default function VoiceOfOurCustomers() {
                       className={styles.avatarImg}
                     />
                   </div>
-                  
-                  <h2 className={styles.CompanyName}>Maddy Custom</h2>
+
+                  <h2 className={styles.CompanyName}>{t.name}</h2>
                   <p className={styles.comment}>{t.comment}</p>
-                  
+
                   <div className={styles.quoteIconBottom}>
                     <FormatQuoteIcon />
                   </div>
-                  
+
                   <div className={styles.iconRow}>
                     <InstagramIcon
                       className={styles.instagramIcon}

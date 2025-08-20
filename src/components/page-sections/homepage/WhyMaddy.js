@@ -11,22 +11,38 @@ const cardData = [
   {
     title: "Personal Touch",
     image: `${baseImageUrl}/assets/icons/maddy-premiumtouch.png`,
-    details: ["Unique customization", "Reflects your personality", "Tailored wrap designs"],
+    details: [
+      "Unique customization",
+      "Reflects your style",
+      // "Tailored wrap designs"
+    ],
   },
   {
     title: "Premium Build",
     image: `${baseImageUrl}/assets/icons/maddy-premiumbuild.png`,
-    details: ["High-quality materials", "Water-resistant wraps", "Long-lasting durability"],
+    details: [
+      "Superior quality",
+      "Water-resistant",
+      // "Long-lasting durability"
+    ],
   },
   {
     title: "Value Choice",
     image: `${baseImageUrl}/assets/icons/maddy-valuechoice.png`,
-    details: ["Affordable styling", "Cost-effective", "Stylish look on a budget"],
+    details: [
+      "Budget friendly",
+      "Cost-effective",
+      // "Stylish look on a budget"
+    ],
   },
   {
     title: "Seamless Fit",
     image: `${baseImageUrl}/assets/icons/maddy-seamlessfit.png`,
-    details: ["Precision fit", "Smooth look", "Factory finish"],
+    details: [
+      "Precision fit",
+      "Factory finish",
+      // "Factory finish"
+    ],
   },
 ];
 
@@ -35,50 +51,50 @@ const containerVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { 
-      duration: 0.6, 
-      ease: "easeOut", 
-      when: "beforeChildren", 
-      staggerChildren: 0.08 
+    transition: {
+      duration: 0.6,
+      ease: "easeOut",
+      when: "beforeChildren",
+      staggerChildren: 0.08
     },
   },
 };
 
 const cardVariants = {
   hidden: { opacity: 0, y: 24, scale: 0.95 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
+  visible: {
+    opacity: 1,
+    y: 0,
     scale: 1,
-    transition: { 
-      duration: 0.5, 
-      ease: [0.25, 0.46, 0.45, 0.94] 
-    } 
+    transition: {
+      duration: 0.5,
+      ease: [0.25, 0.46, 0.45, 0.94]
+    }
   },
 };
 
 const iconVariants = {
   hidden: { scale: 0, rotate: -180 },
-  visible: { 
-    scale: 1, 
+  visible: {
+    scale: 1,
     rotate: 0,
-    transition: { 
-      duration: 0.6, 
+    transition: {
+      duration: 0.6,
       ease: "easeOut",
-      delay: 0.2 
-    } 
+      delay: 0.2
+    }
   },
 };
 
 const listItemVariants = {
   hidden: { opacity: 0, x: -20 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     x: 0,
-    transition: { 
-      duration: 0.4, 
-      ease: "easeOut" 
-    } 
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
   },
 };
 
@@ -107,8 +123,8 @@ export default function WhyMaddy() {
             key={i}
             className={styles.card}
             variants={cardVariants}
-            whileHover={{ 
-              y: -8, 
+            whileHover={{
+              y: -8,
               scale: 1.02,
               transition: { duration: 0.3, ease: "easeOut" }
             }}
@@ -116,11 +132,11 @@ export default function WhyMaddy() {
           >
             {/* Icon block (no absolute) */}
             <div className={styles.iconBlock}>
-              <motion.div 
+              <motion.div
                 className={styles.iconInner}
                 variants={iconVariants}
-                whileHover={{ 
-                  scale: 1.05, 
+                whileHover={{
+                  scale: 1.05,
                   rotate: 5,
                   transition: { duration: 0.3 }
                 }}
@@ -130,7 +146,7 @@ export default function WhyMaddy() {
                   alt={card.title}
                   width={112}
                   height={112}
-                  style={{width: '80px', height: 'auto'}}
+                  style={{ width: '80px', height: 'auto' }}
                   priority
                   unoptimized={process.env.NODE_ENV === "development"}
                 />
@@ -139,7 +155,7 @@ export default function WhyMaddy() {
 
             {/* Content block */}
             <div className={styles.contentBox}>
-              <motion.h3 
+              <motion.h3
                 className={styles.title}
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -147,7 +163,7 @@ export default function WhyMaddy() {
               >
                 {card.title}
               </motion.h3>
-              <motion.ul 
+              <motion.ul
                 className={styles.list}
                 initial="hidden"
                 whileInView="visible"
@@ -158,8 +174,8 @@ export default function WhyMaddy() {
                 }}
               >
                 {card.details.map((line, j) => (
-                  <motion.li 
-                    className={styles.listItem} 
+                  <motion.li
+                    className={styles.listItem}
                     key={j}
                     variants={listItemVariants}
                     whileHover={{
@@ -172,7 +188,7 @@ export default function WhyMaddy() {
                         <path d="M7.5 13.2 4.8 10.5l-1.3 1.3 4 4 9-9-1.3-1.3-7.7 7.7z" fill="currentColor" />
                       </svg>
                     </div>
-                    <span>{line}</span>
+                    <span style={{lineHeight: 1.2, fontSize: '0.75rem', fontWeight: 400}}>{line}</span>
                   </motion.li>
                 ))}
               </motion.ul>
