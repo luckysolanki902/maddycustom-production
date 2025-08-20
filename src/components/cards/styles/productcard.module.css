@@ -284,47 +284,6 @@
   padding-top: 8px;
 }
 
-/* Desktop specific overrides for square images */
-@media (min-width: 769px) {
-  /* HIGHEST SPECIFICITY OVERRIDE for square layout on desktop - multiple selectors for maximum priority */
-  .mainCardDiv.squareLayoutCard .imageContainer,
-  .mainCardDiv.steeringCoverCard .imageContainer,
-  .mainCardDiv.squareProductCard .imageContainer,
-  .squareLayoutCard.mainCardDiv .imageContainer,
-  .steeringCoverCard.mainCardDiv .imageContainer,
-  .squareProductCard.mainCardDiv .imageContainer {
-    padding-bottom: 100% !important;
-    background-color: #ffffff !important;
-  }
-
-  .mainCardDiv.squareLayoutCard .image,
-  .mainCardDiv.steeringCoverCard .image,
-  .mainCardDiv.squareProductCard .image,
-  .squareLayoutCard.mainCardDiv .image,
-  .steeringCoverCard.mainCardDiv .image,
-  .squareProductCard.mainCardDiv .image {
-    object-fit: contain !important;
-    object-position: center !important;
-    background-color: #ffffff !important;
-  }
-  
-  /* Additional class-specific overrides for desktop */
-  .squareLayoutCard .imageContainer,
-  .steeringCoverCard .imageContainer,
-  .squareProductCard .imageContainer {
-    padding-bottom: 100% !important;
-    background-color: #ffffff !important;
-  }
-
-  .squareLayoutCard .image,
-  .steeringCoverCard .image,
-  .squareProductCard .image {
-    object-fit: contain !important;
-    object-position: center !important;
-    background-color: #ffffff !important;
-  }
-}
-
 /* Responsive styles */
 @media (max-width: 768px) {
   .productDescription {
