@@ -21,7 +21,11 @@
 .productsContainer {
   position: relative;
   overflow: hidden;
-  margin-top: 32px;
+  margin-top: 24px;
+}
+
+.exteriorProducts {
+  margin-top: 16px;
 }
 
 .productsWrapper {
