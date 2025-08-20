@@ -59,8 +59,33 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
   // Determine which image to display
   const { imageUrl, outOfStock } = getDisplayImage(product);
 
-  // Check if this is a square layout (listLayout 3)
-  const isSquareLayout = product.variantDetails?.listLayout === '3';
+  // Auto-detect if images are square by checking the actual dimensions
+  // This is a more robust approach than relying on listLayout
+  const isSquareLayout = useMemo(() => {
+    // If listLayout explicitly says square, use it
+    if (product.variantDetails?.listLayout === '3') return true;
+    
+    // Auto-detect based on product category or name
+    if (product.category?.name?.toLowerCase().includes('steering')) return true;
+    if (product.name?.toLowerCase().includes('steering')) return true;
+    if (imageUrl && imageUrl.toLowerCase().includes('steering')) return true;
+    
+    // Check if it's a car interior product that's likely square
+    if (product.category?.specificCategoryCode === 'sc') return true; // steering covers
+    if (product.variantDetails?.pageSlug?.includes('steering')) return true;
+    
+    // Default to false for other cases
+    return false;
+  }, [product.variantDetails?.listLayout, imageUrl, product.category, product.name, product.variantDetails?.pageSlug]);
+
+  // Determine additional CSS classes based on product type
+  const getProductTypeClasses = () => {
+    let classes = [];
+    if (isSquareLayout) classes.push(styles.squareLayoutCard);
+    if (product.category?.name?.toLowerCase().includes('steering')) classes.push(styles.steeringCoverCard);
+    if (showLayout2) classes.push(styles.layout2Card);
+    return classes.join(' ');
+  };
 
   // Final src for Next/Image
   let finalSrc = '/images/assets/gifs/helmetloadinggiflandscape2.gif';
@@ -72,7 +97,7 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
 
   return (
     <div
-      className={`${styles.mainCardDiv} ${showLayout2 ? styles.layout2Card : ''} ${isSquareLayout ? styles.squareLayoutCard : ''}`}
+      className={`${styles.mainCardDiv} ${getProductTypeClasses()}`}
       onClick={navigateToProductPage}
     >
       {offerTaglineText && (
