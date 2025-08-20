@@ -1,5 +1,3 @@
-'use client';
-
 import React, {
   useState,
   useEffect,
@@ -8,6 +6,7 @@ import React, {
   useMemo,
   memo,
 } from 'react';
+import { useSelector } from 'react-redux';
 import axios from 'axios';
 import {
   Box,
@@ -77,7 +76,6 @@ const TopBoughtContext = React.createContext();
 function TopBoughtProductsBase({
   subCategories = [],        // may be omitted by caller
   currentProductId = '',
-  excludeProductIds = [],
   singleVariantCode = '',
   singleCategoryCode = '',
   pageType = '', // Added pageType prop
@@ -87,6 +85,36 @@ function TopBoughtProductsBase({
   const scrollRef = useRef(null);
   const sentinelRef = useRef(null);
   const skipRef = useRef(0);
+  
+  // Get cart items from Redux
+  const cartItems = useSelector(state => state.cart.items);
+  
+  // Create stable exclusion constants that only change when cart opens
+  const cartOpenedRef = useRef(false);
+  const exclusionConstantsRef = useRef({ excludeProductIds: '', cartDesignIds: '' });
+  
+  // Check if cart is open (you may need to adjust this based on your cart state structure)
+  const isCartOpen = useSelector(state => state.ui?.cartDrawerOpen || false);
+  
+  // Update exclusion constants only when cart opens
+  useEffect(() => {
+    if (isCartOpen && !cartOpenedRef.current) {
+      // Cart just opened, update constants
+      const excludeProductIds = cartItems.map(item => 
+        item.productId || item.productDetails?._id
+      ).filter(Boolean).join(',');
+      
+      const cartDesignIds = cartItems.map(item => 
+        item.productDetails?.designGroupId
+      ).filter(Boolean).join(',');
+      
+      exclusionConstantsRef.current = { excludeProductIds, cartDesignIds };
+      cartOpenedRef.current = true;
+    } else if (!isCartOpen) {
+      // Cart closed
+      cartOpenedRef.current = false;
+    }
+  }, [isCartOpen, cartItems]);
   
   // Create insertion details object
   const insertionDetails = {
@@ -119,17 +147,6 @@ function TopBoughtProductsBase({
   const [loadingMore, setLoadingMore] = useState(false);
   const [specCatName, setSpecCatName] = useState('');
   const [isInitialized, setIsInitialized] = useState(false);
-
-  /* ---------- De‑dupe set (only used for multi-subcategory mode) ---------- */
-  const seenIds = useRef(null);
-  
-  // Check if we're in random products mode (multi-subcategory) 
-  const isRandomProductsMode = !singleVariantCode && !singleCategoryCode && effectiveSubCats.length > 0;
-  
-  // Initialize seenIds only for random products mode
-  if (!seenIds.current && isRandomProductsMode) {
-    seenIds.current = new Set([...excludeProductIds, currentProductId].filter(Boolean));
-  }
   
   // Track current parameters to prevent unnecessary refetches
   const currentParams = useRef('');
@@ -147,6 +164,15 @@ function TopBoughtProductsBase({
         }
         if (singleVariantCode) params.singleVariantCode = singleVariantCode;
         if (singleCategoryCode) params.singleCategoryCode = singleCategoryCode;
+        if (currentProductId) params.currentProductId = currentProductId;
+        
+        // Add cart-based exclusion parameters
+        if (exclusionConstantsRef.current.excludeProductIds) {
+          params.excludeProductIds = exclusionConstantsRef.current.excludeProductIds;
+        }
+        if (exclusionConstantsRef.current.cartDesignIds) {
+          params.cartDesignIds = exclusionConstantsRef.current.cartDesignIds;
+        }
 
         const { data } = await axios.get(
           '/api/showcase/products/top-bought',
@@ -163,19 +189,6 @@ function TopBoughtProductsBase({
           setSpecCatName(specificCategoryName);
         }
 
-        /* client‑side exclusion only for multi-subcategory mode */
-        if (isRandomProductsMode && seenIds.current) {
-          fetched = fetched.filter((p) => !seenIds.current.has(p._id));
-        }
-
-        /* if too few and we're in random mode, pull next page */
-        if (isRandomProductsMode && fetched.length < PAGE_SIZE && more && seenIds.current) {
-          fetched.forEach((p) => seenIds.current.add(p._id));
-          const extra = await fetchPage(offset + PAGE_SIZE, false);
-          fetched = fetched.concat(extra.fetched);
-          more = extra.more;
-        }
-
         const ready = fetched.map((p) =>
           Array.isArray(p.options) && p.options.length
             ? { ...p, selectedOption: p.options[0] }
@@ -185,20 +198,14 @@ function TopBoughtProductsBase({
         // Always update products when we get new data
         if (isInitial) {
           setProducts(ready);
+          skipRef.current = ready.length;
+          setIsInitialized(true);
         } else {
           setProducts((prev) => [...prev, ...ready]);
-        }
-        
-        // Add to seenIds only for random products mode
-        if (isRandomProductsMode && seenIds.current) {
-          ready.forEach((p) => seenIds.current.add(p._id));
+          skipRef.current += ready.length;
         }
         
         setHasMore(more);
-        
-        if (isInitial) {
-          setIsInitialized(true);
-        }
 
         return { fetched: ready, more };
       } catch (err) {
@@ -214,13 +221,13 @@ function TopBoughtProductsBase({
         isInitial ? setLoadingInit(false) : setLoadingMore(false);
       }
     },
-    [effectiveSubCats, singleVariantCode, singleCategoryCode, isRandomProductsMode]
+    [effectiveSubCats, singleVariantCode, singleCategoryCode, currentProductId]
   );
 
   /* ---------- Initial load ---------- */
   useEffect(() => {
-    // Create stable key for current parameters
-    const paramsKey = `${effectiveSubCats.join('|')}::${singleVariantCode}::${singleCategoryCode}`;
+    // Create stable key for current parameters including cart state
+    const paramsKey = `${effectiveSubCats.join('|')}::${singleVariantCode}::${singleCategoryCode}::${exclusionConstantsRef.current.excludeProductIds}::${exclusionConstantsRef.current.cartDesignIds}`;
     
     // Skip if parameters haven't changed and we already have data
     if (currentParams.current === paramsKey && products.length > 0 && isInitialized) {
@@ -244,16 +251,10 @@ function TopBoughtProductsBase({
     setIsInitialized(false);
     setLoadingInit(true);
     
-    // Reset seenIds only for random products mode
-    if (isRandomProductsMode) {
-      const initialExclusions = [...excludeProductIds, currentProductId].filter(Boolean);
-      seenIds.current = new Set(initialExclusions);
-    }
-    
     // Start fetching
     fetchPage(0, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveSubCats.join('|'), singleVariantCode, singleCategoryCode, fetchPage, isRandomProductsMode]);
+  }, [effectiveSubCats.join('|'), singleVariantCode, singleCategoryCode, fetchPage, exclusionConstantsRef.current.excludeProductIds, exclusionConstantsRef.current.cartDesignIds]);
 
   /* ---------- Infinite‑scroll observer ---------- */
   useEffect(() => {
@@ -266,9 +267,7 @@ function TopBoughtProductsBase({
           hasMore &&
           !loadingMore
         ) {
-          const next = skipRef.current + PAGE_SIZE;
-          skipRef.current = next;
-          fetchPage(next, false);
+          fetchPage(skipRef.current, false);
         }
       },
       { root: scrollRef.current, threshold: 0.1 }
@@ -466,7 +465,6 @@ function propsAreEqual(prev, next) {
     prev.currentProductId === next.currentProductId &&
     prev.singleVariantCode === next.singleVariantCode &&
     prev.singleCategoryCode === next.singleCategoryCode &&
-    prev.excludeProductIds?.join('|') === next.excludeProductIds?.join('|') &&
     prev.pageType === next.pageType &&
     prev.hideHeading === next.hideHeading
   );
