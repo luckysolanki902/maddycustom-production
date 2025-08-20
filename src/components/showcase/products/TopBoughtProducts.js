@@ -1,458 +1,478 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
-import { Box, Typography, Skeleton, Fade, Card, CardContent, CardMedia } from '@mui/material';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  memo,
+} from 'react';
+import axios from 'axios';
+import {
+  Box,
+  Typography,
+  Skeleton,
+  Fade,
+  Card,
+  CardContent,
+  CardMedia,
+} from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import AddToCartButton from '@/components/utils/AddToCartButton';
 
-/* ─────────────────── CONSTANTS ─────────────────── */
-const BASE_IMAGE_URL = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 const PAGE_SIZE = 10;
-const FETCH_TIMEOUT = 3000; // 3 second timeout
 
-/* ─────────────────── CACHE LAYER ─────────────────── */
-const cache = new Map();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-const getCacheKey = (params) => {
-  const { subCategories = [], singleVariantCode = '', singleCategoryCode = '' } = params;
-  return `${subCategories.join('|')}::${singleVariantCode}::${singleCategoryCode}`;
-};
-
-const getCachedData = (key) => {
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.data;
-  }
-  cache.delete(key);
-  return null;
-};
-
-const setCachedData = (key, data) => {
-  cache.set(key, { data, timestamp: Date.now() });
-  // Limit cache size
-  if (cache.size > 50) {
-    const oldestKey = cache.keys().next().value;
-    cache.delete(oldestKey);
-  }
-};
-
-/* ─────────────────── OPTIMIZED FETCHER ─────────────────── */
-const fetchWithTimeout = async (url, options, timeout = FETCH_TIMEOUT) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-      headers: {
-        'Cache-Control': 'max-age=300', // 5 minute client cache
-        ...options?.headers
-      }
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
-  }
-};
-
-/* ─────────────────── STYLED COMPONENTS ─────────────────── */
-const ScrollContainer = styled(Box)({
+/* ─────────────────── styled helpers ─────────────────── */
+const ScrollContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   overflowX: 'auto',
-  gap: '16px',
-  paddingBottom: '24px',
+  gap: theme.spacing(2),
+  paddingBottom: theme.spacing(3),
   scrollSnapType: 'x proximity',
   '&::-webkit-scrollbar': { display: 'none' },
   msOverflowStyle: 'none',
   scrollbarWidth: 'none',
-});
-
-const ProductCardWrapper = styled(Card)({
+}));
+const Sentinel = styled('div')({ width: 1, height: 1 });
+const cardSx = {
   width: 200,
   flexShrink: 0,
   scrollSnapAlign: 'start',
-  borderRadius: '12px',
-  transition: 'transform 0.2s ease-out',
+  borderRadius: 3,
+  transition: 'transform .2s',
   cursor: 'pointer',
-  '&:hover': { 
-    transform: 'translateY(-4px)', 
-    boxShadow: '0 8px 24px rgba(0,0,0,0.12)' 
-  },
-});
+  '&:hover': { transform: 'translateY(-6px)', boxShadow: 6 },
+};
 
-/* ─────────────────── UTILITIES ─────────────────── */
-const getOptimizedImage = (product) => {
-  // Pre-select best option with inventory
+/* ─────────────────── image helper ─────────────────── */
+const getDisplayImage = (product) => {
   if (product.options?.length) {
-    const inStock = product.options.find(o => 
-      o.inventoryData?.availableQuantity > 0 && o.images?.length
+    const inStock = product.options.find(
+      (o) => o.inventoryData?.availableQuantity > 0 && o.images?.length
     );
-    if (inStock) {
-      return { 
-        imageUrl: inStock.images[0], 
-        isAvailable: true,
-        selectedOption: inStock 
-      };
-    }
-    
-    const firstWithImage = product.options.find(o => o.images?.length);
-    if (firstWithImage) {
-      return { 
-        imageUrl: firstWithImage.images[0], 
-        isAvailable: false,
-        selectedOption: firstWithImage 
-      };
-    }
+    if (inStock) return { imageUrl: inStock.images[0], outOfStock: false };
+
+    const first = product.options.find((o) => o.images?.length);
+    if (first) return { imageUrl: first.images[0], outOfStock: true };
   }
-  
+  if (product.images?.length)
+    return {
+      imageUrl: product.images[0],
+      outOfStock: product.inventoryData?.availableQuantity <= 0,
+    };
   return {
-    imageUrl: product.images?.[0] || '/images/assets/gifs/helmetloadinggif.gif',
-    isAvailable: product.inventoryData?.availableQuantity > 0,
-    selectedOption: null
+    imageUrl: '/images/assets/gifs/helmetloadinggif.gif',
+    outOfStock: true,
   };
 };
 
-const formatImageUrl = (imageUrl) => {
-  if (!imageUrl) return `${BASE_IMAGE_URL}/images/assets/gifs/helmetloadinggif.gif`;
-  return imageUrl.startsWith('/') ? `${BASE_IMAGE_URL}${imageUrl}` : `${BASE_IMAGE_URL}/${imageUrl}`;
-};
-
-/* ─────────────────── CONTEXT ─────────────────── */
+/* ─────────────────── context ─────────────────── */
 const TopBoughtContext = React.createContext();
 
-/* ─────────────────── PRODUCT CARD ─────────────────── */
-const ProductCard = memo(function ProductCard({ product }) {
-  const router = useRouter();
-  const { insertionDetails, showCategory } = React.useContext(TopBoughtContext);
-  
-  const productData = useMemo(() => {
-    const imageData = getOptimizedImage(product);
-    const optimizedProduct = {
-      ...product,
-      selectedOption: imageData.selectedOption
-    };
-    
-    return {
-      product: optimizedProduct,
-      imageUrl: formatImageUrl(imageData.imageUrl),
-      isAvailable: imageData.isAvailable,
-      displayName: product.name,
-      displayPrice: product.price,
-      categoryName: product.category?.name || ''
-    };
-  }, [product]);
-
-  const handleCardClick = useCallback(() => {
-    if (productData.product.pageSlug) {
-      router.push(`/shop/${productData.product.pageSlug}`);
-    }
-  }, [router, productData.product.pageSlug]);
-
-  const handleAddToCart = useCallback((e) => {
-    e.stopPropagation();
-  }, []);
-
-  return (
-    <ProductCardWrapper onClick={handleCardClick}>
-      <CardMedia sx={{ position: 'relative', paddingTop: '75%' }}>
-        <Image
-          src={productData.imageUrl}
-          alt={productData.displayName}
-          fill
-          sizes="200px"
-          style={{ 
-            objectFit: 'cover',          }}
-          loading="lazy"
-        />
-      </CardMedia>
-      <CardContent sx={{ padding: '12px 16px 16px' }}>
-        <Typography
-          variant="subtitle2"
-          sx={{ 
-            fontFamily: 'Jost', 
-            fontWeight: 500,
-            lineHeight: 1.2,
-            marginBottom: showCategory ? '4px' : '8px'
-          }}
-          noWrap
-        >
-          {productData.displayName}
-        </Typography>
-        
-        {showCategory && productData.categoryName && (
-          <Typography
-            variant="caption"
-            sx={{ 
-              color: 'rgba(0,0,0,0.6)',
-              lineHeight: 1,
-              marginBottom: '8px',
-              display: 'block'
-            }}
-            noWrap
-          >
-            {productData.categoryName}
-          </Typography>
-        )}
-        
-        <Typography
-          variant="body2"
-          sx={{ 
-            fontWeight: 600,
-            marginBottom: '12px',
-            color: '#424242'
-          }}
-        >
-          ₹{productData.displayPrice}
-        </Typography>
-        
-        <AddToCartButton
-          fullWidth
-          product={{ ...productData.product, thumbnail: productData.imageUrl }}
-          onClick={handleAddToCart}
-          insertionDetails={insertionDetails}
-          size="small"
-        />
-      </CardContent>
-    </ProductCardWrapper>
-  );
-});
-
-/* ─────────────────── SKELETON ─────────────────── */
-const ProductCardSkeleton = memo(function ProductCardSkeleton() {
-  const { showCategory } = React.useContext(TopBoughtContext);
-  
-  return (
-    <ProductCardWrapper>
-      <Skeleton variant="rectangular" sx={{ paddingTop: '75%' }} animation="wave" />
-      <CardContent sx={{ padding: '12px 16px 16px' }}>
-        <Skeleton variant="text" width="85%" height={20} animation="wave" />
-        {showCategory && (
-          <Skeleton variant="text" width="65%" height={16} animation="wave" />
-        )}
-        <Skeleton variant="text" width="45%" height={20} animation="wave" />
-        <Skeleton variant="rectangular" width="100%" height={32} sx={{ marginTop: '12px' }} animation="wave" />
-      </CardContent>
-    </ProductCardWrapper>
-  );
-});
-
-/* ─────────────────── MAIN COMPONENT ─────────────────── */
-function TopBoughtProductsUltraFast({
-  subCategories = [],
+/* ─────────────────── Base component ─────────────────── */
+function TopBoughtProductsBase({
+  subCategories = [],        // may be omitted by caller
   currentProductId = '',
   excludeProductIds = [],
   singleVariantCode = '',
   singleCategoryCode = '',
-  pageType = '',
+  pageType = '', // Added pageType prop
   hideHeading = false,
 }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [categoryName, setCategoryName] = useState('');
-  const abortControllerRef = useRef(null);
+  const router = useRouter();
+  const scrollRef = useRef(null);
+  const sentinelRef = useRef(null);
+  const skipRef = useRef(0);
+  
+  // Create insertion details object
+  const insertionDetails = {
+    component: 'topBoughtProducts',
+    pageType: pageType
+  };
 
-  // Memoized parameters
-  const fetchParams = useMemo(() => {
-    const effectiveSubCats = Array.isArray(subCategories) && subCategories.length > 0 
-      ? subCategories 
+  /* ---------- Normalise sub‑categories ---------- */
+  // Guarantee an array, even when undefined/null is supplied and memoize to prevent re-renders
+  const effectiveSubCats = useMemo(() => {
+    const subCatArr = Array.isArray(subCategories) ? subCategories : [];
+    return subCatArr.length || singleVariantCode || singleCategoryCode
+      ? subCatArr
       : ['Car Wraps', 'Car Care'];
-    
-    return {
-      subCategories: effectiveSubCats,
-      singleVariantCode: singleVariantCode.trim(),
-      singleCategoryCode: singleCategoryCode.trim()
-    };
   }, [subCategories, singleVariantCode, singleCategoryCode]);
 
-  const insertionDetails = useMemo(() => ({
-    component: 'topBoughtProducts',
-    pageType
-  }), [pageType]);
+  const subCatKey = useMemo(
+    () =>
+      [...effectiveSubCats]
+        .slice()
+        .sort()
+        .join('|'), // safe even when array is empty
+    [effectiveSubCats]
+  );
 
-  const showCategory = !singleVariantCode && !singleCategoryCode;
+  /* ---------- State ---------- */
+  const [products, setProducts] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingInit, setLoadingInit] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [specCatName, setSpecCatName] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Ultra-fast fetch function
-  const fetchProducts = useCallback(async () => {
-    const cacheKey = getCacheKey(fetchParams);
+  /* ---------- De‑dupe set (only used for multi-subcategory mode) ---------- */
+  const seenIds = useRef(null);
+  
+  // Check if we're in random products mode (multi-subcategory) 
+  const isRandomProductsMode = !singleVariantCode && !singleCategoryCode && effectiveSubCats.length > 0;
+  
+  // Initialize seenIds only for random products mode
+  if (!seenIds.current && isRandomProductsMode) {
+    seenIds.current = new Set([...excludeProductIds, currentProductId].filter(Boolean));
+  }
+  
+  // Track current parameters to prevent unnecessary refetches
+  const currentParams = useRef('');
+  const isFirstRender = useRef(true);
+
+  /* ---------- Fetcher ---------- */
+  const fetchPage = useCallback(
+    async (offset, isInitial) => {
+      try {
+        isInitial ? setLoadingInit(true) : setLoadingMore(true);
+
+        const params = { skip: offset };
+        if (effectiveSubCats.length) {
+          params.subCategories = effectiveSubCats.join(',');
+        }
+        if (singleVariantCode) params.singleVariantCode = singleVariantCode;
+        if (singleCategoryCode) params.singleCategoryCode = singleCategoryCode;
+
+        const { data } = await axios.get(
+          '/api/showcase/products/top-bought',
+          { params }
+        );
+
+        let {
+          products: fetched = [],
+          hasMore: more = false,
+          specificCategoryName = '',
+        } = data || {};
+
+        if (isInitial && specificCategoryName) {
+          setSpecCatName(specificCategoryName);
+        }
+
+        /* client‑side exclusion only for multi-subcategory mode */
+        if (isRandomProductsMode && seenIds.current) {
+          fetched = fetched.filter((p) => !seenIds.current.has(p._id));
+        }
+
+        /* if too few and we're in random mode, pull next page */
+        if (isRandomProductsMode && fetched.length < PAGE_SIZE && more && seenIds.current) {
+          fetched.forEach((p) => seenIds.current.add(p._id));
+          const extra = await fetchPage(offset + PAGE_SIZE, false);
+          fetched = fetched.concat(extra.fetched);
+          more = extra.more;
+        }
+
+        const ready = fetched.map((p) =>
+          Array.isArray(p.options) && p.options.length
+            ? { ...p, selectedOption: p.options[0] }
+            : p
+        );
+
+        // Always update products when we get new data
+        if (isInitial) {
+          setProducts(ready);
+        } else {
+          setProducts((prev) => [...prev, ...ready]);
+        }
+        
+        // Add to seenIds only for random products mode
+        if (isRandomProductsMode && seenIds.current) {
+          ready.forEach((p) => seenIds.current.add(p._id));
+        }
+        
+        setHasMore(more);
+        
+        if (isInitial) {
+          setIsInitialized(true);
+        }
+
+        return { fetched: ready, more };
+      } catch (err) {
+        console.error('Error fetching top bought products:', err);
+        
+        // On error, only mark as initialized if it's initial load
+        if (isInitial) {
+          setIsInitialized(true);
+          setProducts([]); // Clear products on initial error
+        }
+        return { fetched: [], more: false };
+      } finally {
+        isInitial ? setLoadingInit(false) : setLoadingMore(false);
+      }
+    },
+    [effectiveSubCats, singleVariantCode, singleCategoryCode, isRandomProductsMode]
+  );
+
+  /* ---------- Initial load ---------- */
+  useEffect(() => {
+    // Create stable key for current parameters
+    const paramsKey = `${effectiveSubCats.join('|')}::${singleVariantCode}::${singleCategoryCode}`;
     
-    // Try cache first (instant response)
-    const cachedData = getCachedData(cacheKey);
-    if (cachedData) {
-      setProducts(cachedData.products);
-      setCategoryName(cachedData.categoryName);
-      setLoading(false);
-      setError(false);
+    // Skip if parameters haven't changed and we already have data
+    if (currentParams.current === paramsKey && products.length > 0 && isInitialized) {
       return;
     }
-
-    // Abort previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-
-    try {
-      setLoading(true);
-      setError(false);
-
-      const params = new URLSearchParams({ skip: '0' });
-      if (fetchParams.subCategories.length) {
-        params.set('subCategories', fetchParams.subCategories.join(','));
-      }
-      if (fetchParams.singleVariantCode) {
-        params.set('singleVariantCode', fetchParams.singleVariantCode);
-      }
-      if (fetchParams.singleCategoryCode) {
-        params.set('singleCategoryCode', fetchParams.singleCategoryCode);
-      }
-
-      const response = await fetchWithTimeout(
-        `/api/showcase/products/top-bought?${params}`,
-        {
-          method: 'GET',
-          signal: abortControllerRef.current.signal
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      let { products: fetchedProducts = [], specificCategoryName = '' } = data;
-
-      // Client-side filtering for exclusions (ultra-fast)
-      if (excludeProductIds.length || currentProductId) {
-        const excludeSet = new Set([...excludeProductIds, currentProductId].filter(Boolean));
-        fetchedProducts = fetchedProducts.filter(p => !excludeSet.has(p._id));
-      }
-
-      // Take first 10 for display
-      const displayProducts = fetchedProducts.slice(0, PAGE_SIZE);
-
-      // Cache the result
-      setCachedData(cacheKey, {
-        products: displayProducts,
-        categoryName: specificCategoryName
-      });
-
-      setProducts(displayProducts);
-      setCategoryName(specificCategoryName);
-      setError(false);
-
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error('TopBoughtProducts fetch error:', err);
-        setError(true);
-        setProducts([]);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchParams, excludeProductIds, currentProductId]);
-
-  // Effect for fetching
-  useEffect(() => {
-    fetchProducts();
     
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [fetchProducts]);
-
-  // Determine section title
-  const sectionTitle = useMemo(() => {
-    if ((singleVariantCode || singleCategoryCode) && categoryName) {
-      return categoryName;
+    // Skip duplicate calls in React strict mode
+    if (currentParams.current === paramsKey && isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
     }
-    return 'Customers also bought';
-  }, [singleVariantCode, singleCategoryCode, categoryName]);
+    
+    // Update current parameters
+    currentParams.current = paramsKey;
+    isFirstRender.current = false;
+    
+    // Reset state for new fetch
+    skipRef.current = 0;
+    setHasMore(false);
+    setSpecCatName('');
+    setIsInitialized(false);
+    setLoadingInit(true);
+    
+    // Reset seenIds only for random products mode
+    if (isRandomProductsMode) {
+      const initialExclusions = [...excludeProductIds, currentProductId].filter(Boolean);
+      seenIds.current = new Set(initialExclusions);
+    }
+    
+    // Start fetching
+    fetchPage(0, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveSubCats.join('|'), singleVariantCode, singleCategoryCode, fetchPage, isRandomProductsMode]);
 
-  // Don't render if no valid parameters
-  if (!singleVariantCode && !singleCategoryCode && (!fetchParams.subCategories?.length)) {
+  /* ---------- Infinite‑scroll observer ---------- */
+  useEffect(() => {
+    if (!sentinelRef.current || !scrollRef.current) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0].isIntersecting &&
+          hasMore &&
+          !loadingMore
+        ) {
+          const next = skipRef.current + PAGE_SIZE;
+          skipRef.current = next;
+          fetchPage(next, false);
+        }
+      },
+      { root: scrollRef.current, threshold: 0.1 }
+    );
+    obs.observe(sentinelRef.current);
+    return () => obs.disconnect();
+  }, [hasMore, loadingMore, fetchPage]);
+
+  /* ---------- Section title ---------- */
+  const sectionTitle =
+    (singleVariantCode || singleCategoryCode) && specCatName
+      ? specCatName
+      : 'Customers also bought';
+
+  /* ─────────────────── Render ─────────────────── */
+  // Don't render anything if we don't have the necessary parameters
+  if (!singleVariantCode && !singleCategoryCode && (!effectiveSubCats || effectiveSubCats.length === 0)) {
     return null;
   }
 
   return (
-    <TopBoughtContext.Provider value={{ insertionDetails, showCategory }}>
-      <Box sx={{ width: '100%', paddingX: 1, maxWidth: 1400, margin: 'auto' }}>
+    <TopBoughtContext.Provider
+    value={{ singleCategoryCode, singleVariantCode, insertionDetails }}
+    >
+      <Box sx={{ width: '100%', px: 1 }}>
         {!hideHeading && (
           <>
-            {loading && !categoryName ? (
-              <Skeleton variant="text" width={250} height={36} sx={{ marginBottom: 2 }} />
+            {(loadingInit && !isInitialized) && !specCatName ? (
+              <Skeleton
+                variant="text"
+                width={200}
+                height={32}
+                sx={{ mb: 1 }}
+              />
             ) : (
-              <Typography 
-                variant="h5" 
-                sx={{ 
-                  marginBottom: 2, 
-                  fontWeight: 600,
-                  fontFamily: 'Jost'
-                }}
-              >
+              <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
                 {sectionTitle}
               </Typography>
             )}
           </>
         )}
 
-        {loading ? (
+        {loadingInit && !isInitialized ? (
           <ScrollContainer>
-            {Array.from({ length: PAGE_SIZE }, (_, i) => (
-              <ProductCardSkeleton key={`skeleton-${i}`} />
+            {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+              <ProductCardSkeleton key={`skel-${i}`} />
             ))}
           </ScrollContainer>
-        ) : error ? (
-          <Box sx={{ textAlign: 'center', padding: 4, color: 'text.secondary' }}>
-            <Typography variant="body2">
-              Unable to load products. Please try again.
-            </Typography>
-          </Box>
-        ) : products.length === 0 ? (
-          <Box sx={{ textAlign: 'center', padding: 4, color: 'text.secondary' }}>
+        ) : (
+          <Fade in={isInitialized && products.length > 0}>
+            <ScrollContainer ref={scrollRef}>
+              {products.map((p, i) => (
+                <ProductCard key={`${p._id}-${i}`} product={p} />
+              ))}
+              {loadingMore &&
+                Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                  <ProductCardSkeleton key={`load-${i}`} />
+                ))}
+              {hasMore && <Sentinel ref={sentinelRef} />}
+            </ScrollContainer>
+          </Fade>
+        )}
+        
+        {/* Show message when no products are found and not loading */}
+        {isInitialized && products.length === 0 && !loadingInit && (
+          <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
             <Typography variant="body2">
               No products found for this category.
             </Typography>
           </Box>
-        ) : (
-          <Fade in={!loading} timeout={300}>
-            <ScrollContainer>
-              {products.map((product, index) => (
-                <ProductCard 
-                  key={`${product._id}-${index}`} 
-                  product={product} 
-                />
-              ))}
-            </ScrollContainer>
-          </Fade>
         )}
       </Box>
     </TopBoughtContext.Provider>
   );
 }
 
-/* ─────────────────── MEMOIZATION ─────────────────── */
-const propsAreEqual = (prevProps, nextProps) => {
-  return (
-    prevProps.singleVariantCode === nextProps.singleVariantCode &&
-    prevProps.singleCategoryCode === nextProps.singleCategoryCode &&
-    prevProps.currentProductId === nextProps.currentProductId &&
-    prevProps.pageType === nextProps.pageType &&
-    prevProps.hideHeading === nextProps.hideHeading &&
-    JSON.stringify(prevProps.subCategories) === JSON.stringify(nextProps.subCategories) &&
-    JSON.stringify(prevProps.excludeProductIds) === JSON.stringify(nextProps.excludeProductIds)
-  );
-};
+/* ─────────────────── Cards ─────────────────── */
+const ProductCard = memo(function ProductCard({ product }) {
+  const router = useRouter();
+  const { imageUrl, outOfStock } = getDisplayImage(product);
 
-const TopBoughtProducts = memo(TopBoughtProductsUltraFast, propsAreEqual);
+  const { insertionDetails, singleCategoryCode, singleVariantCode } =
+    React.useContext(TopBoughtContext);
+
+  const thumb = useMemo(
+    () =>
+      imageUrl.startsWith('/')
+        ? `${baseImageUrl}${imageUrl}`
+        : `${baseImageUrl}/${imageUrl}`,
+    [imageUrl]
+  );
+
+  const cartPayload = useMemo(
+    () => ({ ...product, thumbnail: thumb }),
+    [product, thumb]
+  );
+
+  const showCategory = !singleCategoryCode && !singleVariantCode;
+
+  return (
+    <Card
+      sx={cardSx}
+      onClick={() =>
+        router.push(`/shop/${product.pageSlug || ''}`)
+      }
+    >
+      <CardMedia
+        sx={{
+          position: 'relative',
+          pt: '75%',
+          filter: outOfStock ? 'grayscale(100%)' : 'none',
+        }}
+      >
+        <Image
+          src={thumb}
+          alt={product.name || 'product'}
+          fill
+          sizes="200px"
+          style={{ objectFit: 'cover' }}
+        />
+      </CardMedia>
+      <CardContent sx={{ pt: 1.5, pb: 2 }}>
+        <Typography
+          variant="subtitle2"
+          sx={{ fontFamily: 'Jost', fontWeight: 500 }}
+          noWrap
+        >
+          {product.name}
+        </Typography>
+        {showCategory && (
+          <Typography
+            variant="caption"
+            sx={{ color: 'rgba(0,0,0,0.5)' }}
+            noWrap
+          >
+            {product.category?.name || product.category}
+          </Typography>
+        )}
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 600, mt: 0.5 }}
+        >
+          ₹{product.price}
+        </Typography>
+        <AddToCartButton
+          fullWidth
+          product={cartPayload}
+          onClick={(e) => e.stopPropagation()}
+          insertionDetails={insertionDetails}
+        />
+      </CardContent>
+    </Card>
+  );
+});
+
+const ProductCardSkeleton = memo(function ProductCardSkeleton() {
+  const { singleCategoryCode, singleVariantCode } =
+    React.useContext(TopBoughtContext);
+  const showCategory = !singleCategoryCode && !singleVariantCode;
+
+  return (
+    <Card sx={cardSx}>
+      <Skeleton
+        variant="rectangular"
+        animation="wave"
+        sx={{ pt: '75%' }}
+      />
+      <CardContent sx={{ pb: 2 }}>
+        <Skeleton variant="text" width="80%" height={20} />
+        {showCategory && (
+          <Skeleton variant="text" width="60%" height={18} />
+        )}
+        <Skeleton variant="text" width="40%" height={20} />
+        <Skeleton
+          variant="rectangular"
+          width="100%"
+          height={36}
+          sx={{ mt: 1 }}
+        />
+      </CardContent>
+    </Card>
+  );
+});
+
+/* ─────────────────── Memo optimisation ─────────────────── */
+function propsAreEqual(prev, next) {
+  const prevCats = Array.isArray(prev.subCategories)
+    ? prev.subCategories.join('|')
+    : '';
+  const nextCats = Array.isArray(next.subCategories)
+    ? next.subCategories.join('|')
+    : '';
+  return (
+    prevCats === nextCats &&
+    prev.currentProductId === next.currentProductId &&
+    prev.singleVariantCode === next.singleVariantCode &&
+    prev.singleCategoryCode === next.singleCategoryCode &&
+    prev.excludeProductIds?.join('|') === next.excludeProductIds?.join('|') &&
+    prev.pageType === next.pageType &&
+    prev.hideHeading === next.hideHeading
+  );
+}
+
+const TopBoughtProducts = memo(TopBoughtProductsBase, propsAreEqual);
 
 export { TopBoughtProducts };
 export default TopBoughtProducts;
