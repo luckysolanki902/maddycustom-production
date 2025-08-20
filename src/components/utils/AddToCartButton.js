@@ -55,15 +55,17 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   const inventoryData = product.inventoryData || (product.selectedOption && product.selectedOption?.inventoryData) || null;
   let maxAllowed = Infinity;
   let isLimited = false;
+  
   if (inventoryData) {
-    
     const { availableQuantity, reorderLevel } = inventoryData;
-    maxAllowed=Math.floor(availableQuantity/2);
-    isLimited=true
-    // If available quantity is less than the reorder level, we limit the addition.
-    if (availableQuantity < reorderLevel) {
-      isLimited = true;
-      maxAllowed = Math.min(availableQuantity, Math.floor(0.1 * reorderLevel));
+    isLimited = true;
+    
+    if (availableQuantity <= 0) {
+      // No stock available - disable
+      maxAllowed = 0;
+    } else {
+      // Any available stock - allow customers to buy all available quantity
+      maxAllowed = availableQuantity;
     }
   }
   // For convenience, get the current quantity from the cart (or zero)
@@ -76,8 +78,11 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
 
   const handleAdd = async (e) => {
     e.stopPropagation(); // Prevent parent onClick
+    
     // Check: if limited and adding one would exceed maxAllowed, do nothing.
-    if (isLimited && (currentQuantity + 1) > maxAllowed) return;
+    if (isLimited && (currentQuantity + 1) > maxAllowed) {
+      return;
+    }
 
     setLastAction('increment');
     dispatch(addItem({ 
@@ -100,8 +105,11 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
 
   const handleIncrement = async (e) => {
     e.stopPropagation();
+    
     // If in limited mode and already at max allowed, do not increment.
-    if (isLimited && currentQuantity >= maxAllowed) return;
+    if (isLimited && currentQuantity >= maxAllowed) {
+      return;
+    }
 
     setLastAction('increment');
     dispatch(incrementQuantity({ productId: product._id }));
@@ -154,8 +162,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
           onClick={handleIncrement} 
           className={styles.increment}
           disabled={isLimited && currentQuantity >= maxAllowed}
-          
-          title={isLimited && currentQuantity >= maxAllowed ? "" : ""}
+          title={isLimited && currentQuantity >= maxAllowed ? "Maximum quantity reached for this item" : ""}
         >
           <AddIcon fontSize='1rem'/>
         </button>
@@ -176,6 +183,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       onClick={handleAdd} 
       className={addToCartClasses} style={{outline: 'none', border:'none'}} 
       disabled={isLimited && (currentQuantity + 1) > maxAllowed}
+      title={isLimited && (currentQuantity + 1) > maxAllowed ? "Maximum quantity available for this item" : ""}
     >
       <span>
         Add to cart
