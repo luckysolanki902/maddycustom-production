@@ -20,6 +20,11 @@
   font-size:.9rem;
   text-transform:uppercase;
 }
+@media (width < 400px){
+  .brandStripText {
+    font-size: 0.8rem;
+  }
+}
 
 .footer {
   background-color: #424242;

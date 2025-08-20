@@ -96,9 +96,9 @@ export default function ProductImageSlider() {
             alt={`product-${idx}`}
             width={200}              /* this sets the height via style */
             height={200}
-            style={{ width: 'auto', height: '200px', display: 'block' }}
+            className={styles.image}
             unoptimized
-            priority={idx === 0}
+            priority={idx < 4}
           />
         </motion.div>
       ))}

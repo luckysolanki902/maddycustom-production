@@ -415,6 +415,20 @@
     height: 120px;
   }
 
+  /* Ensure product images match comingSoon dimensions on small screens */
+  .productImageWrapper {
+    height: 120px !important;
+  }
+
+  .productImage {
+    height: 120px !important;
+    object-fit: cover !important;
+  }
+
+  .skeletonImage {
+    height: 120px !important;
+  }
+
   .comingSoonIcon svg {
     width: 36px;
     height: 36px;

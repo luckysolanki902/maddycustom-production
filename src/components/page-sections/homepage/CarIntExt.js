@@ -38,7 +38,6 @@ const ProductCard = ({ product }) => {
             width={500}
             height={500}
             className={styles.productImage}
-            style={{ height: '200', objectFit: 'cover' }}
           />
         </div>
       )}
