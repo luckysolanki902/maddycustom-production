@@ -45,8 +45,7 @@ const CouponTimerBanner = () => {
 
   // Check if it's the last 5 days and set visibility
   useEffect(() => {
-    // setIsVisible(isLastFiveDaysOfMonth());
-    setIsVisible(true);
+    setIsVisible(isLastFiveDaysOfMonth());
   }, []);
 
   useEffect(() => {
