@@ -60,14 +60,17 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     null;
   let maxAllowed = Infinity;
   let isLimited = false;
+  
   if (inventoryData) {
-
     const { availableQuantity, reorderLevel } = inventoryData;
-    maxAllowed = Math.floor(availableQuantity / 2);
-    isLimited = true
-    if (availableQuantity < reorderLevel) {
-      isLimited = true;
-      maxAllowed = Math.min(availableQuantity, Math.floor(0.1 * reorderLevel));
+    isLimited = true;
+    
+    if (availableQuantity <= 0) {
+      // No stock available - disable
+      maxAllowed = 0;
+    } else {
+      // Any available stock - allow customers to buy all available quantity
+      maxAllowed = availableQuantity;
     }
   }
   const currentQuantity = cartItem ? cartItem.quantity : 0;

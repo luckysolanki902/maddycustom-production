@@ -41,12 +41,16 @@ export async function GET(request) {
               .lean();
 
               if (product) {
+                const productSlug = product.specificCategory?.pageSlug;
+                const productListPageSlug = productSlug ? productSlug.split('/').slice(0, -1).join('/') : null;
+                
                 results[type].push({
                   _id: product._id,
                   name: product.specificCategory?.name || 'Unknown Category',
                   price: product.price || 0,
                   categorySlug: product.specificCategory?.pageSlug,
                   productId: product._id,
+                  productListPageSlug,
                   image: product.images?.[0] || null,
                   type
                 });
