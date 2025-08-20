@@ -87,7 +87,7 @@ const ComingSoonCard = () => {
             ease: "linear"
           }}
         >
-          More Coming Soon
+          More Coming Soon...
         </motion.div>
         {/* <div className={styles.comingSoonSubtitle}>
           Exciting new designs in the works

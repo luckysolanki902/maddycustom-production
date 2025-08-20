@@ -138,12 +138,18 @@ const ProductSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    designGroupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'DesignGroup',
+      required: false,
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
 // Pre-save hook to ensure pageSlug starts with a "/"
-ProductSchema.pre('save', function(next) {
+ProductSchema.pre('save', function (next) {
   if (this.pageSlug && !this.pageSlug.startsWith('/')) {
     this.pageSlug = '/' + this.pageSlug;
   }
