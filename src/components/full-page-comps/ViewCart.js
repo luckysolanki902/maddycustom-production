@@ -505,6 +505,14 @@ export default function ViewCart({ isDrawer = false }) {
   /* ---------- memo for suggestions (unchanged) ---------------------- */
   const topSub = useMemo(() => [...new Set(cartItems.map(i => i.productDetails.subCategory))], [cartItems]);
   const topIds = useMemo(() => cartItems.map(i => i.productDetails._id).join(','), [cartItems]);
+  
+  // Create cart design IDs for product suggestions
+  const cartDesignIds = useMemo(() => {
+    const designIds = cartItems
+      .map(item => item.productDetails?.designGroupId)
+      .filter(Boolean);
+    return [...new Set(designIds)];
+  }, [cartItems]);
 
   const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 ? 99 : 0);
 

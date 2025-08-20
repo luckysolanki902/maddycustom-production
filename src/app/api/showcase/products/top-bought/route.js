@@ -1,23 +1,3 @@
-/* -----------export const revalidate = 36000;              // 10 h edge‑cache
-const PAGE_SIZE = 10;
-
-// In-memory cache for optimized performance
-const cache = new Map();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
-const getCacheKey = (params) => {
-  const { subCategories, singleVariantCode, singleCategoryCode, skip, currentProductId } = params;
-  return `${subCategories || ''}:${singleVariantCode || ''}:${singleCategoryCode || ''}:${skip}:${currentProductId || ''}`;
-};
-
-const getCachedData = (key) => {
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-  cache.delete(key);
-  return null;
-};------------------------------------------------ */
 /* src/app/api/showcase/products/top-bought/route.js                      */
 /* ---------------------------------------------------------------------- */
 
@@ -31,16 +11,25 @@ import Order from '@/models/Order';
 import Option from '@/models/Option';
 import Inventory from '@/models/Inventory';
 
-export const revalidate = 36000;              // 10 h edge‑cache
-const PAGE_SIZE = 10;
+export const revalidate = 36000;              // 10 h edge‑cache
+const PAGE_SIZE = 20;
 
-/* shuffle helper */
-const shuffle = (arr) => {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+// In-memory cache for optimized performance
+const cache = new Map();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+const getCacheKey = (params) => {
+  const { subCategories, singleVariantCode, singleCategoryCode, skip, currentProductId, excludeProductIds, cartDesignIds } = params;
+  return `${subCategories || ''}:${singleVariantCode || ''}:${singleCategoryCode || ''}:${skip}:${currentProductId || ''}:${excludeProductIds || ''}:${cartDesignIds || ''}`;
+};
+
+const getCachedData = (key) => {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
   }
-  return arr;
+  cache.delete(key);
+  return null;
 };
 
 /* enrich: attach options, totalBought, category, variantDetails ---------- */
@@ -95,16 +84,125 @@ async function enrichProducts(products, { specCatDoc, scvMap }) {
     })
     .sort(
       (a, b) =>
-        b.totalBought - a.totalBought || a.name.localeCompare(b.name),
+        b.totalBought - a.totalBought || 
+        a.name.localeCompare(b.name) || 
+        a._id.toString().localeCompare(b._id.toString()),
     );
+}
+
+/* fetch products with same designGroupId from cart, avoiding duplicates per specific category */
+async function fetchCartDesignGroupProducts(cartDesignIds, excludeProductIds) {
+  if (!cartDesignIds || !cartDesignIds.length) return [];
+
+  // Convert to ObjectIds
+  const designGroupIds = cartDesignIds.map(id => new mongoose.Types.ObjectId(id));
+  const excludeIds = excludeProductIds ? excludeProductIds.map(id => new mongoose.Types.ObjectId(id)) : [];
+
+  // Get all products with same designGroupIds from cart, grouped by specificCategoryVariant
+  const designGroupProducts = await Product.aggregate([
+    {
+      $match: {
+        designGroupId: { $in: designGroupIds },
+        available: true,
+        _id: { $nin: excludeIds }, // Exclude cart products
+      },
+    },
+    {
+      $lookup: {
+        from: 'specificcategoryvariants',
+        localField: 'specificCategoryVariant',
+        foreignField: '_id',
+        as: 'scvData',
+      },
+    },
+    {
+      $lookup: {
+        from: 'specificcategories',
+        localField: 'specificCategory',
+        foreignField: '_id',
+        as: 'scData',
+      },
+    },
+    {
+      $match: {
+        'scvData.available': true,
+        'scData.available': true,
+      },
+    },
+    {
+      $addFields: {
+        scvData: { $arrayElemAt: ['$scvData', 0] },
+        scData: { $arrayElemAt: ['$scData', 0] },
+      },
+    },
+    {
+      $sort: {
+        specificCategoryVariant: 1,
+        price: 1,
+        _id: 1, // Stable sort
+      },
+    },
+    {
+      $group: {
+        _id: { designGroupId: '$designGroupId', specificCategoryVariant: '$specificCategoryVariant' },
+        product: { $first: '$$ROOT' }, // Take first (cheapest) product per design group + category
+        scvData: { $first: '$scvData' },
+        scData: { $first: '$scData' },
+      },
+    },
+    {
+      $replaceRoot: { newRoot: '$product' },
+    },
+    {
+      $sort: { price: 1, _id: 1 },
+    },
+  ]);
+
+  // Enrich the design group products
+  const enriched = [];
+  for (const product of designGroupProducts) {
+    const specCat = product.scData;
+    const scvMap = { [product.scvData._id.toString()]: product.scvData };
+    const enrichedProducts = await enrichProducts([product], { 
+      specCatDoc: specCat, 
+      scvMap 
+    });
+    enriched.push(...enrichedProducts);
+  }
+
+  return enriched;
 }
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const subCategoriesParam = searchParams.get('subCategories') || '';
-  const skip               = parseInt(searchParams.get('skip') || '0', 10);
-  const singleVariantCode  = (searchParams.get('singleVariantCode')  || '').trim();
+  const skip = parseInt(searchParams.get('skip') || '0', 10);
+  const singleVariantCode = (searchParams.get('singleVariantCode') || '').trim();
   const singleCategoryCode = (searchParams.get('singleCategoryCode') || '').trim();
+  const currentProductId = (searchParams.get('currentProductId') || '').trim();
+  
+  // New parameters for cart-based exclusions
+  const excludeProductIds = searchParams.get('excludeProductIds') || '';
+  const cartDesignIds = searchParams.get('cartDesignIds') || '';
+  
+  const excludeProductIdsArray = excludeProductIds ? excludeProductIds.split(',').filter(Boolean) : [];
+  const cartDesignIdsArray = cartDesignIds ? cartDesignIds.split(',').filter(Boolean) : [];
+
+  // Check cache first
+  const cacheKey = getCacheKey({ 
+    subCategories: subCategoriesParam, 
+    singleVariantCode, 
+    singleCategoryCode, 
+    skip, 
+    currentProductId,
+    excludeProductIds,
+    cartDesignIds
+  });
+  
+  const cached = getCachedData(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached);
+  }
 
   await connectToDatabase();
 
@@ -118,8 +216,13 @@ export async function GET(request) {
     }).lean();
     
     if (!sc) {
-      return NextResponse.json({ products: [], hasMore: false });
+      const emptyResponse = { products: [], hasMore: false };
+      cache.set(cacheKey, { data: emptyResponse, timestamp: Date.now() });
+      return NextResponse.json(emptyResponse);
     }
+
+    // Get cart design group products first
+    const cartDesignGroupProducts = await fetchCartDesignGroupProducts(cartDesignIdsArray, excludeProductIdsArray);
 
     const variants = await SpecificCategoryVariant.find({
       specificCategory: sc._id,
@@ -127,43 +230,54 @@ export async function GET(request) {
     }).lean();
     
     if (!variants.length) {
-      return NextResponse.json({ products: [], hasMore: false });
+      const emptyResponse = { products: [], hasMore: false };
+      cache.set(cacheKey, { data: emptyResponse, timestamp: Date.now() });
+      return NextResponse.json(emptyResponse);
     }
 
     const scvMap = Object.fromEntries(variants.map((v) => [v._id.toString(), v]));
 
-    const perVariant = await Promise.all(
-      variants.map(async (v) => {
-        const raw = await Product.find({
-          specificCategoryVariant: v._id,
-          available: true,
-        }).lean();
-        return enrichProducts(raw, { specCatDoc: sc, scvMap });
-      }),
+    const excludeIds = excludeProductIdsArray.length ? 
+      excludeProductIdsArray.map(id => new mongoose.Types.ObjectId(id)) : [];
+
+    const allProducts = await Product.find({
+      specificCategoryVariant: { $in: variants.map(v => v._id) },
+      available: true,
+      ...(excludeIds.length && { _id: { $nin: excludeIds } })
+    }).lean();
+
+    const enriched = await enrichProducts(allProducts, { specCatDoc: sc, scvMap });
+
+    // Merge cart design group products with category products
+    const combined = [...cartDesignGroupProducts, ...enriched];
+    
+    // Remove duplicates by product ID
+    const uniqueProducts = combined.filter((product, index, self) => 
+      index === self.findIndex(p => p._id.toString() === product._id.toString())
     );
 
-    /* round‑robin merge */
-    const merged = [];
-    let idx = 0, more = true;
-    while (more) {
-      more = false;
-      perVariant.forEach((arr) => {
-        if (idx < arr.length) {
-          merged.push(arr[idx]);
-          more = true;
-        }
-      });
-      idx++;
-    }
+    // Sort predictably: cart design group products first, then by totalBought, then by name, then by ID
+    uniqueProducts.sort((a, b) => {
+      const aIsCartDesignGroup = cartDesignGroupProducts.some(dgp => dgp._id.toString() === a._id.toString());
+      const bIsCartDesignGroup = cartDesignGroupProducts.some(dgp => dgp._id.toString() === b._id.toString());
+      
+      if (aIsCartDesignGroup && !bIsCartDesignGroup) return -1;
+      if (!aIsCartDesignGroup && bIsCartDesignGroup) return 1;
+      
+      return b.totalBought - a.totalBought || 
+             a.name.localeCompare(b.name) || 
+             a._id.toString().localeCompare(b._id.toString());
+    });
 
-    const slice = merged.slice(skip, skip + PAGE_SIZE + 1);
+    const slice = uniqueProducts.slice(skip, skip + PAGE_SIZE + 1);
     const response = {
       products: slice.length > PAGE_SIZE ? slice.slice(0, PAGE_SIZE) : slice,
-      hasMore:  slice.length > PAGE_SIZE,
-      totalFound: merged.length,
+      hasMore: slice.length > PAGE_SIZE,
+      totalFound: uniqueProducts.length,
       specificCategoryName: sc.name,
     };
 
+    cache.set(cacheKey, { data: response, timestamp: Date.now() });
     return NextResponse.json(response);
   }
 
@@ -179,28 +293,59 @@ export async function GET(request) {
       .lean();
       
     if (!scv || !scv.specificCategory?.available) {
-      return NextResponse.json({ products: [], hasMore: false });
+      const emptyResponse = { products: [], hasMore: false };
+      cache.set(cacheKey, { data: emptyResponse, timestamp: Date.now() });
+      return NextResponse.json(emptyResponse);
     }
 
     const sc = scv.specificCategory;
     const scvMap = { [scv._id.toString()]: scv };
 
+    // Get cart design group products first
+    const cartDesignGroupProducts = await fetchCartDesignGroupProducts(cartDesignIdsArray, excludeProductIdsArray);
+
+    const excludeIds = excludeProductIdsArray.length ? 
+      excludeProductIdsArray.map(id => new mongoose.Types.ObjectId(id)) : [];
+
     const raw = await Product.find({
       specificCategoryVariant: scv._id,
       available: true,
+      ...(excludeIds.length && { _id: { $nin: excludeIds } })
     }).lean();
 
     const enriched = await enrichProducts(raw, { specCatDoc: sc, scvMap });
+
+    // Merge cart design group products with variant products
+    const combined = [...cartDesignGroupProducts, ...enriched];
     
-    const slice    = enriched.slice(skip, skip + PAGE_SIZE + 1);
+    // Remove duplicates by product ID
+    const uniqueProducts = combined.filter((product, index, self) => 
+      index === self.findIndex(p => p._id.toString() === product._id.toString())
+    );
+
+    // Sort predictably: cart design group products first, then by totalBought
+    uniqueProducts.sort((a, b) => {
+      const aIsCartDesignGroup = cartDesignGroupProducts.some(dgp => dgp._id.toString() === a._id.toString());
+      const bIsCartDesignGroup = cartDesignGroupProducts.some(dgp => dgp._id.toString() === b._id.toString());
+      
+      if (aIsCartDesignGroup && !bIsCartDesignGroup) return -1;
+      if (!aIsCartDesignGroup && bIsCartDesignGroup) return 1;
+      
+      return b.totalBought - a.totalBought || 
+             a.name.localeCompare(b.name) || 
+             a._id.toString().localeCompare(b._id.toString());
+    });
+    
+    const slice = uniqueProducts.slice(skip, skip + PAGE_SIZE + 1);
 
     const response = {
       products: slice.length > PAGE_SIZE ? slice.slice(0, PAGE_SIZE) : slice,
-      hasMore:  slice.length > PAGE_SIZE,
-      totalFound: enriched.length,
+      hasMore: slice.length > PAGE_SIZE,
+      totalFound: uniqueProducts.length,
       specificCategoryName: sc.name,
     };
 
+    cache.set(cacheKey, { data: response, timestamp: Date.now() });
     return NextResponse.json(response);
   }
 
@@ -213,20 +358,22 @@ export async function GET(request) {
     .filter(Boolean);
     
   if (!subCategories.length && !singleVariantCode && !singleCategoryCode) {
-    return NextResponse.json(
-      { error: 'subCategories required when not using singleVariantCode or singleCategoryCode' },
-      { status: 400 },
-    );
+    const errorResponse = { 
+      error: 'subCategories required when not using singleVariantCode or singleCategoryCode' 
+    };
+    return NextResponse.json(errorResponse, { status: 400 });
   }
 
-  /* ensure at least 3 subCategories for variety */
+  // Get cart design group products first
+  const cartDesignGroupProducts = await fetchCartDesignGroupProducts(cartDesignIdsArray, excludeProductIdsArray);
+
+  /* ensure consistent subcategories for predictable results */
   if (subCategories.length < 3) {
     const extras = await SpecificCategory.find({
       available: true,
       subCategory: { $nin: subCategories },
-    }).select('subCategory').lean();
+    }).select('subCategory').lean().sort({ subCategory: 1 }); // deterministic sort
     
-    shuffle(extras);
     subCategories = subCategories.concat(
       extras.slice(0, 3 - subCategories.length).map((e) => e.subCategory),
     );
@@ -236,10 +383,12 @@ export async function GET(request) {
   const specCats = await SpecificCategory.find({
     subCategory: { $in: subCategories },
     available: true,
-  }).lean();
+  }).lean().sort({ name: 1 }); // deterministic sort
   
   if (!specCats.length) {
-    return NextResponse.json({ products: [] });
+    const emptyResponse = { products: [] };
+    cache.set(cacheKey, { data: emptyResponse, timestamp: Date.now() });
+    return NextResponse.json(emptyResponse);
   }
 
   const specIds = specCats.map((c) => c._id);
@@ -255,6 +404,9 @@ export async function GET(request) {
   });
   const scvMap = Object.fromEntries(scvDocs.map((v) => [v._id.toString(), v]));
 
+  const excludeIds = excludeProductIdsArray.length ? 
+    excludeProductIdsArray.map(id => new mongoose.Types.ObjectId(id)) : [];
+
   /* build list per specific category */
   const lists = await Promise.all(
     specCats.map(async (sc) => {
@@ -265,32 +417,44 @@ export async function GET(request) {
       const raw = await Product.find({
         specificCategoryVariant: { $in: varIds },
         available: true,
+        ...(excludeIds.length && { _id: { $nin: excludeIds } })
       }).lean();
 
       return enrichProducts(raw, { specCatDoc: sc, scvMap });
     }),
   );
 
-  /* round‑robin merge */
-  const merged = [];
-  let idx = 0, more = true;
-  while (more) {
-    more = false;
-    lists.forEach((arr) => {
-      if (idx < arr.length) {
-        merged.push(arr[idx]);
-        more = true;
-      }
-    });
-    idx++;
-  }
+  // Flatten all products from different categories
+  const allCategoryProducts = lists.flat();
 
-  const slice = merged.slice(skip, skip + PAGE_SIZE + 1);
+  // Merge cart design group products with category products
+  const combined = [...cartDesignGroupProducts, ...allCategoryProducts];
+  
+  // Remove duplicates by product ID
+  const uniqueProducts = combined.filter((product, index, self) => 
+    index === self.findIndex(p => p._id.toString() === product._id.toString())
+  );
+
+  // Sort predictably: cart design group products first, then by totalBought, then deterministic
+  uniqueProducts.sort((a, b) => {
+    const aIsCartDesignGroup = cartDesignGroupProducts.some(dgp => dgp._id.toString() === a._id.toString());
+    const bIsCartDesignGroup = cartDesignGroupProducts.some(dgp => dgp._id.toString() === b._id.toString());
+    
+    if (aIsCartDesignGroup && !bIsCartDesignGroup) return -1;
+    if (!aIsCartDesignGroup && bIsCartDesignGroup) return 1;
+    
+    return b.totalBought - a.totalBought || 
+           a.name.localeCompare(b.name) || 
+           a._id.toString().localeCompare(b._id.toString());
+  });
+
+  const slice = uniqueProducts.slice(skip, skip + PAGE_SIZE + 1);
   const response = {
     products: slice.length > PAGE_SIZE ? slice.slice(0, PAGE_SIZE) : slice,
-    hasMore:  slice.length > PAGE_SIZE,
-    totalFound: merged.length,
+    hasMore: slice.length > PAGE_SIZE,
+    totalFound: uniqueProducts.length,
   };
 
+  cache.set(cacheKey, { data: response, timestamp: Date.now() });
   return NextResponse.json(response);
 }
