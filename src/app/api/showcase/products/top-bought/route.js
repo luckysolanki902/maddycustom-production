@@ -1,359 +1,296 @@
-/* ---------------------------------------------------------------------- */
-/* src/app/api/showcase/products/top-bought/route.js                      */
-/* ULTRA-FAST CACHED RECOMMENDATION SYSTEM                                */
-/* ---------------------------------------------------------------------- */
+/* -----------export const revalidate = 36000;              // 10 h edge‑cache
+const PAGE_SIZE = 10;
 
-import { NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/middleware/connectToDb';
-import SpecificCategory from '@/models/SpecificCategory';
-import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
-import Product from '@/models/Product';
-import Order from '@/models/Order';
-
-export const revalidate = 3600; // 1 hour edge cache
-
-// In-memory cache with 10-minute TTL
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+// In-memory cache for optimized performance
 const cache = new Map();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
-/* ─────────────────── CACHE HELPERS ─────────────────── */
-const getCacheKey = (type, code = '', subCats = []) => {
-  if (type === 'category') return `cat:${code}`;
-  if (type === 'variant') return `var:${code}`;
-  if (type === 'multi') return `multi:${subCats.sort().join(',')}`;
-  return 'default';
+const getCacheKey = (params) => {
+  const { subCategories, singleVariantCode, singleCategoryCode, skip, currentProductId } = params;
+  return `${subCategories || ''}:${singleVariantCode || ''}:${singleCategoryCode || ''}:${skip}:${currentProductId || ''}`;
 };
 
-const getFromCache = (key) => {
+const getCachedData = (key) => {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
   }
   cache.delete(key);
   return null;
+};------------------------------------------------ */
+/* src/app/api/showcase/products/top-bought/route.js                      */
+/* ---------------------------------------------------------------------- */
+
+import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
+import connectToDatabase from '@/lib/middleware/connectToDb';
+import SpecificCategory from '@/models/SpecificCategory';
+import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
+import Product from '@/models/Product';
+import Order from '@/models/Order';
+import Option from '@/models/Option';
+import Inventory from '@/models/Inventory';
+
+export const revalidate = 36000;              // 10 h edge‑cache
+const PAGE_SIZE = 10;
+
+/* shuffle helper */
+const shuffle = (arr) => {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 };
 
-const setCache = (key, data) => {
-  cache.set(key, { data, timestamp: Date.now() });
-  
-  // Clean old cache entries (max 100 entries)
-  if (cache.size > 100) {
-    const oldestKeys = Array.from(cache.keys()).slice(0, cache.size - 100);
-    oldestKeys.forEach(k => cache.delete(k));
-  }
-};
+/* enrich: attach options, totalBought, category, variantDetails ---------- */
+async function enrichProducts(products, { specCatDoc, scvMap }) {
+  if (!products.length) return [];
 
-/* ─────────────────── OPTIMIZED DATA FETCHER ─────────────────── */
-async function getTopBoughtProducts(type, code = '', subCategories = []) {
-  const cacheKey = getCacheKey(type, code, subCategories);
-  
-  // Try cache first
-  const cached = getFromCache(cacheKey);
-  if (cached) {
-    return cached;
-  }
+  const pIds = products.map((p) => p._id);
+
+  // totalBought
+  const buys = await Order.aggregate([
+    { $match: { 'items.product': { $in: pIds } } },
+    { $unwind: '$items' },
+    { $group: { _id: '$items.product', totalBought: { $sum: '$items.quantity' } } },
+  ]);
+  const buyMap = Object.fromEntries(buys.map((b) => [b._id.toString(), b.totalBought]));
+
+  // options with inventory
+  const opts = await Option.find({ product: { $in: pIds } })
+    .populate('inventoryData')
+    .lean();
+  const optMap = {};
+  opts.forEach((o) => {
+    const k = o.product.toString();
+    (optMap[k] ||= []).push(o);
+  });
+  Object.values(optMap).forEach((arr) =>
+    arr.sort(
+      (a, b) =>
+        (b.inventoryData?.availableQuantity || 0) -
+        (a.inventoryData?.availableQuantity || 0),
+    ),
+  );
+
+  // final shape
+  return products
+    .map((p) => {
+      const scv = scvMap[p.specificCategoryVariant.toString()];
+      return {
+        ...p,
+        totalBought: buyMap[p._id.toString()] || 0,
+        category: {
+          specificCategoryCode: specCatDoc.specificCategoryCode,
+          name: specCatDoc.name,
+        },
+        variantDetails: {
+          available: scv?.available ?? false,
+          availableBrands: scv?.availableBrands ?? [],
+          name: scv?.name ?? '',
+        },
+        options: optMap[p._id.toString()] || [],
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.totalBought - a.totalBought || a.name.localeCompare(b.name),
+    );
+}
+
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const subCategoriesParam = searchParams.get('subCategories') || '';
+  const skip               = parseInt(searchParams.get('skip') || '0', 10);
+  const singleVariantCode  = (searchParams.get('singleVariantCode')  || '').trim();
+  const singleCategoryCode = (searchParams.get('singleCategoryCode') || '').trim();
 
   await connectToDatabase();
 
-  let products = [];
-  let categoryName = '';
-
-  if (type === 'category') {
-    // Single category - optimized query
-    const result = await SpecificCategory.aggregate([
-      { $match: { specificCategoryCode: code, available: true } },
-      {
-        $lookup: {
-          from: 'specificcategoryvariants',
-          localField: '_id',
-          foreignField: 'specificCategory',
-          as: 'variants',
-          pipeline: [{ $match: { available: true } }]
-        }
-      },
-      {
-        $lookup: {
-          from: 'products',
-          let: { variantIds: '$variants._id' },
-          pipeline: [
-            { $match: { 
-              $expr: { $in: ['$specificCategoryVariant', '$$variantIds'] },
-              available: true 
-            }},
-            {
-              $lookup: {
-                from: 'orders',
-                let: { productId: '$_id' },
-                pipeline: [
-                  { $unwind: '$items' },
-                  { $match: { $expr: { $eq: ['$items.product', '$$productId'] } }},
-                  { $group: { _id: null, totalBought: { $sum: '$items.quantity' } }}
-                ],
-                as: 'orderStats'
-              }
-            },
-            {
-              $lookup: {
-                from: 'options',
-                localField: '_id',
-                foreignField: 'product',
-                as: 'options',
-                pipeline: [
-                  {
-                    $lookup: {
-                      from: 'inventories',
-                      localField: 'inventoryData',
-                      foreignField: '_id',
-                      as: 'inventory'
-                    }
-                  },
-                  { $sort: { 'inventory.0.availableQuantity': -1 } }
-                ]
-              }
-            },
-            {
-              $addFields: {
-                totalBought: { $ifNull: [{ $arrayElemAt: ['$orderStats.totalBought', 0] }, 0] },
-                category: {
-                  specificCategoryCode: code,
-                  name: '$name'
-                }
-              }
-            },
-            { $sort: { totalBought: -1, name: 1 } },
-            { $limit: 50 } // Pre-limit for better performance
-          ],
-          as: 'products'
-        }
-      },
-      { $project: { name: 1, products: 1 } }
-    ]);
-
-    if (result[0]) {
-      products = result[0].products;
-      categoryName = result[0].name;
+  /* ─────────────────────────────────────────────────────────────────── */
+  /* 1) singleCategoryCode ::::::::::::::::::::::::::::::::::::::::::::: */
+  /* ─────────────────────────────────────────────────────────────────── */
+  if (singleCategoryCode) {
+    const sc = await SpecificCategory.findOne({
+      specificCategoryCode: singleCategoryCode,
+      available: true,
+    }).lean();
+    
+    if (!sc) {
+      return NextResponse.json({ products: [], hasMore: false });
     }
 
-  } else if (type === 'variant') {
-    // Single variant - optimized query
-    const result = await SpecificCategoryVariant.aggregate([
-      { $match: { variantCode: code, available: true } },
-      {
-        $lookup: {
-          from: 'specificcategories',
-          localField: 'specificCategory',
-          foreignField: '_id',
-          as: 'category',
-          pipeline: [{ $match: { available: true } }]
-        }
-      },
-      { $unwind: '$category' },
-      {
-        $lookup: {
-          from: 'products',
-          localField: '_id',
-          foreignField: 'specificCategoryVariant',
-          as: 'products',
-          pipeline: [
-            { $match: { available: true } },
-            {
-              $lookup: {
-                from: 'orders',
-                let: { productId: '$_id' },
-                pipeline: [
-                  { $unwind: '$items' },
-                  { $match: { $expr: { $eq: ['$items.product', '$$productId'] } }},
-                  { $group: { _id: null, totalBought: { $sum: '$items.quantity' } }}
-                ],
-                as: 'orderStats'
-              }
-            },
-            {
-              $lookup: {
-                from: 'options',
-                localField: '_id',
-                foreignField: 'product',
-                as: 'options',
-                pipeline: [
-                  {
-                    $lookup: {
-                      from: 'inventories',
-                      localField: 'inventoryData',
-                      foreignField: '_id',
-                      as: 'inventory'
-                    }
-                  },
-                  { $sort: { 'inventory.0.availableQuantity': -1 } }
-                ]
-              }
-            },
-            {
-              $addFields: {
-                totalBought: { $ifNull: [{ $arrayElemAt: ['$orderStats.totalBought', 0] }, 0] }
-              }
-            },
-            { $sort: { totalBought: -1, name: 1 } },
-            { $limit: 50 }
-          ]
-        }
-      },
-      { $project: { 'category.name': 1, products: 1 } }
-    ]);
-
-    if (result[0]) {
-      products = result[0].products;
-      categoryName = result[0].category.name;
+    const variants = await SpecificCategoryVariant.find({
+      specificCategory: sc._id,
+      available: true,
+    }).lean();
+    
+    if (!variants.length) {
+      return NextResponse.json({ products: [], hasMore: false });
     }
 
-  } else {
-    // Multi-subcategory - super optimized
-    const result = await SpecificCategory.aggregate([
-      { 
-        $match: { 
-          subCategory: { $in: subCategories.length ? subCategories : ['Car Wraps', 'Car Care'] },
-          available: true 
-        } 
-      },
-      {
-        $lookup: {
-          from: 'specificcategoryvariants',
-          localField: '_id',
-          foreignField: 'specificCategory',
-          as: 'variants',
-          pipeline: [{ $match: { available: true } }]
-        }
-      },
-      { $unwind: '$variants' },
-      {
-        $lookup: {
-          from: 'products',
-          localField: 'variants._id',
-          foreignField: 'specificCategoryVariant',
-          as: 'products',
-          pipeline: [
-            { $match: { available: true } },
-            {
-              $lookup: {
-                from: 'orders',
-                let: { productId: '$_id' },
-                pipeline: [
-                  { $unwind: '$items' },
-                  { $match: { $expr: { $eq: ['$items.product', '$$productId'] } }},
-                  { $group: { _id: null, totalBought: { $sum: '$items.quantity' } }}
-                ],
-                as: 'orderStats'
-              }
-            },
-            {
-              $lookup: {
-                from: 'options',
-                localField: '_id',
-                foreignField: 'product',
-                as: 'options',
-                pipeline: [
-                  {
-                    $lookup: {
-                      from: 'inventories',
-                      localField: 'inventoryData',
-                      foreignField: '_id',
-                      as: 'inventory'
-                    }
-                  },
-                  { $sort: { 'inventory.0.availableQuantity': -1 } }
-                ]
-              }
-            },
-            {
-              $addFields: {
-                totalBought: { $ifNull: [{ $arrayElemAt: ['$orderStats.totalBought', 0] }, 0] }
-              }
-            },
-            { $limit: 3 } // Limit per category for variety
-          ]
-        }
-      },
-      { $unwind: '$products' },
-      { $replaceRoot: { newRoot: '$products' } },
-      { $sort: { totalBought: -1, name: 1 } },
-      { $limit: 50 }
-    ]);
+    const scvMap = Object.fromEntries(variants.map((v) => [v._id.toString(), v]));
 
-    products = result;
+    const perVariant = await Promise.all(
+      variants.map(async (v) => {
+        const raw = await Product.find({
+          specificCategoryVariant: v._id,
+          available: true,
+        }).lean();
+        return enrichProducts(raw, { specCatDoc: sc, scvMap });
+      }),
+    );
+
+    /* round‑robin merge */
+    const merged = [];
+    let idx = 0, more = true;
+    while (more) {
+      more = false;
+      perVariant.forEach((arr) => {
+        if (idx < arr.length) {
+          merged.push(arr[idx]);
+          more = true;
+        }
+      });
+      idx++;
+    }
+
+    const slice = merged.slice(skip, skip + PAGE_SIZE + 1);
+    const response = {
+      products: slice.length > PAGE_SIZE ? slice.slice(0, PAGE_SIZE) : slice,
+      hasMore:  slice.length > PAGE_SIZE,
+      totalFound: merged.length,
+      specificCategoryName: sc.name,
+    };
+
+    return NextResponse.json(response);
   }
 
-  // Format products for consistent response
-  const formattedProducts = products.map(product => ({
-    _id: product._id,
-    name: product.name,
-    price: product.price,
-    images: product.images || [],
-    pageSlug: product.pageSlug,
-    totalBought: product.totalBought || 0,
-    category: product.category || { name: categoryName },
-    options: (product.options || []).map(option => ({
-      _id: option._id,
-      images: option.images || [],
-      inventoryData: option.inventory?.[0] || { availableQuantity: 0 }
-    }))
-  }));
-
-  const result = {
-    products: formattedProducts,
-    hasMore: false, // Pre-computed, no pagination needed
-    specificCategoryName: categoryName,
-    totalFound: formattedProducts.length
-  };
-
-  // Cache the result
-  setCache(cacheKey, result);
-  
-  return result;
-}
-
-/* ─────────────────── MAIN HANDLER ─────────────────── */
-export async function GET(request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const subCategoriesParam = searchParams.get('subCategories') || '';
-    const singleVariantCode = (searchParams.get('singleVariantCode') || '').trim();
-    const singleCategoryCode = (searchParams.get('singleCategoryCode') || '').trim();
-    const skip = parseInt(searchParams.get('skip') || '0', 10);
-
-    let result;
-
-    if (singleCategoryCode) {
-      result = await getTopBoughtProducts('category', singleCategoryCode);
-    } else if (singleVariantCode) {
-      result = await getTopBoughtProducts('variant', singleVariantCode);
-    } else {
-      const subCategories = subCategoriesParam
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
-      result = await getTopBoughtProducts('multi', '', subCategories);
+  /* ─────────────────────────────────────────────────────────────────── */
+  /* 2) singleVariantCode :::::::::::::::::::::::::::::::::::::::::::::: */
+  /* ─────────────────────────────────────────────────────────────────── */
+  if (singleVariantCode) {
+    const scv = await SpecificCategoryVariant.findOne({
+      variantCode: singleVariantCode,
+      available: true,
+    })
+      .populate('specificCategory', 'name specificCategoryCode available')
+      .lean();
+      
+    if (!scv || !scv.specificCategory?.available) {
+      return NextResponse.json({ products: [], hasMore: false });
     }
 
-    // Handle pagination on cached results (super fast)
-    const PAGE_SIZE = 10;
-    const products = result.products.slice(skip, skip + PAGE_SIZE);
-    const hasMore = skip + PAGE_SIZE < result.products.length;
+    const sc = scv.specificCategory;
+    const scvMap = { [scv._id.toString()]: scv };
 
-    return NextResponse.json({
-      ...result,
-      products,
-      hasMore
-    }, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-        'CDN-Cache-Control': 'public, s-maxage=3600'
-      }
-    });
+    const raw = await Product.find({
+      specificCategoryVariant: scv._id,
+      available: true,
+    }).lean();
 
-  } catch (error) {
-    console.error('Top bought products error:', error);
+    const enriched = await enrichProducts(raw, { specCatDoc: sc, scvMap });
+    
+    const slice    = enriched.slice(skip, skip + PAGE_SIZE + 1);
+
+    const response = {
+      products: slice.length > PAGE_SIZE ? slice.slice(0, PAGE_SIZE) : slice,
+      hasMore:  slice.length > PAGE_SIZE,
+      totalFound: enriched.length,
+      specificCategoryName: sc.name,
+    };
+
+    return NextResponse.json(response);
+  }
+
+  /* ─────────────────────────────────────────────────────────────────── */
+  /* 3) multi‑subcategory (default) ::::::::::::::::::::::::::::::::::::: */
+  /* ─────────────────────────────────────────────────────────────────── */
+  let subCategories = subCategoriesParam
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+    
+  if (!subCategories.length && !singleVariantCode && !singleCategoryCode) {
     return NextResponse.json(
-      { products: [], hasMore: false, error: 'Failed to fetch products' },
-      { status: 500 }
+      { error: 'subCategories required when not using singleVariantCode or singleCategoryCode' },
+      { status: 400 },
     );
   }
+
+  /* ensure at least 3 subCategories for variety */
+  if (subCategories.length < 3) {
+    const extras = await SpecificCategory.find({
+      available: true,
+      subCategory: { $nin: subCategories },
+    }).select('subCategory').lean();
+    
+    shuffle(extras);
+    subCategories = subCategories.concat(
+      extras.slice(0, 3 - subCategories.length).map((e) => e.subCategory),
+    );
+  }
+
+  /* specific categories + variants */
+  const specCats = await SpecificCategory.find({
+    subCategory: { $in: subCategories },
+    available: true,
+  }).lean();
+  
+  if (!specCats.length) {
+    return NextResponse.json({ products: [] });
+  }
+
+  const specIds = specCats.map((c) => c._id);
+  const scvDocs = await SpecificCategoryVariant.find({
+    specificCategory: { $in: specIds },
+    available: true,
+  }).lean();
+
+  const scvByCat = {};
+  scvDocs.forEach((v) => {
+    const k = v.specificCategory.toString();
+    (scvByCat[k] ||= []).push(v);
+  });
+  const scvMap = Object.fromEntries(scvDocs.map((v) => [v._id.toString(), v]));
+
+  /* build list per specific category */
+  const lists = await Promise.all(
+    specCats.map(async (sc) => {
+      const variants = scvByCat[sc._id.toString()] || [];
+      if (!variants.length) return [];
+
+      const varIds = variants.map((v) => v._id);
+      const raw = await Product.find({
+        specificCategoryVariant: { $in: varIds },
+        available: true,
+      }).lean();
+
+      return enrichProducts(raw, { specCatDoc: sc, scvMap });
+    }),
+  );
+
+  /* round‑robin merge */
+  const merged = [];
+  let idx = 0, more = true;
+  while (more) {
+    more = false;
+    lists.forEach((arr) => {
+      if (idx < arr.length) {
+        merged.push(arr[idx]);
+        more = true;
+      }
+    });
+    idx++;
+  }
+
+  const slice = merged.slice(skip, skip + PAGE_SIZE + 1);
+  const response = {
+    products: slice.length > PAGE_SIZE ? slice.slice(0, PAGE_SIZE) : slice,
+    hasMore:  slice.length > PAGE_SIZE,
+    totalFound: merged.length,
+  };
+
+  return NextResponse.json(response);
 }
