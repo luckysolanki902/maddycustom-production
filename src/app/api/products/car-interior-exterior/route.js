@@ -64,7 +64,6 @@ export async function GET(request) {
         console.error(`Error processing ${type} products:`, err);
       }
     }
-    console.log(JSON.stringify(results, null, 2));
     return Response.json({
       success: true,
       data: results,

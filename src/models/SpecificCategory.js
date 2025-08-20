@@ -150,7 +150,11 @@ const SpecificCategorySchema = new mongoose.Schema(
       type: Number,
       default: 33,
     },
-    // 
+    // a boolean for show product description images in product image gallery too
+    showDescriptionImagesInGallery: {
+      type: Boolean,
+      default: true,
+    },
 
     tempReviewDistribution: {
       type: Object,

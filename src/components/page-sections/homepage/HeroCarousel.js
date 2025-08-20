@@ -6,8 +6,8 @@ import { motion } from 'framer-motion';
 
 // Fallback images for loading state
 const FALLBACK_IMAGES = {
-  desktop: `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/carousels/homepage-main/first-three-products-banner.jpg`,
-  mobile: `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/carousels/homepage-main/mobile/first-three-products-banner.jpg`
+  desktop: `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/uploads/5j8ktQDDCg5O.webp`,
+  mobile: `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/uploads/I-pWygfzuE13.webp`
 };
 
 export default function HeroCarousel({

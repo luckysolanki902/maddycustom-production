@@ -176,17 +176,21 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
             {images.map((url, index) => (
               <SwiperSlide key={`main-${index}`}>
                 <div className={styles.mainImageContainer} style={{maxWidth: restrictWidth? '600px': '100%'}}>
-                  <Image
-                    src={url}
-                    alt={`${alt}-${index}`}
-                    loading="eager"
-                    width={1242}
-                    height={547}
-                    className={styles.mainImage}
-                    onClick={() => handleOpenFullView(index)}
-                    priority={index === 0}
-                    style={{  height: "auto", maxWidth:'100%'  }}
-                  />
+                  <div className={styles.imageWrapper}>
+                    <Image
+                      src={url}
+                      alt={`${alt}-${index}`}
+                      loading="eager"
+                      fill
+                      className={styles.mainImage}
+                      onClick={() => handleOpenFullView(index)}
+                      priority={index === 0}
+                      sizes="(max-width: 600px) 100vw, (max-width: 1024px) 80vw, 60vw"
+                      placeholder="blur"
+                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                    />
+                    <div className={styles.imageOverlay}></div>
+                  </div>
                 </div>
               </SwiperSlide>
             ))}
@@ -214,10 +218,9 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                     <Image
                       src={url}
                       alt={`thumb-${index}`}
-                      width={180}
-                      height={80}
-                      style={{ maxWidth: "100%", height: "auto" }}
+                      fill
                       className={styles.thumbnailImage}
+                      sizes="(max-width: 600px) 100px, 150px"
                     />
                   </div>
                 </SwiperSlide>
@@ -310,11 +313,10 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                       <Image
                         src={url}
                         alt={`${alt}-fullscreen-${index}`}
-                        width={1242}
-                        height={547}
-                        style={{ maxWidth: "100%", height: "auto" }}
+                        fill
                         className={styles.fullMainImage}
                         priority={index === 0}
+                        sizes="(max-width: 600px) 100vw, 80vw"
                       />
                     </div>
                   </SwiperSlide>
@@ -397,10 +399,9 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                           <Image
                             src={url}
                             alt={`full-thumb-${idx}`}
-                            width={180}
-                            height={80}
+                            fill
                             className={styles.thumbnailImage}
-                            style={{ maxWidth: "100%", height: "auto" }}
+                            sizes="120px"
                           />
                           {currentIndex === idx && (
                             <div className={styles.activeIndicator} />
@@ -431,10 +432,9 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                           <Image
                             src={url}
                             alt={`full-thumb-mobile-${idx}`}
-                            width={120}
-                            height={60}
+                            fill
                             className={styles.thumbnailImage}
-                            style={{ maxWidth: "100%", height: "auto" }}
+                            sizes="80px"
                           />
                         </div>
                       </SwiperSlide>

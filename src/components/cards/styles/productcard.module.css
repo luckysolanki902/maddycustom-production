@@ -75,16 +75,10 @@
 
 /* Adjust layout2 image container for proper aspect ratio */
 .layout2Card .imageContainer {
-  padding-bottom: 100%; /* Square aspect ratio for layout2 */
+  padding-bottom: 75%; /* Better aspect ratio for layout2 */
 }
 
-/* Square layout (listLayout 3) for 1:1 aspect ratio images */
-.squareLayoutCard {
-  /* margin: 1rem; */
-  /* border-radius: 8px; */
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-}
-
+/* Square layout - for any 1:1 aspect ratio images */
 .squareLayoutCard .imageContainer,
 .squareImageContainer {
   padding-bottom: 100% !important; /* Perfect square aspect ratio */
@@ -94,18 +88,58 @@
 .squareImage {
   object-fit: contain !important; /* Show full image without cropping */
   object-position: center !important;
-  background-color: #fafafa !important;
+  background-color: #ffffff !important;
+}
+
+/* Universal responsive image container - auto-detects aspect ratio */
+.responsiveImageContainer {
+  position: relative;
+  width: 100%;
+  height: 0;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+/* Auto-responsive image that maintains aspect ratio */
+.responsiveImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  transition: transform 0.4s ease;
+  background-color: #ffffff;
+}
+
+/* Override for steering covers and other square products */
+.steeringCoverCard .imageContainer,
+.squareProductCard .imageContainer {
+  padding-bottom: 100% !important;
+}
+
+.steeringCoverCard .image,
+.squareProductCard .image {
+  object-fit: contain !important;
+  object-position: center !important;
+  background-color: #ffffff !important;
 }
 
 /* Ensure square layout overrides any media query styles */
 @media (min-width: 1px) {
-  .squareLayoutCard .imageContainer {
+  .squareLayoutCard .imageContainer,
+  .steeringCoverCard .imageContainer,
+  .squareProductCard .imageContainer {
     padding-bottom: 100% !important;
   }
   
-  .squareLayoutCard .image {
+  .squareLayoutCard .image,
+  .steeringCoverCard .image,
+  .squareProductCard .image {
     object-fit: contain !important;
     object-position: center !important;
+    background-color: #ffffff !important;
   }
 }
 
@@ -250,6 +284,47 @@
   padding-top: 8px;
 }
 
+/* Desktop specific overrides for square images */
+@media (min-width: 769px) {
+  /* HIGHEST SPECIFICITY OVERRIDE for square layout on desktop - multiple selectors for maximum priority */
+  .mainCardDiv.squareLayoutCard .imageContainer,
+  .mainCardDiv.steeringCoverCard .imageContainer,
+  .mainCardDiv.squareProductCard .imageContainer,
+  .squareLayoutCard.mainCardDiv .imageContainer,
+  .steeringCoverCard.mainCardDiv .imageContainer,
+  .squareProductCard.mainCardDiv .imageContainer {
+    padding-bottom: 100% !important;
+    background-color: #ffffff !important;
+  }
+
+  .mainCardDiv.squareLayoutCard .image,
+  .mainCardDiv.steeringCoverCard .image,
+  .mainCardDiv.squareProductCard .image,
+  .squareLayoutCard.mainCardDiv .image,
+  .steeringCoverCard.mainCardDiv .image,
+  .squareProductCard.mainCardDiv .image {
+    object-fit: contain !important;
+    object-position: center !important;
+    background-color: #ffffff !important;
+  }
+  
+  /* Additional class-specific overrides for desktop */
+  .squareLayoutCard .imageContainer,
+  .steeringCoverCard .imageContainer,
+  .squareProductCard .imageContainer {
+    padding-bottom: 100% !important;
+    background-color: #ffffff !important;
+  }
+
+  .squareLayoutCard .image,
+  .steeringCoverCard .image,
+  .squareProductCard .image {
+    object-fit: contain !important;
+    object-position: center !important;
+    background-color: #ffffff !important;
+  }
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   .productDescription {
@@ -260,15 +335,24 @@
     font-size: 1.2rem;
   }
   
+  /* Better image proportions for small devices */
+  .layout2Card .imageContainer {
+    padding-bottom: 75%;
+  }
+  
   /* HIGH SPECIFICITY OVERRIDE for square layout - ensure it works on all screen sizes */
-  .mainCardDiv.squareLayoutCard .imageContainer {
+  .mainCardDiv.squareLayoutCard .imageContainer,
+  .mainCardDiv.steeringCoverCard .imageContainer,
+  .mainCardDiv.squareProductCard .imageContainer {
     padding-bottom: 100% !important;
   }
 
-  .mainCardDiv.squareLayoutCard .image {
+  .mainCardDiv.squareLayoutCard .image,
+  .mainCardDiv.steeringCoverCard .image,
+  .mainCardDiv.squareProductCard .image {
     object-fit: contain !important;
     object-position: center !important;
-    background-color: #fafafa !important;
+    background-color: #ffffff !important;
   }
 }
 
@@ -313,11 +397,6 @@
   .layout2Card .imageContainer {
     padding-bottom: 75%;
   }
-  
-  /* Ensure square layout always maintains square aspect ratio */
-  .squareLayoutCard .imageContainer {
-    padding-bottom: 100% !important;
-  }
 
   .outOfStockOverlay > span {
     padding: 3px 10px;
@@ -325,14 +404,18 @@
   }
   
   /* HIGH SPECIFICITY OVERRIDE for square layout - ensure it works on all screen sizes */
-  .mainCardDiv.squareLayoutCard .imageContainer {
+  .mainCardDiv.squareLayoutCard .imageContainer,
+  .mainCardDiv.steeringCoverCard .imageContainer,
+  .mainCardDiv.squareProductCard .imageContainer {
     padding-bottom: 100% !important;
   }
 
-  .mainCardDiv.squareLayoutCard .image {
+  .mainCardDiv.squareLayoutCard .image,
+  .mainCardDiv.steeringCoverCard .image,
+  .mainCardDiv.squareProductCard .image {
     object-fit: contain !important;
     object-position: center !important;
-    background-color: #fafafa !important;
+    background-color: #ffffff !important;
   }
 }
 
@@ -354,19 +437,18 @@
     font-size: 0.65rem;
   }
   
-  /* Ensure square layout always maintains square aspect ratio on small screens */
-  .squareLayoutCard .imageContainer {
-    padding-bottom: 100% !important;
-  }
-  
   /* HIGH SPECIFICITY OVERRIDE for square layout - ensure it works on all screen sizes */
-  .mainCardDiv.squareLayoutCard .imageContainer {
+  .mainCardDiv.squareLayoutCard .imageContainer,
+  .mainCardDiv.steeringCoverCard .imageContainer,
+  .mainCardDiv.squareProductCard .imageContainer {
     padding-bottom: 100% !important;
   }
 
-  .mainCardDiv.squareLayoutCard .image {
+  .mainCardDiv.squareLayoutCard .image,
+  .mainCardDiv.steeringCoverCard .image,
+  .mainCardDiv.squareProductCard .image {
     object-fit: contain !important;
     object-position: center !important;
-    background-color: #fafafa !important;
+    background-color: #ffffff !important;
   }
 }

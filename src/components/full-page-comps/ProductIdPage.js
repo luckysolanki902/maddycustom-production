@@ -161,7 +161,7 @@ export default function ProductIdPage({
   // --- MERGE IMAGES FROM DESCRIPTION TAB AND COMMON GALLERY ---
   const productImages = product.images || [];
   let descriptionImages = [];
-  if (category?.specificCategoryCode !== "cmat") {
+  if (category?.showDescriptionImagesInGallery) {
     productInfoTabs.forEach(tab => {
       if (tab.title && tab.title.toLowerCase() === "description" && tab.content && Array.isArray(tab.content.blocks)) {
         tab.content.blocks.forEach(block => {
