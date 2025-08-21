@@ -145,10 +145,18 @@ const SpecificCategorySchema = new mongoose.Schema(
       type: [LetterMappingGroupSchema],
       default: [],
     },
-      // temproary-review-count
+    // temproary-review-count
     tempReviewCount: {
       type: Number,
       default: 33,
+    },
+    commonProductCardImagesSource: {
+      type: String,
+      enum: ['variant', 'specCat'],
+    },
+    commonProductCardImages: {
+      type: [String],
+      default: [],
     },
     // a boolean for show product description images in product image gallery too
     showDescriptionImagesInGallery: {
@@ -173,6 +181,6 @@ const SpecificCategorySchema = new mongoose.Schema(
 if (mongoose.models.SpecificCategory) {
   delete mongoose.models.SpecificCategory;
 }
-  module.exports =
-    mongoose.models.SpecificCategory ||
-    mongoose.model('SpecificCategory', SpecificCategorySchema);
+module.exports =
+  mongoose.models.SpecificCategory ||
+  mongoose.model('SpecificCategory', SpecificCategorySchema);

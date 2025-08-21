@@ -12,9 +12,9 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       index: true,
       unique: true,
     },
-    listLayout:{
+    listLayout: {
       type: String,
-      default:'1',
+      default: '1',
       required: false,
     },
     thumbnail: {
@@ -196,6 +196,10 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
         type: Number,
         // required: true,
       },
+    },
+    commonProductCardImages: {
+      type: [String],
+      default: [],
     },
     popupDetails: {
       type: [String],

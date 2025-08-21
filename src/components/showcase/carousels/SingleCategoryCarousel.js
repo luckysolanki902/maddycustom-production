@@ -150,7 +150,7 @@ export default function SingleCategoryCarousel({ products = [] }) {
                   }`}
                   name={card.name}
                   price={card.price}
-                  link={`/shop${card.pageSlug}`}
+                  link={`/shop${card.pageSlug?.split('/').slice(0, -1).join('/') || ''}`}
                 />
               </SwiperSlide>
             ))}
