@@ -69,7 +69,7 @@ export default function ProductIdPage({
       : product.price;
   const discountPercent = useMemo(() => Math.round(((mrp - finalPrice) / mrp) * 100), [mrp, finalPrice]);
 
-  const options = product.options || [];
+  const options = useMemo(() => product.options || [], [product.options]);
   const [isZoomed, setIsZoomed] = useState(false);
   const [soldCount, setSoldCount] = useState(null);
   const [selectedOption, setSelectedOption] = useState(null);
@@ -159,36 +159,89 @@ export default function ProductIdPage({
   }, [category, router]);
 
   // --- MERGE IMAGES FROM DESCRIPTION TAB AND COMMON GALLERY ---
-  const productImages = product.images || [];
-  let descriptionImages = [];
-  if (category?.showDescriptionImagesInGallery) {
-    productInfoTabs.forEach(tab => {
-      if (tab.title && tab.title.toLowerCase() === "description" && tab.content && Array.isArray(tab.content.blocks)) {
-        tab.content.blocks.forEach(block => {
-          if (block.type === "image" && block.data && block.data.file && block.data.file.url) {
-            descriptionImages.push(block.data.file.url.replace("https://d26w01jhwuuxpo.cloudfront.net", ""));
-          }
-        });
-      }
-    });
-  }
+  const productImages = useMemo(() => product.images || [], [product.images]);
+  
+  const descriptionImages = useMemo(() => {
+    let images = [];
+    if (category?.showDescriptionImagesInGallery) {
+      productInfoTabs.forEach(tab => {
+        if (tab.title && tab.title.toLowerCase() === "description" && tab.content && Array.isArray(tab.content.blocks)) {
+          tab.content.blocks.forEach(block => {
+            if (block.type === "image" && block.data && block.data.file && block.data.file.url) {
+              images.push(block.data.file.url.replace("https://d26w01jhwuuxpo.cloudfront.net", ""));
+            }
+          });
+        }
+      });
+    }
+    return images;
+  }, [category?.showDescriptionImagesInGallery, productInfoTabs]);
 
   // Get common gallery images from category
-  const commonGalleryImages = category?.commonGalleryImages || [];
+  const commonGalleryImages = useMemo(() => category?.commonGalleryImages || [], [category?.commonGalleryImages]);
+  
+  // Robustly get common product card images from variant and category
+  const variantCommonCardImages = useMemo(() => {
+    try {
+      return Array.isArray(variant?.commonProductCardImages) ? variant.commonProductCardImages : [];
+    } catch (error) {
+      console.warn("Error accessing variant commonProductCardImages:", error);
+      return [];
+    }
+  }, [variant?.commonProductCardImages]);
+
+  const categoryCommonCardImages = useMemo(() => {
+    try {
+      return Array.isArray(category?.commonProductCardImages) ? category.commonProductCardImages : [];
+    } catch (error) {
+      console.warn("Error accessing category commonProductCardImages:", error);
+      return [];
+    }
+  }, [category?.commonProductCardImages]);
 
   // Determine which images to show:
-  // If a selected option exists with images, show its first image; otherwise, show product, description, and common gallery images.
-  const mergedImages =
-    selectedOption && selectedOption.images && selectedOption.images.length > 0
-      ? [selectedOption.images[0]]
-      : [...productImages, ...descriptionImages, ...commonGalleryImages];
+  // If a selected option exists with images, show its first image; otherwise, show product, description, common gallery, and common card images.
+  const mergedImages = useMemo(() => {
+    try {
+      return selectedOption && selectedOption.images && selectedOption.images.length > 0
+        ? [selectedOption.images[0]]
+        : [...productImages, ...descriptionImages, ...commonGalleryImages, ...variantCommonCardImages, ...categoryCommonCardImages];
+    } catch (error) {
+      console.error("Error merging images:", error);
+      // Fallback to just product images if there's an error
+      return productImages || [];
+    }
+  }, [selectedOption, productImages, descriptionImages, commonGalleryImages, variantCommonCardImages, categoryCommonCardImages]);
 
-  // Prepend the Cloudfront base URL if necessary
-  const allImages = mergedImages.map(img =>
-    img.startsWith("http") || img.startsWith("/")
-      ? `${imageBaseUrl}${img.startsWith("/") ? img : "/" + img}`
-      : `${imageBaseUrl}/${img}`
-  );
+  // Prepend the Cloudfront base URL if necessary and filter out invalid images
+  const allImages = useMemo(() => {
+    try {
+      return mergedImages
+        .filter(img => {
+          // Filter out null, undefined, empty strings, and non-string values
+          return img && typeof img === 'string' && img.trim().length > 0;
+        })
+        .map(img => {
+          try {
+            // Handle images that already have full URLs or start with /
+            if (img.startsWith("http") || img.startsWith("/")) {
+              return `${imageBaseUrl}${img.startsWith("/") ? img : "/" + img}`;
+            }
+            // Handle relative paths
+            return `${imageBaseUrl}/${img}`;
+          } catch (error) {
+            console.warn("Error processing image URL:", img, error);
+            return null;
+          }
+        })
+        .filter(Boolean); // Remove any null values from failed processing
+    } catch (error) {
+      console.error("Error processing image array:", error);
+      // Fallback to just product images if there's an error
+      const fallbackImages = (product.images || []).filter(img => img && typeof img === 'string');
+      return fallbackImages.map(img => `${imageBaseUrl}/${img}`).filter(Boolean);
+    }
+  }, [mergedImages, imageBaseUrl, product.images]);
 
   // Determine inventory availability
   const optionInventory =
