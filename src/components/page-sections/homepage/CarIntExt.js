@@ -123,18 +123,16 @@ export default function CarIntExt({
       asset => asset.componentName === componentName && asset.componentType === 'carousel'
     );
 
-    // Map to the media format expected by NoMarginCarousel
+    // Map to the format expected by NoMarginCarousel with links
     const processedImages = filteredAssets.map(asset => ({
-      desktop: asset.media?.desktop,
-      mobile: asset.media?.mobile,
-      useSameMediaForAllDevices: asset.useSameMediaForAllDevices
+      image: {
+        desktop: asset.media?.desktop,
+        mobile: asset.media?.mobile,
+        useSameMediaForAllDevices: asset.useSameMediaForAllDevices
+      },
+      link: asset.link
     }));
 
-    // Debug log for mobile
-    console.log(`${type} carousel images:`, processedImages);
-    console.log(`Looking for componentName: ${componentName}`);
-    console.log('Available assets:', assets.map(a => ({ name: a.componentName, type: a.componentType })));
-    
     return processedImages;
   }, [assets, type]);
 
@@ -184,7 +182,7 @@ export default function CarIntExt({
           className={styles.carouselWrapper}
         >
           <NoMarginCarousel
-            images={carouselImages}
+            imagesPlusLinks={carouselImages}
             autoplay={true}
             autoplayDelay={5000}
             showPagination={true}
