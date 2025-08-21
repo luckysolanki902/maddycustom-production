@@ -1,14 +1,17 @@
 /* ===================== Overall Container ===================== */
 .galleryContainer {
-    --thumb-width-desktop: 100px;
-    --thumb-height-desktop: 75px;
-    --thumb-width-mobile: 70px;
-    --thumb-height-mobile: 55px;
-    --main-aspect-ratio: 4/3;
-    --main-aspect-ratio-mobile: 1/1;
+    /* Fluid, responsive thumbnails */
+    --thumb-width-desktop: clamp(72px, 10vw, 110px);
+    --thumb-width-mobile: clamp(56px, 22vw, 80px);
+    --thumb-height-desktop: calc(var(--thumb-width-desktop) * 0.75);
+    --thumb-height-mobile: calc(var(--thumb-width-mobile) * 0.75);
+
+    /* Flexible aspect ratios - adapt to content */
+    --main-aspect-ratio: auto; /* let images define their own ratio */
+    --main-aspect-ratio-mobile: auto;
     
     width: 100%;
-    margin: 0 auto;
+    margin: 0;
     position: relative;
     padding: 0;
     transition: all 0.3s ease;
@@ -17,25 +20,34 @@
 /* ===================== Main Swiper (Normal Mode) ===================== */
 .mainSwiper {
     width: 100%;
-    margin-bottom: 0.75rem;
-    border-radius: 8px;
+    margin: 0 0 1rem 0; /* add bottom margin for gap before thumbnails */
+    border-radius: 0;
     overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-    background: #ffffff;
+    box-shadow: none;
+    background: transparent;
 }
 
 .mainImageContainer {
     position: relative;
     width: 100%;
-    aspect-ratio: var(--main-aspect-ratio);
-    background: #ffffff;
-    border-radius: 8px;
+    /* Remove fixed aspect ratio - let images be their natural size */
+    background: transparent;
+    border-radius: 0;
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 300px;
-    max-height: 500px;
+    /* No forced heights - let images determine natural sizing */
+    min-height: 0; /* mobile default - no forced height */
+    max-height: none;
+}
+
+/* Apply min-height sizing logic ONLY for desktop */
+@media (width > 600px) {
+    .mainImageContainer {
+        min-height: 300px; /* minimum height for square/portrait images on desktop */
+        max-height: 500px; /* maximum height to contain tall images */
+    }
 }
 
 .imageWrapper {
@@ -60,23 +72,25 @@
 }
 
 .imageWrapper:hover .imageOverlay {
-    background: rgba(0, 0, 0, 0.02);
+    /* keep transparent on hover for a clean look */
+    background: transparent;
 }
 
 .mainImage {
-    border-radius: 8px;
+    border-radius: 0;
     transition: transform 0.3s ease;
     cursor: pointer;
-    object-fit: contain;
+    object-fit: contain; /* show full image without cropping */
     object-position: center;
-    width: 100%;
-    height: 100%;
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute !important;
+    top: 0;
+    left: 0;
     z-index: 1;
 }
 
-.mainImage:hover {
-    transform: scale(1.01);
-}
+/* No hover scale to keep it minimal */
 
 /* ===================== Thumbnails (Normal Mode) ===================== */
 .thumbnailRowContainer {
@@ -85,14 +99,14 @@
     display: flex;
     align-items: center;
     overflow: hidden;
-    margin-top: 0.5rem;
+    margin-top: 0; /* remove top margin under main image */
 }
 
 @media (width > 600px) {
     .thumbnailRowContainer {
-        width: 100%;
-        max-width: 600px;
-        margin: 0.5rem auto 0;
+    width: 100%;
+    max-width: 600px;
+    margin: 0; /* left align instead of centering */
     }
 }
 
@@ -125,16 +139,16 @@
     padding: 0;
     cursor: pointer;
     overflow: hidden;
-    background: #ffffff;
+    background: transparent;
     flex-shrink: 0;
     margin-right: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    box-shadow: none;
 }
 
 .thumbWrapper:hover {
-    transform: scale(1.03);
-    border-color: rgba(0, 0, 0, 0.2);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    transform: none;
+    border-color: rgba(0, 0, 0, 0.18);
+    box-shadow: none;
 }
 
 .thumbnailImage {
@@ -161,17 +175,26 @@
 
     .mainImage {
         border-radius: 0;
+        position: static !important; /* Override Next.js Image positioning for mobile */
     }
 
     .mainImageContainer {
-        aspect-ratio: var(--main-aspect-ratio-mobile);
+        /* Remove fixed aspect ratio on mobile - let images be natural */
         border-radius: 0;
-        min-height: 250px;
+        /* Mobile: full width, height auto - no forced sizing */
+        min-height: auto !important;
+        max-height: none !important;
+        height: auto !important;
+        position: relative;
+    }
+
+    .mainSwiper {
+        margin: 0 0 0.75rem 0; /* reduced gap on mobile */
     }
 
     .thumbnailRowContainer {
         padding: 0 0.5rem;
-        margin-top: 0.5rem;
+        margin-top: 0; /* remove top gap under image on mobile */
     }
     
     .thumbWrapper {
@@ -183,34 +206,31 @@
 
 @media (width >= 1200px) {
     .mainImageContainer {
-        min-height: 400px;
+        /* Better height range for large screens */
+        min-height: 350px;
+        max-height: 600px;
     }
 }
 
 @media (width >= 1600px) {
     .mainImageContainer {
-        min-height: 450px;
+        /* Optimal height range for very large screens */
+        min-height: 400px;
+        max-height: 700px;
     }
 }
 
 .activeThumb {
     border-color: #000000;
-    transform: scale(1.03);
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+    transform: none;
+    box-shadow: none;
     position: relative;
     z-index: 2;
 }
 
 .activeThumb::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: #000000;
-    border-radius: 8px;
-    z-index: -1;
+    /* Remove decorative glow */
+    display: none;
 }
 
 .activeThumb .thumbnailImage {
@@ -242,7 +262,7 @@
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: none;
     font-size: 14px;
     outline: none;
 }
@@ -250,7 +270,7 @@
 .modernArrowButton:hover {
     background: rgba(0, 0, 0, 0.9);
     transform: scale(1.05);
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: none;
 }
 
 .modernArrowButton:active {
@@ -273,12 +293,12 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background: #ffffff;
     z-index: 9999;
     display: flex;
     justify-content: center;
     align-items: center;
-    backdrop-filter: blur(10px);
+    backdrop-filter: none;
     animation: fadeIn 0.3s ease-out;
 }
 
@@ -299,7 +319,7 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    box-shadow: none;
     overflow: hidden;
 }
 
@@ -307,7 +327,7 @@
 .closeButton {
     background-color: rgba(0, 0, 0, 0.7) !important;
     color: #fff !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+    box-shadow: none !important;
     z-index: 10000;
     transition: all 0.3s ease !important;
 }
@@ -363,14 +383,14 @@
     min-height: 0;
     overflow: hidden;
     z-index: 999;
-    width: 90%;
-    padding: 1rem;
+    width: 100%;
+    padding: 0;
 }
 
 .fullMainImageContainer {
     position: relative;
     width: 100%;
-    height: 80vh;
+    height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -385,47 +405,141 @@
     object-position: center;
     z-index: 99999;
     transition: transform 0.3s ease;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    box-shadow: none;
 }
 
 @media (width < 600px) {
+    .fullscreenOverlay {
+        align-items: flex-start; /* start at very top on mobile */
+        background: #ffffff; /* white background */
+    }
+
+    .fullscreenContainer {
+        background: #ffffff; /* white background */
+    }
+
+    .fullscreenInnerMobile {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        padding: 0;
+        margin: 0;
+        position: relative;
+    }
+
     .fullMainSwiper {
         width: 100%;
-        padding: 0.5rem;
+        padding: 0;
+        margin: 0;
+        flex: 1; /* take available space above thumbnails */
+        display: flex;
+        align-items: center; /* center image vertically in available space */
+        justify-content: center;
     }
-    
+
     .fullMainImageContainer {
-        height: 60vh;
+        height: 100%;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        box-sizing: border-box;
+    }
+
+    .fullMainImage {
+        border-radius: 8px;
+        width: 100%;
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain; /* show full image */
+        position: relative !important; /* override next/image positioning */
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* subtle shadow */
+    }
+
+    /* Make Swiper slides auto-height on mobile */
+    .fullMainSwiper :global(.swiper-wrapper),
+    .fullMainSwiper :global(.swiper-slide) {
+        height: 100% !important; /* fill available space */
+    }
+
+    /* Fixed bottom thumbnails container */
+    .fullThumbRowContainer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        flex-shrink: 0;
+        height: auto;
+        min-height: calc(var(--thumb-height-mobile) + 24px);
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 12px 16px;
+        z-index: 10001;
+        display: flex;
+        justify-content: flex-start; /* left align thumbnails */
+        align-items: center;
+    }
+
+    .fullThumbSwiperRow {
+        width: 100%;
+        height: auto;
+        text-align: left; /* left align swiper content */
+    }
+
+    /* Force left alignment of swiper wrapper */
+    .fullThumbSwiperRow :global(.swiper-wrapper) {
+        justify-content: flex-start !important;
+        align-items: center !important;
+    }
+
+    /* Adjust close button for light theme */
+    .closeButton {
+        background-color: rgba(0, 0, 0, 0.7) !important;
+        color: #fff !important;
+        backdrop-filter: blur(10px);
+    }
+
+    .closeButton:hover {
+        background-color: rgba(0, 0, 0, 0.9) !important;
     }
 }
 
 /* ===================== Fullscreen Thumbnails: Mobile ===================== */
 .fullThumbRowContainer {
     flex-shrink: 0;
-    height: 120px;
+    height: auto;
+    min-height: calc(var(--thumb-height-mobile) + 16px);
     position: relative;
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(10px);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
     padding: 0.5rem;
     border-top: 1px solid rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: flex-start; /* left align thumbnails */
+    align-items: center;
 }
 
 .fullThumbSwiperRow {
     width: 100%;
-    height: 100%;
+    height: auto;
+    text-align: left; /* left align swiper content */
 }
 
 /* ===================== Fullscreen Thumbnails: Desktop ===================== */
 .fullThumbColumnContainer {
     width: 220px;
-    padding: 1.5rem;
+    padding: 1rem;
     min-width: 200px;
     max-width: 250px;
     position: relative;
     background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(15px);
-    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+    backdrop-filter: none;
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     border-left: 1px solid rgba(0, 0, 0, 0.1);
@@ -462,23 +576,25 @@
     }
 }
 
-@media (width >= 1200px) {
-    .fullThumbWrapper {
-        width: 120px;
-        height: 80px;
+/* Enhance mobile thumbnail styling for light theme */
+@media (width < 600px) {
+    .fullThumbRowContainer .thumbWrapper {
+        border: 2px solid rgba(0, 0, 0, 0.1);
+        background: rgba(0, 0, 0, 0.05);
+    }
+    
+    .fullThumbRowContainer .thumbWrapper.activeThumb {
+        border-color: #000000;
+        background: rgba(0, 0, 0, 0.1);
+    }
+    
+    .fullThumbRowContainer .thumbnailImage {
+        border-radius: 4px;
     }
 }
 
 .activeIndicator {
-    position: absolute;
-    top: 50%;
-    right: -8px;
-    transform: translateY(-50%);
-    width: 4px;
-    height: 60%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 2px;
-    z-index: 10;
+    display: none;
 }
 
 /* Navigation arrows */
