@@ -175,22 +175,27 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
           >
             {images.map((url, index) => (
               <SwiperSlide key={`main-${index}`}>
-                <div className={styles.mainImageContainer} style={{maxWidth: restrictWidth? '600px': '100%'}}>
-                  <div className={styles.imageWrapper}>
-                    <Image
-                      src={url}
-                      alt={`${alt}-${index}`}
-                      loading="eager"
-                      fill
-                      className={styles.mainImage}
-                      onClick={() => handleOpenFullView(index)}
-                      priority={index === 0}
-                      sizes="(max-width: 600px) 100vw, (max-width: 1024px) 80vw, 60vw"
-                      placeholder="blur"
-                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
-                    />
-                    <div className={styles.imageOverlay}></div>
-                  </div>
+                <div className={styles.mainImageContainer} style={{ maxWidth: restrictWidth ? "600px" : "100%" }}>
+                  <Image
+                    src={url}
+                    alt={`${alt}-${index}`}
+                    loading="eager"
+                    width={isSmallDevice ? 600 : undefined}
+                    height={isSmallDevice ? 400 : undefined}
+                    fill={!isSmallDevice}
+                    style={isSmallDevice ? {
+                      width: '100%',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      objectPosition: 'center'
+                    } : undefined}
+                    className={styles.mainImage}
+                    onClick={() => handleOpenFullView(index)}
+                    priority={index === 0}
+                    sizes="(max-width: 600px) 100vw, (max-width: 1024px) 80vw, 60vw"
+                    placeholder="blur"
+                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                  />
                 </div>
               </SwiperSlide>
             ))}
@@ -313,10 +318,18 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                       <Image
                         src={url}
                         alt={`${alt}-fullscreen-${index}`}
-                        fill
+                        width={0}
+                        height={0}
+                        sizes="(max-width: 600px) 100vw, 80vw"
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          maxHeight: isSmallDevice ? 'none' : '90vh',
+                          objectFit: 'contain',
+                          objectPosition: 'center'
+                        }}
                         className={styles.fullMainImage}
                         priority={index === 0}
-                        sizes="(max-width: 600px) 100vw, 80vw"
                       />
                     </div>
                   </SwiperSlide>
@@ -419,7 +432,7 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                     slidesPerView="auto"
                     spaceBetween={8}
                     speed={300}
-                    centeredSlides={true}
+                    centeredSlides={false}
                     className={styles.fullThumbSwiperRow}
                   >
                     {images.map((url, idx) => (
