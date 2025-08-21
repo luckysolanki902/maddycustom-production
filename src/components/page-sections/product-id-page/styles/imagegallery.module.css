@@ -81,7 +81,7 @@
     transition: transform 0.3s ease;
     cursor: pointer;
     object-fit: contain; /* show full image without cropping */
-    object-position: center;
+    object-position: left;
     width: 100% !important;
     height: 100% !important;
     position: absolute !important;
