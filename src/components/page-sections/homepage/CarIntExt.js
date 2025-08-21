@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { useMediaQuery } from '@mui/material';
 import NoMarginCarousel from '@/components/showcase/carousels/NoMarginCarousel';
 import styles from './styles/CarIntExt.module.css';
 import { useRouter } from 'next/navigation';
@@ -112,10 +113,13 @@ export default function CarIntExt({
   error = null, // Error state passed from parent
   className = ""
 }) {
+  // Device detection
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  
   // Capitalize the heading
   const heading = type.charAt(0).toUpperCase() + type.slice(1);
 
-  // Filter carousel images from assets based on component name and type
+  // Filter carousel images from assets based on component name, type, and device compatibility
   const carouselImages = useMemo(() => {
     // Match the actual component names from your database - they have -carousel suffix
     const componentName = type === 'interior' ? 'car-interiors-carousel' : 'car-exteriors-carousel';
@@ -123,18 +127,55 @@ export default function CarIntExt({
       asset => asset.componentName === componentName && asset.componentType === 'carousel'
     );
 
-    // Map to the format expected by NoMarginCarousel with links
-    const processedImages = filteredAssets.map(asset => ({
-      image: {
-        desktop: asset.media?.desktop,
-        mobile: asset.media?.mobile,
-        useSameMediaForAllDevices: asset.useSameMediaForAllDevices
-      },
-      link: asset.link
-    }));
+    // Filter assets based on device compatibility and availability of media
+    const deviceCompatibleAssets = filteredAssets.filter(asset => {
+      const { desktop, mobile } = asset.media || {};
+      
+      // If useSameMediaForAllDevices is true, check if either desktop or mobile has content
+      if (asset.useSameMediaForAllDevices) {
+        return desktop || mobile; // Show if any media exists
+      }
+      
+      // Otherwise, filter based on current device and available media
+      if (isMobile) {
+        // On mobile: show only if mobile media exists
+        return mobile && mobile.trim() !== '';
+      } else {
+        // On desktop: show only if desktop media exists
+        return desktop && desktop.trim() !== '';
+      }
+    });
+
+    // Map to the format expected by NoMarginCarousel with device-specific images only
+    const processedImages = deviceCompatibleAssets.map(asset => {
+      const { desktop, mobile } = asset.media || {};
+      
+      if (asset.useSameMediaForAllDevices) {
+        // For universal images, use the appropriate device image or fallback
+        const imageToUse = isMobile ? (mobile || desktop) : (desktop || mobile);
+        return {
+          image: {
+            desktop: imageToUse,
+            mobile: imageToUse,
+            useSameMediaForAllDevices: true
+          },
+          link: asset.link
+        };
+      } else {
+        // For device-specific images, only include the current device's image
+        return {
+          image: {
+            desktop: isMobile ? null : desktop,
+            mobile: isMobile ? mobile : null,
+            useSameMediaForAllDevices: false
+          },
+          link: asset.link
+        };
+      }
+    });
 
     return processedImages;
-  }, [assets, type]);
+  }, [assets, type, isMobile]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
