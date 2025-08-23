@@ -1,15 +1,8 @@
 "use client";
 
-import { useState, useLayoutEffect, useRef } from "react";
-import {
-  Box,
-  Typography,
-  Collapse,
-  Button,
-  Divider,
-} from "@mui/material";
+import { useState, useLayoutEffect, useRef, useMemo } from "react";
 import Image from "next/image";
-import { useSpring, animated } from "react-spring";
+import { motion, AnimatePresence } from "framer-motion";
 
 import CustomRenderer from "./CustomRenderer";
 import styles from "./styles/product-info-tabs.module.css";
@@ -28,24 +21,18 @@ export default function ProductDescription({
   // Refs used to measure tab widths and positions for the underline animation
   const tabRefs = useRef([]);
 
-  // Underline spring animation
-  const [underlineStyle, api] = useSpring(() => ({
-    left: 0,
-    width: 0,
-    config: { tension: 300, friction: 30 },
-  }));
+  // Track underline metrics
+  const [underline, setUnderline] = useState({ left: 0, width: 0 });
 
   const availableTabs = productInfoTabs; // A simple alias
 
   // Move the underline whenever tabIndex changes
   useLayoutEffect(() => {
     if (!availableTabs[tabIndex]) return;
-    const refEl = tabRefs.current[tabIndex];
-    if (!refEl) return;
-
-    const { offsetLeft, clientWidth } = refEl;
-    api.start({ left: offsetLeft, width: clientWidth });
-  }, [tabIndex, availableTabs, api]);
+    const el = tabRefs.current[tabIndex];
+    if (!el) return;
+    setUnderline({ left: el.offsetLeft, width: el.clientWidth });
+  }, [tabIndex, availableTabs]);
 
   // Handle tab click
   const handleTabClick = (index) => {
@@ -87,147 +74,96 @@ export default function ProductDescription({
   }
 
   return (
-    <Box className={styles.mainCont}>
-      <Box
-        sx={{
-          maxWidth: "100%",
-          mx: "auto",
-          p: { xs: 1, sm: 3 },
-          bgcolor: "rgba(255, 255, 255, 1)",
-          borderRadius: 2,
-          position: "relative",
-          fontFamily: "Jost",
-        }}
-      >
-        {/* ----------- TABS HEADER ----------- */}
-        <Box
-          className={styles.tabsContainer}
-          sx={{
-            position: "relative",
-            overflowX: "auto",
-            whiteSpace: "nowrap",
-            mb: { xs: 2, sm: 3 },
-          }}
-        >
-          {availableTabs.map((tab, index) => (
-            <Box
-              key={tab.title}
-              ref={(el) => (tabRefs.current[index] = el)}
-              className={styles.tabItem}
-              onClick={() => handleTabClick(index)}
-            >
-              <Typography
-                sx={{
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  fontFamily: "Jost",
-                  fontSize: { xs: "1rem", sm: "1.2rem" },
-                  px: 2,
-                  py: 1,
-                }}
-              >
-                {tab.title}
-              </Typography>
-            </Box>
-          ))}
-
-          {/* ANIMATED UNDERLINE */}
-          <animated.div className={styles.underline} style={underlineStyle} />
-        </Box>
-
-        <Divider />
-
-        {/* ----------- CASE 1: Show leading product image if requested ----------- */}
-        {showProductImageFirst &&
-          currentTab.title.toLowerCase() === "description" &&
-          imageUrl && (
-            <Box sx={{ my: { xs: 2, sm: 3 }, textAlign: "center" }}>
-              <Box
-                sx={{
-                  position: "relative",
-                  width: { xs: "90%", sm: "90%" },
-                  height: expanded ? "auto" : { xs: "200px", sm: "350px" },
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                  mx: "auto",
-                }}
-              >
-                <Image
-                  src={imageUrl}
-                  alt="Product Image"
-                  width={1000}
-                  height={1000}
-                  style={{ objectFit: "cover", width: "100%", height: "auto" }}
-                  className={styles.commonProductImage}
-                />
-              </Box>
-            </Box>
-          )}
-
-        {/* ----------- CASE 2: Render the tab content ----------- */}
-        <Box sx={{ mt: 2 }}>
-          {/* If the first block is an image (when !showProductImageFirst): */}
-          {firstImageBlock && (
-            <Box sx={{ my: { xs: 2, sm: 3 }, textAlign: "center" }}>
-              <Box
-                sx={{
-                  position: "relative",
-                  width: { xs: "90%", sm: "90%" },
-                  height: expanded ? "auto" : { xs: "200px", sm: "350px" },
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                  mx: "auto",
-                }}
-              >
-                <Image
-                  src={firstImageBlock.data.file.url}
-                  alt={firstImageBlock.data.caption || "Content image"}
-                  width={1000}
-                  height={1000}
-                  style={{
-                    objectFit: "cover",
-                    width: "100%",
-                    height: "auto",
-                  }}
-                />
-              </Box>
-            </Box>
-          )}
-
-          {/* Product Details section */}
-          <Box sx={{ mt: 2 }}>
-            <CustomRenderer data={{ blocks: productDetailsContent }} />
-          </Box>
-
-          {/* Collapsible content starts after Product Details */}
-          <Collapse
-            in={expanded}
-            collapsedSize={showProductImageFirst ? "0px" : "150px"}
-            timeout="auto"
-            sx={{ overflow: "hidden" }}
+    <div className={styles.mainCont}>
+      <div className={`${styles.tabsContainer} ${styles.stickyTabs}`}>
+        {availableTabs.map((tab, index) => (
+          <div
+            key={tab.title}
+            ref={el => (tabRefs.current[index] = el)}
+            className={`${styles.tabItem} ${index === tabIndex ? styles.tabItemActive : ""}`}
+            onClick={() => handleTabClick(index)}
           >
-            <Box sx={{ p: { xs: 1, sm: 2 } }}>
-              <CustomRenderer data={{ blocks: contentAfterProductDetails }} />
-            </Box>
-          </Collapse>
+            {tab.title}
+          </div>
+        ))}
+        <motion.div
+          className={styles.underline}
+          animate={{ left: underline.left, width: underline.width }}
+          transition={{ type: "spring", stiffness: 380, damping: 38 }}
+        />
+      </div>
 
-          {/* READ MORE / LESS BUTTON */}
-          <Box sx={{ textAlign: "center", mt: 1 }}>
-            <Button
-              onClick={() => setExpanded(!expanded)}
-              sx={{
-                color: "#000",
-                fontWeight: "bold",
-                textTransform: "none",
-                fontFamily: "Jost",
-                fontSize: { xs: "0.9rem", sm: "1rem" },
-              }}
-            >
-              {expanded ? "Read less" : "Read more"} ▼
-            </Button>
-          </Box>
-        </Box>
-      </Box>
-    </Box>
+      <div className={`${styles.contentShell} ${styles.fadeIn}`}>
+        {showProductImageFirst && currentTab.title.toLowerCase() === "description" && imageUrl && (
+          <div className={styles.leadingImageWrap}>
+            <Image src={imageUrl} alt="Product Image" width={1200} height={1200} className={styles.leadingImage} />
+          </div>
+        )}
+        {firstImageBlock && !showProductImageFirst && (
+            <div className={styles.leadingImageWrap}>
+              <Image
+                src={firstImageBlock.data.file.url}
+                alt={firstImageBlock.data.caption || "Content image"}
+                width={1200}
+                height={1200}
+                className={styles.leadingImage}
+              />
+            </div>
+        )}
+
+        {/* Always visible Product Details part */}
+        <CustomRenderer data={{ blocks: productDetailsContent }} />
+
+        {/* Preview & full content handling */}
+        {(() => {
+          const PREVIEW_LIMIT = 3; // number of blocks after Product Details to always show
+          const hasExtra = contentAfterProductDetails.length > PREVIEW_LIMIT;
+          const previewBlocks = hasExtra ? contentAfterProductDetails.slice(0, PREVIEW_LIMIT) : contentAfterProductDetails;
+          const remainingBlocks = hasExtra ? contentAfterProductDetails.slice(PREVIEW_LIMIT) : [];
+
+          return (
+            <div className={styles.afterDetailsWrapper}>
+              {!expanded && (
+                <>
+                  <CustomRenderer data={{ blocks: previewBlocks }} />
+                  {hasExtra && <div className={styles.previewGradient} />}
+                </>
+              )}
+              <AnimatePresence initial={false}>
+                {expanded && hasExtra && (
+                  <motion.div
+                    key="rest"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+                  >
+                    {/* Render full set (we already rendered productDetails separately) */}
+                    <CustomRenderer data={{ blocks: contentAfterProductDetails }} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {hasExtra && (
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  className={styles.readMoreBtn}
+                  onClick={() => setExpanded(e => !e)}
+                >
+                  <span>{expanded ? "Read less" : "Read more"}</span>
+                  <motion.span
+                    animate={{ rotate: expanded ? 180 : 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                    style={{ display: "inline-block" }}
+                  >
+                    ▼
+                  </motion.span>
+                </button>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+    </div>
   );
 }

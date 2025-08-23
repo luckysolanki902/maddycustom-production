@@ -232,12 +232,12 @@ function SimilarProductsBase({ currentProduct, variant, category }) {
 
   return (
     <SimilarProductsContext.Provider value={{ insertionDetails }}>
-      <Box sx={{ width: "100%", px: 1, mt: 4, maxWidth: 1399, m: 'auto' }}>
+      <Box sx={{ width: "100%", px: 1, mt: 4, maxWidth: 1399, m: 'auto', mb: 2 }}>
         {/* Header with skeleton */}
         {loadingInit && !isInitialized && !sectionTitle ? (
-          <Skeleton variant="text" width={200} height={32} sx={{ mb: 1 }} />
+          <Skeleton variant="text" width={200} height={26} sx={{ mb: 1, mt: 3 }} />
         ) : (
-          <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, mt: 3 }}>
             {sectionTitle}
           </Typography>
         )}

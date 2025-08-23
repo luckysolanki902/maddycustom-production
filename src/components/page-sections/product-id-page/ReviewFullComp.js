@@ -395,13 +395,13 @@ export default function ReviewFullComp({
             </Typography>
           </Box>
         )}
-        {error && (
+        {/* {error && (
           <Box sx={{ textAlign: "center", padding: "2rem" }}>
             <Typography sx={{ color: "#e53e3e", fontFamily: "Jost, sans-serif" }}>
               {error}
             </Typography>
           </Box>
-        )}
+        )} */}
 
         {/* Review List */}
         <Box sx={{ 

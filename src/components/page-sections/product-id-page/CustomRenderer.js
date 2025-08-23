@@ -1,6 +1,7 @@
-import { Box } from "@mui/material";
 import Image from "next/image";
-import React from "react";
+import React, { useMemo } from "react";
+import { motion } from "framer-motion";
+import styles from "./styles/custom-renderer.module.css";
 
 const renderInlineStyles = (text) => {
   if (typeof text !== "string") return text;
@@ -12,240 +13,104 @@ const renderInlineStyles = (text) => {
   return formattedText;
 };
 
+const fadeUp = {
+  initial: { opacity: 0, y: 18 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.38, ease: [0.4, 0, 0.2, 1] }
+};
+
 const CustomRenderer = ({ data, seamlessImages = false }) => {
-  if (!data || !data.blocks) {
-    return <p>No content available.</p>;
+  const blocks = useMemo(() => (data && Array.isArray(data.blocks) ? data.blocks : []), [data]);
+  // Preprocess for YouTube detection to avoid regex per render in map
+  const processedBlocks = useMemo(() => blocks.map(b => {
+    if (b.type === "paragraph") {
+      const formattedText = renderInlineStyles(b.data?.text || "");
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/;
+      const match = formattedText.match(youtubeRegex);
+      return { ...b, formattedText, youtubeId: match ? match[1] : null };
+    }
+    return b;
+  }), [blocks]);
+
+  if (!processedBlocks.length) {
+    return <p className={styles.rendererRoot}>No content available.</p>;
   }
 
   return (
-    // If you want to drop padding on the entire container when seamless is true:
-    <div className={`custom-renderer`}>
-      {data.blocks.map((block) => {
+    <div className={styles.rendererRoot}>
+      {processedBlocks.map(block => {
         switch (block.type) {
           case "header": {
             const Tag = `h${block.data.level}`;
-            return <Tag key={block.id}>{block.data.text}</Tag>;
+            return (
+              <motion.div key={block.id} {...fadeUp} className={styles.animateBlock}>
+                <Tag>{block.data.text}</Tag>
+              </motion.div>
+            );
           }
           case "paragraph": {
-            const formattedText = renderInlineStyles(block.data.text);
-            const youtubeRegex =
-              /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/;
-            const match = formattedText.match(youtubeRegex);
-            if (match) {
-              const videoId = match[1];
+            if (block.youtubeId) {
               return (
-                <div key={block.id} className="youtube-video">
+                <motion.div key={block.id} {...fadeUp} className={`${styles.ytResponsive} ${styles.animateBlock}`}>
                   <iframe
-                    src={`https://www.youtube.com/embed/${videoId}`}
-                    frameBorder="0"
+                    src={`https://www.youtube.com/embed/${block.youtubeId}`}
                     allowFullScreen
+                    title="Product video"
                   />
-                </div>
-              );
-            } else {
-              return (
-                <p
-                  key={block.id}
-                  dangerouslySetInnerHTML={{ __html: formattedText }}
-                />
+                </motion.div>
               );
             }
+            return (
+              <motion.p
+                key={block.id}
+                {...fadeUp}
+                className={styles.animateBlock}
+                dangerouslySetInnerHTML={{ __html: block.formattedText }}
+              />
+            );
           }
           case "list": {
             const isUnordered = block.data.style === "unordered";
-            return isUnordered ? (
-              <ul key={block.id}>
-                {block.data.items.map((item, index) => (
-                  <li key={index} dangerouslySetInnerHTML={{ __html: item.content }} />
-                ))}
-              </ul>
-            ) : (
-              <ol key={block.id}>
-                {block.data.items.map((item, index) => (
-                  <li key={index} dangerouslySetInnerHTML={{ __html: item.content }} />
-                ))}
-              </ol>
+            const ListTag = isUnordered ? "ul" : "ol";
+            return (
+              <motion.div key={block.id} {...fadeUp} className={styles.animateBlock}>
+                <ListTag>
+                  {block.data.items.map((item, index) => (
+                    <li key={index} dangerouslySetInnerHTML={{ __html: item.content }} />
+                  ))}
+                </ListTag>
+              </motion.div>
             );
           }
           case "image": {
             const { file, caption } = block.data;
             return (
-              <Box
-                component="div"
+              <motion.figure
                 key={block.id}
-                className={`image-container ${seamlessImages ? "seamless" : ""}`}
-                sx={{
-                  // Force overriding default MUI or theme styles
-                  display: "block !important",
-                  margin: seamlessImages ? "0 !important" : "1em 0 !important",
-                  padding: "0 !important",
-                  borderRadius: "0 !important",
-                  lineHeight: "0 !important",
-                  border: "none !important",
-                  background: "none !important",
-                  width: "100% !important",
-                  height: "auto !important",
-                  overflow: "hidden !important",
-                  textAlign: "center !important",
-                }}
+                {...fadeUp}
+                className={`${styles.imageWrap} ${seamlessImages ? styles.seamless : ""} ${styles.animateBlock}`}
               >
                 <Image
-                  width={1000}
-                  height={1000}
+                  width={1200}
+                  height={1200}
                   src={file.url}
                   alt={caption || "Uploaded image"}
-                  style={{
-                    width: "100%",
-                    height: "auto",
-                    margin: 0,
-                    objectFit: "cover",
-                    borderRadius: seamlessImages ? "0" : "8px",
-                  }}
+                  className={styles.imageElement}
                 />
                 {caption && (
-                  <p
-                    className={`caption ${seamlessImages ? "seamless-caption" : ""}`}
-                  >
-                    {caption}
-                  </p>
+                  <figcaption className={`${styles.caption} ${seamlessImages ? styles.seamlessCaption : ""}`}>{caption}</figcaption>
                 )}
-              </Box>
+              </motion.figure>
             );
           }
           default:
             return (
-              <p key={block.id}>
+              <motion.p key={block.id} {...fadeUp} className={styles.animateBlock}>
                 Unsupported block type: <strong>{block.type}</strong>
-              </p>
+              </motion.p>
             );
         }
       })}
-
-      <style jsx>{`
-        .custom-renderer {
-          font-family: Arial, sans-serif;
-          line-height: 1.6;
-          color: #333;
-          padding: 0 1rem; /* Default padding */
-        }
-        /* Remove padding if seamless */
-        .custom-renderer.no-padding {
-          padding: 0 !important;
-        }
-
-        h1 {
-          font-size: 2em;
-          margin: 1em 0 0.5em;
-        }
-        h2 {
-          font-size: 1.75em;
-          margin: 1em 0 0.5em;
-          margin-top: 0;
-        }
-        h3 {
-          font-size: 1.5em;
-          margin: 1em 0 0.5em;
-        }
-        p {
-          margin: 0.5em 0;
-        }
-        ul {
-          list-style-type: disc;
-          margin: 0.5em 0;
-          padding-left: 1.5em;
-        }
-        ol {
-          list-style-type: decimal;
-          margin: 0.5em 0;
-          padding-left: 1.5em;
-        }
-        li {
-          margin: 0.25em 0;
-        }
-
-        /* Inline styles from the formatting helper */
-        strong {
-          font-weight: bold;
-          color: #e74c3c;
-        }
-        em {
-          font-style: italic;
-          color: #8e44ad;
-        }
-        u {
-          text-decoration: underline;
-          color: #2980b9;
-        }
-        s {
-          text-decoration: line-through;
-          color: #95a5a6;
-        }
-        code {
-          background-color: #f5f5f5;
-          padding: 2px 4px;
-          border-radius: 4px;
-          font-family: monospace;
-        }
-
-        .youtube-video {
-          position: relative;
-          padding-bottom: 56.25%;
-          height: 0;
-          overflow: hidden;
-          margin: 1em 0;
-        }
-        .youtube-video iframe {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-        }
-
-        .image-container {
-          margin: 1em 0; /* default */
-          text-align: center;
-          border-radius: 8px;
-        }
-        .image-container.seamless {
-          margin: 0 !important;
-          padding: 0 !important;
-          border-radius: 0 !important;
-          line-height: 0 !important;
-        }
-
-        .image-container img {
-          width: 100%;
-          height: auto;
-          max-width: 100%;
-          object-fit: cover;
-        }
-
-        .caption {
-          font-size: 0.9em;
-          color: #666;
-          margin-top: 0.5em;
-        }
-        /* Also remove any margin from caption if we want it truly flush. */
-        .seamless-caption {
-          margin-top: 0 !important;
-        }
-
-        @media (max-width: 600px) {
-          .custom-renderer {
-            padding: 0 10px;
-          }
-          h1 {
-            font-size: 1.5em;
-          }
-          h2 {
-            font-size: 1.25em;
-          }
-          h3 {
-            font-size: 1em;
-          }
-        }
-      `}</style>
     </div>
   );
 };
