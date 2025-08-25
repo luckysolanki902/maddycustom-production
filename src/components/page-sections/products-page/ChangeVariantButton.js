@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import styles from "./styles/changevariantbutton.module.css";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -21,7 +21,16 @@ import {
 } from "@/store/slices/variantPreferenceSlice";
 import { Category } from "@mui/icons-material";
 
-export default function ChangeVariantButton({ category }) {
+/**
+ * Flexible variant selector usable in normal shop and B2B context.
+ * Props:
+ *  - category (required)
+ *  - mode: 'default' | 'b2b' (optional). If omitted, inferred from current pathname (/b2b prefix)
+ *  - buildUrl: optional custom (slug, ctx) => fullPath function (slug = variant.pageSlug starting with '/')
+ *  - b2bPrefix: prefix for B2B routes (default '/b2b')
+ *  - shopPrefix: prefix for normal routes (default '/shop')
+ */
+export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefix = '/b2b', shopPrefix = '/shop' }) {
   const [showPopup, setShowPopup] = useState(false);
   const [variants, setVariants] = useState([]);
   const [useMapping, setUseMapping] = useState(false);
@@ -31,6 +40,7 @@ export default function ChangeVariantButton({ category }) {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isSmallDevice = useMediaQuery("(max-width: 600px)");
   const router = useRouter();
+  const pathname = usePathname();
   const dispatch = useDispatch();
 
   const categoryPreferences = useSelector(
@@ -74,15 +84,25 @@ export default function ChangeVariantButton({ category }) {
     }
   }, [variants, hasSeenVariantPopup, dispatch, category._id, useMapping]);
 
-  // If no letter-mapping AND fewer than 2 variants, hide button
-  if (!useMapping && variants.length < 2) return null;
-
   /**
-   * Handle normal variant selection
+   * Determine context (B2B vs normal) & helpers
    */
+  const isB2B = useMemo(() => {
+    if (mode === 'b2b') return true;
+    if (mode === 'default') return false;
+    return pathname?.startsWith('/b2b');
+  }, [mode, pathname]);
+
+  const buildTarget = useCallback((slug) => {
+    if (buildUrl) return buildUrl(slug, { isB2B, category });
+    const base = isB2B ? b2bPrefix : shopPrefix; // both start with '/'
+    return `${base}${slug}`; // slug already begins with '/'
+  }, [buildUrl, isB2B, category, b2bPrefix, shopPrefix]);
+
   const handleVariantClick = (slug) => {
-    dispatch(setPageSlug({ categoryId: category._id, pageSlug: slug }));
-    router.push(`/shop${slug}`);
+    const target = buildTarget(slug);
+    dispatch(setPageSlug({ categoryId: category._id, pageSlug: target }));
+    router.push(target);
     setShowPopup(false);
   };
 
@@ -121,9 +141,9 @@ export default function ChangeVariantButton({ category }) {
     }
 
     // Construct the final route using the matched variant's pageSlug
-    const finalSlug = `/shop${matchedVariant.pageSlug}`;
-    dispatch(setPageSlug({ categoryId: category._id, pageSlug: finalSlug }));
-    router.push(finalSlug);
+  const finalSlug = buildTarget(matchedVariant.pageSlug);
+  dispatch(setPageSlug({ categoryId: category._id, pageSlug: finalSlug }));
+  router.push(finalSlug);
     setShowPopup(false);
   };
 
@@ -375,19 +395,22 @@ export default function ChangeVariantButton({ category }) {
   );
 
   return (
+  // If no letter-mapping AND fewer than 2 variants, hide button (placed after hooks to obey Rules of Hooks)
+  (!useMapping && variants.length < 2) ? null : (
     <>
       {/* The Button that triggers the dialog */}
       <div className={styles.bikeStyle} onClick={() => setShowPopup(true)}>
         {useMapping
-          ? "Customize Variant"
+          ? (isB2B ? 'Customize Variant' : 'Customize Variant')
           : category.name === "Tank Wraps"
-          ? "Change Tank Size"
-          : "Change Variant"}
+          ? (isB2B ? 'Change Tank Size' : 'Change Tank Size')
+          : (isB2B ? 'Change Variant' : 'Change Variant')}
       </div>
 
       {/* Render the appropriate dialog */}
       {!useMapping && renderVariantsDialog()}
       {useMapping && renderLetterMappingDialog()}
     </>
+    )
   );
 }

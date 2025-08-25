@@ -22,6 +22,8 @@ import uiReducer from './slices/uiSlice';
 import persistentUiReducer from './slices/persistentUiSlice'; // Import the new slice
 import displayAssetsReducer from './slices/displayAssetsSlice'; // Import display assets slice
 import navigationReducer from './slices/navigationSlice'; // Import navigation slice
+import b2bSelectionReducer from './slices/b2bSelectionSlice';
+import b2bFormReducer from './slices/b2bFormSlice';
 
 const rootReducer = combineReducers({
   cart: cartReducer,
@@ -33,14 +35,25 @@ const rootReducer = combineReducers({
   persistentUi: persistentUiReducer, // Add the new reducer
   displayAssets: displayAssetsReducer, // Add display assets reducer
   navigation: navigationReducer, // Add navigation reducer (not persisted for real-time state)
+  b2bSelection: b2bSelectionReducer,
+  b2bForm: b2bFormReducer,
 });
 
 const persistConfig = {
-  key: 'root_v6', // Incremented to handle new displayAssets structure
+  key: 'root_v7', // bump version after adding B2B persistence
   storage,
-  // Add 'displayAssets' to the whitelist for caching
-  whitelist: ['cart', 'orderForm', 'utm', 'variantPreference', 'userBehavior', 'persistentUi', 'displayAssets'],
-
+  // Persist B2B selection + form so quantities & form fields survive reloads
+  whitelist: [
+    'cart',
+    'orderForm',
+    'utm',
+    'variantPreference',
+    'userBehavior',
+    'persistentUi',
+    'displayAssets',
+    'b2bSelection',
+    'b2bForm'
+  ],
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
