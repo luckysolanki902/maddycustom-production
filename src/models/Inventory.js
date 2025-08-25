@@ -15,7 +15,7 @@ const InventorySchema = new mongoose.Schema({
     type: Number,
     required: true,
     default: 50,
-  },
+},
 }, { timestamps: true });
 
 module.exports = mongoose.models.Inventory || mongoose.model('Inventory', InventorySchema);
