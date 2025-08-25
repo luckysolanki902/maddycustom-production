@@ -20,6 +20,8 @@ export default function CategoryGrid({
     assets = [],
     loading = false,
     title = "Shop by Category",
+    b2bMode = false,
+    b2bPrefix = '/b2b'
 }) {
     // Keep only active + this component
     const data = useMemo(
@@ -95,13 +97,56 @@ export default function CategoryGrid({
             item?.media?.desktop ||
             item?.media?.mobile ||
             "/images/assets/placeholder-banner.jpg";
+        // In b2b mode force link to b2b path (strip existing /shop prefix if present)
+        let linkHref = item?.link || '#';
+        if (b2bMode) {
+            const toB2BLink = (raw) => {
+                if (!raw) return '#';
+                let pathname = raw;
+                let search = '';
+                let hash = '';
+                try {
+                    if (/^https?:\/\//i.test(raw)) {
+                        const u = new URL(raw);
+                        pathname = u.pathname || '/';
+                        search = u.search || '';
+                        hash = u.hash || '';
+                    } else {
+                        // extract search/hash if present in raw relative link
+                        const idxQ = raw.indexOf('?');
+                        const idxH = raw.indexOf('#');
+                        const cut = (i) => (i !== -1 ? raw.slice(i) : '');
+                        // Determine earliest special char
+                        const specials = [idxQ, idxH].filter(i => i !== -1).sort((a,b)=>a-b);
+                        if (specials.length) {
+                            pathname = raw.slice(0, specials[0]);
+                            if (idxQ !== -1) search = raw.slice(idxQ, idxH !== -1 && idxH > idxQ ? idxH : undefined);
+                            if (idxH !== -1) hash = raw.slice(idxH);
+                        }
+                    }
+                } catch (e) {
+                    // fallback keep raw
+                    pathname = raw;
+                }
+                // Normalize multiple leading slashes
+                pathname = pathname.replace(/\/+/g,'/');
+                if (pathname.startsWith('/b2b/')) return pathname + search + hash;
+                if (pathname === '/b2b') return pathname + search + hash;
+                if (pathname.startsWith('/shop')) {
+                    return pathname.replace(/^\/shop/, b2bPrefix) + search + hash;
+                }
+                // already absolute but not shop: prefix
+                return `${b2bPrefix}${pathname.startsWith('/') ? '' : '/'}${pathname}` + search + hash;
+            };
+            linkHref = toB2BLink(linkHref);
+        }
         return (
             <motion.div
                 variants={itemVariants}
                 whileHover={{ y: -1, transition: { duration: 0.15 } }}
                 layout
             >
-                <Link href={item?.link || "#"} className={styles.card} aria-label={item?.content || "Category"}>
+                <Link href={linkHref} className={styles.card} aria-label={item?.content || "Category"}>
                     <div className={styles.imgWrap}>
                         <Image
                             src={src}

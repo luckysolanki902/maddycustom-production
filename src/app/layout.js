@@ -24,6 +24,7 @@ import Footer from '@/components/layouts/Footer';
 import CartDrawer from '@/components/dialogs/CartDrawer';
 import CartInitializer from '@/components/utils/CartInitializer';
 import CouponTimerBanner from '@/components/showcase/banners/CouponTimerBanner';
+import ClientUIWrappers from '@/components/layouts/ClientUIWrappers';
 
 // Configure Krona One with its only available weight
 const kronaOne = Krona_One({
@@ -57,6 +58,7 @@ export default function RootLayout({ children }) {
   const websiteSchema = generateWebsiteSchema();
   const organizationSchema = generateOrganizationSchema();
 
+  // Runtime hook for pathname (client only pieces inside providers)
   return (
     <html lang="en" className={`${kronaOne.className} ${jost.className} ${montserrat.className}`}>
       <head>
@@ -86,17 +88,15 @@ export default function RootLayout({ children }) {
             <SearchCategoryDialog />
             <CartDrawer />
             <CartInitializer />
-
             {children}
-            <FloatingActionBar />
             <Footer />
-            <TimeTracker />
-            <LoginDialog />
-            <PathnameTracker />
-            <ScrollChecker />
+            {/* Client-only utilities (conditionally hidden in B2B) */}
+            <ClientUIWrappers />
           </ScrollProvider>
         </ReduxProvider>
       </body>
     </html>
   );
 }
+
+// Dummy component placeholder (real implementation moved to client file)

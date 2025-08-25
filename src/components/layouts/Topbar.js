@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import styles from './styles/topbar.module.css';
-import { ShoppingCart, Search, Menu } from '@mui/icons-material';
+import { ShoppingCart, Search, Menu, ArrowBackIosNew, Home as HomeIcon } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import Badge from '@mui/material/Badge';
 import { useSpring, animated } from 'react-spring';
@@ -14,10 +14,91 @@ import { typewriterStrings } from '@/lib/constants/typewriterCategories';
 import { useScrollContext } from '@/contexts/ScrollContext';
 
 import { toggleSidebar, openSearchDialog, openCartDrawer } from '@/store/slices/uiSlice';
+import { animated as motion } from 'react-spring';
+import { useRouter } from 'next/navigation';
+import { useSelector as useReduxSelector } from 'react-redux';
+import { useDispatch as useReduxDispatch } from 'react-redux';
+import { setDialogOpen } from '@/store/slices/b2bFormSlice';
+import dynamic from 'next/dynamic';
+
+const B2BOrderDialog = dynamic(() => import('../dialogs/B2BOrderDialog'), { ssr: false });
+
+// Minimal B2B Topbar component
+function B2BTopbar() {
+  const dispatch = useReduxDispatch();
+  const router = useRouter();
+  const pathname = usePathname();
+  const selection = useReduxSelector(s => s.b2bSelection.items);
+  const dialogOpen = useReduxSelector(s=>s.b2bForm.dialogOpen);
+  const totalQty = selection.reduce((a, i) => a + (i.quantity || 0), 0);
+  const disabled = totalQty === 0;
+  // Close dialog automatically on confirmation pages (prevents reopen due to persisted state)
+  React.useEffect(()=>{
+    if(pathname?.startsWith('/b2b/confirmation') && dialogOpen){
+      dispatch(setDialogOpen(false));
+    }
+  },[pathname, dialogOpen, dispatch]);
+  const hideDialog = pathname?.startsWith('/b2b/confirmation');
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1 && !pathname.startsWith('/b2b')) {
+      router.back();
+    } else {
+      router.push('/b2b');
+    }
+  };
+
+  const atB2BHome = pathname === '/b2b' || pathname === '/b2b/';
+
+  return (
+    <div className={styles.b2bTopbarWrapper}>
+      <div className={styles.b2bLeftCluster}>
+        <button
+          type="button"
+            aria-label="Go back"
+            onClick={handleBack}
+            disabled={atB2BHome && (typeof window !== 'undefined' && window.history.length <= 1)}
+            className={`${styles.b2bBackBtn} ${(atB2BHome && (typeof window !== 'undefined' && window.history.length <= 1)) ? styles.b2bBackBtnDisabled : ''}`}
+        >
+          <ArrowBackIosNew fontSize="small" />
+        </button>
+        <div className={styles.b2bLogoWrap} onClick={()=>router.push('/b2b')} title="B2B Home">
+          <Image
+            src={(process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '') + '/assets/logos/maddy_custom3_main_logo.png'}
+            alt='maddycustom'
+            width={120}
+            height={52}
+            className={styles.b2bLogo}
+            priority
+          />
+        </div>
+        <Link href="/b2b" className={styles.b2bHomeLink} aria-label="B2B Home">
+          <HomeIcon fontSize="inherit" className={styles.b2bHomeIcon} />
+          <span className={styles.b2bHomeText}>Home</span>
+        </Link>
+        <span className={styles.b2bTitle}>B2B Bulk Request</span>
+      </div>
+      <div className={styles.b2bRightCluster}>
+        <Link href="/" className={styles.b2bMainSiteLink} title="Go to consumer site">
+          Visit Main Site
+        </Link>
+        <button
+          disabled={disabled}
+          onClick={() => dispatch(setDialogOpen(true))}
+          className={styles.b2bPrimaryCta}
+          title={disabled ? 'Select at least one product to continue' : 'Proceed to send inquiry'}
+        >
+          {disabled ? 'Select Products' : `Review & Send (${totalQty})`}
+        </button>
+      </div>
+      {!hideDialog && <B2BOrderDialog />}
+    </div>
+  );
+}
 
 const Topbar = () => {
   const pathname = usePathname();
   const dispatch = useDispatch();
+  const router = useRouter();
   const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const [searchText, setSearchText] = useState('');
 
@@ -42,6 +123,11 @@ const Topbar = () => {
   const handleCartClick = () => {
     dispatch(openCartDrawer({ source: 'top' }));
   };
+
+  // B2B mode detection
+  if (pathname?.startsWith('/b2b')) {
+    return <B2BTopbar />;
+  }
 
   return (
     <animated.nav style={animationProps} className={styles.topbar}>

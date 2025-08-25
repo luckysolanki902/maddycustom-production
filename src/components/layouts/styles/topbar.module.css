@@ -20,6 +20,74 @@
     transform: translateZ(0); /* Force hardware acceleration */
 }
 
+/* ===================== B2B TOPBAR ADDITIONS ===================== */
+.b2bTopbarWrapper {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 22px;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 150;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-bottom: 1px solid #ececec;
+    font-family: "Jost", sans-serif;
+}
+
+.b2bLeftCluster { display:flex; align-items:center; gap:10px; min-width:0; }
+.b2bRightCluster { display:flex; align-items:center; gap:14px; }
+
+.b2bBackBtn { 
+    width:40px; height:40px; border-radius:14px; border:1px solid #e2e2e2; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#222; transition:all .25s; font-size:0; box-shadow:0 2px 4px rgba(0,0,0,0.04);
+}
+.b2bBackBtn:hover { background:#111; color:#fff; border-color:#111; }
+.b2bBackBtnDisabled { opacity:.45; cursor:default; }
+.b2bBackBtnDisabled:hover { background:#fff; color:#222; border-color:#e2e2e2; }
+
+.b2bLogoWrap { cursor:pointer; display:flex; align-items:center; }
+.b2bLogo { height:46px; width:auto; object-fit:contain; }
+
+.b2bHomeLink { display:inline-flex; align-items:center; gap:6px; text-decoration:none; font-size:14px; font-weight:500; color:#2d2d2d; padding:8px 14px; border-radius:12px; line-height:1; border:1px solid #e8e8e8; background:#fff; transition:all .25s; }
+.b2bHomeLink:hover { background:#111; color:#fff; border-color:#111; }
+.b2bHomeIcon { font-size:16px; }
+.b2bHomeText { display:inline-block; }
+
+.b2bTitle { font-size:14px; font-weight:500; color:#2d2d2d; white-space:nowrap; }
+
+.b2bPrimaryCta { background:#2d2d2d; color:#fff; border:none; padding:12px 22px; border-radius:10px; font-size:14px; font-weight:600; letter-spacing:.3px; cursor:pointer; transition:background .25s, transform .25s, box-shadow .25s; box-shadow:0 4px 12px -2px rgba(0,0,0,0.18); }
+.b2bPrimaryCta:disabled { background:#c5c5c5; cursor:not-allowed; box-shadow:none; }
+.b2bPrimaryCta:not(:disabled):hover { background:#111; transform:translateY(-2px); }
+.b2bPrimaryCta:not(:disabled):active { transform:translateY(0); }
+
+.b2bMainSiteLink { text-decoration:none; font-size:13px; font-weight:500; color:#2d2d2d; padding:10px 18px; border-radius:12px; background:#fff; border:1px solid #e3e3e3; transition:all .25s; box-shadow:0 2px 4px rgba(0,0,0,0.04); }
+.b2bMainSiteLink:hover { background:#111; color:#fff; border-color:#111; }
+.b2bMainSiteLink:active { transform:translateY(1px); }
+
+@media (max-width: 900px) {
+    .b2bMainSiteLink { display:none; }
+}
+
+@media (max-width: 780px) {
+    .b2bHomeText { display:none; }
+    .b2bHomeLink { padding:8px 10px; }
+    .b2bTitle { display:none; }
+    .b2bPrimaryCta { padding:10px 16px; font-size:13px; }
+    .b2bBackBtn { width:36px; height:36px; border-radius:12px; }
+    .b2bLogo { height:40px; }
+}
+
+@media (max-width: 460px) {
+    .b2bPrimaryCta { font-size:12px; padding:8px 14px; }
+    .b2bBackBtn { width:34px; height:34px; }
+    .b2bHomeLink { padding:6px 8px; }
+}
+
 /* Left Section */
 .leftSection {
     display: flex;
