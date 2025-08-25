@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import CopyableCode from '@/components/utils/CopyableCode';
 import connectToDb from '@/lib/middleware/connectToDb';
@@ -58,7 +59,7 @@ export default async function B2BConfirmationPage({ params }) {
           ))}
         </div>
       </div>
-      <a href='/b2b' style={{ textDecoration: 'none', fontSize: 14, color: '#2d2d2d', fontWeight: 600 }}>← Back to B2B Home</a>
+  <Link href='/b2b' style={{ textDecoration: 'none', fontSize: 14, color: '#2d2d2d', fontWeight: 600 }}>← Back to B2B Home</Link>
     </main>
   );
 }
