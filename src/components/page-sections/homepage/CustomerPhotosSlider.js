@@ -5,28 +5,26 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import styles from './styles/ProductImageSlider.module.css';
 
-export default function ProductImageSlider() {
-  // your CloudFront base URL
-  const baseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL.replace(/\/$/, '');
+/**
+ * CustomerPhotosSlider
+ * Now accepts dynamic display assets (filtered in page) instead of hard-coded list.
+ * Pass in an array of asset objects where each has media.desktop / media.mobile.
+ */
+export default function CustomerPhotosSlider({ assets = [] }) {
+  const rawBase = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '';
+  const baseUrl = rawBase.replace(/\/$/, '');
 
-  // hard-coded list of image paths on AWS
-  const imageKeys = [
-    '/assets/posters/1product-image-h.jpg',
-    '/assets/posters/1product-image-v.jpg',
-    '/assets/posters/2product-image-h.jpg',
-    '/assets/posters/2product-image-v.jpg',
-    '/assets/posters/3product-image-h.jpg',
-    '/assets/posters/3product-image-v.jpg',
-    '/assets/posters/4product-image-h.jpg',
-    '/assets/posters/4product-image-v.jpg',
-    '/assets/posters/5product-image-v.jpg',
-    '/assets/posters/6product-image-v.jpg',
-    '/assets/posters/7product-image-v.jpg',
-    '/assets/posters/8product-image-v.jpg',
-  ];
+  // Derive image URLs from assets
+  const images = assets
+    .map(a => a?.media?.desktop || a?.media?.mobile || null)
+    .filter(Boolean)
+    .map(path => {
+      if (!path) return null;
+      return path.startsWith('http') ? path : `${baseUrl}${path.startsWith('/') ? path : '/' + path}`;
+    })
+    .filter(Boolean);
 
-  // build full URLs
-  const images = imageKeys.map(key => `${baseUrl}${key}`);
+  if (!images.length) return null; // nothing to show
 
   // Animation variants for smooth entry
   const containerVariants = {
@@ -84,7 +82,7 @@ export default function ProductImageSlider() {
       whileInView="visible"
       viewport={{ once: true, amount: 0.1 }}
     >
-      {images.map((src, idx) => (
+  {images.map((src, idx) => (
         <motion.div 
           className={styles.imageWrapper} 
           key={idx}
@@ -108,7 +106,7 @@ export default function ProductImageSlider() {
         className={styles.shareCard} 
         variants={itemVariants}
         whileHover={shakeVariants.hover}
-        onClick={() => window.open('mailto:contact.maddycustoms@gmail.com?subject=My MaddyCustom Photos', '_blank')}
+  onClick={() => window.open('mailto:contact.maddycustoms@gmail.com?subject=My MaddyCustom Photos', '_blank')}
       >
         <div className={styles.shareCardContent}>
           <div className={styles.shareText}>

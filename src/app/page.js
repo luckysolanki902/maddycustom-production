@@ -13,7 +13,7 @@ import { Box } from '@mui/material';
 import ProductCategorySlider from '@/components/page-sections/homepage/ProductCategorySlider';
 import SingleCategorySlider from '@/components/showcase/carousels/SingleCategoryCarousel';
 import VoiceOfOurCustomers from '@/components/page-sections/homepage/VoiceOfCustomers';
-import ProductImageSlider from '@/components/page-sections/homepage/ProductImageSlider';
+import CustomerPhotosSlider from '@/components/page-sections/homepage/CustomerPhotosSlider';
 
 export async function generateMetadata() {
   return createMetadata({
@@ -32,6 +32,18 @@ const HomePage = async () => {
 
   const { categories, variants } = searchCategoriesData;
   const { assets: displayAssets = [] } = displayAssetsData;
+
+  // Filter assets for customer photos section (componentName or type heuristic)
+  const customerPhotoAssets = (displayAssets || [])
+    .filter(a => a?.componentName === 'customer-photos-section' || a?.componentId?.includes('customer-photo'))
+    .sort((a,b)=>{
+      const pa = a.position || '0';
+      const pb = b.position || '0';
+      const na = parseFloat(pa) || 0;
+      const nb = parseFloat(pb) || 0;
+      if (na !== nb) return na - nb; // numeric first
+      return pa.localeCompare(pb, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
   return (
     <>
@@ -65,14 +77,15 @@ const HomePage = async () => {
         <CarIntExtWrapper assets={displayAssets} />
 
         <WhyMaddy />
-        <VoiceOfOurCustomers />
-        <ProductImageSlider/>
+  <VoiceOfOurCustomers />
+  <CustomerPhotosSlider assets={customerPhotoAssets} />
 
 
       </main>
     </>
   );
 };
+
 
 export default HomePage;
 

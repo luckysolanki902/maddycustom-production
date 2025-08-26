@@ -223,6 +223,9 @@ export async function POST(request) {
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 1000; // in milliseconds
 
+  // Hoist event name for access in catch (avoid ReferenceError)
+  let requestedEventName = 'Unknown';
+
   // Check if access token is available
   if (!access_token) {
     console.error('FB_PIXEL_ACCESS_TOKEN is not defined');
@@ -234,6 +237,7 @@ export async function POST(request) {
 
   try {
     const { eventName, options = {} } = await request.json();
+    requestedEventName = eventName || 'Unknown';
     
     // Only log detailed info for non-PageView events
     const isPageView = eventName === 'PageView';
@@ -522,7 +526,7 @@ export async function POST(request) {
     }
 
     // Enhanced warning system
-    if (!hasUserIdentifiers && !isPageView) {
+  if (!hasUserIdentifiers && !isPageView) {
       console.warn(`⚠️ Low match quality for ${eventName} - No user identifiers available`);
       console.warn('   Consider implementing:');
       console.warn('   - Email/phone collection on forms');
@@ -576,9 +580,9 @@ export async function POST(request) {
       status: err.response?.status || null,
       details: err.response || null,
     };
-    
-    if (eventName !== 'PageView') {
-      console.error(`Final Error sending ${eventName || 'unknown event'} to Facebook:`, errorDetails);
+    // Avoid ReferenceError by using hoisted requestedEventName
+    if (requestedEventName !== 'PageView') {
+      console.error(`Final Error sending ${requestedEventName} to Facebook:`, errorDetails);
     }
     
     return NextResponse.json(
