@@ -46,6 +46,7 @@ export default function TrackPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [orderDetails, setOrderDetails] = useState(null);
+  const [groupInfo, setGroupInfo] = useState(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
 
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
@@ -117,6 +118,7 @@ export default function TrackPage() {
           if (response.ok) {
             if (data.trackingData) {
               setOrderDetails(data.trackingData);
+              setGroupInfo(data.group || null);
               setShowDetailDialog(true);
             } else if (data.trackUrl) {
               window.open(data.trackUrl, "_blank");
@@ -151,12 +153,12 @@ export default function TrackPage() {
 
     try {
       const response = await fetch(`/api/order/track?orderId=${id}`);
-      const data = await response.json();
+  const data = await response.json();
 
       if (response.ok) {
         if (data.trackingData) {
-          // If we have tracking data, show it in the dialog
           setOrderDetails(data.trackingData);
+          setGroupInfo(data.group || null);
           setShowDetailDialog(true);
         } else if (data.trackUrl) {
           // If we have a redirect URL, open it in a new tab
@@ -557,7 +559,7 @@ export default function TrackPage() {
           }}
         />
 
-        <DialogTitle sx={{
+          <DialogTitle sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -583,6 +585,35 @@ export default function TrackPage() {
         <DialogContent sx={{ padding: 0 }}>
           {orderDetails && (
             <Box sx={{ color: "#333", padding: "1.5rem" }}>
+              {groupInfo && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" color="#2d2d2d" fontWeight="600" gutterBottom>
+                    Grouped Order Summary
+                  </Typography>
+                  <Paper sx={{ p: 2, borderRadius: '12px', bgcolor: '#f3f4f6', mb:2 }}>
+                    <Typography variant="body2" color="#555">Group ID: <strong>{groupInfo.groupId}</strong></Typography>
+                    <Typography variant="body2" color="#555">Total Orders: {groupInfo.orders?.length || 0}</Typography>
+                    <Typography variant="body2" color="#555">Total Amount: ₹{groupInfo.aggregate?.total || 0}</Typography>
+                    {(groupInfo.aggregate?.dueCod || 0) > 0 && (
+                      <Typography variant="body2" color="#555">Remaining COD: ₹{groupInfo.aggregate.dueCod}</Typography>
+                    )}
+                  </Paper>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {groupInfo.orders?.map(o => (
+                      <Paper key={o._id} sx={{ p:1.5, display:'flex', justifyContent:'space-between', alignItems:'center', borderRadius:'10px', bgcolor: '#fafafa', border:'1px solid #eee' }}>
+                        <Box>
+                          <Typography variant="body2" fontWeight={600}>Order: {o._id}</Typography>
+                          <Typography variant="caption" color="#666">Partition: {o.partitionKey || 'n/a'}</Typography>
+                        </Box>
+                        <Box sx={{ display:'flex', gap:1, alignItems:'center' }}>
+                          <Chip size="small" label={o.paymentStatus} />
+                          <Chip size="small" label={o.deliveryStatus} color={o.deliveryStatus==='delivered' ? 'success':'default'} />
+                        </Box>
+                      </Paper>
+                    ))}
+                  </Box>
+                </Box>
+              )}
               <Box sx={{
                 display: "flex",
                 flexDirection: { xs: "column", sm: "row" },

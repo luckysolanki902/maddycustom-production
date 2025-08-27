@@ -27,8 +27,7 @@ export default async function OrderPage({ params }) {
     notFound();
     return null;
   }
-
-  const { order } = data;
+  const { order, group } = data;
 
   const formatDate = (dateString) => {
     const options = {
@@ -86,12 +85,43 @@ export default async function OrderPage({ params }) {
         {/* <Typography variant="h6">{orderId}</Typography> */}
       </Box>
 
-      {/* Products Section */}
-      <PurchasedProductSlider items={order.items} baseImageUrl={baseImageUrl} />
+      {/* Products Section / Grouped Orders */}
+      {group ? (
+        <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 4, px: 2, pb: 4 }}>
+          <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>Grouped Orders</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb:2 }}>Your purchase was split into {group.orders.length} orders for optimized processing & shipping.</Typography>
+          {group.orders.map(go => (
+            <Box key={go._id} sx={{ border: '1px solid #e0e0e0', borderRadius: 2, p: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent:'space-between', alignItems:'center', mb:1 }}>
+                <Typography variant="subtitle1" fontWeight={600}>Order ID: {go._id}</Typography>
+                <Typography variant="caption" color="text.secondary">Partition: {go.partitionKey || 'n/a'} {go.isGroupPrimary && '(Primary)'}</Typography>
+              </Box>
+              {String(go._id) === String(order._id) ? (
+                <PurchasedProductSlider items={order.items} baseImageUrl={baseImageUrl} />
+              ) : (
+                <Typography variant="body2" color="text.secondary">Open this order to view its items.</Typography>
+              )}
+              <Box sx={{ display:'flex', gap:3, mt:1, flexWrap:'wrap' }}>
+                <ChipLike label={`Status: ${go.paymentStatus}`} />
+                <ChipLike label={`Delivery: ${go.deliveryStatus}`} />
+                <ChipLike label={`Total: ₹${go.totalAmount}`} />
+                {go.amountDueCod > 0 && <ChipLike label={`COD Due: ₹${go.amountDueCod}`} />}
+              </Box>
+            </Box>
+          ))}
+          <Box sx={{ border:'1px dashed #ccc', borderRadius:2, p:2 }}>
+            <Typography variant="subtitle2" fontWeight={600}>Group Totals</Typography>
+            <Typography variant="body2">Total: ₹{group.aggregate.total}</Typography>
+            {group.aggregate.dueCod > 0 && <Typography variant="body2">Remaining COD: ₹{group.aggregate.dueCod}</Typography>}
+          </Box>
+        </Box>
+      ) : (
+        <PurchasedProductSlider items={order.items} baseImageUrl={baseImageUrl} />
+      )}
       {/* Community */}
       <CommunityCard />
       {/* Order Details Section */}
-      <OrderDetails order={order} formatDate={formatDate} />
+  <OrderDetails order={order} formatDate={formatDate} />
 
       {/* Unique Freebies Section */}
       {/* {uniqueFreebies.length > 0 && (
@@ -112,5 +142,19 @@ export default async function OrderPage({ params }) {
       {/* Contact Us Section */}
       {/* <ContactUs /> */}
     </Box>
+  );
+}
+
+// Inline lightweight chip-like component (avoids extra import churn)
+function ChipLike({ label }) {
+  return (
+    <span style={{
+      background:'#f5f5f5',
+      padding:'4px 10px',
+      borderRadius: '999px',
+      fontSize: '12px',
+      fontWeight: 500,
+      border: '1px solid #e0e0e0'
+    }}>{label}</span>
   );
 }

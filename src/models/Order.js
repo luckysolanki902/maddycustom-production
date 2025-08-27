@@ -320,6 +320,62 @@ const OrderSchema = new mongoose.Schema(
       ref: 'UTMHistory',
       index: true,
     },
+
+    // ---------------- Grouped / Partitioned Orders -----------------
+    // When a single logical checkout is split into multiple physical orders
+    groupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      index: true,
+      default: null,
+    },
+    partitionKey: {
+      type: String,
+      index: true,
+      default: null, // e.g. 'inventory', 'nonInventory'
+    },
+    isGroupPrimary: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    // Denormalized list of sibling order ids (excluding self optionally)
+    linkedOrders: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Order',
+      }
+    ],
+    parentPaymentOrder: {
+      // If not primary, reference the primary order that owns Razorpay orderId
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Order',
+      default: null,
+      index: true,
+    },
+    groupPaymentLocked: {
+      // Set true (optimistic locking) once online payment distribution applied
+      type: Boolean,
+      default: false,
+    },
+    // Store per-partition allocation metadata for transparency & reconciliation
+    groupAllocation: {
+      subtotal: { type: Number, default: 0 },              // Raw subtotal of this partition
+      discountPortion: { type: Number, default: 0 },        // Discount allocated to this order
+      extraChargesPortion: { type: Number, default: 0 },    // Charges allocated
+      totalAfterDiscount: { type: Number, default: 0 },     // subtotal - discountPortion
+      finalTotal: { type: Number, default: 0 },             // totalAfterDiscount + extraChargesPortion (== totalAmount)
+      onlinePortion: { type: Number, default: 0 },          // Intended online amount share
+      codPortion: { type: Number, default: 0 },             // Intended COD amount share
+    },
+    // For future recalculation (e.g., cancellation adjustments) we keep original group aggregates on primary
+    originalGroupSnapshot: {
+      subtotalGroup: { type: Number, default: 0 },
+      discountGroup: { type: Number, default: 0 },
+      extraChargesGroup: { type: Number, default: 0 },
+      finalTotalGroup: { type: Number, default: 0 },
+      onlineGroupTotal: { type: Number, default: 0 },
+      codGroupTotal: { type: Number, default: 0 },
+    },
   },
   { timestamps: true }
 );
@@ -361,6 +417,12 @@ if (mongoose.models.Order) {
 }
 // Indexes for better performance
 OrderSchema.index({ 'address.receiverName': 'text', 'address.receiverPhoneNumber': 'text' });
+// Grouping & payment performance indexes
+OrderSchema.index({ groupId: 1, isGroupPrimary: 1 });
+OrderSchema.index({ groupId: 1, partitionKey: 1 });
+OrderSchema.index({ groupId: 1, 'paymentDetails.amountDueOnline': 1 });
+OrderSchema.index({ 'paymentDetails.razorpayDetails.orderId': 1 });
+OrderSchema.index({ paymentStatus: 1, deliveryStatus: 1 });
 
 
 module.exports = mongoose.models.Order || mongoose.model('Order', OrderSchema);

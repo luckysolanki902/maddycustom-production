@@ -47,14 +47,56 @@ export async function POST(request) {
 
     await connectToDatabase();
 
-    const order = await Order.findById(orderId).exec();
+  let order = await Order.findById(orderId).exec();
     if (!order) {
       // console.warn(`Payment verification failed: Order not found for ID: ${orderId}`);
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
+    // If this order belongs to a group and is not primary, fetch primary for payment distribution
+    if (order.groupId && !order.isGroupPrimary && order.parentPaymentOrder) {
+      const primary = await Order.findById(order.parentPaymentOrder).exec();
+      if (primary) order = primary;
+    }
+
+    // Group distribution path
+    if (order.isGroupPrimary && order.groupId) {
+      if (order.groupPaymentLocked) {
+        return NextResponse.json({ message: 'Group payment already processed.' }, { status: 200 });
+      }
+      // Gather all group orders
+      const groupOrders = await Order.find({ groupId: order.groupId }).exec();
+      const totalOnlineExpected = groupOrders.reduce((s, o) => s + o.paymentDetails.amountDueOnline, 0);
+      // Basic assumption: full capture happened for expected online; client verify triggered post success page
+      // We don't verify amount value here (signature already validated) - web hook will perform deeper reconciliation.
+      for (const g of groupOrders) {
+        if (g.paymentDetails.amountDueOnline > 0) {
+          g.paymentDetails.amountPaidOnline += g.paymentDetails.amountDueOnline;
+          g.paymentDetails.amountDueOnline = 0;
+        }
+        // Update paymentStatus per order
+        if (g.paymentDetails.amountDueCod > 0) {
+          g.paymentStatus = 'paidPartially';
+        } else {
+          g.paymentStatus = 'allPaid';
+        }
+      }
+      order.groupPaymentLocked = true;
+      // Increment coupon usage once (primary only)
+      if (order.couponApplied?.length) {
+        const applied = order.couponApplied[0];
+        if (applied.couponCode && !applied.incrementedCouponUsage) {
+          try {
+            const coupon = await Coupon.findOne({ code: applied.couponCode }).exec();
+            if (coupon) { coupon.usageCount += 1; await coupon.save(); applied.incrementedCouponUsage = true; }
+          } catch (e) { console.error('Coupon increment failed (verify route group):', e.message); }
+        }
+      }
+      await Promise.all(groupOrders.map(o => o.save()));
+      return NextResponse.json({ message: 'Group payment verified.' }, { status: 200 });
+    }
+
     if (['allPaid', 'paidPartially'].includes(order.paymentStatus)) {
-      // console.warn(`Payment verification skipped: Order ID: ${orderId} already in status '${order.paymentStatus}'.`);
       return NextResponse.json({ message: 'Order already processed.' }, { status: 200 });
     }
 
@@ -96,8 +138,8 @@ export async function POST(request) {
       }
     }
 
-    await order.save();
-    return NextResponse.json({ message: 'Payment verified successfully.' }, { status: 200 });
+  await order.save();
+  return NextResponse.json({ message: 'Payment verified successfully.' }, { status: 200 });
   } catch (error) {
     console.error('Error in payment verification API:', error.message);
     return NextResponse.json({ error: 'Internal Server Error.' }, { status: 500 });

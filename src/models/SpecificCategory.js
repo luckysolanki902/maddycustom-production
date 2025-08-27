@@ -145,6 +145,13 @@ const SpecificCategorySchema = new mongoose.Schema(
       type: [LetterMappingGroupSchema],
       default: [],
     },
+    // Inventory mode: whether this category uses inventory tracking or on-demand fulfillment
+    inventoryMode: {
+      type: String,
+      enum: ['inventory', 'on-demand'],
+      default: 'on-demand',
+    },
+
     // temproary-review-count
     tempReviewCount: {
       type: Number,

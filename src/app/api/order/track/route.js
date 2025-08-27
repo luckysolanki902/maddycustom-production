@@ -15,8 +15,20 @@ export async function GET(request) {
     await connectToDatabase();
 
     // Verify if the order exists and check the delivery status
-    const order = await Order.findById(orderId);    if (!order) {
+    let order = await Order.findById(orderId);
+    if (!order) {
       return NextResponse.json({ message: 'Order not found. Please check your Order ID and try again.' }, { status: 404 });
+    }
+
+    // If belongs to a group, gather sibling summary (non-blocking for downstream tracking merge)
+    let groupSummary = null;
+    if (order.groupId) {
+      const siblings = await Order.find({ groupId: order.groupId }).select('_id partitionKey paymentStatus deliveryStatus shiprocketOrderId totalAmount paymentDetails.amountDueCod paymentDetails.amountDueOnline isGroupPrimary').lean();
+      const aggregate = siblings.reduce((acc, s) => {
+        acc.total += s.totalAmount; acc.dueCod += s.paymentDetails.amountDueCod; acc.dueOnline += s.paymentDetails.amountDueOnline; return acc;
+      }, { total: 0, dueCod: 0, dueOnline: 0 });
+      groupSummary = { groupId: order.groupId, orders: siblings, aggregate };
+      // prefer primary order for tracking if shiprocket missing here
     }
     
     if (order.deliveryStatus === 'pending') {
@@ -34,7 +46,7 @@ export async function GET(request) {
         console.log('Error fetching user email:', err);
       }
       
-      return NextResponse.json({
+  return NextResponse.json({
         message: 'Your order is still being processed. We\'ll update the tracking once it ships!',
         trackingData: {
           orderId: orderId,
@@ -76,7 +88,8 @@ export async function GET(request) {
               completed: false
             }
           ]
-        }
+  },
+  group: groupSummary
       }, { status: 200 });
     }
 
@@ -160,7 +173,8 @@ export async function GET(request) {
       return NextResponse.json({ 
         message: 'Tracking information found!',
         trackUrl: trackUrl,
-        trackingData: enhancedTrackingData
+        trackingData: enhancedTrackingData,
+        group: groupSummary
       }, { status: 200 });
     } else {      // Get user information for email
       let userEmail = null;
@@ -176,7 +190,7 @@ export async function GET(request) {
         `${order.address.addressLine1}${order.address.addressLine2 ? ', ' + order.address.addressLine2 : ''}, ${order.address.city}, ${order.address.state}, ${order.address.pincode}` : 
         'Address pending';
 
-      return NextResponse.json({ 
+  return NextResponse.json({ 
         message: 'Your order will be shipped soon! Check back for tracking updates.',
         trackingData: {
           orderId: orderId,
@@ -206,7 +220,8 @@ export async function GET(request) {
               completed: false
             }
           ]
-        }
+  },
+  group: groupSummary
       }, { status: 200 });
     }
   } catch (error) {

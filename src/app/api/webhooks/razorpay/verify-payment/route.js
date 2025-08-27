@@ -123,7 +123,7 @@ export async function POST(request) {
     // -----------------------------
     // 3. Find the Order
     // -----------------------------
-    const order = await Order.findById(internalOrderId).session(session);
+  let order = await Order.findById(internalOrderId).session(session);
     if (!order) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
@@ -143,6 +143,48 @@ export async function POST(request) {
     // 4. Handle Payment Updates
     // -----------------------------
     if (razorpayEvent === 'payment.captured') {
+      // Grouped payment path first
+      if (order.isGroupPrimary && order.groupId) {
+        if (!order.groupPaymentLocked) {
+          const groupOrders = await Order.find({ groupId: order.groupId }).session(session);
+          const totalRemainingOnline = groupOrders.reduce((s, o) => s + o.paymentDetails.amountDueOnline, 0);
+          const paymentAmount = payment.amount / 100;
+          // If full payment captured (usual case)
+          const proportionate = paymentAmount >= totalRemainingOnline - 0.01;
+          for (const g of groupOrders) {
+            let toApply = g.paymentDetails.amountDueOnline;
+            if (!proportionate && totalRemainingOnline > 0) {
+              // proportional partial capture scenario
+              const ratio = g.paymentDetails.amountDueOnline / totalRemainingOnline;
+              toApply = Math.min(g.paymentDetails.amountDueOnline, Math.floor(paymentAmount * ratio));
+            }
+            if (toApply > 0) {
+              g.paymentDetails.amountPaidOnline += toApply;
+              g.paymentDetails.amountDueOnline -= toApply;
+            }
+            if (g.paymentDetails.amountDueOnline <= 0 && g.paymentDetails.amountDueCod <= 0) {
+              g.paymentStatus = 'allPaid';
+            } else if (g.paymentDetails.amountPaidOnline > 0 && g.paymentDetails.amountDueCod > 0) {
+              g.paymentStatus = 'paidPartially';
+            }
+          }
+          order.groupPaymentLocked = true;
+          // Coupon usage increment only once
+          if (order.couponApplied?.length) {
+            const appliedCoupon = order.couponApplied[0];
+            if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
+              const couponDoc = await Coupon.findOne({ code: appliedCoupon.couponCode }).session(session);
+              if (couponDoc) {
+                couponDoc.usageCount += 1; await couponDoc.save({ session });
+                appliedCoupon.incrementedCouponUsage = true;
+                order.couponApplied = order.couponApplied.map(c => c.couponCode === appliedCoupon.couponCode ? { ...c.toObject(), incrementedCouponUsage: true } : c);
+              }
+            }
+          }
+          await Promise.all(groupOrders.map(g => g.save({ session })));
+        }
+      }
+      // Single / non-primary path
       if (['pending', 'failed'].includes(order.paymentStatus)) {
         const paymentAmount = payment.amount / 100; // convert paise -> INR
 
@@ -196,8 +238,8 @@ export async function POST(request) {
       // 4a. Deduct inventory (only once)
       if (
         (order.paymentStatus === 'paidPartially' || order.paymentStatus === 'allPaid') &&
-        !order.inventoryDeducted && // ensure we don't deduct twice
-        !order.isTestingOrder // skip for test orders
+        !order.inventoryDeducted &&
+        !order.isTestingOrder
       ) {
         logs.push(`[${timestampStr}] Deducting inventory for order ${order._id}`);
         // Use a fixed delta of -1 per unit purchased.
@@ -248,7 +290,7 @@ export async function POST(request) {
     // -----------------------------
     // 5. Possibly Create Shiprocket Order
     // -----------------------------
-    const latestOrder = await Order.findById(internalOrderId)
+  const latestOrder = await Order.findById(internalOrderId)
       .populate({
         path: 'items.product',
         populate: {

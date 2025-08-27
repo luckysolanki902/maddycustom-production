@@ -12,6 +12,8 @@ import Option from '@/models/Option';
 import moment from 'moment-timezone';
 import Razorpay from 'razorpay';
 import shortid from 'shortid';
+import mongoose from 'mongoose';
+import { partitionCartItems, buildPartitionFinancials, choosePrimaryPartition, newGroupId } from '@/lib/utils/orderPartitioning';
 
 // Initialize Razorpay instance outside the handler for reuse
 const razorpayInstance = new Razorpay({
@@ -96,49 +98,51 @@ export async function POST(request) {
       serverDataPromises.push(Promise.resolve(null)); // Placeholder if no coupon
     }
 
-    // 4. Fetch Product and Option details for price verification
+  // 4. Fetch Product and Option details for price verification (also gather docs for partition logic)
     const productAndOptionIds = clientItems.map(item => ({
       productId: item.product,
       optionId: item.option || null,
       originalClientItem: item // Keep reference to client item for quantity
     }));
 
-    const productPricePromises = productAndOptionIds.map(async itemIdentifier => {
-      const product = await Product.findById(itemIdentifier.productId).select('price MRP optionsAvailable sku name specificCategory').lean();
-      if (!product) throw new Error(`Product not found: ${itemIdentifier.productId}`);
-      
-      let effectivePrice = product.price;
-      let effectiveMRP = product.MRP;
-      let optionSKU = product.sku;
-      let specificCategoryFromProduct = product.specificCategory;
-
-      if (itemIdentifier.optionId && product.optionsAvailable) {
-        const option = await Option.findById(itemIdentifier.optionId).select('optionDetails price sku').lean(); // Assuming Option schema has a price field
-        if (!option) throw new Error(`Option not found: ${itemIdentifier.optionId} for product ${itemIdentifier.productId}`);
-        // If options have their own price, use it. Otherwise, product price is used.
-        // For now, assuming option does not override product.price directly but might have variant pricing logic not shown.
-        // If Option model has a direct price field that should be used, uncomment and adjust:
-        // if (option.price) { effectivePrice = option.price; }
-        // For now, we rely on product.price as the base, assuming options primarily define characteristics or SKU changes.
-        optionSKU = option.sku || product.sku; 
+    // --- Performance Optimization: Batch fetch products & options ---
+    const productIds = [...new Set(productAndOptionIds.map(i => i.productId))];
+    const optionIds = [...new Set(productAndOptionIds.filter(i => i.optionId).map(i => i.optionId))];
+    const [productDocs, optionDocs] = await Promise.all([
+      Product.find({ _id: { $in: productIds } }).select('price MRP optionsAvailable sku name specificCategory inventoryData').lean(),
+      optionIds.length ? Option.find({ _id: { $in: optionIds } }).select('optionDetails price sku inventoryData').lean() : Promise.resolve([])
+    ]);
+    const productMap = new Map(productDocs.map(p => [String(p._id), p]));
+    const optionMap = new Map(optionDocs.map(o => [String(o._id), o]));
+    const serverVerifiedItems = productAndOptionIds.map(ref => {
+      const product = productMap.get(String(ref.productId));
+      if (!product) throw new Error(`Product not found: ${ref.productId}`);
+      let optionDoc = null; let optionSKU = product.sku; let effectivePrice = product.price; let effectiveMRP = product.MRP;
+      if (ref.optionId && product.optionsAvailable) {
+        optionDoc = optionMap.get(String(ref.optionId));
+        if (!optionDoc) throw new Error(`Option not found: ${ref.optionId} for product ${ref.productId}`);
+        optionSKU = optionDoc.sku || product.sku;
+        // If future option-level price overrides are enabled, adjust effectivePrice here.
       }
       return {
-        ...itemIdentifier.originalClientItem, // Spread original client item (quantity, name, etc.)
-        serverPrice: effectivePrice,         // Authoritative price from DB
-        serverMRP: effectiveMRP,             // Authoritative MRP from DB
+        ...ref.originalClientItem,
+        serverPrice: effectivePrice,
+        serverMRP: effectiveMRP,
         serverSKU: optionSKU,
-        productName: product.name, // Get from DB for consistency
-        specificCategory: specificCategoryFromProduct,
+        productName: product.name,
+        specificCategory: product.specificCategory,
+        productDoc: product,
+        optionDoc,
       };
     });
-    serverDataPromises.push(Promise.all(productPricePromises));
+    serverDataPromises.push(Promise.resolve(serverVerifiedItems));
     
     // Execute all fetching promises
     const [ 
       paymentMode, 
       userResult, 
       offerResult, 
-      serverVerifiedItems
+      /* serverVerifiedItems already resolved earlier */
     ] = await Promise.all(serverDataPromises);
 
     let user = userResult;
@@ -159,9 +163,7 @@ export async function POST(request) {
     // --- Server-Side Calculation of Financials ---
 
     // 1. Calculate server-side subtotal from authoritative prices
-    const serverCalculatedItemsSubTotal = serverVerifiedItems.reduce((sum, item) => {
-      return sum + (item.serverPrice * item.quantity);
-    }, 0);
+  const serverCalculatedItemsSubTotal = serverVerifiedItems.reduce((sum, item) => sum + (item.serverPrice * item.quantity), 0);
 
     // 2. Calculate server-side discount
     let actualDiscountAmount = 0;
@@ -200,9 +202,29 @@ export async function POST(request) {
       serverExtraCharges.push({ chargesName: 'Delivery Charges', chargesAmount: clientDeliveryCharges });
     }
 
-    // 4. Calculate final total amount based on server-side figures
+    // 4. Determine partitioning (multi-order logic)
+    const partitions = partitionCartItems(serverVerifiedItems);
+    const totalExtraCharges = serverExtraCharges.reduce((s, c) => s + c.chargesAmount, 0);
+
+    // If only one partition remains, keep legacy (single order) path using existing variables for backward compatibility
+    let isMulti = partitions.length > 1;
+
+    let allocationResult = null;
+    if (isMulti) {
+      // Online percentage from payment mode configuration (if absent treat as 0 or COD logic handled later)
+      const onlinePct = paymentMode.configuration?.onlinePercentage || 0;
+      allocationResult = buildPartitionFinancials(
+        partitions,
+        {
+          totalDiscount: actualDiscountAmount,
+          totalExtraCharges: totalExtraCharges,
+          onlinePercentage: onlinePct,
+        }
+      );
+    }
+
     const totalAfterDiscount = serverCalculatedItemsSubTotal - actualDiscountAmount;
-    const serverCalculatedTotalAmount = serverExtraCharges.reduce((sum, charge) => sum + charge.chargesAmount, totalAfterDiscount);
+    const serverCalculatedTotalAmount = totalAfterDiscount + totalExtraCharges;
     const finalTotalAmountForOrder = Math.max(0, serverCalculatedTotalAmount);
 
     // Security Check & Logging: Compare clientTotalAmount with serverCalculatedTotalAmount
@@ -215,14 +237,13 @@ export async function POST(request) {
         );
     }
 
-    // 5. Calculate payment splits based on server-authoritative final total
+    // 5. Payment splits (single vs multi)
     let serverAmountDueOnline = 0;
     let serverAmountDueCod = 0;
     let paymentStatus = 'pending';
+    let onlinePercentage = paymentMode.configuration?.onlinePercentage || 0;
 
-    if (paymentMode.configuration) {
-      const onlinePercentage = paymentMode.configuration.onlinePercentage || 0;
-      const codPercentage = paymentMode.configuration.codPercentage === undefined ? (100 - onlinePercentage) : paymentMode.configuration.codPercentage;
+    if (!isMulti) {
       if (paymentMode.name && paymentMode.name.toLowerCase() === 'cod') {
         serverAmountDueOnline = 0;
         serverAmountDueCod = finalTotalAmountForOrder;
@@ -238,17 +259,13 @@ export async function POST(request) {
         serverAmountDueCod = finalTotalAmountForOrder;
         paymentStatus = 'allToBePaidCod';
       }
-    } else {
-      serverAmountDueOnline = 0;
-      serverAmountDueCod = finalTotalAmountForOrder;
-      paymentStatus = 'allToBePaidCod';
-    }
-    serverAmountDueOnline = Math.max(0, serverAmountDueOnline);
-    serverAmountDueCod = Math.max(0, serverAmountDueCod);
-    if (finalTotalAmountForOrder === 0) {
+      serverAmountDueOnline = Math.max(0, serverAmountDueOnline);
+      serverAmountDueCod = Math.max(0, serverAmountDueCod);
+      if (finalTotalAmountForOrder === 0) {
         paymentStatus = 'allPaid';
         serverAmountDueOnline = 0;
         serverAmountDueCod = 0;
+      }
     }
 
     // --- Save Order and Prepare for Payment ---
@@ -272,7 +289,8 @@ export async function POST(request) {
       utmHistoryId = savedUtmHistory._id;
     }
 
-    const newOrder = {
+    if (!isMulti) {
+      const newOrder = {
       user: user._id,
       items: serverVerifiedItems.map(item => ({
         product: item.product,
@@ -321,53 +339,196 @@ export async function POST(request) {
       utmDetails: utmDetails,
       utmHistory: utmHistoryId,
       extraFields: extraFields,
+      isGroupPrimary: false, // single order scenario
     };
+      const order = new Order(newOrder);
+      await order.save();
 
-    const order = new Order(newOrder);
-    await order.save();
-
-    if (utmHistoryId) {
-      await UTMHistory.findByIdAndUpdate(utmHistoryId, { order: order._id });
-    }
-
-    let razorpayOrderResponse = null;
-    if (serverAmountDueOnline > 0) {
-      const amountInPaise = Math.floor(serverAmountDueOnline * 100);
-      const receiptId = shortid.generate();
-      const razorpayOptions = {
-        amount: amountInPaise.toString(),
-        currency: 'INR',
-        receipt: receiptId,
-        payment_capture: 1,
-        notes: {
-          databaseOrderId: order._id.toString(),
-        },
-      };
-
-      try {
-        razorpayOrderResponse = await razorpayInstance.orders.create(razorpayOptions);
-        order.paymentDetails.razorpayDetails.orderId = razorpayOrderResponse.id;
-        order.paymentDetails.razorpayDetails.receipt = receiptId;
-        await order.save();
-      } catch (rzpError) {
-        console.error('Razorpay order creation failed:', rzpError);
-        await Order.findByIdAndUpdate(order._id, { $set: { paymentStatus: 'failed', 'paymentDetails.razorpayDetails.error': rzpError.message } });
-        return NextResponse.json(
-          { message: 'Failed to initiate payment with Razorpay. Please try again or contact support.', orderId: order._id },
-          { status: 500 }
-        );
+      if (utmHistoryId) {
+        await UTMHistory.findByIdAndUpdate(utmHistoryId, { order: order._id });
       }
+
+      let razorpayOrderResponse = null;
+      if (serverAmountDueOnline > 0) {
+        const amountInPaise = Math.floor(serverAmountDueOnline * 100);
+        const receiptId = shortid.generate();
+        const razorpayOptions = {
+          amount: amountInPaise.toString(),
+          currency: 'INR',
+          receipt: receiptId,
+          payment_capture: 1,
+          notes: {
+            databaseOrderId: order._id.toString(),
+          },
+        };
+
+        try {
+          razorpayOrderResponse = await razorpayInstance.orders.create(razorpayOptions);
+          order.paymentDetails.razorpayDetails.orderId = razorpayOrderResponse.id;
+          order.paymentDetails.razorpayDetails.receipt = receiptId;
+          await order.save();
+        } catch (rzpError) {
+          console.error('Razorpay order creation failed:', rzpError);
+          await Order.findByIdAndUpdate(order._id, { $set: { paymentStatus: 'failed', 'paymentDetails.razorpayDetails.error': rzpError.message } });
+          return NextResponse.json(
+            { message: 'Failed to initiate payment with Razorpay. Please try again or contact support.', orderId: order._id },
+            { status: 500 }
+          );
+        }
+      }
+
+      return NextResponse.json(
+        {
+          message: 'Order created successfully',
+          orderId: order._id,
+          razorpayOrder: razorpayOrderResponse,
+          amountDueOnline: serverAmountDueOnline,
+        },
+        { status: 201 }
+      );
     }
 
-    return NextResponse.json(
-      {
-        message: 'Order created successfully',
-        orderId: order._id,
-        razorpayOrder: razorpayOrderResponse,
-        amountDueOnline: serverAmountDueOnline,
-      },
-      { status: 201 }
-    );
+    // ---------------- Multi-Order Creation Path ----------------
+    const groupId = newGroupId();
+    const primaryPartition = choosePrimaryPartition(allocationResult);
+    const primaryKey = primaryPartition.key;
+    const ordersToInsert = [];
+
+    for (const part of allocationResult.partitions) {
+      const partItems = partitions.find(p => p.key === part.key).items;
+      const isPrimary = part.key === primaryKey;
+      const paymentStatusPart = part.finalTotal === 0 ? 'allPaid' : (part.online > 0 ? 'pending' : (part.cod > 0 ? 'allToBePaidCod' : 'allPaid'));
+      ordersToInsert.push({
+        user: user._id,
+        items: partItems.map(item => ({
+          product: item.product,
+          itemSource: item.itemSource || 'inhouse',
+          brand: item.brand || null,
+          option: item.option || null,
+            wrapFinish: item.wrapFinish || null,
+          name: item.productName,
+          quantity: item.quantity,
+          priceAtPurchase: item.serverPrice,
+          sku: item.serverSKU,
+          thumbnail: item.thumbnail,
+          insertionDetails: item.insertionDetails || {}
+        })),
+        totalAmount: part.finalTotal,
+        totalDiscount: part.discount,
+        extraCharges: part.charges > 0 ? [{ chargesName: 'Allocated Charges', chargesAmount: part.charges }] : [],
+        couponApplied: actualCouponCode ? [{ couponCode: actualCouponCode.toUpperCase(), discountAmount: part.discount, incrementedCouponUsage: false }] : [],
+        paymentDetails: {
+          mode: paymentModeId,
+          amountPaidOnline: 0,
+          amountDueOnline: part.online,
+          amountDueCod: part.cod,
+          amountPaidCod: 0,
+          razorpayDetails: {},
+        },
+        isTestingOrder: isTestingOrder,
+        address: {
+          receiverName: address.receiverName,
+          receiverPhoneNumber: address.receiverPhoneNumber,
+          addressLine1: address.addressLine1,
+          addressLine2: address.addressLine2,
+          city: address.city,
+          state: address.state,
+          country: address.country || 'India',
+          pincode: address.pincode,
+        },
+        paymentStatus: paymentStatusPart,
+        deliveryStatus: 'pending',
+        utmDetails: utmDetails,
+        utmHistory: utmHistoryId,
+        extraFields: extraFields,
+        groupId,
+        partitionKey: part.key,
+        isGroupPrimary: isPrimary,
+        parentPaymentOrder: null, // fill after insertion for non-primary
+        groupAllocation: {
+          subtotal: part.subtotal,
+          discountPortion: part.discount,
+          extraChargesPortion: part.charges,
+            totalAfterDiscount: part.totalAfterDiscount,
+          finalTotal: part.finalTotal,
+          onlinePortion: part.online,
+          codPortion: part.cod,
+        },
+        originalGroupSnapshot: isPrimary ? {
+          subtotalGroup: allocationResult.overall.subtotal,
+          discountGroup: allocationResult.overall.discount,
+          extraChargesGroup: allocationResult.overall.charges,
+          finalTotalGroup: allocationResult.overall.final,
+          onlineGroupTotal: allocationResult.overall.onlineTotal,
+          codGroupTotal: allocationResult.overall.codTotal,
+        } : undefined,
+      });
+    }
+
+    // Insert all orders in a session for atomicity
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const created = await Order.insertMany(ordersToInsert, { session });
+      const primaryOrder = created.find(o => o.isGroupPrimary);
+      const siblingIds = created.map(o => o._id).filter(id => true);
+      // update linkedOrders + parentPaymentOrder for non-primary
+      for (const doc of created) {
+        doc.linkedOrders = siblingIds.filter(id => !id.equals(doc._id));
+        if (!doc.isGroupPrimary) doc.parentPaymentOrder = primaryOrder._id;
+        await doc.save({ session });
+      }
+      if (utmHistoryId) {
+        await UTMHistory.findByIdAndUpdate(utmHistoryId, { orderGroupPrimary: primaryOrder._id }, { session });
+      }
+      let razorpayOrderResponse = null;
+      if (allocationResult.overall.onlineTotal > 0) {
+        const amountInPaise = Math.floor(allocationResult.overall.onlineTotal * 100);
+        const receiptId = shortid.generate();
+        const razorpayOptions = {
+          amount: amountInPaise.toString(),
+          currency: 'INR',
+          receipt: receiptId,
+          payment_capture: 1,
+          notes: {
+            databaseOrderGroupId: groupId.toString(),
+            primaryOrderId: primaryOrder._id.toString(),
+          },
+        };
+        try {
+          razorpayOrderResponse = await razorpayInstance.orders.create(razorpayOptions);
+          primaryOrder.paymentDetails.razorpayDetails.orderId = razorpayOrderResponse.id;
+          primaryOrder.paymentDetails.razorpayDetails.receipt = receiptId;
+          await primaryOrder.save({ session });
+        } catch (rzpErr) {
+          console.error('Razorpay order creation failed for group:', rzpErr);
+          // mark failure statuses
+          await Order.updateMany({ groupId }, { $set: { paymentStatus: 'failed' } }, { session });
+          await session.commitTransaction();
+          session.endSession();
+          return NextResponse.json({ message: 'Failed to initiate payment with Razorpay.', groupId, primaryOrderId: primaryOrder._id }, { status: 500 });
+        }
+      }
+      await session.commitTransaction();
+      session.endSession();
+      return NextResponse.json({
+        message: 'Orders created successfully',
+        group: {
+          groupId,
+          primaryOrderId: primaryOrder._id,
+          orderIds: siblingIds,
+          onlineTotal: allocationResult.overall.onlineTotal,
+          codTotal: allocationResult.overall.codTotal,
+        },
+        razorpayOrder: allocationResult.overall.onlineTotal > 0 ? { id: primaryOrder.paymentDetails.razorpayDetails.orderId } : null,
+        amountDueOnline: allocationResult.overall.onlineTotal,
+      }, { status: 201 });
+    } catch (multiErr) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error('Multi-order creation failed:', multiErr);
+      return NextResponse.json({ message: 'Failed to create orders.', error: multiErr.message }, { status: 500 });
+    }
   } catch (error) {
     console.error('Error creating order:', error.message, error.stack);
     let clientMessage = 'Internal Server Error';
