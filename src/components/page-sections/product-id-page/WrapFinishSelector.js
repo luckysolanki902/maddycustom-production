@@ -10,6 +10,7 @@ const WrapFinishSelector = ({ selectedFinish, setSelectedFinish }) => {
           className={`${styles.option} ${selectedFinish === 'Matte' ? styles.selected : ''}`}
           onClick={() => setSelectedFinish('Matte')}
         >
+          <div className={styles.recommendedTag}>Recommended</div>
           <div className={styles.finishVisual}>
             <div className={styles.matteVisual}></div>
           </div>
