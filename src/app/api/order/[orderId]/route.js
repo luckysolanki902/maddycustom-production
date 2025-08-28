@@ -24,11 +24,41 @@ export async function GET(request, { params }) {
         path: 'items.option',
         model: 'Option',
       })
+      .populate({
+        path: 'linkedOrderIds',
+        model: 'Order',
+        populate: [
+          {
+            path: 'items.product',
+            model: 'Product',
+          },
+          {
+            path: 'items.option',
+            model: 'Option',
+          }
+        ]
+      })
       .exec();
 
     if (!order) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
     }
+
+    // If this is a linked order but not the main order, redirect to main order
+    if (!order.isMainOrder && order.orderGroupId) {
+      const mainOrder = await Order.findOne({ 
+        orderGroupId: order.orderGroupId, 
+        isMainOrder: true 
+      });
+      
+      if (mainOrder) {
+        return NextResponse.json({ 
+          message: 'Redirecting to main order',
+          redirectToOrderId: mainOrder._id 
+        }, { status: 302 });
+      }
+    }
+
     return NextResponse.json({ order }, { status: 200 });
   } catch (error) {
     console.error('Error fetching order:', error);

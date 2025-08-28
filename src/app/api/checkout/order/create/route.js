@@ -12,6 +12,11 @@ import Option from '@/models/Option';
 import moment from 'moment-timezone';
 import Razorpay from 'razorpay';
 import shortid from 'shortid';
+import { 
+  groupItemsByInventory, 
+  createSplitOrdersData, 
+  generateOrderGroupId 
+} from '@/lib/utils/orderSplitting';
 
 // Initialize Razorpay instance outside the handler for reuse
 const razorpayInstance = new Razorpay({
@@ -251,7 +256,7 @@ export async function POST(request) {
         serverAmountDueCod = 0;
     }
 
-    // --- Save Order and Prepare for Payment ---
+    // --- Save Order(s) and Prepare for Payment ---
     let utmHistoryId = null;
     if (utmHistory && Array.isArray(utmHistory) && utmHistory.length > 0) {
       const utmHistoryDoc = new UTMHistory({
@@ -272,7 +277,8 @@ export async function POST(request) {
       utmHistoryId = savedUtmHistory._id;
     }
 
-    const newOrder = {
+    // Prepare base order data
+    const baseOrderData = {
       user: user._id,
       items: serverVerifiedItems.map(item => ({
         product: item.product,
@@ -323,14 +329,66 @@ export async function POST(request) {
       extraFields: extraFields,
     };
 
-    const order = new Order(newOrder);
-    await order.save();
+    // Group items by inventory management
+    const { inventoryItems, nonInventoryItems } = await groupItemsByInventory(serverVerifiedItems);
+    
+    let orders = [];
+    let mainOrderId = null;
+    
+    // Check if we need to split orders
+    const needsSplitting = inventoryItems.length > 0 && nonInventoryItems.length > 0;
+    
+    if (needsSplitting) {
+      // Create split orders
+      const orderGroupId = generateOrderGroupId();
+      const itemGroups = [];
+      
+      if (inventoryItems.length > 0) {
+        itemGroups.push({ items: inventoryItems });
+      }
+      
+      if (nonInventoryItems.length > 0) {
+        itemGroups.push({ items: nonInventoryItems });
+      }
 
-    if (utmHistoryId) {
-      await UTMHistory.findByIdAndUpdate(utmHistoryId, { order: order._id });
+      const splitOrdersData = createSplitOrdersData(baseOrderData, itemGroups, orderGroupId);
+      
+      // Create all orders
+      for (const orderData of splitOrdersData) {
+        const order = new Order(orderData);
+        await order.save();
+        orders.push(order);
+        
+        if (order.isMainOrder) {
+          mainOrderId = order._id;
+        }
+      }
+
+      // Update all orders with linkedOrderIds
+      const allOrderIds = orders.map(order => order._id);
+      await Promise.all(orders.map(order => 
+        Order.findByIdAndUpdate(order._id, {
+          linkedOrderIds: allOrderIds.filter(id => !id.equals(order._id))
+        })
+      ));
+
+    } else {
+      // Create single order (no splitting needed)
+      const order = new Order(baseOrderData);
+      await order.save();
+      orders.push(order);
+      mainOrderId = order._id;
     }
 
+    // Update UTM history with main order reference
+    if (utmHistoryId) {
+      await UTMHistory.findByIdAndUpdate(utmHistoryId, { order: mainOrderId });
+    }
+
+    // Handle Razorpay order creation for online payments
+    const mainOrder = orders.find(order => order.isMainOrder) || orders[0];
     let razorpayOrderResponse = null;
+    
     if (serverAmountDueOnline > 0) {
       const amountInPaise = Math.floor(serverAmountDueOnline * 100);
       const receiptId = shortid.generate();
@@ -340,20 +398,42 @@ export async function POST(request) {
         receipt: receiptId,
         payment_capture: 1,
         notes: {
-          databaseOrderId: order._id.toString(),
+          databaseOrderId: mainOrder._id.toString(),
+          orderGroupId: mainOrder.orderGroupId || '',
+          isLinkedOrder: orders.length > 1 ? 'true' : 'false',
         },
       };
 
       try {
         razorpayOrderResponse = await razorpayInstance.orders.create(razorpayOptions);
-        order.paymentDetails.razorpayDetails.orderId = razorpayOrderResponse.id;
-        order.paymentDetails.razorpayDetails.receipt = receiptId;
-        await order.save();
+        
+        // Update Razorpay details for all orders with online payments
+        for (const order of orders) {
+          if (order.paymentDetails.amountDueOnline > 0) {
+            order.paymentDetails.razorpayDetails.orderId = razorpayOrderResponse.id;
+            order.paymentDetails.razorpayDetails.receipt = receiptId;
+            await order.save();
+          }
+        }
       } catch (rzpError) {
         console.error('Razorpay order creation failed:', rzpError);
-        await Order.findByIdAndUpdate(order._id, { $set: { paymentStatus: 'failed', 'paymentDetails.razorpayDetails.error': rzpError.message } });
+        
+        // Update all orders with error status
+        await Promise.all(orders.map(order =>
+          Order.findByIdAndUpdate(order._id, { 
+            $set: { 
+              paymentStatus: 'failed', 
+              'paymentDetails.razorpayDetails.error': rzpError.message 
+            } 
+          })
+        ));
+        
         return NextResponse.json(
-          { message: 'Failed to initiate payment with Razorpay. Please try again or contact support.', orderId: order._id },
+          { 
+            message: 'Failed to initiate payment with Razorpay. Please try again or contact support.', 
+            orderId: mainOrderId,
+            orderIds: orders.map(order => order._id)
+          },
           { status: 500 }
         );
       }
@@ -362,7 +442,9 @@ export async function POST(request) {
     return NextResponse.json(
       {
         message: 'Order created successfully',
-        orderId: order._id,
+        orderId: mainOrderId,
+        orderIds: orders.map(order => order._id),
+        isSplitOrder: orders.length > 1,
         razorpayOrder: razorpayOrderResponse,
         amountDueOnline: serverAmountDueOnline,
       },

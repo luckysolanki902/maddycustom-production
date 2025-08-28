@@ -53,50 +53,73 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
-    if (['allPaid', 'paidPartially'].includes(order.paymentStatus)) {
-      // console.warn(`Payment verification skipped: Order ID: ${orderId} already in status '${order.paymentStatus}'.`);
+    // Get all linked orders for payment processing
+    const linkedOrders = order.linkedOrderIds.length > 0 
+      ? await Order.find({ _id: { $in: order.linkedOrderIds } }).exec()
+      : [];
+    
+    const allOrders = [order, ...linkedOrders];
+
+    // Check if any order in the group is already processed
+    const alreadyProcessed = allOrders.some(ord => 
+      ['allPaid', 'paidPartially'].includes(ord.paymentStatus)
+    );
+
+    if (alreadyProcessed) {
+      // console.warn(`Payment verification skipped: Order group already processed.`);
       return NextResponse.json({ message: 'Order already processed.' }, { status: 200 });
     }
 
-    // Update order payment details
-    order.paymentDetails.razorpayDetails = {
-      paymentId: razorpay_payment_id,
-      signature: razorpay_signature,
-    };
+    // Update payment details for all orders with online payments due
+    for (const ord of allOrders) {
+      if (ord.paymentDetails.amountDueOnline > 0) {
+        ord.paymentDetails.razorpayDetails = {
+          paymentId: razorpay_payment_id,
+          signature: razorpay_signature,
+        };
 
-    // Calculate the amount paid online based on the payment mode
-    // Assuming the entire amountDueOnline is being paid
-    order.paymentDetails.amountPaidOnline += order.paymentDetails.amountDueOnline;
-    order.paymentDetails.amountDueOnline = 0;
+        // Calculate the amount paid online based on the payment mode
+        ord.paymentDetails.amountPaidOnline += ord.paymentDetails.amountDueOnline;
+        ord.paymentDetails.amountDueOnline = 0;
 
-    // Update paymentStatus based on remaining dues
-    if (order.paymentDetails.amountDueCod <= 0) {
-      order.paymentStatus = 'allPaid';
-    } else {
-      order.paymentStatus = 'paidPartially';
+        // Update paymentStatus based on remaining dues
+        if (ord.paymentDetails.amountDueCod <= 0) {
+          ord.paymentStatus = 'allPaid';
+        } else {
+          ord.paymentStatus = 'paidPartially';
+        }
+
+        await ord.save();
+      }
     }
 
     // Increment usageCount for the applied coupon if not already done
-    if (order.couponApplied && order.couponApplied.length > 0) {
-      const appliedCoupon = order.couponApplied[0]; // Assuming only one coupon is applied
+    // Check the main order (first one) for coupon details
+    const mainOrder = allOrders.find(ord => ord.isMainOrder) || allOrders[0];
+    if (mainOrder.couponApplied && mainOrder.couponApplied.length > 0) {
+      const appliedCoupon = mainOrder.couponApplied[0]; // Assuming only one coupon is applied
       if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
         const coupon = await Coupon.findOne({ code: appliedCoupon.couponCode }).exec();
         if (coupon) {
           coupon.usageCount += 1;
           await coupon.save();
-          appliedCoupon.incrementedCouponUsage = true;
-          order.couponApplied = order.couponApplied.map(couponEntry =>
-            couponEntry.couponCode === appliedCoupon.couponCode
-              ? { ...couponEntry.toObject(), incrementedCouponUsage: true }
-              : couponEntry
-          );
+          
+          // Mark coupon as incremented in all orders
+          for (const ord of allOrders) {
+            if (ord.couponApplied && ord.couponApplied.length > 0) {
+              ord.couponApplied = ord.couponApplied.map(couponEntry =>
+                couponEntry.couponCode === appliedCoupon.couponCode
+                  ? { ...couponEntry.toObject(), incrementedCouponUsage: true }
+                  : couponEntry
+              );
+              await ord.save();
+            }
+          }
         } else {
           // console.warn(`Coupon not found for code: ${appliedCoupon.couponCode}`);
         }
       }
     }
-
-    await order.save();
     return NextResponse.json({ message: 'Payment verified successfully.' }, { status: 200 });
   } catch (error) {
     console.error('Error in payment verification API:', error.message);
