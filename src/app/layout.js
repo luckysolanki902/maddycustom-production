@@ -13,10 +13,6 @@ import UTMCapture from '@/components/analytics/UTMCapture';
 
 // Google Fonts
 import { Krona_One, Jost, Montserrat } from 'next/font/google';
-import LoginDialog from '@/components/dialogs/LoginDialog';
-import TimeTracker from '@/components/utils/userBehavior/TimeTracker';
-import PathnameTracker from '@/components/utils/userBehavior/PathnameTracker';
-import ScrollChecker from '@/components/utils/userBehavior/ScrollChecker';
 import Topbar from '@/components/layouts/Topbar';
 import Sidebar from '@/components/layouts/Sidebar';
 import SearchCategoryDialog from '@/components/dialogs/SearchCategoryDialog';

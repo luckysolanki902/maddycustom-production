@@ -276,6 +276,21 @@ const OrderSchema = new mongoose.Schema(
       default: false
     },
 
+    // Order linking fields for split orders
+    orderGroupId: {
+      type: String,
+      index: true,
+      default: null, // Set when orders are linked
+    },
+    linkedOrderIds: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Order',
+    }],
+    isMainOrder: {
+      type: Boolean,
+      default: true, // First order in group is main order for payment redirection
+    },
+
     // Extra fields like bike model:
     extraFields: {
       type: Map,

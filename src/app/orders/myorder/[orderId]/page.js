@@ -4,7 +4,7 @@ import ContactUs from '@/components/layouts/ContactUs';
 import CopyButton from '@/components/page-sections/orderSuccess/CopyButton';
 import styles from '@/styles/order.module.css';
 import { fetchOrder } from '@/lib/utils/fetchutils';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Box, Card, Typography } from '@mui/material';
 import PurchasedProductSlider from '@/components/page-sections/orderSuccess/PurchasedProductSlider';
 import OrderDetails from '@/components/page-sections/orderSuccess/OrderDetails';
@@ -29,6 +29,16 @@ export default async function OrderPage({ params }) {
   }
 
   const { order } = data;
+  
+  // Check if we need to redirect to main order
+  if (data.redirectToOrderId) {
+    redirect(`/orders/myorder/${data.redirectToOrderId}`);
+    return null;
+  }
+
+  // Get all orders (main + linked)
+  const allOrders = [order, ...(order.linkedOrderIds || [])];
+  const isMultiOrder = allOrders.length > 1;
 
   const formatDate = (dateString) => {
     const options = {
@@ -42,14 +52,11 @@ export default async function OrderPage({ params }) {
     return new Date(dateString).toLocaleString('en-US', options);
   };
 
-  // Get unique freebie descriptions from the order items
-  // const uniqueFreebies = Array.from(
-  //   new Set(
-  //     order.items
-  //       .filter((item) => item.product.freebies?.available && item.product.freebies.description)
-  //       .map((item) => item.product.freebies.description)
-  //   )
-  // );
+  // Combine all items from all orders for display
+  const allItems = allOrders.flatMap(ord => ord.items.map(item => ({
+    ...item,
+    _orderSource: ord._id // Track which order this item belongs to
+  })));
 
   return (
     <Box className={styles.main}>
@@ -83,31 +90,61 @@ export default async function OrderPage({ params }) {
         }}
       >
         <CopyButton textToCopy={orderId} />
-        {/* <Typography variant="h6">{orderId}</Typography> */}
+        {isMultiOrder && (
+          <Typography variant="body2" color="primary">
+            This order was split into {allOrders.length} separate shipments for better packaging and delivery
+          </Typography>
+        )}
       </Box>
 
-      {/* Products Section */}
-      <PurchasedProductSlider items={order.items} baseImageUrl={baseImageUrl} />
+      {/* Products Section - Show all items from all orders */}
+      <PurchasedProductSlider items={allItems} baseImageUrl={baseImageUrl} />
+      
       {/* Community */}
       <CommunityCard />
+      
       {/* Order Details Section */}
-      <OrderDetails order={order} formatDate={formatDate} />
-
-      {/* Unique Freebies Section */}
-      {/* {uniqueFreebies.length > 0 && (
-        <Box sx={{ marginTop: 4 }}>
-          <Card sx={{ padding: 2, borderRadius: 2, boxShadow: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Freebies Included with Your Purchase
-            </Typography>
-            {uniqueFreebies.map((description, index) => (
-              <Typography key={index} variant="body1" gutterBottom>
-                - {description}
+      {isMultiOrder ? (
+        <Box sx={{ marginTop: 2 }}>
+          <Typography variant="h6" sx={{ padding: 2, fontWeight: 'bold' }}>
+            Order Details ({allOrders.length} Shipments)
+          </Typography>
+          {allOrders.map((ord, index) => (
+            <Card key={ord._id} sx={{ margin: 2, padding: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Shipment {index + 1} - {ord._id}
+                {ord.isMainOrder && (
+                  <Box component="span" sx={{ ml: 1, color: 'primary.main', fontSize: '0.8em' }}>
+                    (Main Order)
+                  </Box>
+                )}
               </Typography>
-            ))}
+              <OrderDetails order={ord} formatDate={formatDate} />
+            </Card>
+          ))}
+          
+          {/* Summary for all orders */}
+          <Card sx={{ margin: 2, padding: 2, backgroundColor: '#f5f5f5' }}>
+            <Typography variant="h6" gutterBottom>
+              Order Summary (Total)
+            </Typography>
+            <Typography>
+              <strong>Total Items:</strong> {allItems.length}
+            </Typography>
+            <Typography>
+              <strong>Total Amount:</strong> ₹{allOrders.reduce((sum, ord) => sum + ord.totalAmount, 0)}
+            </Typography>
+            <Typography>
+              <strong>Total Discount:</strong> ₹{allOrders.reduce((sum, ord) => sum + (ord.totalDiscount || 0), 0)}
+            </Typography>
+            <Typography>
+              <strong>Order Date:</strong> {formatDate(order.createdAt)}
+            </Typography>
           </Card>
         </Box>
-      )} */}
+      ) : (
+        <OrderDetails order={order} formatDate={formatDate} />
+      )}
 
       {/* Contact Us Section */}
       {/* <ContactUs /> */}

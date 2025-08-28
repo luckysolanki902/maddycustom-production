@@ -121,12 +121,20 @@ export async function POST(request) {
     }
 
     // -----------------------------
-    // 3. Find the Order
+    // 3. Find the Order and Linked Orders
     // -----------------------------
     const order = await Order.findById(internalOrderId).session(session);
     if (!order) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
+
+    // Get all linked orders for processing
+    const linkedOrders = order.linkedOrderIds.length > 0 
+      ? await Order.find({ _id: { $in: order.linkedOrderIds } }).session(session)
+      : [];
+    
+    const allOrders = [order, ...linkedOrders];
+    logs.push(`Processing ${allOrders.length} orders (main + ${linkedOrders.length} linked)`);
 
     const timestampStr = new Date().toLocaleString('en-IN', {
       year: 'numeric',
@@ -140,217 +148,225 @@ export async function POST(request) {
     });
 
     // -----------------------------
-    // 4. Handle Payment Updates
+    // 4. Handle Payment Updates for All Orders
     // -----------------------------
     if (razorpayEvent === 'payment.captured') {
-      if (['pending', 'failed'].includes(order.paymentStatus)) {
+      // Check if any order in the group is already processed
+      const alreadyProcessed = allOrders.some(ord => 
+        ['allPaid', 'paidPartially'].includes(ord.paymentStatus)
+      );
+
+      if (!alreadyProcessed && allOrders.some(ord => ord.paymentStatus === 'pending' || ord.paymentStatus === 'failed')) {
         const paymentAmount = payment.amount / 100; // convert paise -> INR
+        logs.push(`[${timestampStr}] Processing payment capture for ${allOrders.length} orders`);
 
-        // Update order with payment details
-        order.paymentDetails.razorpayDetails.paymentId = paymentId;
-        order.paymentDetails.razorpayDetails.signature = signatureDetail;
-        order.paymentDetails.amountPaidOnline += paymentAmount;
-        order.paymentDetails.amountDueOnline = Math.max(
-          0,
-          order.paymentDetails.amountDueOnline - paymentAmount
-        );
+        // Update payment details for all orders with online payment due
+        for (const ord of allOrders) {
+          if (ord.paymentDetails.amountDueOnline > 0) {
+            ord.paymentDetails.razorpayDetails.paymentId = paymentId;
+            ord.paymentDetails.razorpayDetails.signature = signatureDetail;
+            ord.paymentDetails.amountPaidOnline += ord.paymentDetails.amountDueOnline;
+            ord.paymentDetails.amountDueOnline = 0;
 
-        // Determine final payment status
-        if (
-          order.paymentDetails.amountDueOnline <= 0 &&
-          order.paymentDetails.amountDueCod <= 0
-        ) {
-          order.paymentStatus = 'allPaid';
-          logs.push(`[${timestampStr}] Payment status -> allPaid`);
-        } else if (
-          order.paymentDetails.amountPaidOnline > 0 &&
-          order.paymentDetails.amountDueCod > 0
-        ) {
-          order.paymentStatus = 'paidPartially';
-          logs.push(`[${timestampStr}] Payment status -> paidPartially`);
+            // Determine final payment status for this order
+            if (ord.paymentDetails.amountDueCod <= 0) {
+              ord.paymentStatus = 'allPaid';
+              logs.push(`[${timestampStr}] Order ${ord._id} status -> allPaid`);
+            } else {
+              ord.paymentStatus = 'paidPartially';
+              logs.push(`[${timestampStr}] Order ${ord._id} status -> paidPartially`);
+            }
+
+            await ord.save({ session });
+          }
         }
 
-        // Check/increment coupon usage if applicable
-        if (order.couponApplied?.length > 0) {
-          const [appliedCoupon] = order.couponApplied;
+        // Handle coupon usage increment (only once for the main order)
+        const mainOrder = allOrders.find(ord => ord.isMainOrder) || allOrders[0];
+        if (mainOrder.couponApplied?.length > 0) {
+          const [appliedCoupon] = mainOrder.couponApplied;
           if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
             const couponDoc = await Coupon.findOne({ code: appliedCoupon.couponCode }).session(session);
             if (couponDoc) {
               couponDoc.usageCount += 1;
               await couponDoc.save({ session });
-              appliedCoupon.incrementedCouponUsage = true;
-              order.couponApplied = order.couponApplied.map(c =>
-                c.couponCode === appliedCoupon.couponCode
-                  ? { ...c.toObject(), incrementedCouponUsage: true }
-                  : c
-              );
+              
+              // Update coupon increment status in all orders
+              for (const ord of allOrders) {
+                if (ord.couponApplied?.length > 0) {
+                  ord.couponApplied = ord.couponApplied.map(c =>
+                    c.couponCode === appliedCoupon.couponCode
+                      ? { ...c.toObject(), incrementedCouponUsage: true }
+                      : c
+                  );
+                  await ord.save({ session });
+                }
+              }
               logs.push(`[${timestampStr}] Coupon usage incremented: ${appliedCoupon.couponCode}`);
             }
           }
         }
-        await order.save({ session });
       } else {
-        logs.push(`[${timestampStr}] payment.captured received but order already in ${order.paymentStatus}.`);
+        logs.push(`[${timestampStr}] payment.captured received but order group already processed or not pending.`);
       }
 
-      // 4a. Deduct inventory (only once)
-      if (
-        (order.paymentStatus === 'paidPartially' || order.paymentStatus === 'allPaid') &&
-        !order.inventoryDeducted && // ensure we don't deduct twice
-        !order.isTestingOrder // skip for test orders
-      ) {
-        logs.push(`[${timestampStr}] Deducting inventory for order ${order._id}`);
-        // Use a fixed delta of -1 per unit purchased.
-        const unitDelta = -1;
+      // 4a. Deduct inventory for each order individually
+      for (const ord of allOrders) {
+        if (
+          (ord.paymentStatus === 'paidPartially' || ord.paymentStatus === 'allPaid') &&
+          !ord.inventoryDeducted && // ensure we don't deduct twice
+          !ord.isTestingOrder // skip for test orders
+        ) {
+          logs.push(`[${timestampStr}] Deducting inventory for order ${ord._id}`);
+          const unitDelta = -1;
 
-        for (const item of order.items) {
-          if (item.option) {
-            // Use Option's inventoryData if present
-            logs.push(`Updating inventory for Option ${item.option} x ${item.quantity}`);
-            const optionDoc = await Option.findById(item.option).session(session);
-            if (optionDoc?.inventoryData) {
-              await updateInventory(optionDoc.inventoryData, unitDelta * item.quantity, session);
+          for (const item of ord.items) {
+            if (item.option) {
+              // Use Option's inventoryData if present
+              logs.push(`Updating inventory for Option ${item.option} x ${item.quantity}`);
+              const optionDoc = await Option.findById(item.option).session(session);
+              if (optionDoc?.inventoryData) {
+                await updateInventory(optionDoc.inventoryData, unitDelta * item.quantity, session);
+              } else {
+                logs.push(`Option ${item.option} has no inventoryData reference. Cannot update inventory.`);
+              }
+            } else if (item.product) {
+              // Otherwise, update Product's inventoryData
+              logs.push(`Updating inventory for Product ${item.product} x ${item.quantity}`);
+              const productDoc = await Product.findById(item.product).session(session);
+              if (productDoc?.inventoryData) {
+                await updateInventory(productDoc.inventoryData, unitDelta * item.quantity, session);
+              } else {
+                logs.push(`No inventoryData reference found on product ${item.product}. Cannot update inventory.`);
+              }
             } else {
-              logs.push(`Option ${item.option} has no inventoryData reference. Cannot update inventory.`);
+              logs.push(`Order item does not have an option or product reference. Skipping. ${JSON.stringify(item)}`);
             }
-          } else if (item.product) {
-            // Otherwise, update Product's inventoryData
-            logs.push(`Updating inventory for Product ${item.product} x ${item.quantity}`);
-            const productDoc = await Product.findById(item.product).session(session);
-            if (productDoc?.inventoryData) {
-              await updateInventory(productDoc.inventoryData, unitDelta * item.quantity, session);
-            } else {
-              logs.push(`No inventoryData reference found on product ${item.product}. Cannot update inventory.`);
-            }
-          } else {
-            logs.push(`Order item does not have an option or product reference. Skipping. ${JSON.stringify(item)}`);
           }
+          // Mark inventory as deducted for this order
+          ord.inventoryDeducted = true;
+          await ord.save({ session });
         }
-        // Mark inventory as deducted
-        order.inventoryDeducted = true;
-        await order.save({ session });
       }
     } else if (razorpayEvent === 'payment.failed') {
-      if (!['allPaid', 'paidPartially', 'failed'].includes(order.paymentStatus)) {
-        order.paymentStatus = 'failed';
-        order.paymentDetails.razorpayDetails.paymentId = paymentId;
-        logs.push(`[${timestampStr}] Payment status -> failed`);
+      // Update payment status for all orders with pending payments
+      let anyUpdated = false;
+      for (const ord of allOrders) {
+        if (!['allPaid', 'paidPartially', 'failed'].includes(ord.paymentStatus)) {
+          ord.paymentStatus = 'failed';
+          ord.paymentDetails.razorpayDetails.paymentId = paymentId;
+          logs.push(`[${timestampStr}] Order ${ord._id} status -> failed`);
+          await ord.save({ session });
+          anyUpdated = true;
+        }
+      }
 
-        await order.save({ session });
+      if (anyUpdated) {
         await session.commitTransaction();
         session.endSession();
         return NextResponse.json({ message: 'Payment failed.' }, { status: 200 });
       } else {
-        logs.push(`[${timestampStr}] payment.failed received but order already in ${order.paymentStatus}.`);
+        logs.push(`[${timestampStr}] payment.failed received but order group already processed.`);
       }
     }
 
     // -----------------------------
-    // 5. Possibly Create Shiprocket Order
+    // 5. Create Shiprocket Orders for Each Eligible Order
     // -----------------------------
-    const latestOrder = await Order.findById(internalOrderId)
-      .populate({
-        path: 'items.product',
-        populate: {
-          path: 'specificCategoryVariant',
-          model: 'SpecificCategoryVariant',
-        },
-      })
-      .session(session);
-
-    if (!latestOrder) {
-      await session.abortTransaction();
-      session.endSession();
-      return NextResponse.json({ error: 'Order not found after update.' }, { status: 404 });
-    }
-
-    if (
-      ['allPaid', 'paidPartially'].includes(latestOrder.paymentStatus) &&
-      latestOrder.deliveryStatus === 'pending' &&
-      !latestOrder.shiprocketOrderId &&
-      !latestOrder.isTestingOrder
-    ) {
-      logs.push(`[${timestampStr}] Attempting to create Shiprocket order for ID: ${internalOrderId}`);
-      let dimensionsAndWeight;
-      try {
-        dimensionsAndWeight = await getDimensionsAndWeight(latestOrder.items);
-      } catch (dimError) {
-        console.error(`Dimension calculation error for order ${internalOrderId}:`, dimError);
-        await session.abortTransaction();
-        session.endSession();
-        return NextResponse.json({ error: dimError.message }, { status: 400 });
-      }
-
-      const { length, breadth, height, weight } = dimensionsAndWeight;
-      const [firstName, ...restName] = latestOrder.address.receiverName.split(' ');
-      const lastName = restName.join(' ');
-
-      const shiprocketOrderData = {
-        order_id: internalOrderId.toString(),
-        order_date: new Date().toISOString(),
-        billing_customer_name: firstName,
-        billing_last_name: lastName || '',
-        billing_address: `${latestOrder.address.addressLine1} ${latestOrder.address.addressLine2 || ''}`,
-        billing_city: latestOrder.address.city,
-        billing_pincode: latestOrder.address.pincode,
-        billing_state: latestOrder.address.state,
-        billing_country: latestOrder.address.country,
-        billing_phone: latestOrder.address.receiverPhoneNumber,
-        shipping_is_billing: true,
-        order_items: latestOrder.items.map(item => ({
-          name: item.name,
-          sku: item.wrapFinish ? `${item.sku}-${item.wrapFinish.charAt(0).toLowerCase()}` : item.sku,
-          units: item.quantity,
-          selling_price: item.priceAtPurchase,
-        })),
-        payment_method: latestOrder.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
-        sub_total: latestOrder.paymentDetails.amountDueCod > 0
-          ? latestOrder.paymentDetails.amountDueCod
-          : latestOrder.totalAmount,
-        length,
-        breadth,
-        height,
-        weight,
-      };
-
-      try {
-        const srResponse = await createShiprocketOrder(shiprocketOrderData);
-        if (srResponse.status_code === 1 && !srResponse.packaging_box_error) {
-          await Order.findByIdAndUpdate(
-            latestOrder._id,
-            {
-              shiprocketOrderId: srResponse.order_id,
-              deliveryStatus: 'orderCreated',
+    // Get updated order data for all orders
+    const updatedAllOrders = await Promise.all(
+      allOrders.map(ord => 
+        Order.findById(ord._id)
+          .populate({
+            path: 'items.product',
+            populate: {
+              path: 'specificCategoryVariant',
+              model: 'SpecificCategoryVariant',
             },
-            { session }
-          );
-          logs.push(`[${timestampStr}] Shiprocket order created: ${srResponse.order_id}`);
-        } else {
-          console.error(`Shiprocket API error for order ${internalOrderId}:`, srResponse);
-          logs.push(`[${timestampStr}] Shiprocket creation failed: packaging_box_error or invalid`);
-          await session.abortTransaction();
-          session.endSession();
-          return NextResponse.json({ error: 'Failed to create Shiprocket order.' }, { status: 500 });
+          })
+          .session(session)
+      )
+    );
+
+    // Process each order for Shiprocket creation
+    for (const ord of updatedAllOrders) {
+      if (
+        ['allPaid', 'paidPartially'].includes(ord.paymentStatus) &&
+        ord.deliveryStatus === 'pending' &&
+        !ord.shiprocketOrderId &&
+        !ord.isTestingOrder
+      ) {
+        logs.push(`[${timestampStr}] Attempting to create Shiprocket order for ID: ${ord._id}`);
+        
+        try {
+          const dimensionsAndWeight = await getDimensionsAndWeight(ord.items);
+          const { length, breadth, height, weight } = dimensionsAndWeight;
+          
+          const [firstName, ...restName] = ord.address.receiverName.split(' ');
+          const lastName = restName.join(' ');
+
+          const shiprocketOrderData = {
+            order_id: ord._id.toString(),
+            order_date: new Date().toISOString(),
+            billing_customer_name: firstName,
+            billing_last_name: lastName || '',
+            billing_address: `${ord.address.addressLine1} ${ord.address.addressLine2 || ''}`,
+            billing_city: ord.address.city,
+            billing_pincode: ord.address.pincode,
+            billing_state: ord.address.state,
+            billing_country: ord.address.country,
+            billing_phone: ord.address.receiverPhoneNumber,
+            shipping_is_billing: true,
+            order_items: ord.items.map(item => ({
+              name: item.name,
+              sku: item.wrapFinish ? `${item.sku}-${item.wrapFinish.charAt(0).toLowerCase()}` : item.sku,
+              units: item.quantity,
+              selling_price: item.priceAtPurchase,
+            })),
+            payment_method: ord.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
+            sub_total: ord.paymentDetails.amountDueCod > 0
+              ? ord.paymentDetails.amountDueCod
+              : ord.totalAmount,
+            length,
+            breadth,
+            height,
+            weight,
+          };
+
+          const srResponse = await createShiprocketOrder(shiprocketOrderData);
+          if (srResponse.status_code === 1 && !srResponse.packaging_box_error) {
+            await Order.findByIdAndUpdate(
+              ord._id,
+              {
+                shiprocketOrderId: srResponse.order_id,
+                deliveryStatus: 'orderCreated',
+              },
+              { session }
+            );
+            logs.push(`[${timestampStr}] Shiprocket order created for ${ord._id}: ${srResponse.order_id}`);
+          } else {
+            console.error(`Shiprocket API error for order ${ord._id}:`, srResponse);
+            logs.push(`[${timestampStr}] Shiprocket creation failed for order ${ord._id}: packaging_box_error or invalid`);
+            // Continue with other orders even if one fails
+          }
+        } catch (err) {
+          console.error(`Shiprocket creation error for order ${ord._id}:`, err);
+          logs.push(`[${timestampStr}] Shiprocket creation failed for order ${ord._id}: ${err.message}`);
+          // Continue with other orders even if one fails
         }
-      } catch (err) {
-        console.error(`Shiprocket API call failed for order ${internalOrderId}:`, err);
-        logs.push(`[${timestampStr}] Shiprocket API call failed.`);
-        await session.abortTransaction();
-        session.endSession();
-        return NextResponse.json({ error: 'Error in Shiprocket order creation.' }, { status: 500 });
+      } else {
+        let reason = 'unknown reason';
+        if (!['allPaid', 'paidPartially'].includes(ord.paymentStatus)) {
+          reason = 'paymentStatus is not successful';
+        } else if (ord.deliveryStatus !== 'pending') {
+          reason = 'deliveryStatus is not pending';
+        } else if (ord.shiprocketOrderId) {
+          reason = 'shiprocketOrderId already exists';
+        } else if (ord.isTestingOrder) {
+          reason = 'isTestingOrder flag is true';
+        }
+        logs.push(`[${timestampStr}] Skipping Shiprocket for order ${ord._id}: ${reason}`);
       }
-    } else {
-      let reason = 'unknown reason';
-      if (!['allPaid', 'paidPartially'].includes(latestOrder.paymentStatus)) {
-        reason = 'paymentStatus is not successful';
-      } else if (latestOrder.deliveryStatus !== 'pending') {
-        reason = 'deliveryStatus is not pending';
-      } else if (latestOrder.shiprocketOrderId) {
-        reason = 'shiprocketOrderId already exists';
-      } else if (latestOrder.isTestingOrder) {
-        reason = 'isTestingOrder = true';
-      }
-      logs.push(`[${timestampStr}] Skipping Shiprocket creation due to: ${reason}`);
     }
 
     // -----------------------------
@@ -363,8 +379,11 @@ export async function POST(request) {
     // 7. Send WhatsApp Notification (Async)
     // -----------------------------
     try {
-      if (!latestOrder.isTestingOrder) {
-        const userDoc = await User.findById(latestOrder.user);
+      // Use the main order for WhatsApp notification
+      const mainOrder = updatedAllOrders.find(ord => ord.isMainOrder) || updatedAllOrders[0];
+      
+      if (!mainOrder.isTestingOrder) {
+        const userDoc = await User.findById(mainOrder.user);
         if (userDoc) {
           const buttons = [
             {
@@ -374,32 +393,33 @@ export async function POST(request) {
               parameters: [
                 {
                   type: 'text',
-                  text: latestOrder._id?.toString() || 'Order ID',
+                  text: mainOrder._id?.toString() || 'Order ID',
                 },
               ],
             },
           ];
           await sendWhatsAppMessage({
             user: userDoc,
-            prefUserName: latestOrder.address.receiverName || '',
+            prefUserName: mainOrder.address.receiverName || '',
             campaignName:
               new Date().getTime() < new Date('2025-04-03T00:00:00.000Z').getTime()
                 ? 'delay_eid'
                 : 'order_confirmed',
-            orderId: latestOrder._id,
+            orderId: mainOrder._id,
             templateParams: [],
             carouselCards: [],
             buttons,
           });
           logs.push(`[${timestampStr}] WhatsApp message sent to user: ${userDoc._id}`);
         } else {
-          logs.push(`[${timestampStr}] No matching user found for orderId: ${latestOrder._id}`);
+          logs.push(`[${timestampStr}] No matching user found for orderId: ${mainOrder._id}`);
         }
       } else {
         logs.push(`[${timestampStr}] Skipping WhatsApp message (isTestingOrder = true).`);
       }
     } catch (msgErr) {
-      console.error(`WhatsApp message failed for order ${latestOrder._id}:`, msgErr);
+      const mainOrder = updatedAllOrders.find(ord => ord.isMainOrder) || updatedAllOrders[0];
+      console.error(`WhatsApp message failed for order ${mainOrder._id}:`, msgErr);
       logs.push(`[${timestampStr}] WhatsApp message sending failed (error logged).`);
     }
 
