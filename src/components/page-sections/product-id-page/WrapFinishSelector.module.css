@@ -50,6 +50,23 @@
   background-color: rgba(0, 0, 0, 0.02);
 }
 
+.recommendedTag {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #E8F5E8;
+  color: #6B8E6B;
+  font-size: 0.6rem;
+  font-weight: 500;
+  padding: 2px 5px;
+  border-radius: 4px;
+  text-transform: lowercase;
+  letter-spacing: 0.2px;
+  box-shadow: 0 1px 3px rgba(230, 249, 236, 0.15);
+  z-index: 10;
+  border: 1px solid #D1E7D1;
+}
+
 .finishVisual {
   width: 32px;
   height: 32px;
@@ -189,6 +206,14 @@
     height: 38px;
   }
   
+  .recommendedTag {
+    top: -5px;
+    right: -5px;
+    font-size: 0.55rem;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  
   .finishVisual {
     width: 28px;
     height: 28px;
@@ -214,6 +239,14 @@
     padding: 0.3rem;
     height: 36px;
     max-width: 120px;
+  }
+  
+  .recommendedTag {
+    top: -4px;
+    right: -4px;
+    font-size: 0.5rem;
+    padding: 1px 3px;
+    border-radius: 2px;
   }
   
   .finishDesc {
