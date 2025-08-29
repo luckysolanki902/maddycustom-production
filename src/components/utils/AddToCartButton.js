@@ -85,7 +85,7 @@ export default function AddToCartButton({
     if (enableVariantSelection && product) {
       const checkForVariants = async () => {
         try {
-          const categoryId = product?.category?._id;
+          const categoryId = product.specificCategory || product.category?._id;
           if (!categoryId) return;
 
           // Check if we have cached data for this category
@@ -480,6 +480,7 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
       }}
     >
       <DialogContent
+        onClick={e => e.stopPropagation()}
         sx={{
           padding: "2rem 0.5rem 1rem 0.5rem",
           // backgroundColor: "#e2e2e2",
@@ -559,7 +560,7 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                         borderRadius: "8px",
                         padding: "0.5rem",
                       }}
-                      onClick={() => handleMappingChange(group.groupName, option.letterCode)}
+                      onClick={(e) => {e.stopPropagation();handleMappingChange(group.groupName, option.letterCode)}}
                     >
                       {group.thumbnailRequired && option.thumbnail && (
                         <Image
