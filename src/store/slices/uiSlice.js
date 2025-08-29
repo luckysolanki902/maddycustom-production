@@ -7,9 +7,9 @@ const initialState = {
   isSearchDialogOpen: false,
   isCartDrawerOpen: false,
   cartDrawerSource: "bottom", // 'top' or 'bottom'
-  isRecommendationDrawerOpen: true,
+  isRecommendationDrawerOpen: false,
   recommendationProduct: null,
-  recommendationProduct: { designGroupId: "68a22f30df1ff91dce686061" },
+  recommendationProduct: null,
   shippingTimer: {
     expiryTime: Date.now() + 9 * 60 * 60 * 1000 + 13 * 60 * 1000, // 9 hours 13 minutes from now
     isActive: false,
