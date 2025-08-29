@@ -52,7 +52,7 @@ export async function groupItemsByInventory(items) {
 /**
  * Distributes payment amounts proportionally across order groups
  * @param {Array} groups - Array of item groups with their totals
- * @param {Number} totalAmount - Total amount to distribute
+ * @param {Number} totalAmount - Total amount to distribute (after all calculations)
  * @param {Number} amountDueOnline - Online amount to distribute
  * @param {Number} amountDueCod - COD amount to distribute
  * @returns {Array} - Array of payment distributions for each group
@@ -68,30 +68,37 @@ export function distributePaymentAmounts(groups, totalAmount, amountDueOnline, a
   }
 
   const distributions = [];
+  const totalGroupAmount = groups.reduce((sum, group) => sum + group.groupTotal, 0);
+  let distributedTotal = 0;
+  let distributedOnline = 0;
+  let distributedCod = 0;
   
-  for (const group of groups) {
-    const ratio = group.groupTotal / totalAmount;
-    const groupTotalAmount = Math.round(group.groupTotal); // Use actual group total
-    const groupAmountDueOnline = Math.round(amountDueOnline * ratio);
-    const groupAmountDueCod = Math.round(amountDueCod * ratio);
+  for (let i = 0; i < groups.length; i++) {
+    const group = groups[i];
+    
+    if (i === groups.length - 1) {
+      // Last group gets remaining amounts to handle rounding
+      distributions.push({
+        totalAmount: totalAmount - distributedTotal,
+        amountDueOnline: amountDueOnline - distributedOnline,
+        amountDueCod: amountDueCod - distributedCod
+      });
+    } else {
+      const ratio = group.groupTotal / totalGroupAmount;
+      const groupTotalAmount = Math.round(totalAmount * ratio);
+      const groupAmountDueOnline = Math.round(amountDueOnline * ratio);
+      const groupAmountDueCod = Math.round(amountDueCod * ratio);
 
-    distributions.push({
-      totalAmount: groupTotalAmount,
-      amountDueOnline: groupAmountDueOnline,
-      amountDueCod: groupAmountDueCod
-    });
-  }
+      distributions.push({
+        totalAmount: groupTotalAmount,
+        amountDueOnline: groupAmountDueOnline,
+        amountDueCod: groupAmountDueCod
+      });
 
-  // Handle rounding differences by adjusting the last group
-  const totalDistributed = distributions.reduce((sum, dist) => sum + dist.totalAmount, 0);
-  const onlineDistributed = distributions.reduce((sum, dist) => sum + dist.amountDueOnline, 0);
-  const codDistributed = distributions.reduce((sum, dist) => sum + dist.amountDueCod, 0);
-
-  if (distributions.length > 0) {
-    const lastIndex = distributions.length - 1;
-    distributions[lastIndex].totalAmount += (totalAmount - totalDistributed);
-    distributions[lastIndex].amountDueOnline += (amountDueOnline - onlineDistributed);
-    distributions[lastIndex].amountDueCod += (amountDueCod - codDistributed);
+      distributedTotal += groupTotalAmount;
+      distributedOnline += groupAmountDueOnline;
+      distributedCod += groupAmountDueCod;
+    }
   }
 
   return distributions;
@@ -185,19 +192,33 @@ export function generateOrderGroupId() {
 export function createSplitOrdersData(originalOrderData, itemGroups, orderGroupId) {
   const orders = [];
   
-  // Calculate totals for payment distribution
+  // Calculate subtotals for each group (before discount and extra charges)
   const groups = itemGroups.map(group => ({
     groupTotal: group.items.reduce((sum, item) => sum + (item.serverPrice * item.quantity), 0),
     items: group.items
   }));
 
-  const totalAmount = originalOrderData.totalAmount;
-  const amountDueOnline = originalOrderData.paymentDetails.amountDueOnline;
-  const amountDueCod = originalOrderData.paymentDetails.amountDueCod;
+  // Use the FINAL total amount (after discount and extra charges) from originalOrderData
+  const finalTotalAmount = originalOrderData.totalAmount;
+  const finalAmountDueOnline = originalOrderData.paymentDetails.amountDueOnline;
+  const finalAmountDueCod = originalOrderData.paymentDetails.amountDueCod;
 
-  const paymentDistributions = distributePaymentAmounts(groups, totalAmount, amountDueOnline, amountDueCod);
+  console.log('🔍 Order Splitting Debug:', {
+    originalTotal: finalTotalAmount,
+    originalDiscount: originalOrderData.totalDiscount,
+    groups: groups.map(g => ({ groupTotal: g.groupTotal, itemCount: g.items.length })),
+    totalGroupsSubtotal: groups.reduce((sum, g) => sum + g.groupTotal, 0)
+  });
+
+  const paymentDistributions = distributePaymentAmounts(groups, finalTotalAmount, finalAmountDueOnline, finalAmountDueCod);
   const discountDistributions = distributeDiscount(groups, originalOrderData.totalDiscount);
   const chargeDistributions = distributeExtraCharges(groups, originalOrderData.extraCharges);
+
+  console.log('🔍 Distribution Results:', {
+    paymentDistributions,
+    discountDistributions,
+    chargeDistributions
+  });
 
   for (let i = 0; i < itemGroups.length; i++) {
     const group = itemGroups[i];
