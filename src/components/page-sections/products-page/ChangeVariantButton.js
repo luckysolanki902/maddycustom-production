@@ -78,7 +78,7 @@ export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefi
         dispatch(
           setHasSeenVariantPopup({ categoryId: category._id, hasSeen: true })
         );
-      }, 2000);
+      }, 500);
 
       return () => clearTimeout(timer);
     }

@@ -689,10 +689,12 @@ const OrderForm = ({
         showSnackbar('Order placed. Awaiting payment confirmation.', 'info');
       }
 
+      // Facebook Pixel Purchase Event - Always send FULL customer total amount
+      // This represents the complete customer purchase intent, not payment splits
       purchase(
         {
           orderId: createdOrderId,
-          totalAmount: totalCost,
+          totalAmount: totalCost, // Full order total from ViewCart (includes all items, discounts, charges)
           items: cartItems.map((item) => ({
             product: item.productId,
             name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
