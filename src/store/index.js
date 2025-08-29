@@ -24,6 +24,7 @@ import displayAssetsReducer from './slices/displayAssetsSlice'; // Import displa
 import navigationReducer from './slices/navigationSlice'; // Import navigation slice
 import b2bSelectionReducer from './slices/b2bSelectionSlice';
 import b2bFormReducer from './slices/b2bFormSlice';
+import variantsReducer from './slices/variantsSlice'; // Import variants cache slice
 
 const rootReducer = combineReducers({
   cart: cartReducer,
@@ -37,6 +38,7 @@ const rootReducer = combineReducers({
   navigation: navigationReducer, // Add navigation reducer (not persisted for real-time state)
   b2bSelection: b2bSelectionReducer,
   b2bForm: b2bFormReducer,
+  variants: variantsReducer, // Add variants cache reducer
 });
 
 const persistConfig = {
@@ -52,7 +54,7 @@ const persistConfig = {
     'persistentUi',
     'displayAssets',
     'b2bSelection',
-    'b2bForm'
+    'b2bForm',
   ],
 };
 
