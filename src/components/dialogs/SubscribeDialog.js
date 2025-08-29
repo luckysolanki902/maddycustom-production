@@ -108,13 +108,13 @@ const SubscribeDialog = () => {
   // Open the dialog if conditions are met
   useEffect(() => {
     if (
-      // timeSpentOnWebsite >= 30 &&
-      // scrolledMoreThan60Percent &&
-      // !loginDialogShown &&
-      // !isUserPhoneNumberValid &&
-      // !userExists &&
-      // !isCartDrawerOpen &&
-      // !pathname.startsWith('/orders/myorder/')
+      timeSpentOnWebsite >= 30 &&
+      scrolledMoreThan60Percent &&
+      !loginDialogShown &&
+      !isUserPhoneNumberValid &&
+      !userExists &&
+      !isCartDrawerOpen &&
+      !pathname.startsWith('/orders/myorder/')
       1===1
     ) {
       setOpen(true);
