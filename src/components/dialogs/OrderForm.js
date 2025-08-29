@@ -271,7 +271,7 @@ const OrderForm = ({
     const originalOverflow = document.body.style.overflow;
     const originalPosition = document.body.style.position;
     const originalHeight = document.body.style.height;
-    
+
     document.body.style.overflow = 'hidden';
     document.body.style.position = 'fixed';
     document.body.style.height = '100vh';
@@ -282,7 +282,7 @@ const OrderForm = ({
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', handleViewportChange);
       }
-      
+
       // Restore body styles
       document.body.style.overflow = originalOverflow;
       document.body.style.position = originalPosition;
@@ -422,7 +422,7 @@ const OrderForm = ({
     onClose();
     dispatch(closeAllDialogs());
   }, [onClose, dispatch]);
-  
+
   // Pre-validate coupon in background as soon as form opens
   useEffect(() => {
     if (open && couponCode && subTotal > 0) {
@@ -538,7 +538,7 @@ const OrderForm = ({
         couponPromise = axios.post('/api/checkout/coupons/apply', {
           code: couponCode,
           totalCost: subTotal,
-          isFirstOrder: false, 
+          isFirstOrder: false,
           cartItems: items,
         }).then(response => {
           const couponValidation = response.data;
@@ -625,8 +625,8 @@ const OrderForm = ({
         discountAmount: discountAmountFinal || 0,
         couponCode: couponsDetails?.couponCode || '',
         extraChargesPayload: { // Send as an object to be processed server-side
-            mopCharges: paymentModeConfig.extraCharge || 0,
-            deliveryCharges: deliveryCost || 0,
+          mopCharges: paymentModeConfig.extraCharge || 0,
+          deliveryCharges: deliveryCost || 0,
         },
         utmDetails: utmDetails.utmDetails || null,
         utmHistory: utmDetails.utmHistory || [],
@@ -691,27 +691,29 @@ const OrderForm = ({
 
       // Facebook Pixel Purchase Event - Always send FULL customer total amount
       // This represents the complete customer purchase intent, not payment splits
-      purchase(
-        {
-          orderId: createdOrderId,
-          totalAmount: totalCost, // Full order total from ViewCart (includes all items, discounts, charges)
-          items: cartItems.map((item) => ({
-            product: item.productId,
-            name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-              ? item.productDetails.category?.name.slice(0, -1)
-              : item.productDetails.category?.name
-              }`,
-            quantity: item.quantity,
-            priceAtPurchase: item.priceAtPurchase,
-          })),
-        },
-        {
-          email: orderForm.userDetails.email || '',
-          phoneNumber: orderForm.userDetails.phoneNumber,
-        }
-      ).catch(error => {
-        console.error('FB pixel purchase event error (non-critical):', error);
-      });
+      if (!process.env.NEXT_PUBLIC_isTestingOrder) {
+        purchase(
+          {
+            orderId: createdOrderId,
+            totalAmount: totalCost, // Full order total from ViewCart (includes all items, discounts, charges)
+            items: cartItems.map((item) => ({
+              product: item.productId,
+              name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+                ? item.productDetails.category?.name.slice(0, -1)
+                : item.productDetails.category?.name
+                }`,
+              quantity: item.quantity,
+              priceAtPurchase: item.priceAtPurchase,
+            })),
+          },
+          {
+            email: orderForm.userDetails.email || '',
+            phoneNumber: orderForm.userDetails.phoneNumber,
+          }
+        ).catch(error => {
+          console.error('FB pixel purchase event error (non-critical):', error);
+        });
+      }
 
       pendingOperationsRef.current = {
         userCheck: null,
@@ -720,7 +722,7 @@ const OrderForm = ({
       };
 
       dispatch(clearUTMDetails());
-      dispatch(clearCart());
+      if (!process.env.NEXT_PUBLIC_isTestingOrder) dispatch(clearCart());
       dispatch(resetOrderForm());
       reset();
 
@@ -1001,7 +1003,7 @@ const OrderForm = ({
                     cursor: tabIndex === 1 ? 'pointer' : 'default'
                   }}
                 >
-              
+
                   2
                 </Box>
               </motion.div>
@@ -1108,12 +1110,12 @@ const OrderForm = ({
                     exit="exit"
                     style={{ width: '100%' }} // Removed height: '100%'
                   >
-                    <Box sx={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '0.5rem', 
-                      width: '100%', 
-                      paddingTop: '0.5rem', 
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem',
+                      width: '100%',
+                      paddingTop: '0.5rem',
                       px: { xs: 0.5, sm: 1 },
                     }}> {/* Added horizontal padding */}
                       {/* Name field */}
@@ -1267,11 +1269,11 @@ const OrderForm = ({
                     exit="exit"
                     style={{ width: '100%' }} // Removed height: '100%'
                   >
-                    <Box sx={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '0.5rem', 
-                      paddingTop: '0.5rem', 
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem',
+                      paddingTop: '0.5rem',
                       px: { xs: 0.5, sm: 1 },
                     }}> {/* Added horizontal padding */}
                       <Controller
@@ -1681,10 +1683,10 @@ const OrderForm = ({
                 </motion.div>
               </Box>
 
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
                   gap: 1,
                   '@media (max-height: 600px)': {
                     display: 'none', // Hide payment logo on short screens

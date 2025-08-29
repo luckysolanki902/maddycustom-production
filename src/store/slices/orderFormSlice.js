@@ -72,7 +72,19 @@ const orderFormSlice = createSlice({
     setExtraFields: (s, a) => { s.extraFields = { ...s.extraFields, ...a.payload }; },
     setLoginDialogShown: (s, a) => { s.loginDialogShown = a.payload; },
 
-    resetOrderForm: () => initialState,
+    resetOrderForm: (s) => {
+      // Preserve userDetails, addressDetails, userExists, prefilledAddress
+      // Reset only coupon/offer-related and small misc fields
+      s.couponApplied = { ...initialState.couponApplied };
+      s.manualCoupon = initialState.manualCoupon;
+      s.autoApplyDisabled = initialState.autoApplyDisabled;
+      s.autoApplyDisabledAt = initialState.autoApplyDisabledAt;
+      s.bestDealCoupon = initialState.bestDealCoupon;
+      s.extraFields = { ...initialState.extraFields };
+      s.loginDialogShown = initialState.loginDialogShown;
+      s.lastOrderId = initialState.lastOrderId;
+      s.lastOrderIdSetAt = initialState.lastOrderIdSetAt;
+    },
   },
 });
 
