@@ -418,6 +418,7 @@ const ProductCard = memo(function ProductCard({ product }) {
           product={cartPayload}
           onClick={(e) => e.stopPropagation()}
           insertionDetails={insertionDetails}
+          enableVariantSelection
         />
       </CardContent>
     </Card>
