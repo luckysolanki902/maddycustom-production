@@ -2,18 +2,41 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Drawer, Box, Typography, Card, CardMedia, CardContent, Button, IconButton, Skeleton } from "@mui/material";
+import {
+  Drawer,
+  Box,
+  Typography,
+  Card,
+  CardMedia,
+  CardContent,
+  Button,
+  IconButton,
+  Skeleton,
+  Checkbox,
+  FormControlLabel,
+} from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
-import { Close, ShoppingCart, ArrowForward, LocalOffer } from "@mui/icons-material";
+import { Close, ArrowForward, LocalOffer } from "@mui/icons-material";
 import { closeRecommendationDrawer } from "@/store/slices/uiSlice";
+import { setHasSeenVariantPopup, setPageSlug } from "@/store/slices/variantPreferenceSlice";
 import AddToCartButton from "@/components/utils/AddToCartButton";
+import { Dialog, DialogContent, Divider } from "@mui/material";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 // Product Card Component with Coupon Information
-const ProductCardWithCoupon = ({ product }) => {
+const ProductCardWithCoupon = ({ product, categoryVariants }) => {
   const dispatch = useDispatch();
   const cartItems = useSelector(state => state.cart.items);
   const [unlockableCoupon, setUnlockableCoupon] = useState(null);
   const [loadingCoupon, setLoadingCoupon] = useState(false);
+
+  // Handle card click to redirect to product page
+  const handleCardClick = () => {
+    if (product.pageSlug) {
+      window.open(`https://www.maddycustom.com/shop${product.pageSlug}`, '_blank');
+    }
+  };
 
   // Calculate current cart value
   const calculateCurrentCartValue = useCallback(() => {
@@ -61,6 +84,7 @@ const ProductCardWithCoupon = ({ product }) => {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <Card
+        onClick={handleCardClick}
         sx={{
           height: unlockableCoupon ? 200 : 160, // Increased height when coupon is available
           border: "1px solid #f0f0f0",
@@ -68,6 +92,7 @@ const ProductCardWithCoupon = ({ product }) => {
           transition: "all 0.2s ease",
           position: "relative",
           overflow: "visible",
+          cursor: "pointer",
           "&:hover": {
             borderColor: "#2d2d2d",
             boxShadow: "0 4px 12px rgba(45, 45, 45, 0.1)",
@@ -223,19 +248,22 @@ const ProductCardWithCoupon = ({ product }) => {
                 </Box>
               </Box>
 
+              {/* Use AddToCartButton with variant selection enabled */}
               <AddToCartButton
                 product={product}
+                enableVariantSelection
+                hideRecommendationPopup
                 size="small"
-                sx={{
-                  backgroundColor: "#2d2d2d",
-                  color: "white",
-                  fontSize: "0.75rem",
-                  py: 0.5,
-                  minHeight: 32,
-                  "&:hover": {
-                    backgroundColor: "#1a1a1a",
-                  },
-                }}
+                // sx={{
+                //   backgroundColor: "#424242",
+                //   color: "white",
+                //   fontSize: "0.75rem",
+                //   py: 0.5,
+                //   minHeight: 32,
+                //   "&:hover": {
+                //     backgroundColor: "#353535",
+                //   },
+                // }}
               />
             </CardContent>
           </Box>
@@ -298,7 +326,7 @@ const RecommendationDrawer = () => {
         const data = await response.json();
 
         if (data.success) {
-          // Filter out the current product and limit to 6 products
+          // Filter out the current product and limit to 6 products total
           const filtered = data.products.filter(product => product._id !== recommendationProduct._id).slice(0, 6);
           setRecommendedProducts(filtered);
         }

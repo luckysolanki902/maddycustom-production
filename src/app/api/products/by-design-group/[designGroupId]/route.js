@@ -1,5 +1,7 @@
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Product from '@/models/Product';
+import SpecificCategory from '@/models/SpecificCategory';
+import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 
 export async function GET(request, { params }) {
   try {
@@ -16,16 +18,34 @@ export async function GET(request, { params }) {
 
     // Find products with the same design group ID
     const products = await Product.find({
-      designGroupId: designGroupId,
+      designGroupId,
       available: true,
     })
-    .populate('specificCategory', 'name')
-    .populate('specificCategoryVariant', 'name')
-    .lean();
+      .populate("inventoryData specificCategoryVariant specificCategory")
+      .lean();
+
+    const enhancedProducts = products
+      .map(product => {
+        const newProduct = {
+          ...product,
+          variant: product.specificCategoryVariant,
+          category: product.specificCategory,
+        };
+
+        delete newProduct.specificCategory;
+        delete newProduct.specificCategoryVariant;
+
+        return newProduct;
+      })
+      .filter(
+        (prod, index, self) =>
+          index === self.findIndex(p => String(p.category?._id) === String(prod.category?._id))
+      );
+
 
     return Response.json({
       success: true,
-      products: products || [],
+      products: enhancedProducts || [],
     });
   } catch (error) {
     console.error('Error fetching products by design group:', error);
