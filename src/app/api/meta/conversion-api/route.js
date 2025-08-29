@@ -241,19 +241,7 @@ export async function POST(request) {
     
     // Only log detailed info for non-PageView events
     const isPageView = eventName === 'PageView';
-    
-    if (!isPageView) {
-      // Log the entire request payload for debugging (only for non-PageView)
-      console.log(`Conversion API Request [${eventName}]:`, {
-        eventName,
-        options: {
-          ...options,
-          // Don't log sensitive data in production
-          emails: options.emails ? `[${options.emails.length} emails]` : undefined,
-          phones: options.phones ? `[${options.phones.length} phones]` : undefined,
-        }
-      });
-    }
+
     
     // Validate and fix timestamp
     const currentTimestamp = Math.floor(Date.now() / 1000);
@@ -491,39 +479,6 @@ export async function POST(request) {
       !!options.date_of_birth,
       !!options.gender
     );
-    
-    if (!isPageView) {
-      console.log(`Sending event to Facebook [${eventName}]:`, {
-        eventName,
-        eventTime: eventTimestamp,
-        eventId: options.eventID || 'generated',
-        matchQualityScore: `${matchQualityScore}/10`,
-        hasUserData: hasUserIdentifiers,
-        hasCustomData: !!(options.value || contents.length),
-        userIdentifiers: {
-          emails: hashedEmails.length,
-          phones: hashedPhones.length,
-          fbp: fbpSet,
-          fbc: fbcSet,
-          externalIds: hashedExternalIds.length,
-          firstName: !!options.first_name,
-          lastName: !!options.last_name,
-          city: !!options.city,
-          state: !!options.state,
-          country: !!options.country,
-          zipCode: !!options.zip_code,
-          dateOfBirth: !!options.date_of_birth,
-          gender: !!options.gender
-        },
-        customDataFields: {
-          value: !!options.value,
-          contentName: !!options.content_name,
-          contentCategory: !!options.content_category,
-          contentIds: !!(options.content_ids && options.content_ids.length),
-          contents: contents.length
-        }
-      });
-    }
 
     // Enhanced warning system
   if (!hasUserIdentifiers && !isPageView) {
