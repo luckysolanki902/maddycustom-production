@@ -26,6 +26,7 @@ export default function AddToCartButton({
   hideRecommendationPopup = false,
   showOnlyChooseVariants = false
 }) {
+  console.log(product);
   const dispatch = useDispatch();
   const cartItems = useSelector(state => state.cart.items);
   const cartItem = cartItems.find(item => item.productId === product._id);
