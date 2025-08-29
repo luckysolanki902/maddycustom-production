@@ -1,14 +1,14 @@
 // /models/Product.js
 
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 function toTitleCase(str) {
-  if (!str) return '';
+  if (!str) return "";
   return str
     .toLowerCase()
-    .split(' ')
+    .split(" ")
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+    .join(" ");
 }
 
 const ProductSchema = new mongoose.Schema(
@@ -48,30 +48,25 @@ const ProductSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['Wraps', 'Accessories'],
+
       required: true,
       index: true,
     },
     subCategory: {
       type: String,
-      enum: ['Bike Wraps', 'Car Wraps', 'Safety'],
+
       required: true,
       index: true,
     },
     specificCategory: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'SpecificCategory',
+      ref: "SpecificCategory",
       index: true,
     },
     specificCategoryVariant: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'SpecificCategoryVariant',
+      ref: "SpecificCategoryVariant",
       index: true,
-    },
-    deliveryCost: {
-      type: Number,
-      default: 100,
-      min: 0,
     },
     MRP: {
       type: Number,
@@ -79,6 +74,11 @@ const ProductSchema = new mongoose.Schema(
       min: 1,
       index: true,
       default: 1000,
+    },
+    deliveryCost: {
+      type: Number,
+      default: 100,
+      min: 0,
     },
     price: {
       type: Number,
@@ -100,12 +100,12 @@ const ProductSchema = new mongoose.Schema(
     designTemplate: {
       designCode: {
         type: String,
-        required: true,
+        required: false,
       },
       imageUrl: {
         type: String,
-        required: true,
-      }
+        required: false,
+      },
     },
 
     displayOrder: {
@@ -120,18 +120,24 @@ const ProductSchema = new mongoose.Schema(
     productSource: {
       type: String,
       required: true,
-      enum: ['inhouse', 'marketplace'],
+      enum: ["inhouse", "marketplace"],
       index: true,
     },
     brand: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Brand',
+      ref: "Brand",
       required: false,
       index: true,
     },
     inventoryData: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Inventory',
+      ref: "Inventory",
+    },
+    designGroupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false,
+      index: true,
+      match: /^DES\d{5}[A-Z]{2}$/,
     },
     lastSyncedToGoogle: {
       type: Date,
@@ -156,5 +162,4 @@ ProductSchema.pre('save', function (next) {
   next();
 });
 
-
-module.exports = mongoose.models.Product || mongoose.model('Product', ProductSchema);
+module.exports = mongoose.models.Product || mongoose.model("Product", ProductSchema);
