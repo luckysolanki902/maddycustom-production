@@ -506,7 +506,7 @@ export default function ViewCart({ isDrawer = false }) {
     if (totalPay < minPurchaseAmt) {
       const shortfall = minPurchaseAmt - totalPay;
       snack(
-        `Add ₹${shortfall} more to your cart to unlock checkout! You're so close to getting amazing products delivered to your doorstep!`,
+        `Almost there—add ₹${shortfall} to your cart to place your order.`,
         'info'
       );
       return;
