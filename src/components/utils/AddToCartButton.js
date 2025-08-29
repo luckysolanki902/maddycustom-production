@@ -9,6 +9,7 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import AddIcon from "@mui/icons-material/Add";
 import { addItem, incrementQuantity, decrementQuantity, removeItem, setDefaultWrapFinish } from "../../store/slices/cartSlice";
 import { openCartDrawer, openRecommendationDrawer } from "../../store/slices/uiSlice";
+import { setVariantsCache, removeExpiredCache } from "../../store/slices/variantsSlice";
 import { addToCart as trackAddToCart } from "@/lib/metadata/facebookPixels";
 import SimilarProductsToast from "../notifications/SimilarProductsToast";
 import { Dialog, DialogContent, Box, Typography, Divider, Button, Checkbox, FormControlLabel, Skeleton } from "@mui/material";
@@ -30,6 +31,8 @@ export default function AddToCartButton({
   const dispatch = useDispatch();
   const cartItems = useSelector(state => state.cart.items);
   const cartItem = cartItems.find(item => item.productId === product._id);
+  const variantsCache = useSelector(state => state.variants.cache);
+  const cacheTimestamps = useSelector(state => state.variants.lastUpdated);
 
   // State to track last action for animation
   const [lastAction, setLastAction] = useState(null); // 'increment' or 'decrement'
@@ -44,17 +47,6 @@ export default function AddToCartButton({
   const [showVariantDialog, setShowVariantDialog] = useState(false);
   const [isLoadingVariants, setIsLoadingVariants] = useState(false);
   const router = useRouter();
-
-  // Static cache outside component to persist across all instances
-  const getVariantCache = (() => {
-    if (typeof window !== "undefined") {
-      if (!window.__variantCache) {
-        window.__variantCache = new Map();
-      }
-      return window.__variantCache;
-    }
-    return new Map();
-  })();
 
   // React Spring animation for quantity
   const props = useSpring({
@@ -81,7 +73,7 @@ export default function AddToCartButton({
     // No additional logic needed here as useSpring tracks cartItem changes.
   }, [cartItem]);
 
-  // Check for variants when enableVariantSelection is true (with local caching)
+  // Check for variants when enableVariantSelection is true (with Redux caching)
   useEffect(() => {
     if (enableVariantSelection && product) {
       const checkForVariants = async () => {
@@ -89,9 +81,15 @@ export default function AddToCartButton({
           const categoryId = product.specificCategory || product.category?._id;
           if (!categoryId) return;
 
+          // Clean expired cache first
+          dispatch(removeExpiredCache());
+
           // Check if we have cached data for this category
-          if (getVariantCache.has(categoryId)) {
-            const cachedData = getVariantCache.get(categoryId);
+          const cachedData = variantsCache[categoryId];
+          const cacheTime = cacheTimestamps[categoryId];
+          const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+          
+          if (cachedData && cacheTime && (Date.now() - cacheTime) < CACHE_DURATION) {
             setVariants(cachedData.variants || []);
             setHasVariants(cachedData.variants && cachedData.variants.length > 1);
             setIsLoadingVariants(false);
@@ -101,12 +99,12 @@ export default function AddToCartButton({
           // Set loading state before API call
           setIsLoadingVariants(true);
 
-          // Fetch from API if not cached
+          // Fetch from API if not cached or expired
           const response = await fetch(`/api/features/get-variants?categoryId=${categoryId}`);
           const data = await response.json();
 
-          // Store in cache
-          getVariantCache.set(categoryId, data);
+          // Store in Redux cache
+          dispatch(setVariantsCache({ categoryId, data }));
 
           setVariants(data.variants || []);
           setHasVariants(data.variants && data.variants.length > 1);
@@ -120,7 +118,7 @@ export default function AddToCartButton({
       };
       checkForVariants();
     }
-  }, [enableVariantSelection, getVariantCache, product]);
+  }, [enableVariantSelection, product, dispatch, variantsCache, cacheTimestamps]);
 
   // --- INVENTORY / STOCK MANAGEMENT ---
   // Determine the inventory data source: product inventoryData takes precedence, else selectedOption inventoryData.
