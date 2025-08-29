@@ -115,7 +115,6 @@ const SubscribeDialog = () => {
       !userExists &&
       !isCartDrawerOpen &&
       !pathname.startsWith('/orders/myorder/')
-      1===1
     ) {
       setOpen(true);
       dispatch(setLoginDialogShown(true));
