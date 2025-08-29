@@ -63,8 +63,10 @@ async function enrichProducts(products, { specCatDoc, scvMap }) {
     ),
   );
 
+  const filteredProducts = Array.from(new Map(products.map(p => [p.specificCategory, p])).values());
+  
   // final shape
-  return products
+  return filteredProducts
     .map((p) => {
       const scv = scvMap[p.specificCategoryVariant.toString()];
       return {
@@ -81,6 +83,12 @@ async function enrichProducts(products, { specCatDoc, scvMap }) {
         },
         options: optMap[p._id.toString()] || [],
       };
+    })
+    .filter((p) => {
+      // Filter out products with zero inventory
+      const hasInventory = p.inventoryData?.availableQuantity > 0;
+      const hasOptionWithInventory = p.options?.some(opt => opt.inventoryData?.availableQuantity > 0);
+      return hasInventory || hasOptionWithInventory;
     })
     .sort(
       (a, b) =>
@@ -313,6 +321,8 @@ export async function GET(request) {
       ...(excludeIds.length && { _id: { $nin: excludeIds } })
     }).lean();
 
+    console.log(2,raw[0])
+
     const enriched = await enrichProducts(raw, { specCatDoc: sc, scvMap });
 
     // Merge cart design group products with variant products
@@ -422,7 +432,7 @@ export async function GET(request) {
 
       return enrichProducts(raw, { specCatDoc: sc, scvMap });
     }),
-  );
+  );console.log(3,lists[0]);
 
   // Flatten all products from different categories
   const allCategoryProducts = lists.flat();

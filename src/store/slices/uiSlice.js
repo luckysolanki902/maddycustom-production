@@ -6,16 +6,19 @@ const initialState = {
   isSidebarOpen: false,
   isSearchDialogOpen: false,
   isCartDrawerOpen: false,
-  cartDrawerSource: 'bottom', // 'top' or 'bottom'
+  cartDrawerSource: "bottom", // 'top' or 'bottom'
+  isRecommendationDrawerOpen: true,
+  recommendationProduct: null,
+  recommendationProduct: { designGroupId: "68a22f30df1ff91dce686061" },
   shippingTimer: {
-    expiryTime: Date.now() + (9 * 60 * 60 * 1000) + (13 * 60 * 1000), // 9 hours 13 minutes from now
-    isActive: false
+    expiryTime: Date.now() + 9 * 60 * 60 * 1000 + 13 * 60 * 1000, // 9 hours 13 minutes from now
+    isActive: false,
   },
   topStrip: {
     show: false,
     categoryId: null,
-    data: null
-  }
+    data: null,
+  },
 };
 
 const uiSlice = createSlice({
@@ -29,7 +32,8 @@ const uiSlice = createSlice({
       state.isSidebarOpen = true;
     },
     closeSidebar(state) {
-      state.isSidebarOpen = false;
+      state.isSidebarOpen = fal
+      se;
     },
     toggleSearchDialog(state) {
       state.isSearchDialogOpen = !state.isSearchDialogOpen;
@@ -53,6 +57,16 @@ const uiSlice = createSlice({
       state.isCartDrawerOpen = false;
     },
     
+    // Recommendation drawer reducers
+    openRecommendationDrawer(state, action) {
+      state.isRecommendationDrawerOpen = true;
+      state.recommendationProduct = action.payload?.product || null;
+    },
+    closeRecommendationDrawer(state) {
+      state.isRecommendationDrawerOpen = false;
+      state.recommendationProduct = null;
+    },
+    
     // New shipping timer reducers
     setShippingTimer: (state, action) => {
       state.shippingTimer.expiryTime = action.payload;
@@ -70,6 +84,8 @@ const uiSlice = createSlice({
       state.isCartDrawerOpen = false;
       state.isSidebarOpen = false;
       state.isSearchDialogOpen = false;
+      state.isRecommendationDrawerOpen = false;
+      state.recommendationProduct = null;
     },
     
     // TopStrip reducers
@@ -96,6 +112,8 @@ export const {
   toggleCartDrawer,
   openCartDrawer,
   closeCartDrawer,
+  openRecommendationDrawer,
+  closeRecommendationDrawer,
   setShippingTimer,
   expireShippingTimer,
   resetShippingTimer,

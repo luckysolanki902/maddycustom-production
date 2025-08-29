@@ -15,7 +15,7 @@ import {
   removeItem,
   setDefaultWrapFinish
 } from '../../store/slices/cartSlice';
-import { openCartDrawer } from '../../store/slices/uiSlice';
+import { openCartDrawer, openRecommendationDrawer } from '../../store/slices/uiSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -51,7 +51,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   });
   useEffect(() => {
     dispatch(setDefaultWrapFinish());
-  }, []);
+  }, [dispatch]);
   // --- INVENTORY / STOCK MANAGEMENT ---
   // Use product.inventoryData if available; otherwise, if there's a selectedOption, use its inventoryData.
   const inventoryData =
@@ -80,12 +80,20 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     // If in limited mode and adding one would exceed allowed, do nothing.
     if (isLimited && (currentQuantity + 1) > maxAllowed) return;
 
+    // Check if cart is empty before adding
+    const wasCartEmpty = cartItems.length === 0;
+
     setLastAction('increment');
     dispatch(addItem({
       productId: product._id,
       productDetails: product,
       insertionDetails
     }));
+
+    // Show recommendation drawer if cart was empty and product has designGroupId
+    if (wasCartEmpty && product.designGroupId) {
+      dispatch(openRecommendationDrawer({ product }));
+    }
 
     // Track AddToCart event
     try {

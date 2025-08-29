@@ -23,7 +23,6 @@ const ScrollContainer = styled(Box)(({ theme }) => ({
   msOverflowStyle: "none",
   scrollbarWidth: "none",
   position: "relative",
-
 }));
 
 const ViewAllCard = styled(Card)(({ theme }) => ({
@@ -357,10 +356,32 @@ const ProductCard = memo(function ProductCard({ product }) {
         sx={{
           position: "relative",
           pt: "75%",
-          filter: outOfStock ? "grayscale(100%)" : "none",
+          filter: outOfStock ? "grayscale(100%) brightness(1.3)" : "none",
+          opacity: outOfStock ? 0.7 : 1,
         }}
       >
         <Image src={thumb} alt={product.name || "product"} fill sizes="200px" style={{ objectFit: "cover" }} />
+        {outOfStock && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: '#cc0000',
+              color: 'white',
+              padding: '0.5rem 1rem',
+              borderRadius: '4px',
+              fontWeight: '600',
+              fontSize: '0.9rem',
+              fontFamily: 'Jost, sans-serif',
+              textAlign: 'center',
+              zIndex: 1
+            }}
+          >
+            Out of Stock
+          </Box>
+        )}
       </CardMedia>
       <CardContent sx={{ pt: 1.5, pb: 2 }}>
         <Typography variant="subtitle2" sx={{ fontFamily: "Jost", fontWeight: 500 }} noWrap>
@@ -369,7 +390,9 @@ const ProductCard = memo(function ProductCard({ product }) {
         <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
           ₹{product.price}
         </Typography>
-        <AddToCartButton fullWidth product={cartPayload} onClick={e => e.stopPropagation()} insertionDetails={insertionDetails} />
+        {!outOfStock && (
+          <AddToCartButton fullWidth product={cartPayload} onClick={e => e.stopPropagation()} insertionDetails={insertionDetails} enableVariantSelection/>
+        )}
       </CardContent>
     </Card>
   );
