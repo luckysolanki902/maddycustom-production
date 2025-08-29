@@ -230,6 +230,9 @@ export default function ViewCart({ isDrawer = false }) {
   const isFirstOrder = false;  // hook into your user meta when ready
   const [revalidatingCoupons, setRevalidatingCoupons] = useState(false);
 
+  // Minimum purchase amount configuration
+  const minPurchaseAmt = 549; // Minimum order amount in INR
+
 
 
   /* ---------- cart totals ------------------------------------------- */
@@ -497,8 +500,18 @@ export default function ViewCart({ isDrawer = false }) {
     revalidate();
   }, [cartItems, subTot, revalidateCoupon, couponState.couponApplied, couponState.couponName]);
 
-  /* ---------- validate before checkout (unchanged) ------------------ */
+  /* ---------- validate before checkout (updated with min purchase check) ------------------ */
   const handleCheckout = async () => {
+    // Check if total amount meets minimum purchase requirement
+    if (totalPay < minPurchaseAmt) {
+      const shortfall = minPurchaseAmt - totalPay;
+      snack(
+        `Add ₹${shortfall} more to your cart to unlock checkout! You're so close to getting amazing products delivered to your doorstep!`,
+        'info'
+      );
+      return;
+    }
+
     setDlgOrder(true);
   };
 
