@@ -34,7 +34,7 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
   // Handle card click to redirect to product page
   const handleCardClick = () => {
     if (product.pageSlug) {
-      window.open(`https://www.maddycustom.com/shop${product.pageSlug}`, '_blank');
+      window.open(`${NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'}/shop${product.pageSlug}`, '_blank');
     }
   };
 

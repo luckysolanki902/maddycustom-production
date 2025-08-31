@@ -155,8 +155,8 @@ function TopBoughtProductsBase({
 
   /* ---------- Fetcher ---------- */
   const fetchPage = useCallback(
-    async (offset, isInitial) => {
-      try {
+  async (offset, isInitial) => {
+    try {
         isInitial ? setLoadingInit(true) : setLoadingMore(true);
 
         const params = { skip: offset };
