@@ -5,35 +5,27 @@ import { NextResponse } from 'next/server';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const designGroupId = searchParams.get('designGroupId');
     const categoryId = searchParams.get('categoryId');
-    const includeInventory = searchParams.get('includeInventory') === 'true';
+    const productName = searchParams.get('productName');
 
-    if (!designGroupId || !categoryId) {
+    if (!categoryId || !productName) {
       return NextResponse.json(
-        { message: 'Design Group ID and Category ID are required.' },
+        { message: 'Category ID and Product Name are required.' },
         { status: 400 }
       );
     }
 
     await connectToDatabase();
 
-    // Build query to find products by design group and category
-    let query = Product.find({
-      designGroupId: designGroupId,
-      $or: [
-        { specificCategory: categoryId },
-        { category: categoryId }
-      ],
+    // Find products by category and name (case-insensitive)
+    const products = await Product.find({
+      specificCategory: categoryId,
+      name: productName,
       available: true
-    }).populate("specificCategory specificCategoryVariant");
-
-    // Include inventory data if requested
-    if (includeInventory) {
-      query = query.populate('inventoryData');
-    }
-
-    const products = await query.lean().exec();
+    })
+    .populate('specificCategory specificCategoryVariant inventoryData')
+    .lean()
+    .exec();
 
     const enhancedProducts = products.map(product => {
       const newProduct = {
@@ -50,7 +42,7 @@ export async function GET(request) {
 
     return NextResponse.json({ products: enhancedProducts }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching products by design group and category:', error);
+    console.error('Error fetching products by category and name:', error);
     return NextResponse.json(
       { message: 'Internal Server Error' },
       { status: 500 }

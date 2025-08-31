@@ -9,13 +9,54 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import AddIcon from "@mui/icons-material/Add";
 import { addItem, incrementQuantity, decrementQuantity, removeItem, setDefaultWrapFinish } from "../../store/slices/cartSlice";
 import { openCartDrawer, openRecommendationDrawer } from "../../store/slices/uiSlice";
-import { setVariantsCache, removeExpiredCache } from "../../store/slices/variantsSlice";
+import { setVariantsCache, setPendingRequest, clearPendingRequest, removeExpiredCache } from "../../store/slices/variantsSlice";
 import { addToCart as trackAddToCart } from "@/lib/metadata/facebookPixels";
 import SimilarProductsToast from "../notifications/SimilarProductsToast";
 import { Dialog, DialogContent, Box, Typography, Divider, Button, Checkbox, FormControlLabel, Skeleton } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { setPageSlug } from "../../store/slices/variantPreferenceSlice";
 import Image from "next/image";
+
+// Request manager for deduplicating API calls
+const variantRequestManager = (() => {
+  const pendingRequests = new Map();
+
+  return {
+    async getVariants(categoryId, dispatch) {
+      // If there's already a pending request for this categoryId, wait for it
+      if (pendingRequests.has(categoryId)) {
+        return await pendingRequests.get(categoryId);
+      }
+
+      // Create new request
+      const requestPromise = (async () => {
+        try {
+          dispatch(setPendingRequest({ categoryId }));
+          
+          const response = await fetch(`/api/features/get-variants?categoryId=${categoryId}`);
+          const data = await response.json();
+          
+          // Store in Redux cache
+          dispatch(setVariantsCache({ categoryId, data }));
+          
+          return data;
+        } catch (error) {
+          console.error("Error fetching variants:", error);
+          dispatch(clearPendingRequest({ categoryId }));
+          throw error;
+        } finally {
+          // Clean up pending request
+          pendingRequests.delete(categoryId);
+        }
+      })();
+
+      // Store the promise so other components can wait for it
+      pendingRequests.set(categoryId, requestPromise);
+      
+      return await requestPromise;
+    }
+  };
+})();
 
 export default function AddToCartButton({
   product,
@@ -27,12 +68,12 @@ export default function AddToCartButton({
   hideRecommendationPopup = false,
   showOnlyChooseVariants = false
 }) {
-  console.log(product);
   const dispatch = useDispatch();
   const cartItems = useSelector(state => state.cart.items);
   const cartItem = cartItems.find(item => item.productId === product._id);
   const variantsCache = useSelector(state => state.variants.cache);
   const cacheTimestamps = useSelector(state => state.variants.lastUpdated);
+  const pendingRequests = useSelector(state => state.variants.pendingRequests);
 
   // State to track last action for animation
   const [lastAction, setLastAction] = useState(null); // 'increment' or 'decrement'
@@ -45,9 +86,8 @@ export default function AddToCartButton({
   const [variants, setVariants] = useState([]);
   const [hasVariants, setHasVariants] = useState(false);
   const [showVariantDialog, setShowVariantDialog] = useState(false);
-  const [isLoadingVariants, setIsLoadingVariants] = useState(false);
+  const [isLoadingVariants, setIsLoadingVariants] = useState(true);
   const router = useRouter();
-
   // React Spring animation for quantity
   const props = useSpring({
     // Animate scale and color based on lastAction
@@ -73,13 +113,16 @@ export default function AddToCartButton({
     // No additional logic needed here as useSpring tracks cartItem changes.
   }, [cartItem]);
 
-  // Check for variants when enableVariantSelection is true (with Redux caching)
+  // Check for variants when enableVariantSelection is true (with Redux caching and request deduplication)
   useEffect(() => {
     if (enableVariantSelection && product) {
       const checkForVariants = async () => {
         try {
           const categoryId = product.specificCategory || product.category?._id;
-          if (!categoryId) return;
+          if (!categoryId) {
+            setIsLoadingVariants(false);
+            return;
+          }
 
           // Clean expired cache first
           dispatch(removeExpiredCache());
@@ -96,29 +139,46 @@ export default function AddToCartButton({
             return;
           }
 
-          // Set loading state before API call
+          // Set loading state when we need to fetch data
           setIsLoadingVariants(true);
 
-          // Fetch from API if not cached or expired
-          const response = await fetch(`/api/features/get-variants?categoryId=${categoryId}`);
-          const data = await response.json();
+          // Check if there's already a pending request for this category
+          if (pendingRequests[categoryId]) {
+            // Wait for ongoing request to complete by checking cache again after a delay
+            const checkCacheAgain = () => {
+              const newCachedData = variantsCache[categoryId];
+              if (newCachedData) {
+                setVariants(newCachedData.variants || []);
+                setHasVariants(newCachedData.variants && newCachedData.variants.length > 1);
+                setIsLoadingVariants(false);
+              } else {
+                // If still no data, try again after a short delay
+                setTimeout(checkCacheAgain, 100);
+              }
+            };
+            setTimeout(checkCacheAgain, 100);
+            return;
+          }
 
-          // Store in Redux cache
-          dispatch(setVariantsCache({ categoryId, data }));
+          // Use the request manager to fetch data (handles deduplication)
+          const data = await variantRequestManager.getVariants(categoryId, dispatch);
 
           setVariants(data.variants || []);
           setHasVariants(data.variants && data.variants.length > 1);
+          setIsLoadingVariants(false); // Move this inside try block, not finally
         } catch (error) {
           console.error("Error checking variants:", error);
           setVariants([]);
           setHasVariants(false);
-        } finally {
-          setIsLoadingVariants(false);
+          setIsLoadingVariants(false); // Also set false on error
         }
       };
       checkForVariants();
+    } else if (!enableVariantSelection) {
+      // If variant selection is disabled, immediately set loading to false
+      setIsLoadingVariants(false);
     }
-  }, [enableVariantSelection, product, dispatch, variantsCache, cacheTimestamps]);
+  }, [enableVariantSelection, product, dispatch, variantsCache, cacheTimestamps, pendingRequests]);
 
   // --- INVENTORY / STOCK MANAGEMENT ---
   // Determine the inventory data source: product inventoryData takes precedence, else selectedOption inventoryData.
@@ -251,7 +311,9 @@ export default function AddToCartButton({
     .join(" ")
     .trim();
 
-    if (!showOnlyChooseVariants && enableVariantSelection && isLoadingVariants) {
+    if (showOnlyChooseVariants && isLoadingVariants) return null;
+
+    if (isLoadingVariants) {
       return (
         <Box width="10rem">
           <Skeleton
@@ -355,13 +417,14 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
   // Check if category uses letter mapping
   useEffect(() => {
     const fetchVariantProducts = async () => {
-      if (!product.designGroupId) return;
-      
       setIsLoadingProducts(true);
       try {
         // Fetch products for each variant category with inventory data
+        const productName = product.name;
+        const categoryId = product.specificCategory ?? product.category?._id;
+
         const response = await fetch(
-          `/api/products/by-design-group-and-category?designGroupId=${product.designGroupId}&categoryId=${product.category._id}&includeInventory=true`
+          `/api/products/by-category-and-name?productName=${productName}&categoryId=${categoryId}&includeInventory=true`
         );
         const data = await response.json();
         setVariantProducts(data.products);

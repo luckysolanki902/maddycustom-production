@@ -38,7 +38,7 @@ async function enrichProducts(products, { specCatDoc, scvMap }) {
 
   const pIds = products.map((p) => p._id);
 
-  // totalBought
+  // totalBoughtslice
   const buys = await Order.aggregate([
     { $match: { 'items.product': { $in: pIds } } },
     { $unwind: '$items' },
@@ -62,40 +62,42 @@ async function enrichProducts(products, { specCatDoc, scvMap }) {
         (a.inventoryData?.availableQuantity || 0),
     ),
   );
+    
+    const finalProducts = Array.from(new Map(products.map(p => [p.specificCategory, p])).values())
+      .map((p, i) => {
+        const scv = scvMap[p.specificCategoryVariant.toString()];
+        return {
+          ...p,
+          totalBought: buyMap[p._id.toString()] || 0,
+          category: {
+            specificCategoryCode: specCatDoc.specificCategoryCode,
+            name: specCatDoc.name,
+          },
+          variantDetails: {
+            available: scv?.available ?? false,
+            availableBrands: scv?.availableBrands ?? [],
+            name: scv?.name ?? "",
+          },
+          options: optMap[p._id.toString()] || [],
+        };
+      })
+      .filter(p => {
+        if (!p.inventoryData && !p.options?.length) {
+          // this product doesn't have inventoryData or options to filter out of stock products so just filter it
+          return true;
+        }
 
-  const filteredProducts = Array.from(new Map(products.map(p => [p.specificCategory, p])).values());
+        // Filter out products with zero inventory
+        const hasInventory = p.inventoryData?.availableQuantity > 0;
+        const hasOptionWithInventory = p.options?.some(opt => opt.inventoryData?.availableQuantity > 0);
+        return hasInventory || hasOptionWithInventory;
+      })
+      .sort(
+        (a, b) =>
+          b.totalBought - a.totalBought || a.name.localeCompare(b.name) || a._id.toString().localeCompare(b._id.toString())
+      );
   
-  // final shape
-  return filteredProducts
-    .map((p) => {
-      const scv = scvMap[p.specificCategoryVariant.toString()];
-      return {
-        ...p,
-        totalBought: buyMap[p._id.toString()] || 0,
-        category: {
-          specificCategoryCode: specCatDoc.specificCategoryCode,
-          name: specCatDoc.name,
-        },
-        variantDetails: {
-          available: scv?.available ?? false,
-          availableBrands: scv?.availableBrands ?? [],
-          name: scv?.name ?? '',
-        },
-        options: optMap[p._id.toString()] || [],
-      };
-    })
-    .filter((p) => {
-      // Filter out products with zero inventory
-      const hasInventory = p.inventoryData?.availableQuantity > 0;
-      const hasOptionWithInventory = p.options?.some(opt => opt.inventoryData?.availableQuantity > 0);
-      return hasInventory || hasOptionWithInventory;
-    })
-    .sort(
-      (a, b) =>
-        b.totalBought - a.totalBought || 
-        a.name.localeCompare(b.name) || 
-        a._id.toString().localeCompare(b._id.toString()),
-    );
+  return finalProducts;
 }
 
 /* fetch products with same designGroupId from cart, avoiding duplicates per specific category */
@@ -117,30 +119,39 @@ async function fetchCartDesignGroupProducts(cartDesignIds, excludeProductIds) {
     },
     {
       $lookup: {
-        from: 'specificcategoryvariants',
-        localField: 'specificCategoryVariant',
-        foreignField: '_id',
-        as: 'scvData',
+        from: "specificcategoryvariants",
+        localField: "specificCategoryVariant",
+        foreignField: "_id",
+        as: "scvData",
       },
     },
     {
       $lookup: {
-        from: 'specificcategories',
-        localField: 'specificCategory',
-        foreignField: '_id',
-        as: 'scData',
+        from: "specificcategories",
+        localField: "specificCategory",
+        foreignField: "_id",
+        as: "scData",
+      },
+    },
+    {
+      $lookup: {
+        from: "inventories",
+        localField: "inventoryData",
+        foreignField: "_id",
+        as: "inventoryData",
       },
     },
     {
       $match: {
-        'scvData.available': true,
-        'scData.available': true,
+        "scvData.available": true,
+        "scData.available": true,
       },
     },
     {
       $addFields: {
-        scvData: { $arrayElemAt: ['$scvData', 0] },
-        scData: { $arrayElemAt: ['$scData', 0] },
+        scvData: { $arrayElemAt: ["$scvData", 0] },
+        scData: { $arrayElemAt: ["$scData", 0] },
+        inventoryData: { $arrayElemAt: ["$inventoryData", 0] },
       },
     },
     {
@@ -152,14 +163,14 @@ async function fetchCartDesignGroupProducts(cartDesignIds, excludeProductIds) {
     },
     {
       $group: {
-        _id: { designGroupId: '$designGroupId', specificCategoryVariant: '$specificCategoryVariant' },
-        product: { $first: '$$ROOT' }, // Take first (cheapest) product per design group + category
-        scvData: { $first: '$scvData' },
-        scData: { $first: '$scData' },
+        _id: { designGroupId: "$designGroupId", specificCategoryVariant: "$specificCategoryVariant" },
+        product: { $first: "$$ROOT" }, // Take first (cheapest) product per design group + category
+        scvData: { $first: "$scvData" },
+        scData: { $first: "$scData" },
       },
     },
     {
-      $replaceRoot: { newRoot: '$product' },
+      $replaceRoot: { newRoot: "$product" },
     },
     {
       $sort: { price: 1, _id: 1 },
@@ -195,7 +206,7 @@ export async function GET(request) {
   
   const excludeProductIdsArray = excludeProductIds ? excludeProductIds.split(',').filter(Boolean) : [];
   const cartDesignIdsArray = cartDesignIds ? cartDesignIds.split(',').filter(Boolean) : [];
-
+  
   // Check cache first
   const cacheKey = getCacheKey({ 
     subCategories: subCategoriesParam, 
@@ -252,7 +263,7 @@ export async function GET(request) {
       specificCategoryVariant: { $in: variants.map(v => v._id) },
       available: true,
       ...(excludeIds.length && { _id: { $nin: excludeIds } })
-    }).lean();
+    }).populate("inventoryData").lean();
 
     const enriched = await enrichProducts(allProducts, { specCatDoc: sc, scvMap });
 
@@ -319,12 +330,9 @@ export async function GET(request) {
       specificCategoryVariant: scv._id,
       available: true,
       ...(excludeIds.length && { _id: { $nin: excludeIds } })
-    }).lean();
-
-    console.log(2,raw[0])
+    }).populate("inventoryData").lean();
 
     const enriched = await enrichProducts(raw, { specCatDoc: sc, scvMap });
-
     // Merge cart design group products with variant products
     const combined = [...cartDesignGroupProducts, ...enriched];
     
@@ -428,11 +436,11 @@ export async function GET(request) {
         specificCategoryVariant: { $in: varIds },
         available: true,
         ...(excludeIds.length && { _id: { $nin: excludeIds } })
-      }).lean();
+      }).populate("inventoryData").lean();
 
       return enrichProducts(raw, { specCatDoc: sc, scvMap });
     }),
-  );console.log(3,lists[0]);
+  );
 
   // Flatten all products from different categories
   const allCategoryProducts = lists.flat();
