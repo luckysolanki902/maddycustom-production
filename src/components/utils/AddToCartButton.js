@@ -12,10 +12,12 @@ import { openCartDrawer, openRecommendationDrawer } from "../../store/slices/uiS
 import { setVariantsCache, setPendingRequest, clearPendingRequest, removeExpiredCache } from "../../store/slices/variantsSlice";
 import { addToCart as trackAddToCart } from "@/lib/metadata/facebookPixels";
 import SimilarProductsToast from "../notifications/SimilarProductsToast";
-import { Dialog, DialogContent, Box, Typography, Divider, Button, Checkbox, FormControlLabel, Skeleton } from "@mui/material";
+import { Dialog, DialogContent, Box, Typography, Divider, Button, Checkbox, FormControlLabel, Skeleton, Chip, IconButton } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { setPageSlug } from "../../store/slices/variantPreferenceSlice";
 import Image from "next/image";
+import cvStyles from "../page-sections/products-page/styles/changevariantbutton.module.css";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 // Request manager for deduplicating API calls
 const variantRequestManager = (() => {
@@ -250,7 +252,10 @@ export default function AddToCartButton({
     );
 
     // Show similar products toast if cart was empty and product has designGroupId
-    if (!hideRecommendationPopup && wasCartEmpty && product.designGroupId) {
+    if (
+      !hideRecommendationPopup &&
+      // wasCartEmpty &&
+      product.designGroupId) {
       dispatch(openRecommendationDrawer({ product }));
 
       // setToastProduct(product);
@@ -412,6 +417,8 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
   const [variantProducts, setVariantProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [previewProduct, setPreviewProduct] = useState(null);
+  const [isMappingFinalized, setIsMappingFinalized] = useState(false);
+  const [finalSelections, setFinalSelections] = useState({});
   const dispatch = useDispatch();
 
   // Check if category uses letter mapping
@@ -466,24 +473,11 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
     
     
     if (allSelectionsMade) {
+      // Find the matching product by variantCode
       const matchingProduct = variantProducts.find(p => 
         p.variantCode?.toLowerCase() === finalCode.toLowerCase()
       );
-      
-      // Find the matching variant from variants array
-      const matchingVariant = variants.find(v => 
-        v.variantCode?.toLowerCase() === finalCode.toLowerCase()
-      );
-      
-      // Find the actual product that has this variant
-      if (matchingVariant) {
-        const productWithVariant = variantProducts.find(p => 
-          p.variant?._id === matchingVariant.id
-        );
-        setPreviewProduct(productWithVariant || null);
-      } else {
-        setPreviewProduct(null);
-      }
+      setPreviewProduct(matchingProduct || null);
     } else {
       setPreviewProduct(null);
     }
@@ -503,19 +497,37 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
       finalCode += chosenLetter;
     }
 
-    // Find the variant with the corresponding variant code
+    console.log("final code", finalCode)
+    console.log("variant code", variants.map(variant => variant.variantCode))
+    console.log("variant products", variantProducts)
+    // Find the variant/product with the corresponding variant code
     const matchedVariant = variants.find(variant => variant.variantCode?.toLowerCase() === finalCode.toLowerCase());
+    const matchedProduct = variantProducts.find(p => p.variant.variantCode?.toLowerCase() === finalCode.toLowerCase());
 
-    if (!matchedVariant) {
+    if (!matchedVariant || !matchedProduct) {
       alert("Variant not found for the selected options.");
       return;
     }
 
-    // Navigate using matched variant's pageSlug
-    const finalSlug = `/shop${matchedVariant.pageSlug}`;
-    dispatch(setPageSlug({ categoryId: category._id, pageSlug: finalSlug }));
-    onVariantClick(matchedVariant.pageSlug);
+    setPreviewProduct(matchedProduct);
+    setFinalSelections(mappingSelections);
+    setIsMappingFinalized(true); // Hide mapping UI and show preview card
   };
+
+  const renderSelectedChips = () => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+      <IconButton size="small" onClick={() => setIsMappingFinalized(false)} aria-label="Back to selection">
+        <ArrowBackIcon />
+      </IconButton>
+      {letterMappingGroups.map(group => {
+        const letter = finalSelections[group.groupName];
+        if (!letter) return null;
+        const option = group.mappings.find(o => o.letterCode === letter);
+        const label = option ? `${group.groupName}: ${option.name}` : `${group.groupName}: ${letter}`;
+        return <Chip key={group.groupName} label={label} />;
+      })}
+    </Box>
+  );
 
   const getCategoryName = () => {
     const categoryName = product?.category?.name;
@@ -592,101 +604,118 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
             },
           }}
         >
-          {getCategoryName()}
+          {/* {getCategoryName()} */}
+          Variant
         </Box>
 
         {/* Render Letter Mapping or Normal Variants */}
         {useMapping ? (
-          // Letter Mapping Interface (same as ChangeVariantButton)
-          <>
-            {letterMappingGroups.map(group => (
-              <Box key={group.groupName} sx={{ marginBottom: "2rem" }}>
-                <div style={{ fontWeight: "500", textAlign: "center" }}>{group.groupName}</div>
+          !isMappingFinalized ? (
+            <>
+              {letterMappingGroups.map(group => (
+                <Box key={group.groupName} sx={{ marginBottom: "2rem" }}>
+                  <div style={{ fontWeight: "500", textAlign: "center" }}>{group.groupName}</div>
 
-                <Box
-                  sx={{
-                    display: "flex",
-                    gap: "0.5rem",
-                    flexWrap: "wrap",
-                    justifyContent: "center",
-                  }}
-                >
-                  {group.mappings.map(option => (
-                    <Box
-                      key={option.letterCode}
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        cursor: "pointer",
-                        borderRadius: "8px",
-                        padding: "0.5rem",
-                      }}
-                      onClick={(e) => {e.stopPropagation();handleMappingChange(group.groupName, option.letterCode)}}
-                    >
-                      {group.thumbnailRequired && option.thumbnail && (
-                        <Image
-                          src={
-                            option.thumbnail.startsWith("/")
-                              ? `${baseImageUrl}${option.thumbnail}`
-                              : `${baseImageUrl}/${option.thumbnail}`
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: "0.5rem",
+                      flexWrap: "wrap",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {group.mappings.map(option => (
+                      <Box
+                        key={option.letterCode}
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          cursor: "pointer",
+                          borderRadius: "8px",
+                          padding: "0.5rem",
+                        }}
+                        onClick={(e) => {e.stopPropagation();handleMappingChange(group.groupName, option.letterCode)}}
+                      >
+                        {group.thumbnailRequired && option.thumbnail && (
+                          <Image
+                            src={
+                              option.thumbnail.startsWith("/")
+                                ? `${baseImageUrl}${option.thumbnail}`
+                                : `${baseImageUrl}/${option.thumbnail}`
+                            }
+                            alt={option.name}
+                            width={400}
+                            height={400}
+                            style={{
+                              objectFit: "cover",
+                              borderRadius: "4px",
+                              marginBottom: "0.5rem",
+                              width: "100px",
+                              height: "auto",
+                            }}
+                          />
+                        )}
+
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={mappingSelections[group.groupName] === option.letterCode}
+                              onChange={() => handleMappingChange(group.groupName, option.letterCode)}
+                            />
                           }
-                          alt={option.name}
-                          width={400}
-                          height={400}
-                          style={{
-                            objectFit: "cover",
-                            borderRadius: "4px",
-                            marginBottom: "0.5rem",
-                            width: "100px",
-                            height: "auto",
+                          label={option.name}
+                          sx={{
+                            margin: 0,
+                            "& .MuiFormControlLabel-label": {
+                              fontSize: "0.9rem",
+                            },
                           }}
                         />
-                      )}
-
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={mappingSelections[group.groupName] === option.letterCode}
-                            onChange={() => handleMappingChange(group.groupName, option.letterCode)}
-                          />
-                        }
-                        label={option.name}
-                        sx={{
-                          margin: 0,
-                          "& .MuiFormControlLabel-label": {
-                            fontSize: "0.9rem",
-                          },
-                        }}
-                      />
-                    </Box>
-                  ))}
+                      </Box>
+                    ))}
+                  </Box>
                 </Box>
-              </Box>
-            ))}
+              ))}
 
-            {/* Preview Product */}
-            {previewProduct && (
-              <Box sx={{ marginTop: "2rem" }}>
-                <Typography
-                  variant="h6"
+              {/* Submit Mapping */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 1 }}>
+                <Button
+                  variant="contained"
+                  onClick={handleMappingSubmit}
                   sx={{
-                    textAlign: "center",
-                    fontWeight: "500",
-                    marginBottom: "1rem",
-                    fontFamily: "Jost, sans-serif",
+                    backgroundColor: "black",
+                    color: "white",
+                    fontSize: "0.9rem",
+                    padding: "0.4rem 1.4rem",
+                    borderRadius: "0.8rem",
+                    "&:hover": {
+                      backgroundColor: "rgba(0,0,0,0.8)",
+                      transform: "scale(0.98)",
+                    },
+                    transition: "all 0.3s cubic-bezier(0.39, 0.575, 0.565, 1)",
                   }}
                 >
-                  Preview
-                </Typography>
-                <SimpleVariantCard 
-                  variant={previewProduct?.variant} 
-                  product={previewProduct} 
-                  onClose={onClose} 
-                />
+                  Submit
+                </Button>
               </Box>
-            )}
-          </>
+            </>
+          ) : (
+            <>
+              {renderSelectedChips()}
+              {previewProduct ? (
+                <SimpleVariantCard 
+                  variant={variants.find(v => v.variantCode?.toLowerCase() === previewProduct.variantCode?.toLowerCase())}
+                  product={previewProduct}
+                  onClose={onClose}
+                />
+              ) : (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography>No matching variant found</Typography>
+                </Box>
+              )}
+            </>
+          )
         ) : (
           // Normal Variants List
           <Box display="flex" flexDirection="column" gap="1rem">
@@ -735,94 +764,77 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
     }
   };
 
-  // Check if product is out of stock
-  const inventoryData = product.inventoryData;
-  const isOutOfStock = inventoryData ? inventoryData.availableQuantity <= 0 : false;
+  // Prepare display data similar to ChangeVariantButton UI
+  const displayName = variant?.name?.toLowerCase().includes("tank")
+    ? variant.name.split(" ")[0]
+    : (variant?.name || product?.variant?.name || product?.name || "");
+
+  const infoText = (variant?.variantInfo || product?.variant?.variantInfo || "");
+  const infoLabel = infoText.includes(":") ? infoText.split(":")[0] : "";
+  const infoValue = infoText.includes(":") ? infoText.split(":")[1] : infoText;
+
+  const variantImage = variant?.image
+    ? (variant.image.startsWith("/") ? baseImageUrl + variant.image : baseImageUrl + "/" + variant.image)
+    : (product?.images && product.images[0]
+        ? (product.images[0].startsWith("/") ? baseImageUrl + product.images[0] : baseImageUrl + "/" + product.images[0])
+        : null);
 
   return (
     <Box
       onClick={handleCardClick}
+      className={cvStyles.variantBox}
       sx={{
-        borderRadius: "0.5rem",
-        padding: "1rem",
-        backgroundColor: "#fff",
-        boxShadow: "0px 2px 6px rgba(0,0,0,0.1)",
-        position: "relative",
         cursor: "pointer",
+        borderRadius: "0.5rem",
+        padding: "1rem 1rem",
+        backgroundColor: "#fff!important",
+        boxShadow: "0px 2px 6px rgba(0,0,0,0.1)",
         "&:hover": {
-          boxShadow: "0px 4px 12px rgba(0,0,0,0.15)",
-          transform: "translateY(-2px)",
+          boxShadow: "0px 4px 10px rgba(0,0,0,0.2)",
         },
-        transition: "all 0.2s ease",
       }}
     >
-      {product.images && product.images.length > 0 && (
-        <Box
-          sx={{ position: 'relative' }}
-        >
-          <Box
-            component="img"
-            src={product.images[0].startsWith("/") ? baseImageUrl + product.images[0] : baseImageUrl + "/" + product.images[0]}
-            alt={product.name}
-            style={{
-              width: "100%",
-              height: "150px",
-              objectFit: "cover",
-              borderRadius: "8px",
-              marginBottom: "1rem",
-              filter: isOutOfStock ? 'grayscale(100%) brightness(1.3)' : 'none',
-              opacity: isOutOfStock ? 0.7 : 1
-            }}
-          />
-          {isOutOfStock && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                backgroundColor: '#cc0000',
-                color: 'white',
-                padding: '0.5rem 1rem',
-                borderRadius: '4px',
-                fontWeight: '600',
-                fontSize: '0.9rem',
-                fontFamily: 'Jost, sans-serif',
-                textAlign: 'center',
-                zIndex: 1
-              }}
-            >
-              Out of Stock
-            </Box>
-          )}
-        </Box>
+      {variantImage && (
+        <Image
+          src={variantImage}
+          className={cvStyles.customImg}
+          alt={product.name}
+          width={360 * 1.5}
+          height={150 * 1.5}
+        />
       )}
 
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
-        <Box>
-          <Typography
-            variant="body2"
-            sx={{
-              color: "#666",
-              fontFamily: "Jost, sans-serif",
-              fontSize: "0.9rem",
-            }}
-          >
-            {variant?.variantInfo || product.variant?.variantInfo || product.description}
-          </Typography>
-        </Box>
+      <Box className={cvStyles.variantInfoParentBox}>
+        <div className={cvStyles.buttongroup}>
+          <div className={cvStyles.variantButton}>
+            {/* {displayName} */}
+            {product?.title}
+          </div>
+        </div>
+        {infoText && (
+          <div className={cvStyles.variantDescription}>
+            {infoLabel ? (
+              <>
+                {infoLabel}:
+                <strong style={{ fontWeight: "bold", marginLeft: "0.3rem" }}>
+                  {infoValue}
+                </strong>
+              </>
+            ) : (
+              infoText
+            )}
+          </div>
+        )}
       </Box>
 
-      {/* Only show AddToCartButton if not out of stock */}
-      {!isOutOfStock && (
+      {/* Add to Cart button placed beautifully below content */}
+      <Box sx={{ mt: 1.5 }} onClick={(e) => e.stopPropagation()}>
         <AddToCartButton
           product={product}
           isBlackButton={true}
-          smaller={false}
           enableVariantSelection={false}
-          hideRecommendationPopup
         />
-      )}
+      </Box>
     </Box>
   );
 };

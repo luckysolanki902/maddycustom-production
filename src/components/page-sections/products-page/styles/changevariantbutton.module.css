@@ -91,23 +91,23 @@
 }
 /* Styling for the variant button */
 .variantButton {
-    background-color: black;
-    color: white;
-    font-weight: 400;
+    /* background-color: black; */
+    color: black;
+    font-weight: 500;
     text-transform: none;
-    border-radius: 6px;
-    padding: 1px 10px;
+    /* border-radius: 6px; */
+    /* padding: 1px 10px; */
     font-size: 1rem;
     box-shadow: none;
-    transition: background-color 0.3s ease;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    /* transition: background-color 0.3s ease; */
+    /* display: flex; */
+    /* justify-content: center; */
+    /* align-items: center; */
 }
 
-.variantButton:hover {
-    background-color: black; /* Maintain the same color on hover */
-}
+/* .variantButton:hover {
+    background-color: black;
+} */
 
 /* Styling for the variant description text */
 .variantDescription {
