@@ -51,10 +51,10 @@ const LoginDialog = () => {
         timeSpentOnWebsite >= 30 &&
         scrolledMoreThan60Percent &&
         !loginDialogShown &&
-        !isUserPhoneNumberValid &&
+        // !isUserPhoneNumberValid &&
         !userExists &&
-        !isCartDrawerOpen &&
-        !pathname.startsWith("/orders/myorder/")
+        !isCartDrawerOpen 
+        // !pathname.startsWith("/orders/myorder/")
     ) {
       setOpen(true);
       dispatch(setLoginDialogShown(true));

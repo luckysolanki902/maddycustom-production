@@ -122,6 +122,9 @@ const OrderForm = ({
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
+  // Timer for tracking checkout performance
+  const [checkoutStartTime, setCheckoutStartTime] = useState(null);
+
   // Extract and aggregate unique extraFields from cart items - memoized
   const aggregatedExtraFields = useMemo(() => {
     const fieldsMap = new Map();
@@ -340,6 +343,10 @@ const OrderForm = ({
     if (open) {
       setTabIndex(0);
       setPurchaseInitiated(false);
+      // Start the checkout timer when OrderForm opens
+      const startTime = Date.now();
+      setCheckoutStartTime(startTime);
+      console.log('🕒 OrderForm opened - Timer started at:', new Date(startTime).toISOString());
     }
   }, [open]);
 
@@ -364,38 +371,52 @@ const OrderForm = ({
     addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
     addressDetails.state, addressDetails.pincode, addressDetails.country, validatePincode]);
 
-  // Handle Prefilled Address
+  // Handle Prefilled Address - Only run when userExists changes
+  const hasHandledUserExists = useRef(false);
+  
   useEffect(() => {
-    if (userExists && prefilledAddress) {
-      dispatch(setAddressDetails(prefilledAddress));
-      dispatch(setUserExists(false));
-      dispatch(setPrefilledAddress(null));
-      setTabIndex(1);
+    // Only handle userExists changes, not addressDetails changes during typing
+    if (userExists && !hasHandledUserExists.current) {
+      hasHandledUserExists.current = true;
+      
+      if (prefilledAddress) {
+        dispatch(setAddressDetails(prefilledAddress));
+        dispatch(setUserExists(false));
+        dispatch(setPrefilledAddress(null));
+        setTabIndex(2); // Changed from 1 to 2 for address tab
 
-      // Pre-validate pincode from prefilled address
-      if (prefilledAddress.pincode && prefilledAddress.pincode.length === 6) {
-        validatePincode(prefilledAddress.pincode);
-      }
-    } else if (userExists && !prefilledAddress) {
-      // If there's already an address in Redux, skip to tab 1
-      const reduxAddress = addressDetails;
-      if (
-        reduxAddress.addressLine1 ||
-        reduxAddress.addressLine2 ||
-        reduxAddress.city ||
-        reduxAddress.state ||
-        reduxAddress.pincode ||
-        reduxAddress.country
-      ) {
-        setTabIndex(1);
+        // Pre-validate pincode from prefilled address
+        if (prefilledAddress.pincode && prefilledAddress.pincode.length === 6) {
+          validatePincode(prefilledAddress.pincode);
+        }
+      } else {
+        // If there's already an address in Redux, skip to address tab (2)
+        const reduxAddress = addressDetails;
+        if (
+          reduxAddress.addressLine1 ||
+          reduxAddress.addressLine2 ||
+          reduxAddress.city ||
+          reduxAddress.state ||
+          reduxAddress.pincode ||
+          reduxAddress.country
+        ) {
+          setTabIndex(2); // Changed from 1 to 2 for address tab
 
-        // Pre-validate pincode from redux address
-        if (reduxAddress.pincode && reduxAddress.pincode.length === 6) {
-          validatePincode(reduxAddress.pincode);
+          // Pre-validate pincode from redux address
+          if (reduxAddress.pincode && reduxAddress.pincode.length === 6) {
+            validatePincode(reduxAddress.pincode);
+          }
         }
       }
     }
-  }, [userExists, prefilledAddress, dispatch, addressDetails, validatePincode]);  const handleTabChange = useCallback((newValue) => {
+    
+    // Reset the flag when userExists becomes false
+    if (!userExists) {
+      hasHandledUserExists.current = false;
+    }
+  }, [userExists, prefilledAddress, dispatch, addressDetails, validatePincode]);
+  
+  const handleTabChange = useCallback((newValue) => {
     setTabIndex(newValue);
   }, []);
 
@@ -696,6 +717,22 @@ const OrderForm = ({
       dispatch(setLastOrderId(createdOrderId));
 
       if (razorpayOrder && amountDueOnline > 0) {
+        // Log timer before opening Razorpay
+        if (checkoutStartTime) {
+          const razorpayOpenTime = Date.now();
+          const timeToRazorpay = razorpayOpenTime - checkoutStartTime;
+          console.log('💳 Razorpay window opening - Timer stopped');
+          console.log(`⏱️ Total time from OrderForm open to Razorpay: ${timeToRazorpay}ms (${(timeToRazorpay / 1000).toFixed(2)}s)`);
+          console.log('🕒 Started at:', new Date(checkoutStartTime).toISOString());
+          console.log('💳 Razorpay opened at:', new Date(razorpayOpenTime).toISOString());
+          
+          // Optional: Send to analytics
+          // analytics.track('checkout_to_payment_time', {
+          //   duration_ms: timeToRazorpay,
+          //   duration_seconds: timeToRazorpay / 1000
+          // });
+        }
+
         initiateCheckout(
           {
             eventID: uuidv4(),
@@ -788,7 +825,7 @@ const OrderForm = ({
     }  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
     totalCost, deliveryCost, utmDetails, cartItems, paymentModeConfig,
     discountAmountFinal, couponsDetails, isPincodeValid, reset, handleFullClose, router,
-    serviceabilityCache, setIsLoading, setIsPaymentProcessing, setPurchaseInitiated]);// Maintained dependencies
+    serviceabilityCache, setIsLoading, setIsPaymentProcessing, setPurchaseInitiated, checkoutStartTime]);// Maintained dependencies
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
@@ -1555,9 +1592,7 @@ const OrderForm = ({
                       disabled={
                         isPaymentProcessing ||
                         isLoading ||
-                        purchaseInitiated ||
-                        pincodeCheckInProgress ||  // disable while checking
-                        !isPincodeValid             // disable until valid
+                        purchaseInitiated
                       }
                       sx={{
                         borderRadius: '50px',
