@@ -70,18 +70,20 @@ export default function VariantDialog({ open, onClose, imageUrl }) {
           >
             <CloseIcon />
           </IconButton>
-          <Image
-            src={imageUrl}
-            alt="Popup image"
-            width={800}
-            height={800}
-            style={{
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-              width: "auto",
-              height: "auto",
-            }}
-          />
+          {imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt="Popup image"
+              width={800}
+              height={800}
+              style={{
+                maxWidth: "90vw",
+                maxHeight: "90vh",
+                width: "auto",
+                height: "auto",
+              }}
+            />
+          ) : null}
         </Box>
       </DialogContent>
     </Dialog>

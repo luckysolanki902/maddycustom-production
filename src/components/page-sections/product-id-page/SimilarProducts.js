@@ -391,7 +391,7 @@ const ProductCard = memo(function ProductCard({ product }) {
           ₹{product.price}
         </Typography>
         {!outOfStock && (
-          <AddToCartButton fullWidth product={cartPayload} onClick={e => e.stopPropagation()} insertionDetails={insertionDetails} enableVariantSelection/>
+          <AddToCartButton fullWidth product={cartPayload} onClick={e => e.stopPropagation()} insertionDetails={insertionDetails} />
         )}
       </CardContent>
     </Card>
