@@ -583,6 +583,7 @@ export default function ProductIdPage({
                     />
                   </div>
                 )}
+                {/*  */}
                 {isOutOfStock && <div style={{ color: "red", marginTop: "1rem" }}>Out of Stock</div>}
 
                 {isGreaterThan1400 && soldByCategoryEl}
