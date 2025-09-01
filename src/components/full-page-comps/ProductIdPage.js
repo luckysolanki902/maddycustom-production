@@ -424,13 +424,13 @@ export default function ProductIdPage({
                 <div className={styles.details}>
                   {/* Here we prepend the selected option's value to the product name */}
                   <h1 className={styles.title}>{getDisplayedTitle()}</h1>
-                  <AddToCartButton
+                  {/* <AddToCartButton
                     product={product}
                     enableVariantSelection
                     hideRecommendationPopup
                     showOnlyChooseVariants
                     size="small"
-                  />
+                  /> */}
                   {variant?.cardCaptions?.[0] && (
                     <p style={{ marginTop: "-0.5rem", marginLeft: "0.3rem" }} className={styles.cardCaption}>
                       {variant.cardCaptions[0]}

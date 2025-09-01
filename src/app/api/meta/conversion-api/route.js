@@ -480,18 +480,6 @@ export async function POST(request) {
       !!options.gender
     );
 
-    // Enhanced warning system
-  if (!hasUserIdentifiers && !isPageView) {
-      console.warn(`⚠️ Low match quality for ${eventName} - No user identifiers available`);
-      console.warn('   Consider implementing:');
-      console.warn('   - Email/phone collection on forms');
-      console.warn('   - Enhanced e-commerce tracking');
-      console.warn('   - Better Facebook Pixel integration');
-    } else if (matchQualityScore < 7 && !isPageView) {
-      console.warn(`⚠️ Medium match quality for ${eventName} (${matchQualityScore}/10)`);
-      console.warn('   Consider adding more user identifiers for better attribution');
-    }
-
     // Fire the event request to Facebook
     const eventRequest = new EventRequest(access_token, pixel_id).setEvents([
       serverEvent,
