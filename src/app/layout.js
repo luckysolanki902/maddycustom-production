@@ -13,7 +13,6 @@ import UTMCapture from '@/components/analytics/UTMCapture';
 
 // Google Fonts
 import { Krona_One, Jost, Montserrat } from 'next/font/google';
-import LoginDialog from '@/components/dialogs/LoginDialog';
 import RecommendationDrawer from '@/components/dialogs/RecommendationDrawer';
 import TimeTracker from '@/components/utils/userBehavior/TimeTracker';
 import PathnameTracker from '@/components/utils/userBehavior/PathnameTracker';
@@ -94,7 +93,6 @@ export default function RootLayout({ children }) {
             <FloatingActionBar />
             <Footer />
             <TimeTracker />
-            <LoginDialog />
             <PathnameTracker />
             <ScrollChecker />
             {/* Client-only utilities (conditionally hidden in B2B) */}
