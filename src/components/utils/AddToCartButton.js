@@ -250,7 +250,9 @@ export default function AddToCartButton({
     );
 
     // Show similar products toast if cart was empty and product has designGroupId
-    if (!hideRecommendationPopup && wasCartEmpty && product.designGroupId) {
+    if (!hideRecommendationPopup
+      //  && wasCartEmpty 
+       && product.designGroupId) {
       dispatch(openRecommendationDrawer({ product }));
 
       // setToastProduct(product);

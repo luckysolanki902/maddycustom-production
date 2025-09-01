@@ -91,7 +91,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     }));
 
     // Show recommendation drawer if cart was empty and product has designGroupId
-    if (wasCartEmpty && product.designGroupId) {
+    if (
+      // wasCartEmpty && 
+      product.designGroupId) {
       dispatch(openRecommendationDrawer({ product }));
     }
 
