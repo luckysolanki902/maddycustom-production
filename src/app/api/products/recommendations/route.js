@@ -1,10 +1,10 @@
 
 import { NextResponse } from 'next/server';
 import Product from '@/models/Product';
-import dbConnect from '@/lib/dbConnect';
+import connectToDb from '@/lib/middleware/connectToDb';
 
 export async function GET(request) {
-  await dbConnect();
+  await connectToDb();
   const { searchParams } = new URL(request.url);
   const designGroupId = searchParams.get('designGroupId');
   const productId = searchParams.get('productId');
