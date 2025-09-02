@@ -30,7 +30,7 @@ export async function GET(request, { params }) {
         .map(async (product) => {
           const newProduct = {
             ...product,
-            variant: product.specificCategoryVariant,
+            variantDetails: product.specificCategoryVariant,
             category: product.specificCategory,
           };
 
