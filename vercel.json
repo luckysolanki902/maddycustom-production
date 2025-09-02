@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/cron/meta/generate-catalogue",
-      "schedule": "0 2 * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/google/merchant/sync-products",

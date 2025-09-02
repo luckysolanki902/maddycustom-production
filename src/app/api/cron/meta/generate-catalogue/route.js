@@ -35,12 +35,9 @@ export async function GET() {
       await currentCycle.save();
     }
 
-    // 3. Define category codes to process
-    const specificCategoryCodes = ['win', 'bw', 'tw'];
-
     // 4. Get specific category IDs
     const specificCategories = await SpecificCategory.find({
-      specificCategoryCode: { $in: specificCategoryCodes },
+      available: true,
     }).select('_id').lean();
 
     const specificCategoryIds = specificCategories.map(cat => cat._id);
@@ -240,17 +237,45 @@ function createFeedData(product) {
     description = product.specificCategoryVariant.productDescription.replace('{uniqueName}', product.name);
   }
 
-  return {
+  // Determine google product category (basic mapping similar to sync route)
+  let googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories';
+  if (product.category === 'Wraps') {
+    if (product.subCategory === 'Car Wraps') {
+      googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories > Motor Vehicle Exterior Accessories';
+    } else if (product.subCategory === 'Bike Wraps') {
+      googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories > Motor Vehicle Exterior Accessories';
+    }
+  } else if (product.category === 'Accessories') {
+    googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories > Motor Vehicle Interior Accessories';
+  }
+
+  const feedData = {
     id: product._id.toString(),
-    title: product.title || product.name,
-    description: description.substring(0, 500), // Limit description length
+    title: (product.title || product.name)?.substring(0,150),
+    description: description.substring(0, 500),
     availability: product.available ? 'in stock' : 'out of stock',
     condition: 'new',
     price: `${product.price} INR`,
+    price_amount: product.price,
+    price_currency: 'INR',
+    // Sale price if applicable
+    sale_price_amount: (product.MRP && product.MRP > product.price) ? product.price : undefined,
+    sale_price_currency: (product.MRP && product.MRP > product.price) ? 'INR' : undefined,
     link: `${baseUrl}/shop${product.pageSlug}`,
     image_link: imageUrl,
     brand: 'Maddy Custom',
+    google_product_category: googleProductCategory,
+    additional_image_links: Array.isArray(product.images) ? product.images.slice(1,11).map(img=> img.startsWith('/') ? `${cdnUrl}${img}` : `${cdnUrl}/${img}`) : [],
+    custom_attributes: [
+      { name: 'category', value: product.category },
+      { name: 'subcategory', value: product.subCategory }
+    ],
+    content_language: 'en',
+    target_country: 'IN',
+    channel: 'online',
+    feed_label: 'IN'
   };
+  return feedData;
 }
 
 /**
@@ -287,15 +312,30 @@ function createFeedDataForOption(product, option) {
     description += ` (${optionValues})`;
   }
 
-  return {
+  const feedData = {
     id: `${product._id}-${option._id}`,
-    title: optionTitle.substring(0, 150), // Limit title length
-    description: description.substring(0, 500), // Limit description length
+    title: optionTitle.substring(0, 150),
+    description: description.substring(0, 500),
     availability: product.available ? 'in stock' : 'out of stock',
     condition: 'new',
-    price: `${product.price} INR`, // Options typically use same price as base product
+    price: `${product.price} INR`,
+    price_amount: product.price,
+    price_currency: 'INR',
+    sale_price_amount: (product.MRP && product.MRP > product.price) ? product.price : undefined,
+    sale_price_currency: (product.MRP && product.MRP > product.price) ? 'INR' : undefined,
     link: `${baseUrl}/shop${product.pageSlug}`,
     image_link: imageUrl,
     brand: 'Maddy Custom',
+    google_product_category: undefined, // inherit from base product if needed during sync
+    additional_image_links: [],
+    custom_attributes: [
+      { name: 'category', value: product.category },
+      { name: 'subcategory', value: product.subCategory }
+    ],
+    content_language: 'en',
+    target_country: 'IN',
+    channel: 'online',
+    feed_label: 'IN'
   };
+  return feedData;
 }

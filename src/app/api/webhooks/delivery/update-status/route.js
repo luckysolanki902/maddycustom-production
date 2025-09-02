@@ -133,8 +133,16 @@ export async function POST(request) {
   try {
     session.startTransaction();
     
+    // Read body exactly once so we can reuse for error logging without re-reading stream
     const rawBody = await request.text();
-    const payload = JSON.parse(rawBody);
+    let payload;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch (e) {
+      console.error('Invalid JSON payload for delivery webhook:', e.message);
+      await session.abortTransaction();
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
     
     console.log(`Webhook received payload:`, { 
       order_id: payload.order_id, 
@@ -335,7 +343,18 @@ export async function POST(request) {
     order.deliveryStatus = mappedStatus;
     order.actualDeliveryStatus = current_status;
     
-    await order.save({ session });
+    // Retry save in case of transient writeConflict (MongoServerError code 112 or writeConflict message)
+    await withRetry(async () => {
+      try {
+        await order.save({ session });
+      } catch (err) {
+        if (err?.code === 112 || /write conflict/i.test(err?.message)) {
+          console.warn('Write conflict on order.save(), retrying...');
+          throw err; // trigger retry
+        }
+        throw err; // non-retryable propagates immediately
+      }
+    }, 4, 250);
     
     console.log(`Order ${order._id} status updated: ${previousStatus} -> ${mappedStatus}`);
 
@@ -365,13 +384,15 @@ export async function POST(request) {
     console.error('Webhook error during processing:', {
       error: error.message,
       stack: error.stack,
-      payload: await request.text().catch(() => 'Unable to re-read request body')
+      payload: rawBody?.substring(0, 5000) || 'No body captured'
     });
     
+    const isWriteConflict = /write conflict/i.test(error.message) || error.code === 112;
     return NextResponse.json({ 
-      error: 'Internal Server Error.',
+      error: isWriteConflict ? 'Write conflict, please retry (transient)' : 'Internal Server Error.',
+      transient: !!isWriteConflict,
       timestamp: new Date().toISOString()
-    }, { status: 500 });
+    }, { status: isWriteConflict ? 409 : 500 });
   } finally {
     session.endSession();
   }
