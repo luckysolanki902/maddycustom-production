@@ -33,9 +33,27 @@ const HomePage = async () => {
   const { categories, variants } = searchCategoriesData;
   const { assets: displayAssets = [] } = displayAssetsData;
 
+  // Helper to make links root-relative
+  const toRelativeLink = (link) => {
+    if (!link) return link;
+    try {
+      if (/^https?:\/\//i.test(link)) {
+        const u = new URL(link);
+        return (u.pathname || '/') + (u.search || '') + (u.hash || '');
+      }
+      if (/^\/\//.test(link)) {
+        const u = new URL('https:' + link);
+        return (u.pathname || '/') + (u.search || '') + (u.hash || '');
+      }
+      return link.startsWith('/') ? link : '/' + link;
+    } catch (e) {
+      return link.startsWith('/') ? link : '/' + link;
+    }
+  };
+
   // Filter assets for customer photos section (componentName or type heuristic)
   const customerPhotoAssets = (displayAssets || [])
-    .filter(a => a?.componentName === 'customer-photos-section' || a?.componentId?.includes('customer-photo'))
+  .filter(a => a?.componentName === 'customer-photos-section' || a?.componentId?.includes('customer-photo'))
     .sort((a,b)=>{
       const pa = a.position || '0';
       const pb = b.position || '0';
@@ -44,6 +62,22 @@ const HomePage = async () => {
       if (na !== nb) return na - nb; // numeric first
       return pa.localeCompare(pb, undefined, { numeric: true, sensitivity: 'base' });
     });
+
+  // Sanitize links in displayAssets and customerPhotoAssets to always be root-relative
+  const sanitizeAssets = (arr) => (arr || []).map(a => {
+    if (!a) return a;
+    try {
+      return {
+        ...a,
+        link: toRelativeLink(a.link)
+      };
+    } catch (e) {
+      return a;
+    }
+  });
+
+  const safeDisplayAssets = sanitizeAssets(displayAssets);
+  const safeCustomerPhotoAssets = sanitizeAssets(customerPhotoAssets);
 
   return (
     <>
@@ -59,26 +93,28 @@ const HomePage = async () => {
 
           {/* Logo and Main Carousel */}
           <HeroCarousel
-            assets={displayAssets}
+            assets={safeDisplayAssets}
           />
         </div>
         <ProductCategorySlider position="belowHero" />
 
 
-        {/* New Arrivals Section */}
-        <NewArrival assets={displayAssets} />
+  {/* New Arrivals Section */}
+  <NewArrival assets={safeDisplayAssets} />
 
         {/* Category Grid Section */}
-        <CategoryGrid assets={displayAssets} />
+  <CategoryGrid assets={safeDisplayAssets} />
 
         <SingleCategorySlider products={uniqueProductsData} />
 
-        {/* Interior & Exterior Sections */}
-        <CarIntExtWrapper assets={displayAssets} />
+  {/* Interior & Exterior Sections */}
+  <CarIntExtWrapper assets={safeDisplayAssets} />
+
 
         <WhyMaddy />
   <VoiceOfOurCustomers />
-  <CustomerPhotosSlider assets={customerPhotoAssets} />
+  <CustomerPhotosSlider assets={safeCustomerPhotoAssets} />
+  
 
 
       </main>

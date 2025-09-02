@@ -5,6 +5,28 @@ import { shouldDisplayAsset } from '@/lib/utils/displayAssetUtils';
 
 export const revalidate = 300;  
 
+// Convert any link (absolute or relative) to a root-relative URL that always starts with '/'
+function toRelativeLink(link) {
+  if (!link) return link;
+  try {
+    // If absolute URL, extract pathname + search + hash
+    if (/^https?:\/\//i.test(link)) {
+      const u = new URL(link);
+      return (u.pathname || '/') + (u.search || '') + (u.hash || '');
+    }
+    // Protocol-relative URLs (//domain/path)
+    if (/^\/\//.test(link)) {
+      const u = new URL('https:' + link);
+      return (u.pathname || '/') + (u.search || '') + (u.hash || '');
+    }
+    // Ensure it starts with a single '/'
+    return link.startsWith('/') ? link : '/' + link;
+  } catch (e) {
+    // Fallback: ensure leading slash
+    return link.startsWith('/') ? link : '/' + link;
+  }
+}
+
 export async function GET(request) {
   try {
     // Connect to the database
@@ -58,6 +80,11 @@ export async function GET(request) {
               ? asset.media.mobile 
               : `${baseUrl}${asset.media.mobile.startsWith('/') ? asset.media.mobile : '/' + asset.media.mobile}`;
           }
+        }
+
+        // Normalize link to always be root-relative (no protocol/host)
+        if (asset.link) {
+          processedAsset.link = toRelativeLink(asset.link);
         }
 
         return processedAsset;
