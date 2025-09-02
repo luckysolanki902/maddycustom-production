@@ -16,7 +16,7 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
-import { Close, ArrowForward, LocalOffer, AutoAwesome } from "@mui/icons-material";
+import { Close, ArrowForward, LocalOffer } from "@mui/icons-material";
 import { closeRecommendationDrawer } from "@/store/slices/uiSlice";
 import { setHasSeenVariantPopup, setPageSlug } from "@/store/slices/variantPreferenceSlice";
 import AddToCartButton from "@/components/utils/AddToCartButton";
@@ -402,9 +402,6 @@ const RecommendationDrawer = () => {
                 <Typography
                   variant="h6"
                   sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
                     fontWeight: 700,
                     color: "#2d2d2d",
                     mb: 1,
@@ -412,7 +409,6 @@ const RecommendationDrawer = () => {
                     fontFamily: "Jost, sans-serif",
                   }}
                 >
-                  <AutoAwesome sx={{ color: '#7b4bff', fontSize: 20 }} aria-hidden />
                   Matching Picks
                 </Typography>
                 <Typography

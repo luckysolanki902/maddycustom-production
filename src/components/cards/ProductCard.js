@@ -165,6 +165,8 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
                 price: finalPrice,
               }}
               insertionDetails={insertionDetails}
+              flexResponsiveness={true}
+
             />
           </div>
         )}
