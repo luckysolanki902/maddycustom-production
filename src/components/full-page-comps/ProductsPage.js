@@ -31,6 +31,7 @@ import { recommendationMap } from '@/lib/constants/recommendationMap';
 import TopBoughtProducts from '@/components/showcase/products/TopBoughtProducts';
 import IsolatedTopBoughtProducts from '@/components/showcase/products/IsolatedTopBoughtProducts';
 import { showTopStrip, hideTopStrip } from '@/store/slices/uiSlice';
+import { HIDE_PRODUCT_VIDEOS } from '@/lib/constants/featureToggles';
 
 /* ------------------------------------------------------------------ */
 /* Smooth "Top-Bought" fade-in/slide-up wrapper                        */
@@ -256,12 +257,12 @@ export default function ProductsPage({
 
   // Determine if video should be shown and where
   const shouldShowVideoInWrapper = useMemo(() => 
-    variant?.showCase?.[0]?.available && showVideo && !isSmallDevice, 
+    !HIDE_PRODUCT_VIDEOS && variant?.showCase?.[0]?.available && showVideo && !isSmallDevice, 
     [variant?.showCase, showVideo, isSmallDevice]
   );
   
   const shouldShowVideoInPage = useMemo(() => 
-    variant?.showCase?.[0]?.available && showVideo && isSmallDevice, 
+    !HIDE_PRODUCT_VIDEOS && variant?.showCase?.[0]?.available && showVideo && isSmallDevice, 
     [variant?.showCase, showVideo, isSmallDevice]
   );
 
@@ -397,7 +398,7 @@ export default function ProductsPage({
             </header>
 
             {/* Video for small devices - only render here for mobile */}
-            {shouldShowVideoInPage && (
+            {!HIDE_PRODUCT_VIDEOS && shouldShowVideoInPage && (
               <div className={wrapperStyles.videoCard} aria-label="Product Video" style={{ backgroundColor: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0 1rem', marginBottom: '2rem', boxShadow: 'none' }}>
                 <iframe
                   width="100%"
@@ -438,7 +439,7 @@ export default function ProductsPage({
                 category={category}
                 products={firstHalf}
                 isLoading={isLoading}
-                hideVideo={!shouldShowVideoInWrapper} // Only show in wrapper for non-mobile
+                hideVideo={HIDE_PRODUCT_VIDEOS || !shouldShowVideoInWrapper} // Global toggle + conditional
               />
 
               {SHOW_TOP_BOUGHT && <StableTopBought singleVariantCode={stableRecommendedKey} />}
@@ -461,7 +462,7 @@ export default function ProductsPage({
               category={category}
               products={currentProducts}
               isLoading={isLoading}
-              hideVideo={true} // Hide video on non-first pages
+              hideVideo={true} // Hide video on non-first pages (also covered by global toggle)
             />
           )}
 
