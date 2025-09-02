@@ -518,9 +518,6 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
       finalCode += chosenLetter;
     }
 
-    console.log("final code", finalCode)
-    console.log("variant code", variants.map(variant => variant.variantCode))
-    console.log("variant products", variantProducts)
     // Find the variant/product with the corresponding variant code
     const matchedVariant = variants.find(variant => variant.variantCode?.toLowerCase() === finalCode.toLowerCase());
     const matchedProduct = variantProducts.find(p => p.variant.variantCode?.toLowerCase() === finalCode.toLowerCase());
@@ -817,9 +814,9 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
   // Prepare display data similar to ChangeVariantButton UI
   const displayName = variant?.name?.toLowerCase().includes("tank")
     ? variant.name.split(" ")[0]
-    : (variant?.name || product?.variant?.name || product?.name || "");
+    : (variant?.name || product?.variantDetails?.name || product?.name || "");
 
-  const infoText = (variant?.variantInfo || product?.variant?.variantInfo || "");
+  const infoText = (variant?.variantInfo || product?.variantDetails?.variantInfo || "");
   const infoLabel = infoText.includes(":") ? infoText.split(":")[0] : "";
   const infoValue = infoText.includes(":") ? infoText.split(":")[1] : infoText;
 
@@ -980,7 +977,7 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
         <Box sx={{ flexGrow: 1 }} />
 
         {/* Add to Cart button anchored at bottom */}
-        {!outOfStock && (
+        {outOfStock ? <Typography sx={{ fontSize: 13, my: 1, color: "red", fontFamily: "Jost, sans-serif" }}>Out of stock</Typography> : (
           <Box
             sx={{ mt: 0.25, width: '100%' }}
             onClick={e => e.stopPropagation()}
