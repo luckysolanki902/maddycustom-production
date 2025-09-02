@@ -30,27 +30,55 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
   const cartItems = useSelector(state => state.cart.items);
   const [unlockableCoupon, setUnlockableCoupon] = useState(null);
   const [loadingCoupon, setLoadingCoupon] = useState(false);
+  // Use variants cache only; do not fetch here
+  const variantsCache = useSelector(state => state.variants.cache);
+  const cacheTimestamps = useSelector(state => state.variants.lastUpdated);
+  const [hasVariants, setHasVariants] = useState(null); // null until cache arrives
 
-  // Helper to decide which image to show and stock status (same logic as ProductCard)
+  useEffect(() => {
+    const categoryId = product?.specificCategory || product?.category?._id;
+    if (!categoryId) {
+      setHasVariants(false);
+      return;
+    }
+    const cachedData = variantsCache[categoryId];
+    const cacheTime = cacheTimestamps[categoryId];
+    const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+    if (cachedData && cacheTime && (Date.now() - cacheTime) < CACHE_DURATION) {
+      setHasVariants(Array.isArray(cachedData?.variants) && cachedData.variants.length > 1);
+    } else {
+      // No cache yet (or expired); keep null so UI treats as available until cache fills
+      setHasVariants(null);
+    }
+  }, [product?.specificCategory, product?.category?._id, variantsCache, cacheTimestamps]);
+
+  // Helper to decide which image to show and stock status (same logic as ProductCard, adapted for hasVariants=null short-circuit)
   const getDisplayImage = (product) => {
-    console.log(product)
-    let outOfStock = !product?.variantDetails?.available || !product?.category?.available;
+    // Before cache resolves or when variants exist, show as in-stock
+    let outOfStock = (hasVariants === null || hasVariants === true)
+      ? false
+      : (!product?.variantDetails?.available || !product?.category?.available);
 
     if (product.images && product.images.length > 0) {
-      outOfStock = outOfStock || product.inventoryData?.availableQuantity === 0;
+      if (hasVariants === false) {
+        outOfStock = outOfStock || product.inventoryData?.availableQuantity === 0;
+      }
       return { imageUrl: product.images[0], outOfStock };
     }
 
     if (product.options && product.options.length > 0) {
       for (const option of product.options) {
         if (option.images && option.images.length > 0) {
-          outOfStock = outOfStock || option.inventoryData?.availableQuantity === 0;
+          if (hasVariants === false) {
+            outOfStock = outOfStock || option.inventoryData?.availableQuantity === 0;
+          }
           return { imageUrl: option.images[0], outOfStock };
         }
       }
     }
 
-    return { imageUrl: null, outOfStock: true };
+    return { imageUrl: null, outOfStock: hasVariants === false };
   };
 
   // Handle card click to redirect to product page
