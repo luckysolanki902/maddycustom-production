@@ -30,6 +30,56 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
   const cartItems = useSelector(state => state.cart.items);
   const [unlockableCoupon, setUnlockableCoupon] = useState(null);
   const [loadingCoupon, setLoadingCoupon] = useState(false);
+  // Use variants cache only; do not fetch here
+  const variantsCache = useSelector(state => state.variants.cache);
+  const cacheTimestamps = useSelector(state => state.variants.lastUpdated);
+  const [hasVariants, setHasVariants] = useState(null); // null until cache arrives
+
+  useEffect(() => {
+    const categoryId = product?.specificCategory || product?.category?._id;
+    if (!categoryId) {
+      setHasVariants(false);
+      return;
+    }
+    const cachedData = variantsCache[categoryId];
+    const cacheTime = cacheTimestamps[categoryId];
+    const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+    if (cachedData && cacheTime && (Date.now() - cacheTime) < CACHE_DURATION) {
+      setHasVariants(Array.isArray(cachedData?.variants) && cachedData.variants.length > 1);
+    } else {
+      // No cache yet (or expired); keep null so UI treats as available until cache fills
+      setHasVariants(null);
+    }
+  }, [product?.specificCategory, product?.category?._id, variantsCache, cacheTimestamps]);
+
+  // Helper to decide which image to show and stock status (same logic as ProductCard, adapted for hasVariants=null short-circuit)
+  const getDisplayImage = (product) => {
+    // Before cache resolves or when variants exist, show as in-stock
+    let outOfStock = (hasVariants === null || hasVariants === true)
+      ? false
+      : (!product?.variantDetails?.available || !product?.category?.available);
+
+    if (product.images && product.images.length > 0) {
+      if (hasVariants === false) {
+        outOfStock = outOfStock || product.inventoryData?.availableQuantity === 0;
+      }
+      return { imageUrl: product.images[0], outOfStock };
+    }
+
+    if (product.options && product.options.length > 0) {
+      for (const option of product.options) {
+        if (option.images && option.images.length > 0) {
+          if (hasVariants === false) {
+            outOfStock = outOfStock || option.inventoryData?.availableQuantity === 0;
+          }
+          return { imageUrl: option.images[0], outOfStock };
+        }
+      }
+    }
+
+    return { imageUrl: null, outOfStock: hasVariants === false };
+  };
 
   // Handle card click to redirect to product page
   const handleCardClick = () => {
@@ -83,10 +133,10 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
 
   // Build a safe image URL (avoid empty string that triggers Next Image preload warnings)
   const baseCdn = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || "";
-  const rawImage = product?.images?.[0];
+  const { imageUrl: rawImageUrl, outOfStock } = getDisplayImage(product);
   let imageUrl = undefined;
-  if (rawImage && typeof rawImage === 'string') {
-    const cleaned = rawImage.trim();
+  if (rawImageUrl && typeof rawImageUrl === 'string') {
+    const cleaned = rawImageUrl.trim();
     if (cleaned && cleaned !== '/' && cleaned.toLowerCase() !== 'null' && cleaned.toLowerCase() !== 'undefined') {
       imageUrl = cleaned.startsWith('http')
         ? cleaned
@@ -106,116 +156,117 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
       <Card
         onClick={handleCardClick}
         sx={{
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'row',
+          position: "relative",
+          display: "flex",
+          flexDirection: "row",
           gap: 2,
           p: 1.2,
           pr: 1.4,
           borderRadius: 3,
-          overflow: 'hidden',
-          background: 'linear-gradient(145deg,#ffffff,#fafafa)',
-          border: '1px solid #ececec',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+          overflow: "hidden",
+          background: "linear-gradient(145deg,#ffffff,#fafafa)",
+          border: "1px solid #ececec",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
           minHeight: { xs: 150, sm: 160 },
-          transition: 'all .28s cubic-bezier(.4,.14,.3,1)',
-          '&:hover': {
-            boxShadow: '0 6px 18px -4px rgba(0,0,0,0.18)',
-            transform: 'translateY(-4px)',
-            borderColor: '#dcdcdc'
-          }
+          transition: "all .28s cubic-bezier(.4,.14,.3,1)",
+          "&:hover": {
+            boxShadow: "0 6px 18px -4px rgba(0,0,0,0.18)",
+            transform: "translateY(-4px)",
+            borderColor: "#dcdcdc",
+          },
         }}
       >
         {/* Image Wrapper */}
         <Box
           sx={{
-            position: 'relative',
+            position: "relative",
             width: { xs: 108, sm: 120 },
             flexShrink: 0,
             borderRadius: 2,
-            overflow: 'hidden',
-            aspectRatio: '1/1',
-            background: '#f5f5f5',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            '& img': {
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              transition: 'transform .5s ease',
+            overflow: "hidden",
+            aspectRatio: "1/1",
+            background: "#f5f5f5",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            "& img": {
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              transition: "transform .5s ease",
             },
-            '.MuiCard-root:hover & img': {
-              transform: 'scale(1.05)'
-            }
+            ".MuiCard-root:hover & img": {
+              transform: "scale(1.05)",
+            },
           }}
         >
           {imageUrl && (
             <Image
               src={imageUrl}
-              alt={product.name || 'Product'}
+              alt={product.name || "Product"}
               fill
               sizes="(max-width: 600px) 40vw, 120px"
-              style={{ objectFit: 'cover' }}
+              style={{ objectFit: "cover", filter: outOfStock ? "grayscale(100%)" : "none", opacity: outOfStock ? 0.9 : 1 }}
               priority={false}
             />
           )}
-          {/* {discountPct && (
+          {outOfStock && (
             <Box
               sx={{
-                position: 'absolute',
-                top: 6,
-                left: 6,
-                background: 'rgba(49,196,115,0.14)',
-                backdropFilter: 'blur(4px)',
-                border: '1px solid rgba(49,196,115,0.4)',
-                color: '#139455',
-                fontSize: '0.6rem',
-                px: 0.65,
-                py: 0.35,
-                borderRadius: '10px',
-                fontWeight: 600,
-                lineHeight: 1,
-                letterSpacing: .5,
+                position: "absolute",
+                inset: 0,
+                background: "rgba(0,0,0,0.28)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                fontSize: ".78rem",
+                fontWeight: 700,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
               }}
             >
-              {discountPct}% OFF
+              Out of Stock
             </Box>
-          )} */}
+          )}
           {/* Removed old bottom overlay coupon tag; replaced with inline pill below price */}
         </Box>
 
         {/* Content anchored to bottom */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
           <Box sx={{ flexGrow: 1 }} /> {/* Top empty spacer */}
-          <Box sx={{ pr: { xs: .5, sm: 1 }, display: 'flex', flexDirection: 'column', gap: .4, pb: .2 }}>
+          <Box sx={{ pr: { xs: 0.5, sm: 1 }, display: "flex", flexDirection: "column", gap: 0.4, pb: 0.2 }}>
             <Typography
               component="h3"
               sx={{
-                fontFamily: 'Jost, sans-serif',
-                fontSize: { xs: '0.82rem', sm: '.9rem' },
+                fontFamily: "Jost, sans-serif",
+                fontSize: { xs: "0.82rem", sm: ".9rem" },
                 fontWeight: 600,
-                color: '#1d1d1f',
+                color: "#1d1d1f",
                 lineHeight: 1.25,
-                display: '-webkit-box',
+                display: "-webkit-box",
                 WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden'
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
               }}
             >
               {product.title}
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: .55 }}>
-              <Typography sx={{ fontFamily: 'Jost, sans-serif', fontSize: { xs: '.95rem', sm: '1rem' }, fontWeight: 700, color: '#111' }}>
+            <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.55 }}>
+              <Typography
+                sx={{ fontFamily: "Jost, sans-serif", fontSize: { xs: ".95rem", sm: "1rem" }, fontWeight: 700, color: "#111" }}
+              >
                 ₹{product.price}
               </Typography>
               {product.MRP && product.MRP > product.price && (
                 <>
-                  <Typography sx={{ textDecoration: 'line-through', color: '#888', fontSize: '.63rem', fontFamily: 'Jost, sans-serif' }}>
+                  <Typography
+                    sx={{ textDecoration: "line-through", color: "#888", fontSize: ".63rem", fontFamily: "Jost, sans-serif" }}
+                  >
                     ₹{product.MRP}
                   </Typography>
                   {discountPct && (
-                    <Typography sx={{ color: '#139455', fontSize: '.6rem', fontWeight: 600, letterSpacing: .4 }}>
+                    <Typography sx={{ color: "#139455", fontSize: ".6rem", fontWeight: 600, letterSpacing: 0.4 }}>
                       {discountPct}% off
                     </Typography>
                   )}
@@ -225,36 +276,35 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
             {unlockableCoupon && !loadingCoupon && (
               <Box
                 sx={{
-                  display: 'inline-flex',
-                  width: 'fit-content',
-                  alignItems: 'center',
-                  gap: .5,
+                  display: "inline-flex",
+                  width: "fit-content",
+                  alignItems: "center",
+                  gap: 0.5,
                   px: 0.85,
                   py: 0.45,
-                  mt: .1,
-                  mb: .3,
-                  background: 'linear-gradient(90deg, rgba(49,196,115,0.12), rgba(49,196,115,0.22))',
-                  border: '1px solid rgba(49,196,115,0.45)',
-                  borderRadius: '14px',
-                  fontSize: '.55rem',
+                  mt: 0.1,
+                  mb: 0.3,
+                  background: "linear-gradient(90deg, rgba(49,196,115,0.12), rgba(49,196,115,0.22))",
+                  border: "1px solid rgba(49,196,115,0.45)",
+                  borderRadius: "14px",
+                  fontSize: ".55rem",
                   fontWeight: 600,
-                  letterSpacing: .6,
-                  color: '#0f6b3d',
-                  textTransform: 'uppercase',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                  letterSpacing: 0.6,
+                  color: "#0f6b3d",
+                  textTransform: "uppercase",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                 }}
               >
-                <LocalOffer sx={{ fontSize: 11, color: '#139455' }} />
+                <LocalOffer sx={{ fontSize: 11, color: "#139455" }} />
                 Add this to unlock ₹{unlockableCoupon.discountValue} OFF
               </Box>
             )}
-            <Box sx={{ pt: .3 }}>
-              <AddToCartButton
-                product={product}
-                enableVariantSelection
-                hideRecommendationPopup
-                size="small"
-              />
+            <Box sx={{ pt: 0.3 }}>
+              {outOfStock ? (
+                <Typography sx={{ fontSize: 13, my: 1, color: "red", fontFamily: "Jost, sans-serif" }}>Out of stock</Typography>
+              ) : (
+                <AddToCartButton product={product} enableVariantSelection hideRecommendationPopup size="small" />
+              )}
             </Box>
           </Box>
         </Box>

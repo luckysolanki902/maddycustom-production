@@ -13,7 +13,7 @@ import { setVariantsCache, setPendingRequest, clearPendingRequest, removeExpired
 import { addToCart as trackAddToCart } from "@/lib/metadata/facebookPixels";
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SimilarProductsToast from "../notifications/SimilarProductsToast";
-import { Dialog, DialogContent, Box, Typography, Divider, Button, Checkbox, FormControlLabel, Skeleton, Chip, IconButton } from "@mui/material";
+import { Dialog, DialogContent, Box, Typography, Divider, Button, Checkbox, FormControlLabel, Skeleton, Chip, IconButton, CircularProgress } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { setPageSlug } from "../../store/slices/variantPreferenceSlice";
 import Image from "next/image";
@@ -518,9 +518,6 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
       finalCode += chosenLetter;
     }
 
-    console.log("final code", finalCode)
-    console.log("variant code", variants.map(variant => variant.variantCode))
-    console.log("variant products", variantProducts)
     // Find the variant/product with the corresponding variant code
     const matchedVariant = variants.find(variant => variant.variantCode?.toLowerCase() === finalCode.toLowerCase());
     const matchedProduct = variantProducts.find(p => p.variant.variantCode?.toLowerCase() === finalCode.toLowerCase());
@@ -643,25 +640,28 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                       gap: "0.5rem",
                       flexWrap: "wrap",
                       justifyContent: "center",
-                     }}
-                   >
+                    }}
+                  >
                     {group.mappings.map(option => (
                       <Box
                         key={option.letterCode}
                         sx={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          cursor: 'pointer',
-                          borderRadius: '8px',
-                          padding: '0.5rem',
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          cursor: "pointer",
+                          borderRadius: "8px",
+                          padding: "0.5rem",
                         }}
-                        onClick={(e) => { e.stopPropagation(); handleMappingChange(group.groupName, option.letterCode); }}
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleMappingChange(group.groupName, option.letterCode);
+                        }}
                       >
                         {group.thumbnailRequired && option.thumbnail && (
                           <Image
                             src={
-                              option.thumbnail.startsWith('/')
+                              option.thumbnail.startsWith("/")
                                 ? `${baseImageUrl}${option.thumbnail}`
                                 : `${baseImageUrl}/${option.thumbnail}`
                             }
@@ -669,11 +669,11 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                             width={400}
                             height={400}
                             style={{
-                              objectFit: 'cover',
-                              borderRadius: '4px',
-                              marginBottom: '0.5rem',
-                              width: '100px',
-                              height: 'auto',
+                              objectFit: "cover",
+                              borderRadius: "4px",
+                              marginBottom: "0.5rem",
+                              width: "100px",
+                              height: "auto",
                             }}
                           />
                         )}
@@ -687,8 +687,8 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                           label={option.name}
                           sx={{
                             margin: 0,
-                            '& .MuiFormControlLabel-label': {
-                              fontSize: '0.9rem',
+                            "& .MuiFormControlLabel-label": {
+                              fontSize: "0.9rem",
                             },
                           }}
                         />
@@ -699,10 +699,11 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
               ))}
 
               {/* Submit Mapping */}
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 1 }}>
+              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mt: 1 }}>
                 <Button
                   variant="contained"
                   onClick={handleMappingSubmit}
+                  disabled={isLoadingProducts}
                   sx={{
                     backgroundColor: "black",
                     color: "white",
@@ -717,6 +718,7 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                   }}
                 >
                   Submit
+                  {isLoadingProducts && <CircularProgress size={20} sx={{ ml: 1 }} color="white"/>}
                 </Button>
               </Box>
             </>
@@ -724,13 +726,13 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
             <>
               {renderSelectedChips()}
               {previewProduct ? (
-                <SimpleVariantCard 
+                <SimpleVariantCard
                   variant={variants.find(v => v.variantCode?.toLowerCase() === previewProduct.variantCode?.toLowerCase())}
                   product={previewProduct}
                   onClose={onClose}
                 />
               ) : (
-                <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Box sx={{ textAlign: "center", py: 4 }}>
                   <Typography>No matching variant found</Typography>
                 </Box>
               )}
@@ -744,14 +746,14 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                 <Box
                   key={index}
                   sx={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    gap: { xs: '0.75rem', sm: '1rem' },
-                    p: { xs: '0.85rem', sm: '1rem' },
-                    background: '#fff',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-                    position: 'relative'
+                    display: "flex",
+                    flexDirection: "row",
+                    gap: { xs: "0.75rem", sm: "1rem" },
+                    p: { xs: "0.85rem", sm: "1rem" },
+                    background: "#fff",
+                    borderRadius: "0.75rem",
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+                    position: "relative",
                   }}
                 >
                   <Skeleton
@@ -759,19 +761,19 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                     sx={{
                       width: { xs: 110, sm: 140 },
                       height: { xs: 110, sm: 140 },
-                      borderRadius: '0.6rem',
+                      borderRadius: "0.6rem",
                       flexShrink: 0,
-                      background: 'linear-gradient(120deg,#f0f0f0,#e8e8e8,#f0f0f0)',
-                      backgroundSize: '200% 100%',
-                      animation: 'mc-skel-shine 1.4s ease-in-out infinite'
+                      background: "linear-gradient(120deg,#f0f0f0,#e8e8e8,#f0f0f0)",
+                      backgroundSize: "200% 100%",
+                      animation: "mc-skel-shine 1.4s ease-in-out infinite",
                     }}
                   />
-                  <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                    <Skeleton variant="rounded" height={22} width="65%" sx={{ mb: 1, borderRadius: '0.65rem' }} />
-                    <Skeleton variant="text" height={16} width="80%" sx={{ mb: .5 }} />
-                    <Skeleton variant="text" height={16} width="50%" sx={{ mb: .5 }} />
+                  <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
+                    <Skeleton variant="rounded" height={22} width="65%" sx={{ mb: 1, borderRadius: "0.65rem" }} />
+                    <Skeleton variant="text" height={16} width="80%" sx={{ mb: 0.5 }} />
+                    <Skeleton variant="text" height={16} width="50%" sx={{ mb: 0.5 }} />
                     <Box sx={{ flexGrow: 1 }} />
-                    <Skeleton variant="rounded" height={38} width="100%" sx={{ borderRadius: '0.55rem' }} />
+                    <Skeleton variant="rounded" height={38} width="100%" sx={{ borderRadius: "0.55rem" }} />
                   </Box>
                 </Box>
               ))
@@ -783,11 +785,11 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                     product={variantProduct}
                     onClose={onClose}
                   />
-                  {index !== variantProducts.length - 1 && <Divider style={{ marginTop: '20px', borderColor: 'black' }} />}
+                  {index !== variantProducts.length - 1 && <Divider style={{ marginTop: "20px", borderColor: "black" }} />}
                 </Box>
               ))
             ) : (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Box sx={{ textAlign: "center", py: 4 }}>
                 <Typography>No variants available</Typography>
               </Box>
             )}
@@ -805,16 +807,16 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
   // Handle card click to redirect to product page
   const handleCardClick = () => {
     if (product.pageSlug) {
-      window.open(`https://www.maddycustom.com/shop${product.pageSlug}`, '_blank');
+      window.open(`${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/shop${product.pageSlug}`, "_blank");
     }
   };
 
   // Prepare display data similar to ChangeVariantButton UI
   const displayName = variant?.name?.toLowerCase().includes("tank")
     ? variant.name.split(" ")[0]
-    : (variant?.name || product?.variant?.name || product?.name || "");
+    : (variant?.name || product?.variantDetails?.name || product?.name || "");
 
-  const infoText = (variant?.variantInfo || product?.variant?.variantInfo || "");
+  const infoText = (variant?.variantInfo || product?.variantDetails?.variantInfo || "");
   const infoLabel = infoText.includes(":") ? infoText.split(":")[0] : "";
   const infoValue = infoText.includes(":") ? infoText.split(":")[1] : infoText;
 
@@ -823,6 +825,28 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
     : (product?.images && product.images[0]
         ? (product.images[0].startsWith("/") ? baseImageUrl + product.images[0] : baseImageUrl + "/" + product.images[0])
         : null);
+
+  // Determine out-of-stock like ProductCard
+  const getDisplayImage = (p) => {
+    let outOfStock = !p?.variantDetails?.available || !p?.category?.available;
+
+    if (p.images && p.images.length > 0) {
+      outOfStock = outOfStock || p.inventoryData?.availableQuantity === 0;
+      return { imageUrl: p.images[0], outOfStock };
+    }
+
+    if (p.options && p.options.length > 0) {
+      for (const option of p.options) {
+        if (option.images && option.images.length > 0) {
+          outOfStock = outOfStock || option.inventoryData?.availableQuantity === 0;
+          return { imageUrl: option.images[0], outOfStock };
+        }
+      }
+    }
+
+    return { imageUrl: null, outOfStock: true };
+  };
+  const { outOfStock } = getDisplayImage(product);
 
   return (
     <Box
@@ -867,9 +891,28 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
             alt={product.name}
             fill
             sizes="(max-width: 600px) 110px, 140px"
-            style={{ objectFit: 'cover' }}
+            style={{ objectFit: 'cover', filter: outOfStock ? 'grayscale(100%)' : 'none', opacity: outOfStock ? 0.9 : 1 }}
             className={cvStyles.customImg}
           />
+          {outOfStock && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0,0,0,0.28)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontSize: '.78rem',
+                fontWeight: 700,
+                letterSpacing: .6,
+                textTransform: 'uppercase'
+              }}
+            >
+              Out of Stock
+            </Box>
+          )}
         </Box>
       )}
 
@@ -887,7 +930,7 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
         {/* Title */}
         <Box className={cvStyles.buttongroup} sx={{ lineHeight: 1.1 }}>
           <Box
-            className={cvStyles.variantButton}
+            className={cvStyles.variantTitle}
             sx={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -934,17 +977,19 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
         <Box sx={{ flexGrow: 1 }} />
 
         {/* Add to Cart button anchored at bottom */}
-        <Box
-          sx={{ mt: 0.25, width: '100%' }}
-          onClick={e => e.stopPropagation()}
-        >
-          <AddToCartButton
-            product={product}
-            isBlackButton={true}
-            enableVariantSelection={false}
-            disableRecommendationTrigger={true}
-          />
-        </Box>
+        {outOfStock ? <Typography sx={{ fontSize: 13, my: 1, color: "red", fontFamily: "Jost, sans-serif" }}>Out of stock</Typography> : (
+          <Box
+            sx={{ mt: 0.25, width: '100%' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <AddToCartButton
+              product={product}
+              isBlackButton={true}
+              enableVariantSelection={false}
+              disableRecommendationTrigger={true}
+            />
+          </Box>
+        )}
       </Box>
     </Box>
   );
