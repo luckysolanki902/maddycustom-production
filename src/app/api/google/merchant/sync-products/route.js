@@ -1,11 +1,11 @@
 // app/api/google/merchant/sync-products/route.js
 
 import connectToDatabase from '@/lib/middleware/connectToDb';
-import Product from '@/models/Product';
-import SpecificCategory from '@/models/SpecificCategory';
-import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
+import Catalogue from '@/models/meta/Catalogue';
+import CatalogueCycle from '@/models/meta/CatalogueCycle';
 import { NextResponse } from 'next/server';
 import { initializeContentApi } from '@/lib/merchant/googleContentApi';
+import { insertOrUpdateProductInput } from '@/lib/merchant/googleMerchantApi';
 
 export const maxDuration = 300; // 5 minutes in seconds
 
@@ -14,229 +14,154 @@ export async function GET() {
     // 1. Connect to database
     await connectToDatabase();
 
-    // 2. Initialize Google Content API client
-    const contentApi = initializeContentApi();
-
-    // Constants
-    const SYNC_LIMIT = 10; // Maximum products to sync per run
-    const currentTime = new Date();
-
-    // 3. Fetch all available products with proper filtering
-    const products = await Product.find(
-      { available: true },
-      {
-        pageSlug: 1,
-        title: 1,
-        name: 1,
-        images: 1,
-        price: 1,
-        MRP: 1,
-        specificCategory: 1,
-        specificCategoryVariant: 1,
-        updatedAt: 1,
-        sku: 1,
-        category: 1,
-        subCategory: 1,
-        lastSyncedToGoogle: 1
-      }
-    )
-      .populate('specificCategory', 'available name')
-      .populate('specificCategoryVariant', 'available name productDescription')
-      .lean()
-      .exec();
-
-    // 4. Filter products where all related entities are available
-    const availableProducts = products.filter(product => {
-      // Product must be available (already filtered in query)
-      // SpecificCategory must exist and be available
-      if (!product.specificCategory || product.specificCategory.available !== true) {
-        return false;
-      }
-      // If product has a specificCategoryVariant, it must be available
-      if (product.specificCategoryVariant && product.specificCategoryVariant.available !== true) {
-        return false;
-      }
-      // Must have basic required fields
-      if (!product.title || !product.price || !product.pageSlug) {
-        return false;
-      }
-      return true;
-    });
-
-    // 5. Sort by sync priority: never synced first, then oldest synced, then by updatedAt
-    const sortedProducts = availableProducts.sort((a, b) => {
-      // Products never synced to Google get highest priority
-      if (!a.lastSyncedToGoogle && !b.lastSyncedToGoogle) {
-        return new Date(b.updatedAt) - new Date(a.updatedAt);
-      }
-      if (!a.lastSyncedToGoogle) return -1;
-      if (!b.lastSyncedToGoogle) return 1;
-
-      // Among synced products, prioritize oldest synced first
-      const syncTimeDiff = new Date(a.lastSyncedToGoogle) - new Date(b.lastSyncedToGoogle);
-      if (syncTimeDiff !== 0) return syncTimeDiff;
-
-      // If sync times are equal, use updatedAt
-      return new Date(b.updatedAt) - new Date(a.updatedAt);
-    });
-
-    // 6. Limit to SYNC_LIMIT products
-    const productsToSync = sortedProducts.slice(0, SYNC_LIMIT);
-
-    console.info(`Processing ${productsToSync.length} products out of ${availableProducts.length} available`);
-
-    // 7. Process products
-    const startTime = Date.now();
-    const maxProcessingTime = 4.5 * 60 * 1000; // 4.5 minutes
-    let totalSynced = 0;
-    let results = [];
-    const baseUrl = 'https://www.maddycustom.com';
-    const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-
-    for (let i = 0; i < productsToSync.length && Date.now() - startTime < maxProcessingTime; i++) {
-      const product = productsToSync[i];
-      const variant = product.specificCategoryVariant;
-      const category = product.specificCategory;
-
-      // Log current progress (minimal logging)
-      console.info(`Syncing ${i + 1}/${productsToSync.length}: ${product.title}`);
-
-      // Build product description
-      const description = variant?.productDescription
-        ?.replace(/{uniqueName}/g, product.name)
-        ?.replace(/{fullBikename}/g, variant.name) ||
-        `${product.title} - Premium quality custom vehicle wraps and accessories from MaddyCustom. Category: ${category.name}${variant ? `, Variant: ${variant.name}` : ''}`;
-
-      // Get the main image
-      const mainImage = product.images && product.images.length > 0
-        ? `${baseImageUrl}${product.images[0].startsWith('/') ? product.images[0] : '/' + product.images[0]}`
-        : `${baseImageUrl}/assets/placeholder-banner.jpg`;
-
-      // Build Google product category based on your categories
-      let googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories';
-      if (product.category === 'Wraps') {
-        if (product.subCategory === 'Car Wraps') {
-          googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories > Motor Vehicle Exterior Accessories';
-        } else if (product.subCategory === 'Bike Wraps') {
-          googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories > Motor Vehicle Exterior Accessories';
-        }
-      } else if (product.category === 'Accessories') {
-        googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories > Motor Vehicle Interior Accessories';
-      }
-
-      // Create unique offer ID
-      const offerId = product.sku || `${product._id}`;
-
-      const merchantProduct = {
-        offerId: offerId,
-        title: product.title.length > 150 ? product.title.substring(0, 147) + '...' : product.title,
-        description: description.length > 5000 ? description.substring(0, 4997) + '...' : description,
-        availability: 'in stock', // All products passing our filter are in stock
-        condition: 'new',
-        price: {
-          value: product.price.toFixed(2),
-          currency: 'INR',
-        },
-        salePrice: product.MRP && product.MRP > product.price ? {
-          value: product.price.toFixed(2),
-          currency: 'INR',
-        } : undefined,
-        link: `${baseUrl}/shop${product.pageSlug}`,
-        imageLink: mainImage,
-        brand: 'MaddyCustom',
-        channel: 'online',
-        contentLanguage: 'en',
-        targetCountry: 'IN',
-        googleProductCategory: googleProductCategory,
-        customAttributes: [
-          {
-            name: 'category',
-            value: product.category
-          },
-          {
-            name: 'subcategory',
-            value: product.subCategory
-          }
-        ]
-      };
-
-      // Add additional images if available
-      if (product.images && product.images.length > 1) {
-        merchantProduct.additionalImageLinks = product.images.slice(1, 11).map(img =>
-          `${baseImageUrl}${img.startsWith('/') ? img : '/' + img}`
-        );
-      }
-
-      let syncSuccessful = false;
-      try {
-        await contentApi.products.insert({
-          merchantId: process.env.MERCHANT_ID,
-          requestBody: merchantProduct,
-        });
-        results.push({ offerId: offerId, status: 'Inserted' });
-        syncSuccessful = true;
-        totalSynced++;
-      } catch (insertError) {
-        if (insertError.code === 409) {
-          // Product already exists, update it
-          try {
-            await contentApi.products.update({
-              merchantId: process.env.MERCHANT_ID,
-              productId: offerId,
-              requestBody: merchantProduct,
-            });
-            results.push({ offerId: offerId, status: 'Updated' });
-            syncSuccessful = true;
-            totalSynced++;
-          } catch (updateError) {
-            results.push({
-              offerId: offerId,
-              status: 'Failed to Update',
-              error: updateError.message.substring(0, 100)
-            });
-          }
-        } else {
-          results.push({
-            offerId: offerId,
-            status: 'Failed to Insert',
-            error: insertError.message.substring(0, 100)
-          });
-        }
-      }
-
-      // Update lastSyncedToGoogle if sync was successful
-      try {
-        await Product.updateOne(
-          { _id: product._id },
-          { lastSyncedToGoogle: currentTime }
-        );
-      } catch (updateError) {
-        console.info(`Failed to update lastSyncedToGoogle for ${offerId}`);
-      }
-
-      // Check time limit
-      if (Date.now() - startTime > maxProcessingTime) {
-        console.info('Time limit reached, stopping sync');
-        break;
-      }
+    // 2. Initialize API client(s)
+  const useMerchantApi = process.env.USE_MERCHANT_API === 'true';
+    let contentApi = null;
+    if (!useMerchantApi) {
+      contentApi = initializeContentApi();
     }
 
-    // 8. Return comprehensive summary
-    const successfulSyncs = results.filter(r => r.status === 'Inserted' || r.status === 'Updated').length;
-    const failedSyncs = results.filter(r => r.status.startsWith('Failed')).length;
+  // Constants
+  const BATCH_SIZE = parseInt(process.env.GOOGLE_SYNC_BATCH_SIZE || '50', 10); // dynamic sizing
+  const currentTime = new Date();
+
+    // 3. Load latest completed catalogue cycle
+    const latestCycle = await CatalogueCycle.findOne({ status: 'completed' }).sort({ startedAt: -1 });
+    if (!latestCycle) {
+      return NextResponse.json({
+        success: false,
+        message: 'No completed catalogue cycle found. Run catalogue generation first.'
+      }, { status: 400 });
+    }
+
+    // 4. Iterate through unsynced catalogue entries in batches until time budget exhausted
+    let lastId = latestCycle.googleSyncLastId; // resume point
+    let processedThisRun = 0;
+    let results = [];
+    const startTime = Date.now();
+    const maxProcessingTime = 4.5 * 60 * 1000; // 4.5 minutes within 5m limit
+    let exhausted = false;
+    let totalSynced = 0;
+
+    while (Date.now() - startTime < maxProcessingTime) {
+      const query = {
+        cycleId: latestCycle._id,
+        processed: true,
+        googleSynced: false,
+      };
+      if (lastId) {
+        query._id = { $gt: lastId };
+      }
+      const batch = await Catalogue.find(query).sort({ _id: 1 }).limit(BATCH_SIZE).lean();
+      if (batch.length === 0) {
+        exhausted = true;
+        break;
+      }
+      // process batch
+      for (let i = 0; i < batch.length && Date.now() - startTime < maxProcessingTime; i++) {
+        const entry = batch[i];
+        const fd = entry.feedData || {};
+        const productId = fd.id;
+        console.info(`Syncing product ${productId} to Merchant API`);
+        const merchantProduct = {
+          offerId,
+          title: (fd.title || '').substring(0,150),
+          description: (fd.description || '').substring(0, 5000),
+          availability: fd.availability === 'in stock' ? 'in stock' : 'out of stock',
+          condition: fd.condition || 'new',
+          price: {
+            value: (fd.price_amount ?? parseFloat((fd.price||'0').split(' ')[0]||'0')).toFixed(2),
+            currency: fd.price_currency || (fd.price ? (fd.price.split(' ')[1] || 'INR') : 'INR')
+          },
+          salePrice: (fd.sale_price_amount ? { value: fd.sale_price_amount.toFixed(2), currency: fd.sale_price_currency || fd.price_currency || 'INR' } : undefined),
+          link: fd.link,
+          imageLink: fd.image_link,
+          brand: fd.brand || 'MaddyCustom',
+          channel: fd.channel || 'online',
+          contentLanguage: fd.content_language || 'en',
+            targetCountry: fd.target_country || 'IN',
+          googleProductCategory: fd.google_product_category,
+          customAttributes: (fd.custom_attributes || []).map(a => ({ name: a.name, value: a.value })),
+        };
+        if (fd.additional_image_links && fd.additional_image_links.length) {
+          merchantProduct.additionalImageLinks = fd.additional_image_links;
+        }
+
+        let syncSuccessful = false;
+        try {
+          if (useMerchantApi) {
+            const merchantAccountId = process.env.MERCHANT_ID || process.env.MERCHANT_ACCOUNT_ID;
+            if (!merchantAccountId) throw new Error('MERCHANT_ID or MERCHANT_ACCOUNT_ID env var required');
+            const resp = await insertOrUpdateProductInput(merchantAccountId, merchantProduct, { feedLabel: fd.feed_label || 'IN', contentLanguage: fd.content_language || 'en', channel: (fd.channel || 'online').toUpperCase() });
+            results.push({ offerId, status: resp.status });
+            syncSuccessful = true;
+            totalSynced++;
+          } else {
+            await contentApi.products.insert({
+              merchantId: process.env.MERCHANT_ID,
+              requestBody: merchantProduct,
+            });
+            results.push({ offerId, status: 'Inserted' });
+            syncSuccessful = true;
+            totalSynced++;
+          }
+        } catch (insertError) {
+          if (!useMerchantApi && insertError.code === 409) {
+            try {
+              await contentApi.products.update({
+                merchantId: process.env.MERCHANT_ID,
+                productId: offerId,
+                requestBody: merchantProduct,
+              });
+              results.push({ offerId, status: 'Updated' });
+              syncSuccessful = true;
+              totalSynced++;
+            } catch (updateError) {
+              results.push({ offerId, status: 'Failed to Update', error: updateError.message.substring(0,120) });
+            }
+          } else {
+            results.push({ offerId, status: 'Failed', error: insertError.message.substring(0,160) });
+          }
+        }
+
+        if (syncSuccessful) {
+          try {
+            await Catalogue.updateOne({ _id: entry._id }, { googleSynced: true });
+          } catch (_) {}
+        }
+        lastId = entry._id; // advance pointer regardless to avoid re-processing
+        processedThisRun++;
+      }
+      // Persist progress after each batch
+      await CatalogueCycle.updateOne({ _id: latestCycle._id }, {
+        googleSyncLastId: lastId,
+        $inc: { googleSyncProcessedCount: processedThisRun },
+        googleSyncCompleted: exhausted
+      });
+      processedThisRun = 0; // reset counter for next batch increment usage
+    }
+
+    if (exhausted) {
+      await CatalogueCycle.updateOne({ _id: latestCycle._id }, { googleSyncCompleted: true });
+    }
+
+  // 8. Return comprehensive summary
+  const successfulSyncs = results.filter(r => r.status === 'Inserted' || r.status === 'Updated').length;
+  const failedSyncs = results.filter(r => r.status.startsWith('Failed') || r.status === 'Failed').length;
 
     console.info(`Sync completed: ${successfulSyncs} successful, ${failedSyncs} failed`);
 
     return NextResponse.json({
       message: 'Google Merchant sync completed',
       summary: {
-        totalAvailableProducts: availableProducts.length,
-        processedThisRun: productsToSync.length,
-        totalSynced: totalSynced,
+  cycleId: latestCycle._id,
+  processedThisRun: results.length,
+  totalSynced: totalSynced,
         successfulSyncs: successfulSyncs,
         failedSyncs: failedSyncs,
         processingTimeMs: Date.now() - startTime,
-        syncLimit: SYNC_LIMIT
+  batchSize: BATCH_SIZE,
+  exhausted
       },
       timestamp: new Date().toISOString(),
       success: true

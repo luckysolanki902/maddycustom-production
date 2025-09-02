@@ -30,6 +30,18 @@ const CatalogueCycleSchema = new mongoose.Schema({
       default: Date.now,
     },
   }],
+  // Google sync progress tracking
+  googleSyncLastId: {
+    type: mongoose.Schema.Types.ObjectId,
+  },
+  googleSyncProcessedCount: {
+    type: Number,
+    default: 0,
+  },
+  googleSyncCompleted: {
+    type: Boolean,
+    default: false,
+  },
 }, { timestamps: true });
 
 export default mongoose.models.CatalogueCycle ||

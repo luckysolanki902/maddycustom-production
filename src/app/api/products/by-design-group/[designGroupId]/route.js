@@ -3,6 +3,7 @@ import Product from '@/models/Product';
 import Option from '@/models/Option';
 import SpecificCategory from '@/models/SpecificCategory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
+import Inventory from '@/models/Inventory';
 
 export async function GET(request, { params }) {
   try {
