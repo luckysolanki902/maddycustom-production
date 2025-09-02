@@ -11,6 +11,7 @@ import { addItem, incrementQuantity, decrementQuantity, removeItem, setDefaultWr
 import { openCartDrawer, openRecommendationDrawer } from "../../store/slices/uiSlice";
 import { setVariantsCache, setPendingRequest, clearPendingRequest, removeExpiredCache } from "../../store/slices/variantsSlice";
 import { addToCart as trackAddToCart } from "@/lib/metadata/facebookPixels";
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SimilarProductsToast from "../notifications/SimilarProductsToast";
 import { Dialog, DialogContent, Box, Typography, Divider, Button, Checkbox, FormControlLabel, Skeleton, Chip, IconButton } from "@mui/material";
 import { useRouter } from "next/navigation";
@@ -68,10 +69,12 @@ export default function AddToCartButton({
   insertionDetails = {},
   enableVariantSelection = false,
   hideRecommendationPopup = false,
-  showOnlyChooseVariants = false
+  showOnlyChooseVariants = false,
+  disableRecommendationTrigger = false
 }) {
   const dispatch = useDispatch();
   const cartItems = useSelector(state => state.cart.items);
+  const hasSeenRecommendationDrawer = useSelector(state => state.ui.hasSeenRecommendationDrawer);
   const cartItem = cartItems.find(item => item.productId === product._id);
   const variantsCache = useSelector(state => state.variants.cache);
   const cacheTimestamps = useSelector(state => state.variants.lastUpdated);
@@ -251,7 +254,10 @@ export default function AddToCartButton({
     // Show similar products toast if product has designGroupId
     if (
       !hideRecommendationPopup &&
-      product.designGroupId) {
+      product.designGroupId &&
+      !hasSeenRecommendationDrawer
+    ) {
+      // Auto-open only the first time (after which the user sees a manual trigger button)
       dispatch(openRecommendationDrawer({ product }));
     }
 
@@ -374,6 +380,35 @@ export default function AddToCartButton({
       >
         <span>{enableVariantSelection && hasVariants ? "Choose Variant" : "Add to cart"}</span>
       </button>
+
+      {/* Persuasive recommendation trigger button (only if user has previously seen drawer) */}
+  {hasSeenRecommendationDrawer && !hideRecommendationPopup && !disableRecommendationTrigger && (
+        <button
+          type="button"
+          onClick={(e)=>{ e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
+          style={{
+            marginTop: '0.45rem',
+            background: 'linear-gradient(90deg,#f5f5f7,#ffffff)',
+            border: '1px solid #e2e2e2',
+            color: '#222',
+            fontFamily: 'Jost, sans-serif',
+            fontSize: '.68rem',
+            padding: '.45rem .75rem',
+            borderRadius: '999px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '.4rem',
+            cursor: 'pointer',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+            transition: 'all .25s ease',
+            letterSpacing: '.5px'
+          }}
+          className="mc-reco-trigger-btn"
+        >
+          <AutoAwesomeIcon style={{ fontSize: '0.9rem', color: '#7b4bff' }} />
+          <span style={{ fontWeight: 600 }}>See Matching Picks</span>
+        </button>
+      )}
 
       {/* Variant Selection Dialog */}
       {showVariantDialog && (
@@ -821,6 +856,7 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
           product={product}
           isBlackButton={true}
           enableVariantSelection={false}
+          disableRecommendationTrigger={true}
         />
       </Box>
     </Box>

@@ -84,11 +84,19 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
   // Build a safe image URL (avoid empty string that triggers Next Image preload warnings)
   const baseCdn = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || "";
   const rawImage = product?.images?.[0];
-  const imageUrl = rawImage && rawImage.trim() !== ""
-    ? (rawImage.startsWith('http')
-        ? rawImage
-        : `${baseCdn}${rawImage.startsWith('/') ? rawImage : '/' + rawImage}`)
-    : "/images/placeholder.jpg";
+  let imageUrl = undefined;
+  if (rawImage && typeof rawImage === 'string') {
+    const cleaned = rawImage.trim();
+    if (cleaned && cleaned !== '/' && cleaned.toLowerCase() !== 'null' && cleaned.toLowerCase() !== 'undefined') {
+      imageUrl = cleaned.startsWith('http')
+        ? cleaned
+        : `${baseCdn}${cleaned.startsWith('/') ? cleaned : '/' + cleaned}`;
+    }
+  }
+  // Fallback to an existing image asset if primary invalid
+  if (!imageUrl) {
+    imageUrl = '/images/off.jpg'; // this file exists in public/images
+  }
   const discountPct = product.MRP && product.MRP > product.price
     ? Math.round(((product.MRP - product.price) / product.MRP) * 100)
     : null;
@@ -142,14 +150,16 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
             }
           }}
         >
-          <Image
-            src={imageUrl}
-            alt={product.name}
-            fill
-            sizes="(max-width: 600px) 40vw, 120px"
-            style={{ objectFit: 'cover' }}
-            priority={false}
-          />
+          {imageUrl && (
+            <Image
+              src={imageUrl}
+              alt={product.name || 'Product'}
+              fill
+              sizes="(max-width: 600px) 40vw, 120px"
+              style={{ objectFit: 'cover' }}
+              priority={false}
+            />
+          )}
           {/* {discountPct && (
             <Box
               sx={{
@@ -216,11 +226,13 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
               <Box
                 sx={{
                   display: 'inline-flex',
+                  width: 'fit-content',
                   alignItems: 'center',
                   gap: .5,
                   px: 0.85,
                   py: 0.45,
                   mt: .1,
+                  mb: .3,
                   background: 'linear-gradient(90deg, rgba(49,196,115,0.12), rgba(49,196,115,0.22))',
                   border: '1px solid rgba(49,196,115,0.45)',
                   borderRadius: '14px',
@@ -359,7 +371,7 @@ const RecommendationDrawer = () => {
                 position: "relative",
                 display: "flex",
                 flexDirection: "column",
-                minHeight: window.innerWidth <= 600 ? "60vh" : "40vh",
+                minHeight: typeof window !== 'undefined' && window.innerWidth <= 600 ? "60vh" : "40vh",
                 maxHeight: "85vh",
               }}
             >

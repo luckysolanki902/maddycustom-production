@@ -9,6 +9,7 @@ const initialState = {
   cartDrawerSource: "bottom", // 'top' or 'bottom'
   isRecommendationDrawerOpen: false,
   recommendationProduct: null,
+  hasSeenRecommendationDrawer: false,
   shippingTimer: {
     expiryTime: Date.now() + 9 * 60 * 60 * 1000 + 13 * 60 * 1000, // 9 hours 13 minutes from now
     isActive: false,
@@ -60,10 +61,14 @@ const uiSlice = createSlice({
     openRecommendationDrawer(state, action) {
       state.isRecommendationDrawerOpen = true;
       state.recommendationProduct = action.payload?.product || null;
+  state.hasSeenRecommendationDrawer = true;
     },
     closeRecommendationDrawer(state) {
       state.isRecommendationDrawerOpen = false;
       state.recommendationProduct = null;
+    },
+    markRecommendationDrawerSeen(state){
+      state.hasSeenRecommendationDrawer = true;
     },
     
     // New shipping timer reducers
@@ -113,6 +118,7 @@ export const {
   closeCartDrawer,
   openRecommendationDrawer,
   closeRecommendationDrawer,
+  markRecommendationDrawerSeen,
   setShippingTimer,
   expireShippingTimer,
   resetShippingTimer,
