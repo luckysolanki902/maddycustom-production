@@ -81,231 +81,170 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
     fetchUnlockableCoupon();
   }, [fetchUnlockableCoupon]);
 
+  // Build a safe image URL (avoid empty string that triggers Next Image preload warnings)
+  const baseCdn = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || "";
+  const rawImage = product?.images?.[0];
+  const imageUrl = rawImage && rawImage.trim() !== ""
+    ? (rawImage.startsWith('http')
+        ? rawImage
+        : `${baseCdn}${rawImage.startsWith('/') ? rawImage : '/' + rawImage}`)
+    : "/images/placeholder.jpg";
+  const discountPct = product.MRP && product.MRP > product.price
+    ? Math.round(((product.MRP - product.price) / product.MRP) * 100)
+    : null;
+
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
       <Card
         onClick={handleCardClick}
         sx={{
-          height: unlockableCoupon ? 200 : 160, // Increased height when coupon is available
-          border: "1px solid #f0f0f0",
-          borderRadius: 2,
-          transition: "all 0.2s ease",
-          position: "relative",
-          overflow: "visible",
-          cursor: "pointer",
-          "&:hover": {
-            borderColor: "#2d2d2d",
-            boxShadow: "0 4px 12px rgba(45, 45, 45, 0.1)",
-            transform: "translateY(-2px)",
-          },
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'row',
+          gap: 2,
+          p: 1.2,
+          pr: 1.4,
+          borderRadius: 3,
+          overflow: 'hidden',
+          background: 'linear-gradient(145deg,#ffffff,#fafafa)',
+          border: '1px solid #ececec',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+          minHeight: { xs: 150, sm: 160 },
+          transition: 'all .28s cubic-bezier(.4,.14,.3,1)',
+          '&:hover': {
+            boxShadow: '0 6px 18px -4px rgba(0,0,0,0.18)',
+            transform: 'translateY(-4px)',
+            borderColor: '#dcdcdc'
+          }
         }}
       >
-        {/* Coupon Badge */}
-        <AnimatePresence>
-          {unlockableCoupon && !loadingCoupon && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: -10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: -10 }}
-              transition={{ duration: 0.3 }}
-              style={{
-                position: "absolute",
-                top: -8,
-                right: -8,
-                zIndex: 20,
+        {/* Image Wrapper */}
+        <Box
+          sx={{
+            position: 'relative',
+            width: { xs: 108, sm: 120 },
+            flexShrink: 0,
+            borderRadius: 2,
+            overflow: 'hidden',
+            aspectRatio: '1/1',
+            background: '#f5f5f5',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            '& img': {
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transition: 'transform .5s ease',
+            },
+            '.MuiCard-root:hover & img': {
+              transform: 'scale(1.05)'
+            }
+          }}
+        >
+          <Image
+            src={imageUrl}
+            alt={product.name}
+            fill
+            sizes="(max-width: 600px) 40vw, 120px"
+            style={{ objectFit: 'cover' }}
+            priority={false}
+          />
+          {/* {discountPct && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 6,
+                left: 6,
+                background: 'rgba(49,196,115,0.14)',
+                backdropFilter: 'blur(4px)',
+                border: '1px solid rgba(49,196,115,0.4)',
+                color: '#139455',
+                fontSize: '0.6rem',
+                px: 0.65,
+                py: 0.35,
+                borderRadius: '10px',
+                fontWeight: 600,
+                lineHeight: 1,
+                letterSpacing: .5,
               }}
             >
+              {discountPct}% OFF
+            </Box>
+          )} */}
+          {/* Removed old bottom overlay coupon tag; replaced with inline pill below price */}
+        </Box>
+
+        {/* Content anchored to bottom */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+          <Box sx={{ flexGrow: 1 }} /> {/* Top empty spacer */}
+          <Box sx={{ pr: { xs: .5, sm: 1 }, display: 'flex', flexDirection: 'column', gap: .4, pb: .2 }}>
+            <Typography
+              component="h3"
+              sx={{
+                fontFamily: 'Jost, sans-serif',
+                fontSize: { xs: '0.82rem', sm: '.9rem' },
+                fontWeight: 600,
+                color: '#1d1d1f',
+                lineHeight: 1.25,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden'
+              }}
+            >
+              {product.title}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: .55 }}>
+              <Typography sx={{ fontFamily: 'Jost, sans-serif', fontSize: { xs: '.95rem', sm: '1rem' }, fontWeight: 700, color: '#111' }}>
+                ₹{product.price}
+              </Typography>
+              {product.MRP && product.MRP > product.price && (
+                <>
+                  <Typography sx={{ textDecoration: 'line-through', color: '#888', fontSize: '.63rem', fontFamily: 'Jost, sans-serif' }}>
+                    ₹{product.MRP}
+                  </Typography>
+                  {discountPct && (
+                    <Typography sx={{ color: '#139455', fontSize: '.6rem', fontWeight: 600, letterSpacing: .4 }}>
+                      {discountPct}% off
+                    </Typography>
+                  )}
+                </>
+              )}
+            </Box>
+            {unlockableCoupon && !loadingCoupon && (
               <Box
                 sx={{
-                  backgroundColor: "#e6f7ed",
-                  borderRadius: "12px",
-                  px: 1.5,
-                  py: 0.5,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.5,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: .5,
+                  px: 0.85,
+                  py: 0.45,
+                  mt: .1,
+                  background: 'linear-gradient(90deg, rgba(49,196,115,0.12), rgba(49,196,115,0.22))',
+                  border: '1px solid rgba(49,196,115,0.45)',
+                  borderRadius: '14px',
+                  fontSize: '.55rem',
+                  fontWeight: 600,
+                  letterSpacing: .6,
+                  color: '#0f6b3d',
+                  textTransform: 'uppercase',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                 }}
               >
-                <LocalOffer sx={{ fontSize: 14, color: "#31C473" }} />
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: "#31C473",
-                    fontWeight: 700,
-                    fontSize: "0.7rem",
-                    lineHeight: 1,
-                  }}
-                >
-                  ₹{unlockableCoupon.discountValue} OFF
-                </Typography>
+                <LocalOffer sx={{ fontSize: 11, color: '#139455' }} />
+                Add this to unlock ₹{unlockableCoupon.discountValue} OFF
               </Box>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <Box sx={{ display: "flex", height: "100%", flexDirection: "column" }}>
-          {/* Product Content */}
-          <Box sx={{ display: "flex", flex: 1 }}>
-            <CardMedia
-              component="img"
-              sx={{
-                width: 120,
-                objectFit: "cover",
-                borderTopLeftRadius: 8,
-                borderBottomLeftRadius: unlockableCoupon ? 0 : 8,
-              }}
-              image={
-                product.images?.[0]
-                  ? `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}${product.images[0]}`
-                  : "/images/placeholder.jpg"
-              }
-              alt={product.name}
-            />
-            <CardContent
-              sx={{
-                flex: 1,
-                p: 2,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-              }}
-            >
-              <Box>
-                <Typography
-                  variant="subtitle2"
-                  sx={{
-                    fontWeight: 600,
-                    color: "#2d2d2d",
-                    lineHeight: 1.3,
-                    mb: 0.5,
-                    fontFamily: "Jost, sans-serif",
-                  }}
-                >
-                  {product.title}
-                </Typography>
-
-                {/* Card Captions */}
-                {/* {product.variantDetails?.cardCaptions?.map((caption, index) => {
-                  const charLimit = 30; // Shorter for drawer
-                  const shortenedString = caption.length > charLimit ? caption.slice(0, charLimit) + "...more" : caption;
-                  return (
-                    <Typography
-                      key={index}
-                      variant="caption"
-                      sx={{
-                        color: "#666",
-                        fontSize: "0.65rem",
-                        display: "block",
-                        lineHeight: 1.2,
-                        mb: 0.3,
-                        fontFamily: "Jost, sans-serif",
-                      }}
-                    >
-                      {shortenedString}
-                    </Typography>
-                  );
-                })} */}
-
-                {/* Price Section */}
-                <Box sx={{ mt: 0.5, mb: 1 }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 800,
-                      color: "#2d2d2d",
-                      fontSize: "1rem",
-                      fontFamily: "Jost, sans-serif",
-                    }}
-                  >
-                    ₹{product.price}
-                  </Typography>
-                  {product.MRP && product.MRP > product.price && (
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.2 }}>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          textDecoration: "line-through",
-                          color: "#999",
-                          fontSize: "0.7rem",
-                          fontFamily: "Jost, sans-serif",
-                        }}
-                      >
-                        ₹{product.MRP}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "#31C473",
-                          fontSize: "0.7rem",
-                          fontWeight: 600,
-                          fontFamily: "Jost, sans-serif",
-                        }}
-                      >
-                        {Math.round(((product.MRP - product.price) / product.MRP) * 100)}% off
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Box>
-
-              {/* Use AddToCartButton with variant selection enabled */}
+            )}
+            <Box sx={{ pt: .3 }}>
               <AddToCartButton
                 product={product}
                 enableVariantSelection
                 hideRecommendationPopup
                 size="small"
-                // sx={{
-                //   backgroundColor: "#424242",
-                //   color: "white",
-                //   fontSize: "0.75rem",
-                //   py: 0.5,
-                //   minHeight: 32,
-                //   "&:hover": {
-                //     backgroundColor: "#353535",
-                //   },
-                // }}
               />
-            </CardContent>
+            </Box>
           </Box>
-
-          {/* Coupon Information */}
-          <AnimatePresence>
-            {unlockableCoupon && !loadingCoupon && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Box
-                  sx={{
-                    backgroundColor: "#424242",
-                    p: 1.5,
-                    borderBottomLeftRadius: 8,
-                    borderBottomRightRadius: 8,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 1,
-                  }}
-                >
-                  <LocalOffer sx={{ fontSize: 16, color: "white" }} />
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "white",
-                      fontWeight: 600,
-                      fontSize: "0.8rem",
-                      textAlign: "center",
-                      fontFamily: "Jost, sans-serif",
-                    }}
-                  >
-                    Add this to unlock ₹{unlockableCoupon.discountValue} savings!
-                  </Typography>
-                </Box>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </Box>
       </Card>
     </motion.div>
@@ -317,15 +256,6 @@ const RecommendationDrawer = () => {
   const { isRecommendationDrawerOpen, recommendationProduct } = useSelector(state => state.ui);
   const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('🔥 DEBUG: RecommendationDrawer state changed:', {
-      isOpen: isRecommendationDrawerOpen,
-      product: recommendationProduct?.name || 'none',
-      designGroupId: recommendationProduct?.designGroupId || 'none'
-    });
-  }, [isRecommendationDrawerOpen, recommendationProduct]);
 
   const fetchRecommendedProducts = useCallback(
     async designGroupId => {
@@ -542,7 +472,7 @@ const RecommendationDrawer = () => {
                   right: 0,
                   backgroundColor: "#ffffff",
                   borderTop: "1px solid #f0f0f0",
-                  p: 3,
+                  p: 1,
                   zIndex: 1300,
                   mt: "auto",
                 }}
@@ -560,9 +490,10 @@ const RecommendationDrawer = () => {
                     onClick={handleClose}
                     sx={{
                       color: "#2d2d2d",
-                      py: 1.5,
+                      py: 1,
+                      fontSize: '0.8rem',
                       fontWeight: 600,
-                      minHeight: 48,
+                      // minHeight: 48,
                       "&:hover": {
                         backgroundColor: "#f8f8f8",
                       },
@@ -578,9 +509,10 @@ const RecommendationDrawer = () => {
                     endIcon={<ArrowForward />}
                     sx={{
                       backgroundColor: "#2d2d2d",
-                      py: 1.5,
+                      py: 1,
+                      fontSize: '0.8rem',
                       fontWeight: 600,
-                      minHeight: 48,
+                      // minHeight: 48,
                       "&:hover": {
                         backgroundColor: "#1a1a1a",
                       },

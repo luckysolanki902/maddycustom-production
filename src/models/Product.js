@@ -87,7 +87,7 @@ const ProductSchema = new mongoose.Schema(
       index: true,
     },
     //options available for the product
-    optionsAvailable: {
+    v: {
       type: Boolean,
       default: false,
     },
