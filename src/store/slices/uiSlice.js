@@ -58,6 +58,7 @@ const uiSlice = createSlice({
     
     // Recommendation drawer reducers
     openRecommendationDrawer(state, action) {
+      console.log('🔥 DEBUG: uiSlice - openRecommendationDrawer called with:', action.payload);
       state.isRecommendationDrawerOpen = true;
       state.recommendationProduct = action.payload?.product || null;
     },

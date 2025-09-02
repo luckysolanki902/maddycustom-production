@@ -239,9 +239,6 @@ export default function AddToCartButton({
       return;
     }
 
-    // Check if cart is empty before adding
-    const wasCartEmpty = cartItems.length === 0;
-
     setLastAction("increment");
     dispatch(
       addItem({
@@ -251,20 +248,11 @@ export default function AddToCartButton({
       })
     );
 
-    // Show similar products toast if cart was empty and product has designGroupId
+    // Show similar products toast if product has designGroupId
     if (
       !hideRecommendationPopup &&
-      // wasCartEmpty &&
       product.designGroupId) {
       dispatch(openRecommendationDrawer({ product }));
-
-      // setToastProduct(product);
-      // setShowSimilarToast(true);
-
-      // // Auto-hide toast after 5 seconds
-      // setTimeout(() => {
-      //   setShowSimilarToast(false);
-      // }, 5000);
     }
 
     // Track AddToCart event

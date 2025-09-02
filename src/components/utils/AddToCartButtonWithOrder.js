@@ -80,9 +80,6 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     // If in limited mode and adding one would exceed allowed, do nothing.
     if (isLimited && (currentQuantity + 1) > maxAllowed) return;
 
-    // Check if cart is empty before adding
-    const wasCartEmpty = cartItems.length === 0;
-
     setLastAction('increment');
     dispatch(addItem({
       productId: product._id,
@@ -90,10 +87,8 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       insertionDetails
     }));
 
-    // Show recommendation drawer if cart was empty and product has designGroupId
-    if (
-      // wasCartEmpty && 
-      product.designGroupId) {
+    // Show recommendation drawer if product has designGroupId
+    if (product.designGroupId) {
       dispatch(openRecommendationDrawer({ product }));
     }
 
