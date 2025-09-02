@@ -8,6 +8,7 @@ import { useMediaQuery } from '@mui/material';
 import ProductCard from './ProductCard';
 import HeaderCarousel from '../showcase/carousels/HeaderCarousel';
 import styles from './styles/productswrapper.module.css';
+import { HIDE_PRODUCT_VIDEOS } from '@/lib/constants/featureToggles';
 
 const ProductsWrapper = ({
   variant,
@@ -26,7 +27,7 @@ const ProductsWrapper = ({
   return (
     <div className={showLayout2 ? styles.productsGrid2 : styles.productsGrid}>
       {/* Video card - only shown for non-mobile when not hidden and variant has showcase */}
-      {variant?.showCase?.[0]?.available && !hideVideo && !isSmallDevice && (
+  {variant?.showCase?.[0]?.available && !hideVideo && !isSmallDevice && !HIDE_PRODUCT_VIDEOS && (
         <div
           className={styles.videoCard}
           aria-label="Product Video"
