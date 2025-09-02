@@ -318,6 +318,15 @@ const RecommendationDrawer = () => {
   const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🔥 DEBUG: RecommendationDrawer state changed:', {
+      isOpen: isRecommendationDrawerOpen,
+      product: recommendationProduct?.name || 'none',
+      designGroupId: recommendationProduct?.designGroupId || 'none'
+    });
+  }, [isRecommendationDrawerOpen, recommendationProduct]);
+
   const fetchRecommendedProducts = useCallback(
     async designGroupId => {
       setLoading(true);
