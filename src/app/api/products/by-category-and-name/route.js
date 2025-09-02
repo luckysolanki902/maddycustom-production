@@ -30,7 +30,7 @@ export async function GET(request) {
     const enhancedProducts = products.map(product => {
       const newProduct = {
         ...product,
-        variant: product.specificCategoryVariant,
+        variantDetails: product.specificCategoryVariant,
         category: product.specificCategory,
       };
 
