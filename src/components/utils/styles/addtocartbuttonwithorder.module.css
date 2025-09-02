@@ -127,6 +127,7 @@
   font-weight: 500;
   text-align: center;
   width: 100%;
+  white-space: nowrap; /* keep text on one line */
 
 }
 
@@ -183,6 +184,57 @@
   color: white;
 }
 
+/* Recommendation buttons */
+.recoButtonDesktop,
+.recoButtonMobile {
+  background: linear-gradient(90deg,#f5f5f7,#ffffff);
+  border: 1px solid #e2e2e2;
+  color: #222;
+  font-family: 'Jost', sans-serif;
+  font-size: .7rem;
+  padding: .55rem .85rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  transition: all .25s ease;
+  letter-spacing: .5px;
+  font-weight: 600;
+}
+
+.recoButtonDesktop:hover,
+.recoButtonMobile:hover {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+}
+
+.recoButtonDesktop {
+  width: 100%;
+  justify-content: center;
+}
+
+.recoButtonMobile {
+  justify-content: flex-start;
+  width: auto; /* allow intrinsic width */
+  align-self: flex-start; /* avoid stretching full width */
+  max-width: fit-content;
+  margin-bottom: .25rem;
+}
+
+.primaryActionsRow {
+  display: flex;
+  flex-direction: column; /* desktop: stack vertically */
+  gap: .6rem;
+  width: 100%;
+}
+
+/* Desktop (default) each action full width */
+.primaryActionsRow .addToCartSection,
+.primaryActionsRow .orderNowSection {
+  width: 100%;
+}
+
 @media (max-width: 1000px) {
   .subContainer {
     position: fixed;
@@ -197,8 +249,25 @@
     border-top-right-radius: 0.5rem;
     box-shadow: 0px -3px 4px rgba(0, 0, 0, 0.1);
     margin: 0;
-    flex-direction: row;
+    flex-direction: column;
   }
+
+  .primaryActionsRow {
+    width: 100%;
+    display: flex;
+    flex-direction: row; /* mobile: side by side */
+    gap: .6rem;
+  }
+
+  /* On mobile, share horizontal space evenly */
+  .primaryActionsRow .addToCartSection,
+  .primaryActionsRow .orderNowSection {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+
+  .recoButtonDesktop { display: none; }
 
 }
 

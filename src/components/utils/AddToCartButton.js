@@ -70,7 +70,8 @@ export default function AddToCartButton({
   enableVariantSelection = false,
   hideRecommendationPopup = false,
   showOnlyChooseVariants = false,
-  disableRecommendationTrigger = false
+  disableRecommendationTrigger = false,
+  flexResponsiveness = false
 }) {
   const dispatch = useDispatch();
   const cartItems = useSelector(state => state.cart.items);
@@ -206,6 +207,9 @@ export default function AddToCartButton({
   // For convenience, get the current quantity from the cart (or zero)
   const currentQuantity = cartItem ? cartItem.quantity : 0;
 
+  // Decide if we should show recommendation trigger (button) for this product
+  const showRecoButton = !!(cartItem && product?.designGroupId && !hideRecommendationPopup && !disableRecommendationTrigger);
+
   // Function to navigate to cart or show cart drawer
   const goToCart = () => {
     dispatch(openCartDrawer());
@@ -252,14 +256,7 @@ export default function AddToCartButton({
     );
 
     // Show similar products toast if product has designGroupId
-    if (
-      !hideRecommendationPopup &&
-      product.designGroupId &&
-      !hasSeenRecommendationDrawer
-    ) {
-      // Auto-open only the first time (after which the user sees a manual trigger button)
-      dispatch(openRecommendationDrawer({ product }));
-    }
+  // Removed auto-open to avoid irritating users; manual button will show on cart items
 
     // Track AddToCart event
     try {
@@ -331,29 +328,57 @@ export default function AddToCartButton({
 
   if ((!enableVariantSelection || !hasVariants) && cartItem) {
     return (
-      <div className={mainClasses} onClick={e => e.stopPropagation()}>
-        <button onClick={handleDecrement} className={styles.decrement}>
-          <RemoveIcon fontSize="1rem" />
-        </button>
-        <animated.div
-          onClick={e => e.stopPropagation()}
-          style={{
-            transform: props.scale.to(s => `scale(${s})`),
-            color: props.color,
-            opacity: props.opacity,
-          }}
-          className={styles.quantity}
-        >
-          {cartItem.quantity}
-        </animated.div>
-        <button
-          onClick={handleIncrement}
-          className={styles.increment}
-          disabled={isLimited && currentQuantity >= maxAllowed}
-          title={isLimited && currentQuantity >= maxAllowed ? "Maximum quantity reached for this item" : ""}
-        >
-          <AddIcon fontSize="1rem" />
-        </button>
+      <div style={{ display: 'flex', flexDirection: flexResponsiveness ? 'row' : 'column', alignItems: flexResponsiveness ? 'center' : 'flex-start', justifyContent: flexResponsiveness ? 'flex-start' : 'flex-start', gap: flexResponsiveness ? '1rem' : '0' }} onClick={e => e.stopPropagation()}>
+        <div className={mainClasses} style={{ marginBottom: showRecoButton ? '.45rem' : 0 }}>
+          <button onClick={handleDecrement} className={styles.decrement}>
+            <RemoveIcon fontSize="1rem" />
+          </button>
+          <animated.div
+            onClick={e => e.stopPropagation()}
+            style={{
+              transform: props.scale.to(s => `scale(${s})`),
+              color: props.color,
+              opacity: props.opacity,
+            }}
+            className={styles.quantity}
+          >
+            {cartItem.quantity}
+          </animated.div>
+          <button
+            onClick={handleIncrement}
+            className={styles.increment}
+            disabled={isLimited && currentQuantity >= maxAllowed}
+            title={isLimited && currentQuantity >= maxAllowed ? "Maximum quantity reached for this item" : ""}
+          >
+            <AddIcon fontSize="1rem" />
+          </button>
+        </div>
+        {showRecoButton && (
+          <button
+            type="button"
+            onClick={(e)=>{ e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
+            style={{
+              background: 'linear-gradient(90deg,#f5f5f7,#ffffff)',
+              border: '1px solid #e2e2e2',
+              color: '#222',
+              fontFamily: 'Jost, sans-serif',
+              fontSize: '.68rem',
+              padding: '.45rem .75rem',
+              borderRadius: '999px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '.4rem',
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+              transition: 'all .25s ease',
+              letterSpacing: '.5px'
+            }}
+            className="mc-reco-trigger-btn"
+          >
+            <AutoAwesomeIcon style={{ fontSize: '0.9rem', color: '#7b4bff' }} />
+            <span style={{ fontWeight: 600 }}>See Matching Picks</span>
+          </button>
+        )}
       </div>
     );
   }
@@ -381,34 +406,7 @@ export default function AddToCartButton({
         <span>{enableVariantSelection && hasVariants ? "Choose Variant" : "Add to cart"}</span>
       </button>
 
-      {/* Persuasive recommendation trigger button (only if user has previously seen drawer) */}
-  {hasSeenRecommendationDrawer && !hideRecommendationPopup && !disableRecommendationTrigger && (
-        <button
-          type="button"
-          onClick={(e)=>{ e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
-          style={{
-            marginTop: '0.45rem',
-            background: 'linear-gradient(90deg,#f5f5f7,#ffffff)',
-            border: '1px solid #e2e2e2',
-            color: '#222',
-            fontFamily: 'Jost, sans-serif',
-            fontSize: '.68rem',
-            padding: '.45rem .75rem',
-            borderRadius: '999px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '.4rem',
-            cursor: 'pointer',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-            transition: 'all .25s ease',
-            letterSpacing: '.5px'
-          }}
-          className="mc-reco-trigger-btn"
-        >
-          <AutoAwesomeIcon style={{ fontSize: '0.9rem', color: '#7b4bff' }} />
-          <span style={{ fontWeight: 600 }}>See Matching Picks</span>
-        </button>
-      )}
+  {/* Recommendation trigger intentionally only shown once item is in cart (handled in early return path). */}
 
       {/* Variant Selection Dialog */}
       {showVariantDialog && (
@@ -645,25 +643,25 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                       gap: "0.5rem",
                       flexWrap: "wrap",
                       justifyContent: "center",
-                    }}
-                  >
+                     }}
+                   >
                     {group.mappings.map(option => (
                       <Box
                         key={option.letterCode}
                         sx={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          cursor: "pointer",
-                          borderRadius: "8px",
-                          padding: "0.5rem",
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          borderRadius: '8px',
+                          padding: '0.5rem',
                         }}
-                        onClick={(e) => {e.stopPropagation();handleMappingChange(group.groupName, option.letterCode)}}
+                        onClick={(e) => { e.stopPropagation(); handleMappingChange(group.groupName, option.letterCode); }}
                       >
                         {group.thumbnailRequired && option.thumbnail && (
                           <Image
                             src={
-                              option.thumbnail.startsWith("/")
+                              option.thumbnail.startsWith('/')
                                 ? `${baseImageUrl}${option.thumbnail}`
                                 : `${baseImageUrl}/${option.thumbnail}`
                             }
@@ -671,15 +669,14 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                             width={400}
                             height={400}
                             style={{
-                              objectFit: "cover",
-                              borderRadius: "4px",
-                              marginBottom: "0.5rem",
-                              width: "100px",
-                              height: "auto",
+                              objectFit: 'cover',
+                              borderRadius: '4px',
+                              marginBottom: '0.5rem',
+                              width: '100px',
+                              height: 'auto',
                             }}
                           />
                         )}
-
                         <FormControlLabel
                           control={
                             <Checkbox
@@ -690,8 +687,8 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                           label={option.name}
                           sx={{
                             margin: 0,
-                            "& .MuiFormControlLabel-label": {
-                              fontSize: "0.9rem",
+                            '& .MuiFormControlLabel-label': {
+                              fontSize: '0.9rem',
                             },
                           }}
                         />
@@ -743,29 +740,54 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
           // Normal Variants List
           <Box display="flex" flexDirection="column" gap="1rem">
             {isLoadingProducts ? (
-              // Loading skeletons
               Array.from({ length: 3 }).map((_, index) => (
-                <Box key={index} sx={{ padding: "1rem" }}>
-                  <Skeleton variant="rectangular" width="100%" height="150px" sx={{ borderRadius: "8px", mb: 2 }} />
-                  <Skeleton variant="text" width="60%" height={24} sx={{ mb: 1 }} />
-                  <Skeleton variant="text" width="40%" height={20} sx={{ mb: 2 }} />
-                  <Skeleton variant="rectangular" width="100%" height="44px" sx={{ borderRadius: "0.4rem" }} />
+                <Box
+                  key={index}
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    gap: { xs: '0.75rem', sm: '1rem' },
+                    p: { xs: '0.85rem', sm: '1rem' },
+                    background: '#fff',
+                    borderRadius: '0.75rem',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                    position: 'relative'
+                  }}
+                >
+                  <Skeleton
+                    variant="rounded"
+                    sx={{
+                      width: { xs: 110, sm: 140 },
+                      height: { xs: 110, sm: 140 },
+                      borderRadius: '0.6rem',
+                      flexShrink: 0,
+                      background: 'linear-gradient(120deg,#f0f0f0,#e8e8e8,#f0f0f0)',
+                      backgroundSize: '200% 100%',
+                      animation: 'mc-skel-shine 1.4s ease-in-out infinite'
+                    }}
+                  />
+                  <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                    <Skeleton variant="rounded" height={22} width="65%" sx={{ mb: 1, borderRadius: '0.65rem' }} />
+                    <Skeleton variant="text" height={16} width="80%" sx={{ mb: .5 }} />
+                    <Skeleton variant="text" height={16} width="50%" sx={{ mb: .5 }} />
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Skeleton variant="rounded" height={38} width="100%" sx={{ borderRadius: '0.55rem' }} />
+                  </Box>
                 </Box>
               ))
             ) : variantProducts && variantProducts.length > 0 ? (
               variantProducts.map((variantProduct, index) => (
                 <Box key={variantProduct._id}>
-                  <SimpleVariantCard 
-                    variant={variants.find(v => v.variantCode?.toLowerCase() === variantProduct.variantCode?.toLowerCase())} 
-                    product={variantProduct} 
-                    onClose={onClose} 
+                  <SimpleVariantCard
+                    variant={variants.find(v => v.variantCode?.toLowerCase() === variantProduct.variantCode?.toLowerCase())}
+                    product={variantProduct}
+                    onClose={onClose}
                   />
-                  {/* Divider */}
-                  {index !== variantProducts.length - 1 && <Divider style={{ marginTop: "20px", borderColor: "black" }} />}
+                  {index !== variantProducts.length - 1 && <Divider style={{ marginTop: '20px', borderColor: 'black' }} />}
                 </Box>
               ))
             ) : (
-              <Box sx={{ textAlign: "center", py: 4 }}>
+              <Box sx={{ textAlign: 'center', py: 4 }}>
                 <Typography>No variants available</Typography>
               </Box>
             )}
@@ -807,57 +829,122 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
       onClick={handleCardClick}
       className={cvStyles.variantBox}
       sx={{
-        cursor: "pointer",
-        borderRadius: "0.5rem",
-        padding: "1rem 1rem",
-        backgroundColor: "#fff!important",
-        boxShadow: "0px 2px 6px rgba(0,0,0,0.1)",
-        "&:hover": {
-          boxShadow: "0px 4px 10px rgba(0,0,0,0.2)",
-        },
+        cursor: 'pointer',
+        borderRadius: '0.75rem',
+        p: { xs: '0.85rem', sm: '1rem' },
+        backgroundColor: '#fff!important',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+        display: 'flex',
+        flexDirection: 'row',
+        gap: { xs: '0.75rem', sm: '1rem' },
+        alignItems: 'stretch',
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'box-shadow .25s ease, transform .25s ease',
+        '&:hover': {
+          boxShadow: '0 4px 14px -2px rgba(0,0,0,0.18)',
+          transform: 'translateY(-2px)'
+        }
       }}
     >
+      {/* Left Image */}
       {variantImage && (
-        <Image
-          src={variantImage}
-          className={cvStyles.customImg}
-          alt={product.name}
-          width={360 * 1.5}
-          height={150 * 1.5}
-        />
+        <Box
+          sx={{
+            position: 'relative',
+            flexShrink: 0,
+            width: { xs: 110, sm: 140 },
+            borderRadius: '0.6rem',
+            overflow: 'hidden',
+            background: '#f5f5f5',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <Image
+            src={variantImage}
+            alt={product.name}
+            fill
+            sizes="(max-width: 600px) 110px, 140px"
+            style={{ objectFit: 'cover' }}
+            className={cvStyles.customImg}
+          />
+        </Box>
       )}
 
-      <Box className={cvStyles.variantInfoParentBox}>
-        <div className={cvStyles.buttongroup}>
-          <div className={cvStyles.variantButton}>
-            {/* {displayName} */}
+      {/* Right Column */}
+      <Box
+        className={cvStyles.variantInfoParentBox}
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          minWidth: 0,
+          gap: '0.45rem'
+        }}
+      >
+        {/* Title */}
+        <Box className={cvStyles.buttongroup} sx={{ lineHeight: 1.1 }}>
+          <Box
+            className={cvStyles.variantButton}
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              fontSize: '.9rem',
+              fontWeight: 600,
+              py: 0.6,
+              borderRadius: '0.65rem',
+              letterSpacing: '.5px',
+              maxWidth: '100%',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+          >
             {product?.title}
-          </div>
-        </div>
+          </Box>
+        </Box>
+
+        {/* Info */}
         {infoText && (
-          <div className={cvStyles.variantDescription}>
+          <Box
+            className={cvStyles.variantDescription}
+            sx={{
+              fontSize: '.8rem',
+              lineHeight: 1.25,
+              color: '#333',
+              fontWeight: 400,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.25rem'
+            }}
+          >
             {infoLabel ? (
               <>
-                {infoLabel}:
-                <strong style={{ fontWeight: "bold", marginLeft: "0.3rem" }}>
-                  {infoValue}
-                </strong>
+                <span>{infoLabel}:</span>
+                <strong style={{ fontWeight: 600 }}>{infoValue}</strong>
               </>
             ) : (
               infoText
             )}
-          </div>
+          </Box>
         )}
-      </Box>
 
-      {/* Add to Cart button placed beautifully below content */}
-      <Box sx={{ mt: 1.5 }} onClick={(e) => e.stopPropagation()}>
-        <AddToCartButton
-          product={product}
-          isBlackButton={true}
-          enableVariantSelection={false}
-          disableRecommendationTrigger={true}
-        />
+        <Box sx={{ flexGrow: 1 }} />
+
+        {/* Add to Cart button anchored at bottom */}
+        <Box
+          sx={{ mt: 0.25, width: '100%' }}
+          onClick={e => e.stopPropagation()}
+        >
+          <AddToCartButton
+            product={product}
+            isBlackButton={true}
+            enableVariantSelection={false}
+            disableRecommendationTrigger={true}
+          />
+        </Box>
       </Box>
     </Box>
   );

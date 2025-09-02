@@ -32,8 +32,7 @@ const uiSlice = createSlice({
       state.isSidebarOpen = true;
     },
     closeSidebar(state) {
-      state.isSidebarOpen = fal
-      se;
+      state.isSidebarOpen = false;
     },
     toggleSearchDialog(state) {
       state.isSearchDialogOpen = !state.isSearchDialogOpen;
