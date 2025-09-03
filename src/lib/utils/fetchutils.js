@@ -21,7 +21,7 @@ export async function fetchProducts(slug, page = 1, limit = ITEMS_PER_PAGE, tagF
       next: { revalidate: 600 },
     });
 
-    if (res.status === 404) {
+    if (res.status === 404) { 
       return { type: 'not-found' };
     } else if (!res.ok) {
       console.error(`Failed to fetch products. Status: ${res.status}`);

@@ -6,6 +6,7 @@ import { useSpring, animated } from 'react-spring';
 import styles from './styles/addtocartbuttonwithorder.module.css';
 import AddIcon from '@mui/icons-material/Add';
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import {
@@ -15,7 +16,7 @@ import {
   removeItem,
   setDefaultWrapFinish
 } from '../../store/slices/cartSlice';
-import { openCartDrawer } from '../../store/slices/uiSlice';
+import { openCartDrawer, openRecommendationDrawer } from '../../store/slices/uiSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -51,7 +52,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   });
   useEffect(() => {
     dispatch(setDefaultWrapFinish());
-  }, []);
+  }, [dispatch]);
   // --- INVENTORY / STOCK MANAGEMENT ---
   // Use product.inventoryData if available; otherwise, if there's a selectedOption, use its inventoryData.
   const inventoryData =
@@ -86,6 +87,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       productDetails: product,
       insertionDetails
     }));
+    // Intentionally NOT auto-opening recommendation drawer to avoid irritation.
 
     // Track AddToCart event
     try {
@@ -133,6 +135,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     dispatch(openCartDrawer());
   };
 
+  // Recommendation trigger visibility: only if in cart & has designGroupId
+  const showRecoButton = !!(cartItem && product?.designGroupId);
+
   // Combine classes for the main container
   const mainClasses = [
     styles.container,
@@ -145,63 +150,79 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
 
   return (
     <div className={mainClasses}>
-      {/* Add to Cart Section */}
       <div className={styles.subContainer}>
-        <div className={styles.addToCartSection}>
-          {cartItem ? (
-            <div className={styles.quantityContainer}>
-              <button onClick={handleDecrement} className={styles.decrement}>
-                <RemoveIcon fontSize="small" />
-              </button>
-              <animated.div
-                style={{
-                  transform: props.scale.to((s) => `scale(${s})`),
-                  color: props.color,
-                  opacity: props.opacity,
-                }}
-                className={styles.quantity}
-              >
-                {cartItem.quantity}
-              </animated.div>
-              <button
-                onClick={handleIncrement}
-                className={styles.increment}
-                disabled={isLimited && currentQuantity >= maxAllowed}
-                title={isLimited && currentQuantity >= maxAllowed ? "" : ""}
-              >
-                <AddIcon fontSize="small" />
-              </button>
-              {/* {isLimited && currentQuantity >= maxAllowed && (
-                <span style={{ fontSize: '0.8rem', color: '#dc3545', marginLeft: '0.5rem' }}>
-                  limited stocks
-                </span>
-              )} */}
-            </div>
-          ) : (
-            <div
-              onClick={handleAdd}
-              className={styles.addToCartButton}
-              // Disable if in limited mode and adding one exceeds allowed (i.e. when maxAllowed is 0)
-              style={isLimited && (currentQuantity + 1) > maxAllowed ? { opacity: 0.5, pointerEvents: 'none' } : {}}
-              title={isLimited && (currentQuantity + 1) > maxAllowed ? "" : ""}
-            >
-              <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
-              Add To Cart
-            </div>
-          )}
-        </div>
-
-        {/* Order Now / Go to Cart Section */}
-        <div className={`${styles.orderNowSection} ${styles.halfWidth}`}>
-          <div onClick={handleOrderNow} className={styles.orderNowButton}>
+        {/* Mobile: Recommendation button on top-left */}
+        {showRecoButton && isSmallDevice && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
+            className={styles.recoButtonMobile}
+          >
+            <AutoAwesomeIcon style={{ fontSize: '0.85rem', color: '#7b4bff' }} />
+            <span style={{ fontWeight: 600 }}>See Matching Picks</span>
+          </button>
+        )}
+        <div className={styles.primaryActionsRow}>
+          <div className={styles.addToCartSection}>
             {cartItem ? (
-              <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
+              <div className={styles.quantityContainer}>
+                <button onClick={handleDecrement} className={styles.decrement}>
+                  <RemoveIcon fontSize="small" />
+                </button>
+                <animated.div
+                  style={{
+                    transform: props.scale.to((s) => `scale(${s})`),
+                    color: props.color,
+                    opacity: props.opacity,
+                  }}
+                  className={styles.quantity}
+                >
+                  {cartItem.quantity}
+                </animated.div>
+                <button
+                  onClick={handleIncrement}
+                  className={styles.increment}
+                  disabled={isLimited && currentQuantity >= maxAllowed}
+                  title={isLimited && currentQuantity >= maxAllowed ? "" : ""}
+                >
+                  <AddIcon fontSize="small" />
+                </button>
+              </div>
             ) : (
-              <BoltOutlinedIcon fontSize="medium" className={styles.boltIcon} />
+              <div
+                onClick={handleAdd}
+                className={styles.addToCartButton}
+                style={isLimited && (currentQuantity + 1) > maxAllowed ? { opacity: 0.5, pointerEvents: 'none' } : {}}
+                title={isLimited && (currentQuantity + 1) > maxAllowed ? "" : ""}
+              >
+                <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
+                Add To Cart
+              </div>
             )}
-            {orderButtonText}
+          </div>
+          {/* Order Now / Go to Cart Section */}
+          <div className={`${styles.orderNowSection} ${styles.halfWidth}`}>
+            <div onClick={handleOrderNow} className={styles.orderNowButton}>
+              {cartItem ? (
+                <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
+              ) : (
+                <BoltOutlinedIcon fontSize="medium" className={styles.boltIcon} />
+              )}
+              {orderButtonText}
+            </div>
           </div>
         </div>
+        {/* Desktop: Recommendation button full width below */}
+        {showRecoButton && !isSmallDevice && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
+            className={styles.recoButtonDesktop}
+          >
+            <AutoAwesomeIcon style={{ fontSize: '0.9rem', color: '#7b4bff' }} />
+            <span style={{ fontWeight: 600 }}>See Matching Picks</span>
+          </button>
+        )}
       </div>
       {!isSmallDevice && (
         <div className={styles.chatwithusMain}>
