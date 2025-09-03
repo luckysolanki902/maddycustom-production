@@ -39,8 +39,9 @@ const FloatingActionBar = () => {
   const pathParts = pathname.split("/").filter(Boolean);
   const hideForProductPage = pathParts[0] === "shop" && pathParts.length === 6;
   const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
+  const isRecommendationDrawerOpen = useSelector((state) => state.ui.isRecommendationDrawerOpen);
 
-  const showBar = !hideForProductPage && !isCartDrawerOpen && totalQuantity > 0;
+  const showBar = !hideForProductPage && !isCartDrawerOpen && !isRecommendationDrawerOpen && totalQuantity > 0;
 
   // Faster, cleaner transitions
   const transitions = useTransition(showBar, {

@@ -3,6 +3,7 @@ export const revalidate = 3600; // seconds
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Product from '@/models/Product';
+import Option from '@/models/Option';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
@@ -26,12 +27,20 @@ export async function GET(req) {
   const variantData = await Promise.all(
     variants.map(async (variant) => {
       const firstProduct = await Product.findOne({ specificCategoryVariant: variant._id });
-      const thumbnailUrl = variant.thumbnail?variant.thumbnail.startsWith('/')? variant.thumbnail : `/${variant.thumbnail}`:null;
-      const firstImage = thumbnailUrl || firstProduct?.images?.[0] || null;
+      const thumbnailUrl = variant.thumbnail ? variant.thumbnail.startsWith('/') ? variant.thumbnail : `/${variant.thumbnail}` : null;
+      
+      let firstImage = thumbnailUrl || firstProduct?.images?.[0] || null;
+      
+      // If no image found in product and product has options available, get from options
+      if (!firstImage && firstProduct?.v) {
+        const firstOption = await Option.findOne({ product: firstProduct._id });
+        firstImage = firstOption?.images?.[0] || null;
+      }
+      
       return {
         id: variant._id,
         name: variant.name,
-        image: categoryId !== '68873c6d72ae4d82180671e6' ? firstImage : null,
+        image: firstImage,
         pageSlug: variant.pageSlug,
         variantInfo: variant.variantInfo,
         variantCode: variant.variantCode,

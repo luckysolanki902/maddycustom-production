@@ -24,6 +24,7 @@ import { Box, Typography } from "@mui/material";
 import WrapFinishSelector from "../page-sections/product-id-page/WrapFinishSelector";
 import OptionSelector from "../page-sections/product-id-page/OptionSelector";
 import SimilarProducts from "../page-sections/product-id-page/SimilarProducts";
+import AddToCartButton from "../utils/AddToCartButton";
 
 // Memoize components that do not need to update on option change
 const MemoizedImageGallery = memo(ImageGallery);
@@ -423,6 +424,13 @@ export default function ProductIdPage({
                 <div className={styles.details}>
                   {/* Here we prepend the selected option's value to the product name */}
                   <h1 className={styles.title}>{getDisplayedTitle()}</h1>
+                  {/* <AddToCartButton
+                    product={product}
+                    enableVariantSelection
+                    hideRecommendationPopup
+                    showOnlyChooseVariants
+                    size="small"
+                  /> */}
                   {variant?.cardCaptions?.[0] && (
                     <p style={{ marginTop: "-0.5rem", marginLeft: "0.3rem" }} className={styles.cardCaption}>
                       {variant.cardCaptions[0]}
