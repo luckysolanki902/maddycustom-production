@@ -5,13 +5,13 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 
 export default async function sitemap() {
     let products = [];
-    let variants = [];
+  let variants = [];
 
     try {
         // Connect to database directly during build
         await connectToDatabase();
 
-        // Fetch products with availability filtering
+    // Fetch products with availability filtering
         const productsData = await Product.find(
             { available: true },
             { pageSlug: 1, updatedAt: 1, specificCategory: 1, specificCategoryVariant: 1 }
@@ -29,7 +29,7 @@ export default async function sitemap() {
         .lean()
         .exec();
 
-        // Filter products where all entities are available
+    // Filter products where all entities are available
         const availableProducts = productsData.filter(product => {
             if (!product.specificCategory || product.specificCategory.available !== true) {
                 return false;
@@ -40,19 +40,32 @@ export default async function sitemap() {
             return true;
         });
 
-        // Prepare products array
+    // Prepare products array
         products = availableProducts.map(product => ({
             pageSlug: product.pageSlug,
             lastModified: product.updatedAt
         }));
 
-        // Prepare variants array 
-        variants = availableProducts
-            .filter(product => product.specificCategoryVariant && product.specificCategoryVariant.pageSlug)
-            .map(product => ({
-                pageSlug: product.specificCategoryVariant.pageSlug,
-                lastModified: product.specificCategoryVariant.updatedAt || product.updatedAt
-            }));
+    // Fetch variants independently to avoid duplicates derived from products
+    const variantsData = await SpecificCategoryVariant.find(
+      { available: true },
+      { pageSlug: 1, updatedAt: 1, specificCategory: 1 }
+    )
+    .populate({
+      path: 'specificCategory',
+      select: 'available',
+      match: { available: true }
+    })
+    .lean()
+    .exec();
+
+    // Prepare variants array (only where parent specificCategory is available)
+    variants = variantsData
+      .filter(v => v.pageSlug && v.specificCategory)
+      .map(v => ({
+        pageSlug: v.pageSlug,
+        lastModified: v.updatedAt
+      }));
 
     } catch (error) {
         console.error('Error fetching sitemap data:', error);
