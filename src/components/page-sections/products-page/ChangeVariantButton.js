@@ -248,16 +248,22 @@ export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefi
       PaperProps={{
         sx: {
           borderRadius: "20px",
-          padding: "1rem",
           maxWidth: "500px",
-          // backgroundColor: "#ffffff",
           width: "100%",
           overflow: "hidden",
           boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.2)",
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "85vh",
         },
       }}
     >
-      <DialogContent sx={{ maxHeight: "70vh", overflowY: "auto" }}>
+      <DialogContent sx={{ 
+        flex: 1,
+        overflowY: "auto", 
+        padding: "1rem",
+        paddingBottom: "0.5rem"
+      }}>
         <Box
           sx={{
             fontSize: "1.5rem",
@@ -296,10 +302,13 @@ export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefi
 
             <Box
               sx={{
-                display: "flex",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
                 gap: "0.5rem",
-                flexWrap: "wrap",
-                justifyContent: "center",
+                justifyItems: "center",
+                "@media (max-width: 500px)": {
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                },
               }}
             >
               {group.mappings.map((option) => (
@@ -312,6 +321,8 @@ export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefi
                     cursor: "pointer",
                     borderRadius: "8px",
                     padding: "0.5rem",
+                    width: "100%",
+                    minWidth: "120px",
                   }}
                   onClick={() =>
                     handleMappingChange(group.groupName, option.letterCode)
@@ -331,8 +342,9 @@ export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefi
                         objectFit: "cover",
                         borderRadius: "4px",
                         marginBottom: "0.5rem",
-                        width: "100px",
+                        width: "80px",
                         height: "auto",
+                        maxHeight: "80px",
                       }}
                     />
                   )}
@@ -353,7 +365,8 @@ export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefi
                     sx={{
                       margin: 0,
                       "& .MuiFormControlLabel-label": {
-                        fontSize: "0.9rem",
+                        fontSize: "0.85rem",
+                        textAlign: "center",
                       },
                     }}
                   />
@@ -362,35 +375,38 @@ export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefi
             </Box>
           </Box>
         ))}
+      </DialogContent>
 
-        <Box
+      {/* Fixed Submit Button Footer */}
+      <Box
+        sx={{
+          padding: "1rem",
+          borderTop: "1px solid #e0e0e0",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#fff",
+        }}
+      >
+        <Button
+          variant="contained"
+          onClick={handleMappingSubmit}
           sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            marginTop: "1rem",
+            backgroundColor: "black",
+            color: "white",
+            fontSize: "0.9rem",
+            padding: "0.4rem 1.4rem",
+            borderRadius: "0.8rem",
+            "&:hover": {
+              backgroundColor: "rgba(0,0,0,0.8)",
+              transform: "scale(0.98)",
+            },
+            transition: "all 0.3s cubic-bezier(0.39, 0.575, 0.565, 1)",
           }}
         >
-          <Button
-            variant="contained"
-            onClick={handleMappingSubmit}
-            sx={{
-              backgroundColor: "black",
-              color: "white",
-              fontSize: "0.9rem",
-              padding: "0.4rem 1.4rem",
-              borderRadius: "0.8rem",
-              "&:hover": {
-                backgroundColor: "rgba(0,0,0,0.8)",
-                transform: "scale(0.98)",
-              },
-              transition: "all 0.3s cubic-bezier(0.39, 0.575, 0.565, 1)",
-            }}
-          >
-            Submit
-          </Button>
-        </Box>
-      </DialogContent>
+          Submit
+        </Button>
+      </Box>
     </Dialog>
   );
 

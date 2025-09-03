@@ -8,7 +8,7 @@ import styles from "./styles/addtocartbutton.module.css";
 import RemoveIcon from "@mui/icons-material/Remove";
 import AddIcon from "@mui/icons-material/Add";
 import { addItem, incrementQuantity, decrementQuantity, removeItem, setDefaultWrapFinish } from "../../store/slices/cartSlice";
-import { openCartDrawer, openRecommendationDrawer } from "../../store/slices/uiSlice";
+import { openCartDrawer, openRecommendationDrawer, markRecommendationDrawerSeen } from "../../store/slices/uiSlice";
 import { setVariantsCache, setPendingRequest, clearPendingRequest, removeExpiredCache } from "../../store/slices/variantsSlice";
 import { addToCart as trackAddToCart } from "@/lib/metadata/facebookPixels";
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -76,6 +76,8 @@ export default function AddToCartButton({
   const dispatch = useDispatch();
   const cartItems = useSelector(state => state.cart.items);
   const hasSeenRecommendationDrawer = useSelector(state => state.ui.hasSeenRecommendationDrawer);
+  const lastRecommendationShownTime = useSelector(state => state.ui.lastRecommendationShownTime);
+  const recommendationCooldownDuration = useSelector(state => state.ui.recommendationCooldownDuration);
   const cartItem = cartItems.find(item => item.productId === product._id);
   const variantsCache = useSelector(state => state.variants.cache);
   const cacheTimestamps = useSelector(state => state.variants.lastUpdated);
@@ -207,8 +209,22 @@ export default function AddToCartButton({
   // For convenience, get the current quantity from the cart (or zero)
   const currentQuantity = cartItem ? cartItem.quantity : 0;
 
+  // Helper function to check if recommendation is in cooldown
+  const isRecommendationInCooldown = () => {
+    if (!lastRecommendationShownTime) return false;
+    const timeSinceLastShown = Date.now() - lastRecommendationShownTime;
+    return timeSinceLastShown < recommendationCooldownDuration;
+  };
+
   // Decide if we should show recommendation trigger (button) for this product
-  const showRecoButton = !!(cartItem && product?.designGroupId && !hideRecommendationPopup && !disableRecommendationTrigger);
+  // Show manual button if: has cart item, has designGroupId, not disabled, AND either in cooldown OR no auto-popup shown yet
+  const showRecoButton = !!(
+    cartItem && 
+    product?.designGroupId && 
+    !hideRecommendationPopup && 
+    !disableRecommendationTrigger &&
+    isRecommendationInCooldown() // Always show manual button when in cooldown
+  );
 
   // Function to navigate to cart or show cart drawer
   const goToCart = () => {
@@ -255,8 +271,18 @@ export default function AddToCartButton({
       })
     );
 
-    // Show similar products toast if product has designGroupId
-  // Removed auto-open to avoid irritating users; manual button will show on cart items
+    // Show auto recommendation popup if product has designGroupId and not in cooldown
+    if (product?.designGroupId && !hideRecommendationPopup && !disableRecommendationTrigger) {
+      const inCooldown = isRecommendationInCooldown();
+      
+      if (!inCooldown) {
+        // Show auto popup after a short delay to let the add animation complete
+        setTimeout(() => {
+          dispatch(openRecommendationDrawer({ product }));
+        }, 800);
+      }
+      // If in cooldown, the manual button will be shown via showRecoButton
+    }
 
     // Track AddToCart event
     try {
@@ -277,6 +303,19 @@ export default function AddToCartButton({
 
     setLastAction("increment");
     dispatch(incrementQuantity({ productId: product._id }));
+
+    // Show auto recommendation popup if this is the first increment and product has designGroupId and not in cooldown
+    if (currentQuantity === 1 && product?.designGroupId && !hideRecommendationPopup && !disableRecommendationTrigger) {
+      const inCooldown = isRecommendationInCooldown();
+      
+      if (!inCooldown) {
+        // Show auto popup after a short delay to let the add animation complete
+        setTimeout(() => {
+          dispatch(openRecommendationDrawer({ product }));
+        }, 800);
+      }
+      // If in cooldown, the manual button will be shown via showRecoButton
+    }
 
     // Track AddToCart event (increment)
     try {
@@ -563,17 +602,22 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
       PaperProps={{
         sx: {
           borderRadius: "20px",
-          padding: "1rem",
+          padding: "0px",
           maxWidth: "600px",
           width: "100%",
+          maxHeight: "85vh",
           overflow: "hidden",
           boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.2)",
+          display: "flex",
+          flexDirection: "column",
         },
       }}
     >
       <DialogContent
         onClick={e => e.stopPropagation()}
         sx={{
+          flex: 1,
+          overflowY: "auto",
           padding: "2rem 0.5rem 1rem 0.5rem",
           // backgroundColor: "#e2e2e2",
           "@media (max-width: 600px)": {
@@ -630,76 +674,94 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
         {useMapping ? (
           !isMappingFinalized ? (
             <>
-              {letterMappingGroups.map(group => (
-                <Box key={group.groupName} sx={{ marginBottom: "2rem" }}>
-                  <div style={{ fontWeight: "500", textAlign: "center" }}>{group.groupName}</div>
+              <Box sx={{ flex: 1, overflowY: "auto", paddingBottom: "1rem" }}>
+                {letterMappingGroups.map(group => (
+                  <Box key={group.groupName} sx={{ marginBottom: "2rem" }}>
+                    <div style={{ fontWeight: "500", textAlign: "center" }}>{group.groupName}</div>
 
-                  <Box
-                    sx={{
-                      display: "flex",
-                      gap: "0.5rem",
-                      flexWrap: "wrap",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {group.mappings.map(option => (
-                      <Box
-                        key={option.letterCode}
-                        sx={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          cursor: "pointer",
-                          borderRadius: "8px",
-                          padding: "0.5rem",
-                        }}
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleMappingChange(group.groupName, option.letterCode);
-                        }}
-                      >
-                        {group.thumbnailRequired && option.thumbnail && (
-                          <Image
-                            src={
-                              option.thumbnail.startsWith("/")
-                                ? `${baseImageUrl}${option.thumbnail}`
-                                : `${baseImageUrl}/${option.thumbnail}`
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+                        gap: "0.5rem",
+                        justifyItems: "center",
+                        "@media (max-width: 600px)": {
+                          gridTemplateColumns: "repeat(2, 1fr)",
+                        },
+                      }}
+                    >
+                      {group.mappings.map(option => (
+                        <Box
+                          key={option.letterCode}
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            cursor: "pointer",
+                            borderRadius: "8px",
+                            padding: "0.5rem",
+                            width: "100%",
+                            minWidth: "120px",
+                          }}
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleMappingChange(group.groupName, option.letterCode);
+                          }}
+                        >
+                          {group.thumbnailRequired && option.thumbnail && (
+                            <Image
+                              src={
+                                option.thumbnail.startsWith("/")
+                                  ? `${baseImageUrl}${option.thumbnail}`
+                                  : `${baseImageUrl}/${option.thumbnail}`
+                              }
+                              alt={option.name}
+                              width={400}
+                              height={400}
+                              style={{
+                                objectFit: "cover",
+                                borderRadius: "4px",
+                                marginBottom: "0.5rem",
+                                width: "80px",
+                                height: "auto",
+                                maxHeight: "80px",
+                              }}
+                            />
+                          )}
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={mappingSelections[group.groupName] === option.letterCode}
+                                onChange={() => handleMappingChange(group.groupName, option.letterCode)}
+                              />
                             }
-                            alt={option.name}
-                            width={400}
-                            height={400}
-                            style={{
-                              objectFit: "cover",
-                              borderRadius: "4px",
-                              marginBottom: "0.5rem",
-                              width: "100px",
-                              height: "auto",
+                            label={option.name}
+                            sx={{
+                              margin: 0,
+                              "& .MuiFormControlLabel-label": {
+                                fontSize: "0.85rem",
+                                textAlign: "center",
+                              },
                             }}
                           />
-                        )}
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={mappingSelections[group.groupName] === option.letterCode}
-                              onChange={() => handleMappingChange(group.groupName, option.letterCode)}
-                            />
-                          }
-                          label={option.name}
-                          sx={{
-                            margin: 0,
-                            "& .MuiFormControlLabel-label": {
-                              fontSize: "0.9rem",
-                            },
-                          }}
-                        />
-                      </Box>
-                    ))}
+                        </Box>
+                      ))}
+                    </Box>
                   </Box>
-                </Box>
-              ))}
+                ))}
+              </Box>
 
-              {/* Submit Mapping */}
-              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mt: 1 }}>
+              {/* Fixed Submit Button Footer */}
+              <Box
+                sx={{
+                  padding: "1rem",
+                  borderTop: "1px solid #e0e0e0",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  backgroundColor: "#fff",
+                }}
+              >
                 <Button
                   variant="contained"
                   onClick={handleMappingSubmit}

@@ -16,8 +16,8 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
-import { Close, ArrowForward, LocalOffer } from "@mui/icons-material";
-import { closeRecommendationDrawer } from "@/store/slices/uiSlice";
+import { Close, ArrowForward, LocalOffer, AutoAwesome } from "@mui/icons-material";
+import { closeRecommendationDrawer, resetRecommendationCooldown } from "@/store/slices/uiSlice";
 import { setHasSeenVariantPopup, setPageSlug } from "@/store/slices/variantPreferenceSlice";
 import AddToCartButton from "@/components/utils/AddToCartButton";
 import { Dialog, DialogContent, Divider } from "@mui/material";
@@ -349,6 +349,17 @@ const RecommendationDrawer = () => {
   const handleClose = () => {
     dispatch(closeRecommendationDrawer());
     setRecommendedProducts([]);
+    
+    // Add development helper for testing cooldown functionality
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      window.resetRecommendationCooldown = () => {
+        dispatch(resetRecommendationCooldown());
+        console.log('🔄 Recommendation cooldown reset! Auto-popups will show again.');
+      };
+      
+      // Log cooldown info for developers
+      console.log('💡 Development tip: Use resetRecommendationCooldown() in console to reset the 30-min cooldown.');
+    }
   };
 
   const handleViewCart = () => {
@@ -457,8 +468,12 @@ const RecommendationDrawer = () => {
                     mb: 1,
                     pr: 6,
                     fontFamily: "Jost, sans-serif",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
                   }}
                 >
+                  <AutoAwesome sx={{ fontSize: "1.2rem", color: "#7b4bff" }} />
                   Matching Picks
                 </Typography>
                 <Typography
