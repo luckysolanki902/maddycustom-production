@@ -10,6 +10,8 @@ const initialState = {
   isRecommendationDrawerOpen: false,
   recommendationProduct: null,
   hasSeenRecommendationDrawer: false,
+  lastRecommendationShownTime: null,
+  recommendationCooldownDuration: 30 * 60 * 1000, // 30 minutes in milliseconds
   shippingTimer: {
     expiryTime: Date.now() + 9 * 60 * 60 * 1000 + 13 * 60 * 1000, // 9 hours 13 minutes from now
     isActive: false,
@@ -55,21 +57,27 @@ const uiSlice = createSlice({
     closeCartDrawer(state) {
       state.isCartDrawerOpen = false;
     },
-    
+
     // Recommendation drawer reducers
     openRecommendationDrawer(state, action) {
       state.isRecommendationDrawerOpen = true;
       state.recommendationProduct = action.payload?.product || null;
-  state.hasSeenRecommendationDrawer = true;
+      state.hasSeenRecommendationDrawer = true;
+      state.lastRecommendationShownTime = Date.now();
     },
     closeRecommendationDrawer(state) {
       state.isRecommendationDrawerOpen = false;
       state.recommendationProduct = null;
     },
-    markRecommendationDrawerSeen(state){
+    markRecommendationDrawerSeen(state) {
       state.hasSeenRecommendationDrawer = true;
+      state.lastRecommendationShownTime = Date.now();
     },
-    
+    resetRecommendationCooldown(state) {
+      state.lastRecommendationShownTime = null;
+      state.hasSeenRecommendationDrawer = false;
+    },
+
     // New shipping timer reducers
     setShippingTimer: (state, action) => {
       state.shippingTimer.expiryTime = action.payload;
@@ -90,7 +98,7 @@ const uiSlice = createSlice({
       state.isRecommendationDrawerOpen = false;
       state.recommendationProduct = null;
     },
-    
+
     // TopStrip reducers
     showTopStrip(state, action) {
       state.topStrip.show = true;
@@ -118,6 +126,7 @@ export const {
   openRecommendationDrawer,
   closeRecommendationDrawer,
   markRecommendationDrawerSeen,
+  resetRecommendationCooldown,
   setShippingTimer,
   expireShippingTimer,
   resetShippingTimer,
