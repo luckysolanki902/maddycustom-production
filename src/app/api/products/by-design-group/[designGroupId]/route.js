@@ -26,28 +26,39 @@ export async function GET(request, { params }) {
       .populate("inventoryData specificCategoryVariant specificCategory")
       .lean();
 
+
     const enhancedProducts = await Promise.all(
-      products
-        .map(async (product) => {
-          const newProduct = {
-            ...product,
-            variant: product.specificCategoryVariant,
-            category: product.specificCategory,
-          };
+      products.map(async (product) => {
+        // Ensure category is a plain object and always includes inventoryMode
+        let category = product.specificCategory;
+        if (category && category.toObject) category = category.toObject();
+        // Defensive: fallback to empty object if not present
+        category = category || {};
 
-          // If product has no images and has options available, get first image from options
-          if ((!newProduct.images || newProduct.images.length === 0) && newProduct.v) {
-            const firstOption = await Option.findOne({ product: product._id }).lean();
-            if (firstOption?.images && firstOption.images.length > 0) {
-              newProduct.images = firstOption.images;
-            }
+        // Always include inventoryMode (default to 'on-demand' if missing)
+        if (!category.inventoryMode) {
+          category.inventoryMode = 'on-demand';
+        }
+
+        const newProduct = {
+          ...product,
+          variantDetails: product.specificCategoryVariant,
+          category,
+        };
+
+        // If product has no images and has options available, get first image from options
+        if ((!newProduct.images || newProduct.images.length === 0) && newProduct.v) {
+          const firstOption = await Option.findOne({ product: product._id }).lean();
+          if (firstOption?.images && firstOption.images.length > 0) {
+            newProduct.images = firstOption.images;
           }
+        }
 
-          delete newProduct.specificCategory;
-          delete newProduct.specificCategoryVariant;
+        delete newProduct.specificCategory;
+        delete newProduct.specificCategoryVariant;
 
-          return newProduct;
-        })
+        return newProduct;
+      })
     );
 
     const uniqueProducts = enhancedProducts

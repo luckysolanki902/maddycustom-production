@@ -116,6 +116,12 @@ const SpecificCategorySchema = new mongoose.Schema(
       type: [ExtraFieldSchema],
       default: [],
     },
+    // Inventory mode: whether this category uses inventory tracking or on-demand fulfillment
+    inventoryMode: {
+      type: String,
+      enum: ['inventory', 'on-demand'],
+      default: 'on-demand',
+    },
     // review fetch source
     reviewFetchSource: {
       type: String,
