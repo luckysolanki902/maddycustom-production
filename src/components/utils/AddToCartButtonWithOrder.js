@@ -136,7 +136,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   };
 
   // Recommendation trigger visibility: only if in cart & has designGroupId
-  const showRecoButton = !!(cartItem && product?.designGroupId);
+  const showRecoButton = !!(
+    // cartItem &&
+     product?.designGroupId);
 
   // Combine classes for the main container
   const mainClasses = [

@@ -117,9 +117,7 @@ export default function AddToCartButton({
     dispatch(setDefaultWrapFinish());
   }, [dispatch]);
 
-  useEffect(() => {
-    // No additional logic needed here as useSpring tracks cartItem changes.
-  }, [cartItem]);
+
 
   // Check for variants when enableVariantSelection is true (with Redux caching and request deduplication)
   useEffect(() => {
@@ -217,13 +215,12 @@ export default function AddToCartButton({
   };
 
   // Decide if we should show recommendation trigger (button) for this product
-  // Show manual button if: has cart item, has designGroupId, not disabled, AND either in cooldown OR no auto-popup shown yet
-  const showRecoButton = !!(
-    cartItem && 
-    product?.designGroupId && 
-    !hideRecommendationPopup && 
-    !disableRecommendationTrigger &&
-    isRecommendationInCooldown() // Always show manual button when in cooldown
+  // Show manual button whenever the product has a designGroupId (unless explicitly disabled/hidden)
+  const showRecoButton = (
+    // cartItem &&
+    product?.designGroupId &&
+    !hideRecommendationPopup &&
+    !disableRecommendationTrigger
   );
 
   // Function to navigate to cart or show cart drawer
@@ -436,16 +433,43 @@ export default function AddToCartButton({
 
   return (
     <>
-      <button
-        onClick={enableVariantSelection && hasVariants ? handleChooseVariant : handleAdd}
-        className={addToCartClasses}
-        style={{ outline: "none", border: "none" }}
-        disabled={isLimited && currentQuantity + 1 > maxAllowed}
-      >
-        <span>{enableVariantSelection && hasVariants ? "Choose Variant" : "Add to cart"}</span>
-      </button>
+      <div style={{ display: 'flex', flexDirection: flexResponsiveness ? 'row' : 'column', alignItems: flexResponsiveness ? 'center' : 'flex-start', gap: flexResponsiveness ? '1rem' : '.5rem' }}>
+        <button
+          onClick={enableVariantSelection && hasVariants ? handleChooseVariant : handleAdd}
+          className={addToCartClasses}
+          style={{ outline: "none", border: "none" }}
+          disabled={isLimited && currentQuantity + 1 > maxAllowed}
+        >
+          <span>{enableVariantSelection && hasVariants ? "Choose Variant" : "Add to cart"}</span>
+        </button>
 
-  {/* Recommendation trigger intentionally only shown once item is in cart (handled in early return path). */}
+        {showRecoButton && (
+          <button
+            type="button"
+            onClick={(e)=>{ e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
+            style={{
+              background: 'linear-gradient(90deg,#f5f5f7,#ffffff)',
+              border: '1px solid #e2e2e2',
+              color: '#222',
+              fontFamily: 'Jost, sans-serif',
+              fontSize: '.68rem',
+              padding: '.45rem .75rem',
+              borderRadius: '999px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '.4rem',
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+              transition: 'all .25s ease',
+              letterSpacing: '.5px'
+            }}
+            className="mc-reco-trigger-btn"
+          >
+            <AutoAwesomeIcon style={{ fontSize: '0.9rem', color: '#7b4bff' }} />
+            <span style={{ fontWeight: 600 }}>See Matching Picks</span>
+          </button>
+        )}
+      </div>
 
       {/* Variant Selection Dialog */}
       {showVariantDialog && (
