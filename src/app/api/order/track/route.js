@@ -2,7 +2,6 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import { trackShiprocketOrder } from '@/lib/utils/shiprocket';
 import Order from '@/models/Order';
 import { NextResponse } from 'next/server';
-import User from '@/models/User';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -14,309 +13,225 @@ export async function GET(request) {
   try {
     await connectToDatabase();
 
-    // Verify if the order exists and get linked orders
+    // Fetch order and linked orders
     const order = await Order.findById(orderId)
       .populate({
         path: 'linkedOrderIds',
         model: 'Order',
-        select: 'deliveryStatus shiprocketOrderId'
+        select: 'deliveryStatus shiprocketOrderId createdAt items address couponApplied couponName couponDiscount'
       });
-      
+
     if (!order) {
       return NextResponse.json({ message: 'Order not found. Please check your Order ID and try again.' }, { status: 404 });
     }
 
-    // Get all orders for tracking (main order + linked orders)
-    const allOrders = [order, ...(order.linkedOrderIds || [])];
-    const trackingResults = [];
-    
-    // Check if any order has been shipped (not pending)
-    const hasShippedOrder = allOrders.some(ord => ord.deliveryStatus !== 'pending');
-    
-    if (!hasShippedOrder) {
-      // All orders are still pending - return consolidated pending response
-      const formattedAddress = order.address ? 
-        `${order.address.addressLine1}${order.address.addressLine2 ? ', ' + order.address.addressLine2 : ''}, ${order.address.city}, ${order.address.state}, ${order.address.pincode}` : 
-        'Address pending';
+    // Helper to format address
+    const formatAddress = (o) => {
+      return o?.address
+        ? `${o.address.addressLine1}${o.address.addressLine2 ? ', ' + o.address.addressLine2 : ''}, ${o.address.city}, ${o.address.state}, ${o.address.pincode}`
+        : 'Address pending';
+    };
 
-      // Get user information for email
-      let userEmail = null;
-      try {
-        await order.populate('user');
-        userEmail = order.user?.email || null;
-      } catch (err) {
-        console.log('Error fetching user email:', err);
-      }
-      
-      return NextResponse.json({
-        message: allOrders.length > 1 
-          ? 'Your orders are still being processed. We\'ll update the tracking once they ship!'
-          : 'Your order is still being processed. We\'ll update the tracking once it ships!',
-        trackingData: {
-          orderId: orderId,
-          status: 'Processing',
-          name: order.address?.receiverName || 'Customer',
-          address: formattedAddress,
-          phoneNumber: order.address?.receiverPhoneNumber || 'Not provided',
-          email: userEmail,
-          shipmentDate: 'Processing',
-          expectedDelivery: 'Estimated 5-7 business days from shipping',
-          isMultiOrder: allOrders.length > 1,
-          orderCount: allOrders.length,
-          trackingSteps: [
-            {
-              label: 'Order Received',
-              date: new Date(order.createdAt).toLocaleDateString(),
-              time: new Date(order.createdAt).toLocaleTimeString(),
-              completed: true,
-              description: allOrders.length > 1 
-                ? `Your ${allOrders.length} orders have been received and are being processed`
-                : 'Your order has been received and is being processed'
-            },
-            {
-              label: 'Processing',
-              date: 'In progress',
-              completed: true,
-              description: allOrders.length > 1 
-                ? 'Your orders are currently being prepared'
-                : 'Your order is currently being prepared'
-            },
-            {
-              label: 'Shipped',
-              completed: false
-            },
-            {
-              label: 'Out for Delivery',
-              completed: false
-            },
-            {
-              label: 'Delivered',
-              completed: false
-            }
-          ]
-        }
-      }, { status: 200 });
+    // Helper to build order items for UI
+    const buildOrderItems = (o) => {
+      const items = Array.isArray(o.items) ? o.items : [];
+      return items.map((it) => {
+        const prod = it.productDetails || it.product || {};
+        const title = prod.title || prod.name || it.name || 'Item';
+        const images = prod.images || prod.displayAssets || [];
+        const firstImg = Array.isArray(images) && images.length > 0 ? images[0] : null;
+        // Try to use purchase-time price fields first
+        const price = it.priceAtPurchase ?? it.itemPrice ?? it.unitPrice ?? it.totalPrice ?? it.price ?? prod.price ?? 0;
+        return {
+          name: title,
+          quantity: it.quantity || 1,
+          price,
+          productId: prod._id || it.productId || null,
+          thumbnail: it.thumbnail
+        };
+      });
+    };
+
+    // Get email if available (optional)
+    let userEmail = null;
+    try {
+      await order.populate('user');
+      userEmail = order.user?.email || null;
+    } catch (_) {}
+
+    const allOrders = [order, ...(order.linkedOrderIds || [])];
+    const hasShippedOrder = allOrders.some((o) => o.deliveryStatus !== 'pending');
+
+    // If nothing shipped yet or no Shiprocket data, return only Processing/basic info (no status/steps from order schema)
+    if (!hasShippedOrder) {
+      return NextResponse.json(
+        {
+          message:
+            allOrders.length > 1
+              ? "Your orders are still being processed. We'll update the tracking once they ship!"
+              : "Your order is still being processed. We'll update the tracking once it ships!",
+          trackingData: {
+            orderId,
+            name: order.address?.receiverName || 'Customer',
+            address: formatAddress(order),
+            phoneNumber: order.address?.receiverPhoneNumber || null,
+            email: userEmail || null,
+            createdAt: order.createdAt,
+            shipmentDate: 'Processing',
+            expectedDelivery: 'Estimated 5-7 business days from shipping',
+            isMultiOrder: allOrders.length > 1,
+            orderCount: allOrders.length,
+            coupon: order.couponApplied
+              ? { applied: true, name: order.couponName || null, discount: order.couponDiscount || 0 }
+              : { applied: false },
+            items: buildOrderItems(order),
+            mainTrackUrl: null,
+            // No status or trackingSteps if not from Shiprocket
+          },
+        },
+        { status: 200 }
+      );
     }
 
-    // If orders have been shipped, track each one
+    // Some shipped: collect tracking per shipped order
+    const trackingResults = [];
     for (const ord of allOrders) {
       if (ord.deliveryStatus !== 'pending' && ord.shiprocketOrderId) {
         try {
-          const trackingData = await trackShiprocketOrder(ord._id);
-          if (trackingData && trackingData.length > 0) {
-            trackingResults.push({
-              orderId: ord._id,
-              shiprocketOrderId: ord.shiprocketOrderId,
-              trackingData: trackingData[0]
-            });
+          const tData = await trackShiprocketOrder(ord._id);
+          if (tData && tData.length > 0) {
+            trackingResults.push({ orderId: ord._id, shiprocketOrderId: ord.shiprocketOrderId, trackingData: tData[0] });
           }
-        } catch (trackError) {
-          console.error(`Error tracking order ${ord._id}:`, trackError);
-          trackingResults.push({
-            orderId: ord._id,
-            shiprocketOrderId: ord.shiprocketOrderId,
-            error: 'Unable to fetch tracking data'
-          });
+        } catch (e) {
+          trackingResults.push({ orderId: ord._id, shiprocketOrderId: ord.shiprocketOrderId, error: 'Unable to fetch tracking data' });
         }
       }
     }
 
-    // Process and enhance the tracking data
     if (trackingResults.length > 0) {
-      const formattedAddress = order.address ? 
-        `${order.address.addressLine1}${order.address.addressLine2 ? ', ' + order.address.addressLine2 : ''}, ${order.address.city}, ${order.address.state}, ${order.address.pincode}` : 
-        'Address information not available';
-        
-      // Get user information for email
-      let userEmail = null;
-      try {
-        await order.populate('user');
-        userEmail = order.user?.email || null;
-      } catch (err) {
-        console.log('Error fetching user email:', err);
-      }
-      
+      const mainTrackUrl = trackingResults.find((r) => r.trackingData?.tracking_data?.track_url)?.trackingData?.tracking_data?.track_url || null;
+      const formattedAddress = formatAddress(order);
+
+      // Use only Shiprocket status/steps if available, else omit
       const enhancedTrackingData = {
-        orderId: orderId,
+        orderId,
         isMultiOrder: trackingResults.length > 1,
         orderCount: allOrders.length,
-        orders: trackingResults.map(result => {
+        orders: trackingResults.map((result) => {
           if (result.error) {
             return {
               orderId: result.orderId,
               shiprocketOrderId: result.shiprocketOrderId,
-              error: result.error,
-              status: 'Error fetching tracking data'
+              error: result.error
             };
           }
-          
           const shipmentData = result.trackingData;
           const trackUrl = shipmentData?.tracking_data?.track_url;
           const currentStatus = shipmentData?.tracking_data?.shipment_track?.[0]?.current_status;
-          
+          const activities = shipmentData?.tracking_data?.shipment_track_activities || [];
           return {
             orderId: result.orderId,
             shiprocketOrderId: result.shiprocketOrderId,
             trackUrl: trackUrl,
-            status: currentStatus || 'In Transit',
-            shipmentDate: shipmentData?.tracking_data?.shipment_track?.[0]?.shipped_date || 'Processing',
-            expectedDelivery: shipmentData?.tracking_data?.shipment_track?.[0]?.expected_delivery_date || 'Calculating...',
+            status: currentStatus || undefined,
+            shipmentDate: shipmentData?.tracking_data?.shipment_track?.[0]?.shipped_date || undefined,
+            expectedDelivery: shipmentData?.tracking_data?.shipment_track?.[0]?.expected_delivery_date || undefined,
+            trackingSteps: activities.length > 0
+              ? activities.map((activity) => ({
+                  label: activity.activity,
+                  date: activity.date,
+                  time: activity.time,
+                  location: activity.location,
+                  completed: true,
+                  description: activity.description || activity.activity,
+                })).reverse()
+              : undefined,
           };
         }),
         name: order.address?.receiverName || 'Customer',
         address: formattedAddress,
-        phoneNumber: order.address?.receiverPhoneNumber || 'Not provided',
-        email: userEmail,
-        // Use the first available tracking URL
-        mainTrackUrl: trackingResults.find(r => r.trackingData?.tracking_data?.track_url)?.trackingData?.tracking_data?.track_url || null
+        phoneNumber: order.address?.receiverPhoneNumber || null,
+        email: userEmail || null,
+        createdAt: order.createdAt,
+        coupon: order.couponApplied
+          ? { applied: true, name: order.couponName || null, discount: order.couponDiscount || 0 }
+          : { applied: false },
+        items: buildOrderItems(order),
+        mainTrackUrl,
       };
-      
-      return NextResponse.json({
-        message: trackingResults.length > 1 
-          ? `Tracking information for your ${trackingResults.length} orders`
-          : 'Tracking information for your order',
-        trackingData: enhancedTrackingData
-      }, { status: 200 });
-    } else {
-      return NextResponse.json({
-        message: 'Unable to fetch tracking information. Please try again later.',
-        trackingData: {
-          orderId: orderId,
-          status: 'Tracking Unavailable',
-          error: 'No tracking data available'
-        }
-      }, { status: 200 });
+
+      return NextResponse.json(
+        {
+          message: trackingResults.length > 1 ? `Tracking information for your ${trackingResults.length} orders` : 'Tracking information for your order',
+          trackingData: enhancedTrackingData,
+        },
+        { status: 200 }
+      );
     }
 
-    // If delivery status is not pending, proceed to track the order
+    // Fallback: try tracking primary orderId directly
     const trackingData = await trackShiprocketOrder(orderId);
-
-    // Process and enhance the tracking data
     if (trackingData && trackingData.length > 0) {
       const shipmentData = trackingData[0];
-      const trackUrl = shipmentData?.tracking_data?.track_url;
-      const currentStatus = shipmentData?.tracking_data?.shipment_track?.[0]?.current_status;      // Extract and structure tracking information for the front-end      // Format the address from the order object
-      const formattedAddress = order.address ? 
-        `${order.address.addressLine1}${order.address.addressLine2 ? ', ' + order.address.addressLine2 : ''}, ${order.address.city}, ${order.address.state}, ${order.address.pincode}` : 
-        'Address information not available';
-        
-      // Get user information for email
-      let userEmail = null;
-      try {
-        await order.populate('user');
-        userEmail = order.user?.email || null;
-      } catch (err) {
-        console.log('Error fetching user email:', err);
-      }
-        
+      const trackUrl = shipmentData?.tracking_data?.track_url || null;
+      const currentStatus = shipmentData?.tracking_data?.shipment_track?.[0]?.current_status;
+      const formattedAddress = formatAddress(order);
+      const activities = shipmentData?.tracking_data?.shipment_track_activities || [];
+
       const enhancedTrackingData = {
-        orderId: orderId,
-        trackUrl: trackUrl,
-        status: currentStatus || 'In Transit',
-        shipmentDate: shipmentData?.tracking_data?.shipment_track?.[0]?.shipped_date || 'Processing',
-        expectedDelivery: shipmentData?.tracking_data?.shipment_track?.[0]?.expected_delivery_date || 'Calculating...',
+        orderId,
+        trackUrl,
+        mainTrackUrl: trackUrl,
+        status: currentStatus || undefined,
+        shipmentDate: shipmentData?.tracking_data?.shipment_track?.[0]?.shipped_date || undefined,
+        expectedDelivery: shipmentData?.tracking_data?.shipment_track?.[0]?.expected_delivery_date || undefined,
         name: order.address?.receiverName || 'Customer',
         address: formattedAddress,
-        phoneNumber: order.address?.receiverPhoneNumber || 'Not provided',
-        email: userEmail,
+        phoneNumber: order.address?.receiverPhoneNumber || null,
+        email: userEmail || null,
+        createdAt: order.createdAt,
+        coupon: order.couponApplied
+          ? { applied: true, name: order.couponName || null, discount: order.couponDiscount || 0 }
+          : { applied: false },
+        items: buildOrderItems(order),
+        trackingSteps: activities.length > 0
+          ? activities.map((activity) => ({
+              label: activity.activity,
+              date: activity.date,
+              time: activity.time,
+              location: activity.location,
+              completed: true,
+              description: activity.description || activity.activity,
+            })).reverse()
+          : undefined,
       };
 
-      // Create tracking steps based on available data
-      const activities = shipmentData?.tracking_data?.shipment_track_activities || [];
-      if (activities.length > 0) {
-        enhancedTrackingData.trackingSteps = activities.map(activity => ({
-          label: activity.activity,
-          date: activity.date,
-          time: activity.time,
-          location: activity.location,
-          completed: true,
-          description: activity.description || activity.activity
-        })).reverse(); // Most recent first
-      } else {
-        // Provide default steps when no activities are available
-        enhancedTrackingData.trackingSteps = [
-          {
-            label: 'Order Received',
-            date: new Date(order.createdAt).toLocaleDateString(),
-            time: new Date(order.createdAt).toLocaleTimeString(),
-            completed: true,
-            description: 'Your order has been received and is being processed'
-          },
-          {
-            label: 'Processing',
-            date: 'Complete',
-            completed: true,
-            description: 'Your order has been processed'
-          },
-          {
-            label: 'Shipped',
-            date: enhancedTrackingData.shipmentDate,
-            completed: true,
-            description: 'Your order has been shipped'
-          },
-          {
-            label: 'Out for Delivery',
-            completed: currentStatus === 'Out for Delivery' || currentStatus === 'Delivered',
-          },
-          {
-            label: 'Delivered',
-            completed: currentStatus === 'Delivered',
-          }
-        ];
-      }
+      return NextResponse.json({ message: 'Tracking information found!', trackUrl, trackingData: enhancedTrackingData }, { status: 200 });
+    }
 
-      return NextResponse.json({ 
-        message: 'Tracking information found!',
-        trackUrl: trackUrl,
-        trackingData: enhancedTrackingData
-      }, { status: 200 });
-    } else {      // Get user information for email
-      let userEmail = null;
-      try {
-        await order.populate('user');
-        userEmail = order.user?.email || null;
-      } catch (err) {
-        console.log('Error fetching user email:', err);
-      }
-
-      // Format the address properly
-      const formattedAddress = order.address ? 
-        `${order.address.addressLine1}${order.address.addressLine2 ? ', ' + order.address.addressLine2 : ''}, ${order.address.city}, ${order.address.state}, ${order.address.pincode}` : 
-        'Address pending';
-
-      return NextResponse.json({ 
+    // Last resort if shiprocket has no data: only show Processing/basic info, no status/steps
+    return NextResponse.json(
+      {
         message: 'Your order will be shipped soon! Check back for tracking updates.',
         trackingData: {
-          orderId: orderId,
-          status: 'Processing',
+          orderId,
           name: order.address?.receiverName || 'Customer',
-          address: formattedAddress,
-          phoneNumber: order.address?.receiverPhoneNumber || 'Not provided',
-          email: userEmail,
+          address: formatAddress(order),
+          phoneNumber: order.address?.receiverPhoneNumber || null,
+          email: userEmail || null,
           shipmentDate: 'Processing',
           expectedDelivery: 'Estimated 5-7 business days from shipping',
-          trackingSteps: [
-            {
-              label: 'Order Received',
-              date: new Date(order.createdAt).toLocaleDateString(),
-              time: new Date(order.createdAt).toLocaleTimeString(),
-              completed: true,
-              description: 'Your order has been received and is being processed'
-            },
-            {
-              label: 'Processing',
-              date: 'In progress',
-              completed: true,
-              description: 'Your order is currently being prepared'
-            },
-            {
-              label: 'Shipped',
-              completed: false
-            }
-          ]
-        }
-      }, { status: 200 });
-    }
+          createdAt: order.createdAt,
+          coupon: order.couponApplied
+            ? { applied: true, name: order.couponName || null, discount: order.couponDiscount || 0 }
+            : { applied: false },
+          items: buildOrderItems(order),
+          mainTrackUrl: null,
+          // No status or trackingSteps
+        },
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error('Error tracking order:', error);
     return NextResponse.json({ message: 'Error tracking order. Please try again later.' }, { status: 502 });
