@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Box, Typography, useMediaQuery, Skeleton, Fade, Card, CardContent, CardMedia } from "@mui/material";
+import { Box, Button, Typography, useMediaQuery, Skeleton, Fade, Card, CardContent, CardMedia } from "@mui/material";
 import { ArrowForward } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import Image from "next/image";
 import AddToCartButton from "../../utils/AddToCartButton";
 import { ITEMS_PER_PAGE } from "@/lib/constants/productsPageConsts";
-
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 const DISPLAY_LIMIT = 15; // Show only 10-15 products, no infinite scroll
 
@@ -390,8 +389,12 @@ const ProductCard = memo(function ProductCard({ product }) {
         <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
           ₹{product.price}
         </Typography>
-        {!outOfStock && (
+        {!outOfStock ? (
           <AddToCartButton fullWidth product={cartPayload} onClick={e => e.stopPropagation()} insertionDetails={insertionDetails} />
+        ) : (
+          <Button  onClick={handleClick} sx={{ mt: 1, width: '100%', borderRadius: '0.4rem', bgcolor: 'grey.800' }} variant="contained">
+            View Product
+          </Button>
         )}
       </CardContent>
     </Card>

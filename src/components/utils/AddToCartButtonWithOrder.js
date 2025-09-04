@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { getStockStatus } from './getStockStatus';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSpring, animated } from 'react-spring';
 import styles from './styles/addtocartbuttonwithorder.module.css';
@@ -22,7 +23,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useMediaQuery } from '@mui/material';
 
-export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, insertionDetails = {} }) {
+export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, insertionDetails: insertionDetailsProp = {} }) {
+  const insertionDetails = insertionDetailsProp || {};
   const isSmallDevice = useMediaQuery('(max-width: 1000px)');
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
@@ -54,31 +56,24 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     dispatch(setDefaultWrapFinish());
   }, [dispatch]);
   // --- INVENTORY / STOCK MANAGEMENT ---
-  // Use product.inventoryData if available; otherwise, if there's a selectedOption, use its inventoryData.
-  const inventoryData =
-    product.inventoryData ||
-    (product.selectedOption && product.selectedOption.inventoryData) ||
-    null;
+  // Use shared utility for robust stock logic
+  const { outOfStock } = getStockStatus(product);
+  const inventoryData = product.inventoryData || (product.selectedOption && product.selectedOption.inventoryData) || null;
   let maxAllowed = Infinity;
   let isLimited = false;
-  
-  if (inventoryData) {
-    const { availableQuantity, reorderLevel } = inventoryData;
+  if (inventoryData && typeof inventoryData.availableQuantity === 'number') {
     isLimited = true;
-    
-    if (availableQuantity <= 0) {
-      // No stock available - disable
+    if (inventoryData.availableQuantity <= 0) {
       maxAllowed = 0;
     } else {
-      // Any available stock - allow customers to buy all available quantity
-      maxAllowed = availableQuantity;
+      maxAllowed = inventoryData.availableQuantity;
     }
   }
   const currentQuantity = cartItem ? cartItem.quantity : 0;
 
   const handleAdd = async (e) => {
     e.stopPropagation();
-    // If in limited mode and adding one would exceed allowed, do nothing.
+    if (outOfStock) return;
     if (isLimited && (currentQuantity + 1) > maxAllowed) return;
 
     setLastAction('increment');
@@ -99,7 +94,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
 
   const handleIncrement = async (e) => {
     e.stopPropagation();
-    // If in limited mode and current quantity is at max, do nothing.
+    if (outOfStock) return;
     if (isLimited && currentQuantity >= maxAllowed) return;
 
     setLastAction('increment');
@@ -129,8 +124,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   };
 
   const handleOrderNow = () => {
+    if (outOfStock) return;
     if (!cartItem) {
-      dispatch(addItem({ productId: product._id, productDetails: product, insertionDetailsForOrderNow }));
+      dispatch(addItem({ productId: product._id, productDetails: product, insertionDetails: insertionDetailsForOrderNow }));
     }
     dispatch(openCartDrawer());
   };
@@ -156,6 +152,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
         {/* Mobile: Recommendation button on top-left */}
         {showRecoButton && isSmallDevice && (
           <button
+            data-clarity="see-matching-picks"
             type="button"
             onClick={(e) => { e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
             className={styles.recoButtonMobile}
@@ -166,7 +163,11 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
         )}
         <div className={styles.primaryActionsRow}>
           <div className={styles.addToCartSection}>
-            {cartItem ? (
+            {outOfStock ? (
+              <div className={styles.outOfStockMsg} style={{ color: 'red', fontWeight: 600, fontFamily: 'Jost, sans-serif', fontSize: '0.95rem', margin: '0.5rem 0' }}>
+                Out of Stock
+              </div>
+            ) : cartItem ? (
               <div className={styles.quantityContainer}>
                 <button onClick={handleDecrement} className={styles.decrement}>
                   <RemoveIcon fontSize="small" />
@@ -204,7 +205,11 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
           </div>
           {/* Order Now / Go to Cart Section */}
           <div className={`${styles.orderNowSection} ${styles.halfWidth}`}>
-            <div onClick={handleOrderNow} className={styles.orderNowButton}>
+            <div
+              onClick={handleOrderNow}
+              className={styles.orderNowButton}
+              style={outOfStock ? { opacity: 0.5, pointerEvents: 'none' } : {}}
+            >
               {cartItem ? (
                 <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
               ) : (
@@ -217,6 +222,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
         {/* Desktop: Recommendation button full width below */}
         {showRecoButton && !isSmallDevice && (
           <button
+            data-clarity="see-matching-picks"
             type="button"
             onClick={(e) => { e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
             className={styles.recoButtonDesktop}
