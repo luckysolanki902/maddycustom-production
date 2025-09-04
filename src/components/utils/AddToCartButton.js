@@ -217,7 +217,7 @@ export default function AddToCartButton({
   // Decide if we should show recommendation trigger (button) for this product
   // Show manual button whenever the product has a designGroupId (unless explicitly disabled/hidden)
   const showRecoButton = (
-    // cartItem &&
+    cartItem &&
     product?.designGroupId &&
     !hideRecommendationPopup &&
     !disableRecommendationTrigger
