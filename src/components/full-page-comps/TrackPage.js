@@ -50,6 +50,21 @@ export default function TrackPage() {
 
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
+  // Helper to derive a single status/steps snapshot for display
+  const deriveShiprocketSnapshot = (details) => {
+    if (!details) return {};
+    // If multi-order structure exists, pick the first order having status/steps
+    const orderWithTracking = Array.isArray(details.orders)
+      ? details.orders.find(o => o?.status || (Array.isArray(o?.trackingSteps) && o.trackingSteps.length > 0) || o?.trackUrl)
+      : null;
+    const status = orderWithTracking?.status || details.status;
+    const trackUrl = details.mainTrackUrl || orderWithTracking?.trackUrl || details.trackUrl;
+    const trackingSteps = Array.isArray(orderWithTracking?.trackingSteps) ? orderWithTracking.trackingSteps : details.trackingSteps;
+    const shipmentDate = orderWithTracking?.shipmentDate || details.shipmentDate;
+    const expectedDelivery = orderWithTracking?.expectedDelivery || details.expectedDelivery;
+    return { status, trackUrl, trackingSteps, shipmentDate, expectedDelivery };
+  };
+
   // React Spring animations
   const fadeIn = useSpring({
     from: { opacity: 0 },
@@ -609,29 +624,49 @@ export default function TrackPage() {
                         {orderDetails.orderId || orderId}
                       </Typography>
                     </Box>
+                    {orderDetails.createdAt && (
+                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                        <Typography variant="body2" color="#666">Ordered At</Typography>
+                        <Typography variant="body2" fontWeight="600" color="#2d2d2d">
+                          {new Date(orderDetails.createdAt).toLocaleDateString()} {new Date(orderDetails.createdAt).toLocaleTimeString()}
+                        </Typography>
+                      </Box>
+                    )}
                     <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
                       <Typography variant="body2" color="#666">
                         Status
                       </Typography>
-                      <Chip
-                        label={orderDetails.status || "In Transit"}
-                        size="small"
-                        sx={{
-                          bgcolor: orderDetails.status === "Delivered" ? "#4caf50" : "#2d2d2d",
-                          color: "white",
-                        }}
-                      />
+                      {(() => {
+                        const snap = deriveShiprocketSnapshot(orderDetails);
+                        return snap.status ? (
+                          <Chip
+                            label={snap.status}
+                            size="small"
+                            sx={{ bgcolor: snap.status?.toLowerCase() === "delivered" ? "#4caf50" : "#2d2d2d", color: "white" }}
+                          />
+                        ) : (
+                          <Typography variant="body2" color="#999">—</Typography>
+                        );
+                      })()}
                     </Box>
+                    {orderDetails.coupon?.applied && (orderDetails.coupon?.discount || 0) > 0 && (
+                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                        <Typography variant="body2" color="#666">Coupon</Typography>
+                        <Typography variant="body2" fontWeight="600" color="#2d2d2d">
+                          {orderDetails.coupon.name} (-₹{orderDetails.coupon.discount})
+                        </Typography>
+                      </Box>
+                    )}
 
 
-                    {orderDetails.trackUrl && (
+          {(() => { const snap = deriveShiprocketSnapshot(orderDetails); return snap.trackUrl; })() && (
                       <Button
                         fullWidth
                         variant="outlined"
                         size="small"
                         startIcon={<MapIcon />}
                         endIcon={<LaunchIcon fontSize="small" />}
-                        onClick={() => window.open(orderDetails.trackUrl, "_blank")}
+            onClick={() => { const snap = deriveShiprocketSnapshot(orderDetails); window.open(snap.trackUrl, "_blank"); }}
                         sx={{
                           mt: 1,
                           borderColor: "#2d2d2d",
@@ -714,87 +749,156 @@ export default function TrackPage() {
                   )`,
                 }} />
 
-                {orderDetails.trackingSteps ? (
-                  <Box sx={{ display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
-                    {orderDetails.trackingSteps.map((step, index) => (
-                      <Box key={index} sx={{
-                        display: "flex",
-                        gap: "1rem",
-                        position: "relative",
-                        pb: index === orderDetails.trackingSteps.length - 1 ? 0 : 3,
-                        "&::after": index === orderDetails.trackingSteps.length - 1 ? {} : {
-                          content: '""',
-                          position: "absolute",
-                          left: "12px",
-                          top: "24px",
-                          bottom: 0,
-                          width: "2px",
-                          backgroundColor: "rgba(0,0,0,0.1)",
-                        }
-                      }}>
-                        <Box sx={{
-                          width: "24px",
-                          height: "24px",
-                          borderRadius: "50%",
-                          backgroundColor: step.completed ? "#2d2d2d" : "#e0e0e0",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                          boxShadow: step.completed ? "0 0 0 4px rgba(45,45,45,0.15)" : "none",
-                          transition: "all 0.2s ease",
-                        }}>
-                          <Box sx={{
-                            width: "8px",
-                            height: "8px",
-                            borderRadius: "50%",
-                            backgroundColor: step.completed ? "white" : "#bdbdbd"
-                          }} />
-                        </Box>
-
-                        <Box sx={{
-                          backgroundColor: step.completed ? "rgba(45,45,45,0.03)" : "transparent",
-                          padding: step.completed ? "0.5rem 1rem" : "0.5rem 0",
-                          borderRadius: "8px",
-                          flex: 1
-                        }}>
-                          <Typography variant="body2" fontWeight="600" color="#2d2d2d">
-                            {step.label}
+        {(() => { 
+          const snap = deriveShiprocketSnapshot(orderDetails);
+          if (Array.isArray(snap.trackingSteps) && snap.trackingSteps.length > 0) {
+            // Map raw steps to main user-friendly steps
+            const MAIN_STEP_LABELS = [
+              { key: 'ordered', labels: ['ordered', 'order placed', 'booked'] },
+              { key: 'shipped', labels: ['shipped', 'softdata upload', 'manifest generated'] },
+              { key: 'in_transit', labels: ['in transit', 'on the way', 'dispatched'] },
+              { key: 'out_for_delivery', labels: ['out for delivery'] },
+              { key: 'delivered', labels: ['delivered'] },
+              { key: 'returned', labels: ['returned', 'rto', 'return to origin'] },
+              { key: 'cancelled', labels: ['cancelled', 'canceled'] },
+            ];
+            // Find the first matching step for each main label, in order
+            const lower = s => (s || '').toLowerCase();
+            const steps = [];
+            for (const main of MAIN_STEP_LABELS) {
+              const found = snap.trackingSteps.find(s => s.label && main.labels.some(lab => lower(s.label).includes(lab)));
+              if (found) steps.push(found);
+            }
+            // Always use the last as current
+            const summarySteps = steps.map((s, i) => ({ ...s, isCurrent: i === steps.length - 1 }));
+            return (
+              <Box sx={{ display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
+                {summarySteps.map((step, index) => (
+                  <Box key={index} sx={{
+                    display: "flex",
+                    gap: "1rem",
+                    position: "relative",
+                    pb: index === summarySteps.length - 1 ? 0 : 3,
+                    "&::after": index === summarySteps.length - 1 ? {} : {
+                      content: '""',
+                      position: "absolute",
+                      left: "12px",
+                      top: "24px",
+                      bottom: 0,
+                      width: "2px",
+                      backgroundColor: "rgba(0,0,0,0.1)",
+                    }
+                  }}>
+                    <Box sx={{
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "50%",
+                      background: step.isCurrent ? "linear-gradient(135deg,#2d2d2d 60%,#4caf50 100%)" : (step.completed ? "#2d2d2d" : "#e0e0e0"),
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      boxShadow: step.isCurrent ? "0 0 0 6px rgba(76,175,80,0.18)" : (step.completed ? "0 0 0 4px rgba(45,45,45,0.15)" : "none"),
+                      border: step.isCurrent ? "2px solid #4caf50" : undefined,
+                      transition: "all 0.2s ease",
+                    }}>
+                      <Box sx={{
+                        width: step.isCurrent ? "12px" : "8px",
+                        height: step.isCurrent ? "12px" : "8px",
+                        borderRadius: "50%",
+                        backgroundColor: step.isCurrent ? "#fff" : (step.completed ? "white" : "#bdbdbd")
+                      }} />
+                    </Box>
+                    <Box sx={{
+                      backgroundColor: step.isCurrent ? "rgba(76,175,80,0.08)" : (step.completed ? "rgba(45,45,45,0.03)" : "transparent"),
+                      padding: step.isCurrent ? "0.7rem 1.2rem" : (step.completed ? "0.5rem 1rem" : "0.5rem 0"),
+                      borderRadius: "10px",
+                      flex: 1,
+                      border: step.isCurrent ? "1.5px solid #4caf50" : undefined,
+                    }}>
+                      <Typography variant="body2" fontWeight={step.isCurrent ? 700 : 600} color={step.isCurrent ? "#388e3c" : "#2d2d2d"} sx={step.isCurrent ? { fontSize: "1.08rem" } : {}}>
+                        {step.label}
+                      </Typography>
+                      {step.date && (
+                        <Box sx={{ display: "flex", gap: 2, mt: 0.5, alignItems: "center" }}>
+                          <Typography variant="body2" color="#666" fontSize="0.8rem">
+                            {step.date}
                           </Typography>
-                          <Box sx={{ display: "flex", gap: 2, mt: 0.5, alignItems: "center" }}>
-                            <Typography variant="body2" color="#666" fontSize="0.8rem">
-                              {step.date || "Date pending"}
-                            </Typography>
-                            <Typography variant="body2" color="#666" fontSize="0.8rem">
-                              {step.time || "Time pending"}
-                            </Typography>
-                          </Box>
-                          {step.description && (
-                            <Typography variant="body2" color="#666" sx={{ mt: 0.5 }}>
-                              {step.description}
-                            </Typography>
-                          )}
                         </Box>
-                      </Box>
-                    ))}
+                      )}
+                      {step.description && (
+                        <Typography variant="body2" color="#666" sx={{ mt: 0.5 }}>
+                          {step.description}
+                        </Typography>
+                      )}
+                    </Box>
                   </Box>
-                ) : (
-                  <Box sx={{ textAlign: "center", py: 3, position: "relative", zIndex: 1 }}>
-                    <Typography variant="body1" color="#666">
-                      Tracking details will be available once the order is processed.
-                    </Typography>
-                    <Typography variant="body2" color="#999" sx={{ mt: 1 }}>
-                      Check back soon for real-time updates.
-                    </Typography>
-                  </Box>
-                )}
+                ))}
+              </Box>
+            );
+          } else {
+            return (
+              <Box sx={{ textAlign: "center", py: 3, position: "relative", zIndex: 1 }}>
+                <Typography variant="body1" color="#666">
+                  Tracking details will be available once the order is processed.
+                </Typography>
+                <Typography variant="body2" color="#999" sx={{ mt: 1 }}>
+                  Check back soon for real-time updates.
+                </Typography>
+              </Box>
+            );
+          }
+        })()}
               </Paper>
 
+              {Array.isArray(orderDetails.items) && orderDetails.items.length > 0 && (
+                <>
+                  <Typography variant="subtitle2" color="#2d2d2d" fontWeight="600" gutterBottom sx={{ mt: 3 }}>
+                    Ordered Items
+                  </Typography>
+                  <Paper sx={{
+                    padding: "1.2rem",
+                    borderRadius: "12px",
+                    bgcolor: "#f8f9fa",
+                    border: "1px solid rgba(0,0,0,0.05)",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                  }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {orderDetails.items.map((it, idx) => (
+                        <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1, padding: '0.5rem 0', borderBottom: idx === orderDetails.items.length - 1 ? 'none' : '1px solid rgba(0,0,0,0.05)' }}>
+                          {(() => {
+                            let thumb = it.thumbnail;
+                            if (typeof thumb === 'string' && !/^https?:\/\//i.test(thumb)) {
+                              let base = baseImageUrl || '';
+                              if (thumb.startsWith('/')) {
+                                thumb = base.replace(/\/$/, '') + thumb;
+                              } else {
+                                thumb = base.replace(/\/$/, '') + '/' + thumb;
+                              }
+                            }
+                            return thumb ? (
+                              <Image src={thumb} alt={it.name} width={56} height={56} style={{ borderRadius: 8, objectFit: 'cover' }} />
+                            ) : null;
+                          })()}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'center', flex: 1 }}>
+                            <Box>
+                              <Typography variant="body2" fontWeight={600} color="#2d2d2d">{it.name}</Typography>
+                              <Typography variant="caption" color="#666">Qty: {it.quantity}</Typography>
+                            </Box>
+                            <Typography variant="body2" fontWeight={600} color="#2d2d2d">₹{Number(it.price || 0)}</Typography>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Paper>
+                </>
+              )}
+
               <Box sx={{ display: "flex", justifyContent: "center", mt: 3, gap: 2 }}>
-                {orderDetails.trackUrl && (
+        {(() => { const snap = deriveShiprocketSnapshot(orderDetails); return snap.trackUrl; })() && (
                   <Button
                     variant="contained"
-                    onClick={() => window.open(orderDetails.trackUrl, "_blank")}
+          onClick={() => { const snap = deriveShiprocketSnapshot(orderDetails); window.open(snap.trackUrl, "_blank"); }}
                     sx={{
                       backgroundColor: "#2d2d2d",
                       color: "white",
