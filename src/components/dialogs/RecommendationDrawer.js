@@ -23,6 +23,7 @@ import AddToCartButton from "@/components/utils/AddToCartButton";
 import { Dialog, DialogContent, Divider } from "@mui/material";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import usePageType from "@/hooks/usePageType";
 
 // Product Card Component with Coupon Information
 const ProductCardWithCoupon = ({ product, categoryVariants }) => {
@@ -34,6 +35,11 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
   const variantsCache = useSelector(state => state.variants.cache);
   const cacheTimestamps = useSelector(state => state.variants.lastUpdated);
   const [hasVariants, setHasVariants] = useState(null); // null until cache arrives
+  const pageType = usePageType();
+  const insertionDetails = {
+    component: "recommendation-drawer",
+    pageType: pageType,
+  };
 
   useEffect(() => {
     const categoryId = product?.specificCategory || product?.category?._id;
@@ -349,14 +355,14 @@ const RecommendationDrawer = () => {
   const handleClose = () => {
     dispatch(closeRecommendationDrawer());
     setRecommendedProducts([]);
-    
+
     // Add development helper for testing cooldown functionality
     if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       window.resetRecommendationCooldown = () => {
         dispatch(resetRecommendationCooldown());
         console.log('🔄 Recommendation cooldown reset! Auto-popups will show again.');
       };
-      
+
       // Log cooldown info for developers
       console.log('💡 Development tip: Use resetRecommendationCooldown() in console to reset the 30-min cooldown.');
     }

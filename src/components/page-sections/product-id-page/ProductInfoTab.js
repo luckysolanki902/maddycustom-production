@@ -146,6 +146,7 @@ export default function ProductDescription({
               {hasExtra && (
                 <button
                   type="button"
+                  data-clarity="read-more-prod-desc"
                   aria-expanded={expanded}
                   className={styles.readMoreBtn}
                   onClick={() => setExpanded(e => !e)}

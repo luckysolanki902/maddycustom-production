@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import usePageType from "@/hooks/usePageType";
 import { useDispatch, useSelector } from "react-redux";
 import { useSpring, animated } from "react-spring";
 import styles from "./styles/addtocartbutton.module.css";
@@ -35,13 +36,13 @@ const variantRequestManager = (() => {
       const requestPromise = (async () => {
         try {
           dispatch(setPendingRequest({ categoryId }));
-          
+
           const response = await fetch(`/api/features/get-variants?categoryId=${categoryId}`);
           const data = await response.json();
-          
+
           // Store in Redux cache
           dispatch(setVariantsCache({ categoryId, data }));
-          
+
           return data;
         } catch (error) {
           console.error("Error fetching variants:", error);
@@ -55,7 +56,7 @@ const variantRequestManager = (() => {
 
       // Store the promise so other components can wait for it
       pendingRequests.set(categoryId, requestPromise);
-      
+
       return await requestPromise;
     }
   };
@@ -66,13 +67,16 @@ export default function AddToCartButton({
   isBlackButton = false,
   isLarge = false,
   smaller = false,
-  insertionDetails = {},
+  insertionDetails: insertionDetailsProp = {},
   enableVariantSelection = false,
   hideRecommendationPopup = false,
   showOnlyChooseVariants = false,
   disableRecommendationTrigger = false,
   flexResponsiveness = false
 }) {
+  // Use custom hook to classify pageType if not provided
+  const pageType = usePageType();
+  const insertionDetails = { ...insertionDetailsProp, pageType: insertionDetailsProp.pageType || pageType };
   const dispatch = useDispatch();
   const cartItems = useSelector(state => state.cart.items);
   const hasSeenRecommendationDrawer = useSelector(state => state.ui.hasSeenRecommendationDrawer);
@@ -137,7 +141,7 @@ export default function AddToCartButton({
           const cachedData = variantsCache[categoryId];
           const cacheTime = cacheTimestamps[categoryId];
           const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
-          
+
           if (cachedData && cacheTime && (Date.now() - cacheTime) < CACHE_DURATION) {
             setVariants(cachedData.variants || []);
             setHasVariants(cachedData.variants && cachedData.variants.length > 1);
@@ -191,11 +195,11 @@ export default function AddToCartButton({
   const inventoryData = product.inventoryData || (product.selectedOption && product.selectedOption?.inventoryData) || null;
   let maxAllowed = Infinity;
   let isLimited = false;
-  
+
   if (inventoryData) {
     const { availableQuantity, reorderLevel } = inventoryData;
     isLimited = true;
-    
+
     if (availableQuantity <= 0) {
       // No stock available - disable
       maxAllowed = 0;
@@ -253,7 +257,7 @@ export default function AddToCartButton({
 
   const handleAdd = async e => {
     e.stopPropagation(); // Prevent parent onClick
-    
+
     // Check: if limited and adding one would exceed maxAllowed, do nothing.
     if (isLimited && (currentQuantity + 1) > maxAllowed) {
       return;
@@ -271,7 +275,7 @@ export default function AddToCartButton({
     // Show auto recommendation popup if product has designGroupId and not in cooldown
     if (product?.designGroupId && !hideRecommendationPopup && !disableRecommendationTrigger) {
       const inCooldown = isRecommendationInCooldown();
-      
+
       if (!inCooldown) {
         // Show auto popup after a short delay to let the add animation complete
         setTimeout(() => {
@@ -292,7 +296,7 @@ export default function AddToCartButton({
 
   const handleIncrement = async e => {
     e.stopPropagation();
-    
+
     // If in limited mode and already at max allowed, do not increment.
     if (isLimited && currentQuantity >= maxAllowed) {
       return;
@@ -304,7 +308,7 @@ export default function AddToCartButton({
     // Show auto recommendation popup if this is the first increment and product has designGroupId and not in cooldown
     if (currentQuantity === 1 && product?.designGroupId && !hideRecommendationPopup && !disableRecommendationTrigger) {
       const inCooldown = isRecommendationInCooldown();
-      
+
       if (!inCooldown) {
         // Show auto popup after a short delay to let the add animation complete
         setTimeout(() => {
@@ -343,24 +347,24 @@ export default function AddToCartButton({
     .join(" ")
     .trim();
 
-    if (showOnlyChooseVariants && isLoadingVariants) return null;
+  if (showOnlyChooseVariants && isLoadingVariants) return null;
 
-    if (isLoadingVariants) {
-      return (
-        <Box width="10rem">
-          <Skeleton
-            variant="rectangular"
-            width="100%"
-            height="2.2rem"
-            sx={{
-              borderRadius: "0.4rem",
-              backgroundColor: "rgba(66, 66, 66, 0.3)",
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-            }}
-          />
-        </Box>
-      );
-    }
+  if (isLoadingVariants) {
+    return (
+      <Box width="10rem">
+        <Skeleton
+          variant="rectangular"
+          width="100%"
+          height="2.2rem"
+          sx={{
+            borderRadius: "0.4rem",
+            backgroundColor: "rgba(66, 66, 66, 0.3)",
+            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+          }}
+        />
+      </Box>
+    );
+  }
 
   if ((!enableVariantSelection || !hasVariants) && cartItem) {
     return (
@@ -391,8 +395,9 @@ export default function AddToCartButton({
         </div>
         {showRecoButton && (
           <button
+            data-clarity="see-matching-picks"
             type="button"
-            onClick={(e)=>{ e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
+            onClick={(e) => { e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
             style={{
               background: 'linear-gradient(90deg,#f5f5f7,#ffffff)',
               border: '1px solid #e2e2e2',
@@ -446,7 +451,8 @@ export default function AddToCartButton({
         {showRecoButton && (
           <button
             type="button"
-            onClick={(e)=>{ e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
+            data-clarity="see-matching-picks"
+            onClick={(e) => { e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
             style={{
               background: 'linear-gradient(90deg,#f5f5f7,#ffffff)',
               border: '1px solid #e2e2e2',
@@ -478,6 +484,7 @@ export default function AddToCartButton({
           product={product}
           onClose={() => setShowVariantDialog(false)}
           onVariantClick={handleVariantClick}
+          insertionDetails={insertionDetails}
         />
       )}
 
@@ -493,7 +500,7 @@ export default function AddToCartButton({
 }
 
 // Variant Selection Dialog Component with Letter Mapping Support
-const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) => {
+const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick, insertionDetails = {} }) => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const [useMapping, setUseMapping] = useState(false);
   const [letterMappingGroups, setLetterMappingGroups] = useState([]);
@@ -527,7 +534,7 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
     };
 
     fetchVariantProducts();
-    
+
     if (product.category?.useLetterMapping) {
       setUseMapping(true);
       setLetterMappingGroups(product.category.letterMappingGroups || []);
@@ -545,7 +552,7 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
     // Check if all selections are made and find matching product
     let allSelectionsMade = true;
     let finalCode = product.category.specificCategoryCode || "";
-    
+
     for (const group of letterMappingGroups) {
       const chosenLetter = newSelections[group.groupName];
       if (!chosenLetter) {
@@ -554,11 +561,11 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
       }
       finalCode += chosenLetter;
     }
-    
-    
+
+
     if (allSelectionsMade) {
       // Find the matching product by variantCode
-      const matchingProduct = variantProducts.find(p => 
+      const matchingProduct = variantProducts.find(p =>
         p.variantCode?.toLowerCase() === finalCode.toLowerCase()
       );
       setPreviewProduct(matchingProduct || null);
@@ -804,7 +811,7 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                   }}
                 >
                   Submit
-                  {isLoadingProducts && <CircularProgress size={20} sx={{ ml: 1 }} color="white"/>}
+                  {isLoadingProducts && <CircularProgress size={20} sx={{ ml: 1 }} color="white" />}
                 </Button>
               </Box>
             </>
@@ -816,6 +823,7 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                   variant={variants.find(v => v.variantCode?.toLowerCase() === previewProduct.variantCode?.toLowerCase())}
                   product={previewProduct}
                   onClose={onClose}
+                  insertionDetails={insertionDetails}
                 />
               ) : (
                 <Box sx={{ textAlign: "center", py: 4 }}>
@@ -870,6 +878,7 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
                     variant={variants.find(v => v.variantCode?.toLowerCase() === variantProduct.variantCode?.toLowerCase())}
                     product={variantProduct}
                     onClose={onClose}
+                    insertionDetails={insertionDetails}
                   />
                   {index !== variantProducts.length - 1 && <Divider style={{ marginTop: "20px", borderColor: "black" }} />}
                 </Box>
@@ -887,7 +896,7 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick }) 
 };
 
 // Simple Variant Card Component
-const SimpleVariantCard = ({ variant, product, onClose }) => {
+const SimpleVariantCard = ({ variant, product, onClose, insertionDetails = {} }) => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   // Handle card click to redirect to product page
@@ -909,8 +918,8 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
   const variantImage = variant?.image
     ? (variant.image.startsWith("/") ? baseImageUrl + variant.image : baseImageUrl + "/" + variant.image)
     : (product?.images && product.images[0]
-        ? (product.images[0].startsWith("/") ? baseImageUrl + product.images[0] : baseImageUrl + "/" + product.images[0])
-        : null);
+      ? (product.images[0].startsWith("/") ? baseImageUrl + product.images[0] : baseImageUrl + "/" + product.images[0])
+      : null);
 
   // Determine out-of-stock like ProductCard
   const getDisplayImage = (p) => {
@@ -1073,6 +1082,7 @@ const SimpleVariantCard = ({ variant, product, onClose }) => {
               isBlackButton={true}
               enableVariantSelection={false}
               disableRecommendationTrigger={true}
+              insertionDetails={insertionDetails}
             />
           </Box>
         )}
