@@ -212,8 +212,9 @@ export default function ReviewFullComp({
 
   return (
     <Box sx={{ 
-      background: "linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)",
-      padding: { xs: "2rem 1rem", sm: "3rem 2rem", md: "4rem 3rem" },
+      background: "white",
+      padding: { xs: "2rem 0.5rem", sm: "3rem 0.5rem", md: "4rem 0rem" },
+      paddingBottom: {xs: 0, sm: 0, md: 0},
       borderRadius: "24px",
       margin: { xs: "2rem 0", md: "3rem 0" },
       position: "relative",

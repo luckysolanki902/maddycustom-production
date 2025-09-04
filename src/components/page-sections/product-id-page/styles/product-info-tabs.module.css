@@ -1,5 +1,5 @@
 /* Revamped Product Info Tabs */
-.mainCont { padding: 0 2.5rem; margin-bottom: 3.5rem; }
+.mainCont {  margin-bottom: 3.5rem; }
 
 @media (max-width: 1000px) { .mainCont { padding: 0 1rem; } }
 
