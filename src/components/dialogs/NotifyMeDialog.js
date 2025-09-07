@@ -98,6 +98,7 @@ export default function NotifyMeDialog({
             { key: 'productTitle', value: product.title || product.name },
             { key: 'productSlug', value: product.pageSlug },
             { key: 'thumbnail', value: getThumbnail() },
+            { key: 'inventoryId', value: selectedOption?.inventoryData?._id || product.inventoryData?._id },
             { key: 'source', value: 'notify_dialog' },
             ...(selectedOption ? [
               { key: 'optionSku', value: selectedOption.sku },

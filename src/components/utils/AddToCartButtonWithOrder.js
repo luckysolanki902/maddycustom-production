@@ -103,7 +103,15 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
           const hasExistingNotification = data.notifications.some(notification => {
             const productInfo = notification.info.find(info => info.key === 'productId');
             const optionInfo = notification.info.find(info => info.key === 'optionId');
+            const inventoryInfo = notification.info.find(info => info.key === 'inventoryId');
             
+            // First check by inventoryId (most accurate)
+            const currentInventoryId = product.selectedOption?.inventoryData?._id || product.inventoryData?._id;
+            if (currentInventoryId && inventoryInfo?.value === currentInventoryId) {
+              return true;
+            }
+            
+            // Fallback to product/option matching
             const matchesProduct = productInfo?.value === product._id;
             const matchesOption = product.selectedOption 
               ? optionInfo?.value === product.selectedOption._id
@@ -122,7 +130,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     };
 
     checkExistingNotification();
-  }, [outOfStock, product._id, product.selectedOption]);
+  }, [outOfStock, product._id, product.selectedOption, product.inventoryData?._id, product.selectedOption?.inventoryData?._id]);
 
   const handleAdd = async (e) => {
     e.stopPropagation();
