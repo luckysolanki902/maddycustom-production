@@ -90,15 +90,24 @@ export async function POST(request) {
       ]
     };
     
-    // Add product/option check through info array if provided
+    // Add product/option/inventory check through info array if provided
     if (productId || optionId) {
       const infoQuery = { phoneNumber, notificationType, status: { $in: ['pending', 'queued', 'processing'] } };
-      if (productId) {
-        infoQuery['info'] = { $elemMatch: { key: 'productId', value: productId } };
+      
+      // Check by inventoryId first (most accurate)
+      const inventoryIdInfo = info.find(item => item.key === 'inventoryId');
+      if (inventoryIdInfo?.value) {
+        infoQuery['info'] = { $elemMatch: { key: 'inventoryId', value: inventoryIdInfo.value } };
+      } else {
+        // Fallback to product/option matching
+        if (productId) {
+          infoQuery['info'] = { $elemMatch: { key: 'productId', value: productId } };
+        }
+        if (optionId) {
+          infoQuery['info'] = { $elemMatch: { key: 'optionId', value: optionId } };
+        }
       }
-      if (optionId) {
-        infoQuery['info'] = { $elemMatch: { key: 'optionId', value: optionId } };
-      }
+      
       existingQuery.$or.push(infoQuery);
     }
 
