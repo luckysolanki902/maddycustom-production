@@ -10,6 +10,7 @@ import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import {
   addItem,
   incrementQuantity,
@@ -22,6 +23,7 @@ import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useMediaQuery } from '@mui/material';
+import NotifyMeDialog from '../dialogs/NotifyMeDialog';
 
 export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, insertionDetails: insertionDetailsProp = {} }) {
   const insertionDetails = insertionDetailsProp || {};
@@ -33,6 +35,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
 
   // State to track last action (for animation)
   const [lastAction, setLastAction] = useState(null);
+  const [showNotifyDialog, setShowNotifyDialog] = useState(false);
+  const [hasNotification, setHasNotification] = useState(false);
+  const [checkingNotification, setCheckingNotification] = useState(false);
 
   // React Spring animation for quantity display
   const props = useSpring({
@@ -52,9 +57,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       if (lastAction) setLastAction(null);
     },
   });
-  useEffect(() => {
-    dispatch(setDefaultWrapFinish());
-  }, [dispatch]);
+  
   // --- INVENTORY / STOCK MANAGEMENT ---
   // Use shared utility for robust stock logic
   const { outOfStock } = getStockStatus(product);
@@ -70,6 +73,56 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     }
   }
   const currentQuantity = cartItem ? cartItem.quantity : 0;
+  
+  useEffect(() => {
+    dispatch(setDefaultWrapFinish());
+  }, [dispatch]);
+
+  // Check if user has existing notification for this product/option
+  useEffect(() => {
+    const checkExistingNotification = async () => {
+      if (!outOfStock) return;
+      
+      setCheckingNotification(true);
+      try {
+        // Get stored phone number from localStorage if available
+        const storedPhone = localStorage.getItem('userPhoneNumber');
+        if (!storedPhone) {
+          setCheckingNotification(false);
+          return;
+        }
+
+        const response = await fetch(`/api/notifications?phoneNumber=${storedPhone}&notificationType=restocking&status=pending`, {
+          method: 'GET',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Check if there's a pending notification for this specific product/option combination
+          const hasExistingNotification = data.notifications.some(notification => {
+            const productInfo = notification.info.find(info => info.key === 'productId');
+            const optionInfo = notification.info.find(info => info.key === 'optionId');
+            
+            const matchesProduct = productInfo?.value === product._id;
+            const matchesOption = product.selectedOption 
+              ? optionInfo?.value === product.selectedOption._id
+              : !optionInfo || !optionInfo.value;
+            
+            return matchesProduct && matchesOption;
+          });
+          
+          setHasNotification(hasExistingNotification);
+        }
+      } catch (error) {
+        console.error('Error checking existing notifications:', error);
+      } finally {
+        setCheckingNotification(false);
+      }
+    };
+
+    checkExistingNotification();
+  }, [outOfStock, product._id, product.selectedOption]);
 
   const handleAdd = async (e) => {
     e.stopPropagation();
@@ -131,6 +184,25 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     dispatch(openCartDrawer());
   };
 
+  const handleNotifyMe = (e) => {
+    e.stopPropagation();
+    setShowNotifyDialog(true);
+  };
+
+  const handleNotifySuccess = (notification) => {
+    // Store phone number in localStorage for future checks
+    const phoneNumber = notification.phoneNumber;
+    if (phoneNumber) {
+      localStorage.setItem('userPhoneNumber', phoneNumber);
+    }
+    
+    // Update notification state
+    setHasNotification(true);
+    
+    // You can add success tracking or analytics here
+    console.log('Notification created successfully:', notification);
+  };
+
   // Recommendation trigger visibility: only if in cart & has designGroupId
   const showRecoButton = !!(
     // cartItem &&
@@ -164,7 +236,8 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
         <div className={styles.primaryActionsRow}>
           <div className={styles.addToCartSection}>
             {outOfStock ? (
-              <div className={styles.outOfStockMsg} style={{ color: 'red', fontWeight: 600, fontFamily: 'Jost, sans-serif', fontSize: '0.95rem', margin: '0.5rem 0' }}>
+              <div className={styles.addToCartButton} style={{ opacity: 0.6, cursor: 'default', pointerEvents: 'none' }}>
+                <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
                 Out of Stock
               </div>
             ) : cartItem ? (
@@ -205,18 +278,46 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
           </div>
           {/* Order Now / Go to Cart Section */}
           <div className={`${styles.orderNowSection} ${styles.halfWidth}`}>
-            <div
-              onClick={handleOrderNow}
-              className={styles.orderNowButton}
-              style={outOfStock ? { opacity: 0.5, pointerEvents: 'none' } : {}}
-            >
-              {cartItem ? (
-                <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
-              ) : (
-                <BoltOutlinedIcon fontSize="medium" className={styles.boltIcon} />
-              )}
-              {orderButtonText}
-            </div>
+            {outOfStock ? (
+              <div
+                onClick={hasNotification ? undefined : handleNotifyMe}
+                className={styles.orderNowButton}
+                style={hasNotification ? { 
+                  opacity: 0.7, 
+                  cursor: 'default',
+                  backgroundColor: '#28a745'
+                } : {}}
+              >
+                {checkingNotification ? (
+                  <>
+                    <NotificationsActiveIcon fontSize="medium" className={styles.boltIcon} />
+                    Checking...
+                  </>
+                ) : hasNotification ? (
+                  <>
+                    <NotificationsActiveIcon fontSize="medium" className={styles.boltIcon} />
+                    ✓ You&apos;ll be notified
+                  </>
+                ) : (
+                  <>
+                    <NotificationsActiveIcon fontSize="medium" className={styles.boltIcon} />
+                    Notify Me
+                  </>
+                )}
+              </div>
+            ) : (
+              <div
+                onClick={handleOrderNow}
+                className={styles.orderNowButton}
+              >
+                {cartItem ? (
+                  <ShoppingCartIcon fontSize="medium" className={styles.cartIcon} />
+                ) : (
+                  <BoltOutlinedIcon fontSize="medium" className={styles.boltIcon} />
+                )}
+                {orderButtonText}
+              </div>
+            )}
           </div>
         </div>
         {/* Desktop: Recommendation button full width below */}
@@ -245,6 +346,15 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
           </Link>
         </div>
       )}
+      
+      {/* Notify Me Dialog */}
+      <NotifyMeDialog
+        open={showNotifyDialog}
+        onClose={() => setShowNotifyDialog(false)}
+        product={product}
+        selectedOption={product.selectedOption}
+        onSuccess={handleNotifySuccess}
+      />
     </div>
   );
 }

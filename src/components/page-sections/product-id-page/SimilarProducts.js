@@ -392,7 +392,7 @@ const ProductCard = memo(function ProductCard({ product }) {
         {!outOfStock ? (
           <AddToCartButton fullWidth product={cartPayload} onClick={e => e.stopPropagation()} insertionDetails={insertionDetails} />
         ) : (
-          <Button  onClick={handleClick} sx={{ mt: 1, width: '100%', borderRadius: '0.4rem', bgcolor: 'grey.800' }} variant="contained">
+          <Button  onClick={handleClick} sx={{ mt: 1, width: '100%', borderRadius: '0.4rem', bgcolor: 'grey.800', textTransform: 'none', fontSize: '1rem', fontWeight: 500, fontFamily: 'Jost' }} variant="contained">
             View Product
           </Button>
         )}
