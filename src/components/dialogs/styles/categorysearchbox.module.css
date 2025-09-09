@@ -107,17 +107,26 @@ textarea.inputField {
     display: none; /* Safari and Chrome */
 }
 
-/* top subtle gradient when suggestion list is scrolled */
+/* Beautiful blurry gradient when suggestion list is scrolled */
 .suggestionBox.scrolledTop::before {
     content: '';
-    position: absolute;
-    top: 0;
+    position: fixed;
+    top: 64px; /* below the AppBar */
     left: 0;
     right: 0;
-    height: 12px;
-    background: linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0));
+    height: 40px;
+    background: linear-gradient(180deg, 
+        rgba(250, 250, 250, 0.95) 0%, 
+        rgba(250, 250, 250, 0.85) 40%, 
+        rgba(250, 250, 250, 0.6) 70%, 
+        rgba(250, 250, 250, 0.3) 85%, 
+        rgba(250, 250, 250, 0) 100%
+    );
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     pointer-events: none;
-    z-index: 45;
+    z-index: 55;
+    transition: all 0.3s ease;
 }
 
 .searchBoxSubContainer {
@@ -161,6 +170,12 @@ textarea.inputField {
     pointer-events: none;
     color: #9ca3af;
     z-index: 1;
+}
+
+@media screen and (max-width: 700px) {
+    .typewriterContainer {
+        padding-left: 0.6rem;
+    }
 }
 
 /* Skeleton Loading Animation */

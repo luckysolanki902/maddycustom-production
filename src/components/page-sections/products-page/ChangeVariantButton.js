@@ -29,13 +29,28 @@ import { Category } from "@mui/icons-material";
  *  - buildUrl: optional custom (slug, ctx) => fullPath function (slug = variant.pageSlug starting with '/')
  *  - b2bPrefix: prefix for B2B routes (default '/b2b')
  *  - shopPrefix: prefix for normal routes (default '/shop')
+ *  - product: optional product object for external variant checking
+ *  - onExternalVariantCheck: optional callback for external variant handling
+ *  - hideIfSingleVariant: if true, hide button when only one variant (default: false)
+ *  - disableAutoPopup: if true, disable automatic popup on load (default: false)
  */
-export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefix = '/b2b', shopPrefix = '/shop' }) {
+export default function ChangeVariantButton({ 
+  category, 
+  mode, 
+  buildUrl, 
+  b2bPrefix = '/b2b', 
+  shopPrefix = '/shop',
+  product = null,
+  onExternalVariantCheck = null,
+  hideIfSingleVariant = false,
+  disableAutoPopup = false
+}) {
   const [showPopup, setShowPopup] = useState(false);
   const [variants, setVariants] = useState([]);
   const [useMapping, setUseMapping] = useState(false);
   const [letterMappingGroups, setLetterMappingGroups] = useState([]);
   const [mappingSelections, setMappingSelections] = useState({});
+  const [variantCheckLoading, setVariantCheckLoading] = useState(false);
 
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isSmallDevice = useMediaQuery("(max-width: 600px)");
@@ -70,9 +85,9 @@ export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefi
     fetchVariants();
   }, [category]);
 
-  // Auto-popup if more than 2 variants and user hasn't seen it, only if NOT using letter mapping
+  // Auto-popup if more than 2 variants and user hasn't seen it, only if NOT using letter mapping and auto-popup is not disabled
   useEffect(() => {
-    if ( variants.length > 2 && !hasSeenVariantPopup) {
+    if (!disableAutoPopup && variants.length > 2 && !hasSeenVariantPopup) {
       const timer = setTimeout(() => {
         setShowPopup(true);
         dispatch(
@@ -82,7 +97,7 @@ export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefi
 
       return () => clearTimeout(timer);
     }
-  }, [variants, hasSeenVariantPopup, dispatch, category._id, useMapping]);
+  }, [variants, hasSeenVariantPopup, dispatch, category._id, useMapping, disableAutoPopup]);
 
   /**
    * Determine context (B2B vs normal) & helpers
@@ -145,6 +160,27 @@ export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefi
   dispatch(setPageSlug({ categoryId: category._id, pageSlug: finalSlug }));
   router.push(finalSlug);
     setShowPopup(false);
+  };
+
+  /**
+   * Handle button click - either show popup directly or check variants first
+   */
+  const handleButtonClick = async () => {
+    // If we have an external variant check callback and product, use it
+    if (onExternalVariantCheck && product) {
+      setVariantCheckLoading(true);
+      try {
+        await onExternalVariantCheck(product, variants);
+      } catch (error) {
+        console.error('External variant check failed:', error);
+        setShowPopup(true);
+      } finally {
+        setVariantCheckLoading(false);
+      }
+    } else {
+      // Default behavior - show popup directly
+      setShowPopup(true);
+    }
   };
 
   /**
@@ -411,16 +447,27 @@ export default function ChangeVariantButton({ category, mode, buildUrl, b2bPrefi
   );
 
   return (
-  // If no letter-mapping AND fewer than 2 variants, hide button (placed after hooks to obey Rules of Hooks)
-  (!useMapping && variants.length < 2) ? null : (
+  // Hide button conditions:
+  // 1. No letter-mapping AND fewer than 2 variants (default behavior)
+  // 2. hideIfSingleVariant is true AND only 1 variant
+  (!useMapping && variants.length < 2) || (hideIfSingleVariant && variants.length <= 1) ? null : (
     <>
       {/* The Button that triggers the dialog */}
-      <div className={styles.bikeStyle} onClick={() => setShowPopup(true)}>
-        {useMapping
-          ? (isB2B ? 'Customize Variant' : 'Customize Variant')
-          : category.name === "Tank Wraps"
-          ? (isB2B ? 'Change Tank Size' : 'Change Tank Size')
-          : (isB2B ? 'Change Variant' : 'Change Variant')}
+      <div 
+        className={styles.bikeStyle} 
+        onClick={handleButtonClick}
+        style={{ 
+          opacity: variantCheckLoading ? 0.6 : 1,
+          pointerEvents: variantCheckLoading ? 'none' : 'auto'
+        }}
+      >
+        {variantCheckLoading ? 'Loading...' : (
+          useMapping
+            ? (isB2B ? 'Customize Variant' : 'Customize Variant')
+            : category.name === "Tank Wraps"
+            ? (isB2B ? 'Change Tank Size' : 'Change Tank Size')
+            : (isB2B ? 'Change Variant' : 'Change Variant')
+        )}
       </div>
 
       {/* Render the appropriate dialog */}
