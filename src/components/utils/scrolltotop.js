@@ -45,7 +45,7 @@ if (!isVisible || isCartDrawerOpen) return null;
         position: "fixed",
         right: "2rem",
         bottom: "8rem",
-        zIndex: 99999,
+        zIndex: 19,
         cursor: "pointer",
       }}
       onClick={scrollToTop}

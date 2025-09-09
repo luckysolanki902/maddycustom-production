@@ -25,6 +25,8 @@ import WrapFinishSelector from "../page-sections/product-id-page/WrapFinishSelec
 import OptionSelector from "../page-sections/product-id-page/OptionSelector";
 import SimilarProducts from "../page-sections/product-id-page/SimilarProducts";
 import AddToCartButton from "../utils/AddToCartButton";
+import ChangeVariantButton from "../page-sections/products-page/ChangeVariantButton";
+import VariantSelectionDialog from "../dialogs/VariantSelectionDialog";
 
 // Memoize components that do not need to update on option change
 const MemoizedImageGallery = memo(ImageGallery);
@@ -88,6 +90,8 @@ export default function ProductIdPage({
   // Memoize the product list page link to avoid unnecessary re-renders
   const memoizedProductListPageLink = useMemo(() => productListPageLink, [productListPageLink]);
   const [selectedWrapFinish, setSelectedWrapFinish] = useState("Matte");
+  const [showVariantDialog, setShowVariantDialog] = useState(false);
+  const [variantCheckLoading, setVariantCheckLoading] = useState(false);
 
   const insertionDetails = {
     component: "productDetails-AddToCart",
@@ -352,6 +356,35 @@ export default function ProductIdPage({
   //  thumbnail should reciew images from the selected option if available
   const thumbnail = selectedOption?.images[0] || product?.images[0];
 
+  // Handle variant checking for ProductIdPage
+  const handleExternalVariantCheck = async (productToCheck, variants) => {
+    try {
+      // Check if product has multiple variants by fetching category variants
+      const response = await fetch(`/api/features/get-variants?categoryId=${category._id}`);
+      const data = await response.json();
+      
+      if (data.variants && data.variants.length > 1) {
+        // Multiple variants exist, show dialog
+        setShowVariantDialog(true);
+      } else {
+        // Only one variant, redirect directly
+        const isB2B = pathname?.startsWith('/b2b');
+        const base = isB2B ? '/b2b' : '/shop';
+        
+        // Get the product slug part
+        const productSlugPart = product.pageSlug.split('/').pop();
+        if (data.variants?.[0] && productSlugPart) {
+          const targetUrl = `${base}${data.variants[0].pageSlug}/${productSlugPart}`;
+          router.push(targetUrl);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking variants:', error);
+      // Fallback to showing dialog
+      setShowVariantDialog(true);
+    }
+  };
+
   return (
     <div className={styles.superContainer}>
       {isDisabled && (
@@ -416,6 +449,19 @@ export default function ProductIdPage({
                 restrictWidth={product.category.toLowerCase() !== "wraps"}
               />
               {isBetween1000And1400 && soldByCategoryEl}
+              
+              {/* Choose Variant Button below ImageGallery */}
+              {!isZoomed && category && (
+                <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-start", marginLeft: "-1rem" }}>
+                  <ChangeVariantButton 
+                    category={category} 
+                    product={product}
+                    onExternalVariantCheck={handleExternalVariantCheck}
+                    hideIfSingleVariant={true}
+                    disableAutoPopup={true}
+                  />
+                </div>
+              )}
             </div>
             {/* Hide details if zoomed */}
             {!isZoomed && (
@@ -587,13 +633,7 @@ export default function ProductIdPage({
               </div>
             )}
           </div>
-          <AddToCartButton
-            product={product}
-            insertionDetails={insertionDetails}
-            flexResponsiveness={true}
-            enableVariantSelection
-            showOnlyChooseVariants
-          />
+
 
           {/* Similar Products Section */}
           <SimilarProducts currentProduct={product} variant={variant} category={category} />
@@ -616,6 +656,15 @@ export default function ProductIdPage({
           />
         </>
       )}
+
+      {/* Variant Selection Dialog */}
+      <VariantSelectionDialog
+        open={showVariantDialog}
+        onClose={() => setShowVariantDialog(false)}
+        category={category}
+        product={product}
+        mode="search" // Use search mode for product description page redirection
+      />
     </div>
   );
 }
