@@ -150,6 +150,11 @@ const ProductSchema = new mongoose.Schema(
       required: false,
       index: true,
     },
+    searchKeywords: [
+      {
+        type: String,
+      },
+    ],
   },
   { timestamps: true }
 );
