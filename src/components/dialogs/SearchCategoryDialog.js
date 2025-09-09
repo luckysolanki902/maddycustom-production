@@ -98,9 +98,9 @@ export default function SearchCategoryDialog() {
   const searchSuggestions = [
     "Anime",
     "Formal", 
-    "Car",
     "Wraps",
     "Quote",
+    "Religious"
   ];
 
 
