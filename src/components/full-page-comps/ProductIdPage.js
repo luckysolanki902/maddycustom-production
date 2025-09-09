@@ -353,7 +353,7 @@ export default function ProductIdPage({
   const thumbnail = selectedOption?.images[0] || product?.images[0];
 
   return (
-    <div className={styles.superContainer} >
+    <div className={styles.superContainer}>
       {isDisabled && (
         <Box
           sx={{
@@ -417,7 +417,6 @@ export default function ProductIdPage({
               />
               {isBetween1000And1400 && soldByCategoryEl}
             </div>
-
             {/* Hide details if zoomed */}
             {!isZoomed && (
               <div className={styles.productDetails}>
@@ -563,7 +562,7 @@ export default function ProductIdPage({
                 )}
 
                 {/* Render Add to Cart Button only if in stock */}
-                { !isDisabled && (
+                {!isDisabled && (
                   <div className={styles.buttonDiv}>
                     <MemoizedAddToCartButtonWithOrder
                       product={{
@@ -588,6 +587,13 @@ export default function ProductIdPage({
               </div>
             )}
           </div>
+          <AddToCartButton
+            product={product}
+            insertionDetails={insertionDetails}
+            flexResponsiveness={true}
+            enableVariantSelection
+            showOnlyChooseVariants
+          />
 
           {/* Similar Products Section */}
           <SimilarProducts currentProduct={product} variant={variant} category={category} />

@@ -72,9 +72,13 @@ export default function SearchCategoryDialog() {
     isLoading: false
   });
   const [searchText, setSearchText] = useState('');
+  // Restore suggestions, categories, variants state
   const [suggestions, setSuggestions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [variants, setVariants] = useState([]);
+  const [productResults, setProductResults] = useState([]);
+  const [productLoading, setProductLoading] = useState(false);
+  const [matchedCategory, setMatchedCategory] = useState(null);
   const inputRef = useRef(null);
   const suggestionBoxRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
@@ -104,6 +108,7 @@ export default function SearchCategoryDialog() {
     }
     dispatch(closeSearchDialog());
     setSearchText('');
+    // Commented out: suggestions state
     setSuggestions([]);
   }, [dispatch, isMobile]);
 
@@ -182,24 +187,20 @@ export default function SearchCategoryDialog() {
         if (data?.categories) {
           const categoriesData = data.categories;
           const variantsData = data.variants || [];
-          
           // Update global cache
           globalDataCache = { categories: categoriesData, variants: variantsData };
           globalCacheTimestamp = Date.now();
-          
           // Update Redux cache
           dispatch(setSearchCategories({
             categories: categoriesData,
             variants: variantsData
           }));
-          
           // Update local state
           setCategories(categoriesData);
           setVariants(variantsData);
           const catNames = categoriesData.map((c) => c.name);
           setSuggestions(catNames.slice(0, 10));
           dataLoadedRef.current = true;
-          
           console.log('Data fetched successfully');
         }
       } catch (err) {
@@ -262,13 +263,11 @@ export default function SearchCategoryDialog() {
     }
   }, [isOpen]);
 
-  // Filter suggestions when input changes
+  // Restore suggestions logic
   const handleInputChange = (e) => {
     const inputValue = e.target.value;
     setSearchText(inputValue);
-
     if (!categories.length) return;
-
     if (inputValue.trim() !== '') {
       const lower = inputValue.toLowerCase();
       const catFiltered = categories
@@ -281,21 +280,18 @@ export default function SearchCategoryDialog() {
     }
   };
 
-  // Clicking a suggestion navigates accordingly and then closes the dialog
+  // Restore suggestion click logic
   const handleSuggestionClick = useCallback((suggestion) => {
     const categoryObj = categories.find(
       (c) => c.name.toLowerCase() === suggestion.toLowerCase()
     );
-    
     if (categoryObj && categoryObj.pageSlug) {
       router.push(`/shop/${categoryObj.pageSlug}`);
     }
-    
-    // For route navigation on mobile, skip the history back step
     handleClose(true);
   }, [categories, router, handleClose]);
 
-  // Pressing Enter picks the first suggestion
+  // Restore Enter key suggestion logic
   const handleKeyDown = useCallback(
     (e) => {
       if (e.key === 'Enter' && suggestions.length) {
@@ -304,7 +300,6 @@ export default function SearchCategoryDialog() {
     },
     [suggestions, handleSuggestionClick]
   );
-
   useEffect(() => {
     if (isOpen) {
       window.addEventListener('keydown', handleKeyDown);
@@ -321,6 +316,40 @@ export default function SearchCategoryDialog() {
       text.toLowerCase().includes(w)
     );
   };
+
+  // Product search fetch effect
+  useEffect(() => {
+    if (!searchText.trim()) {
+      setProductResults([]);
+      setProductLoading(false);
+      setMatchedCategory(null);
+      return;
+    }
+    setProductLoading(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(searchText.trim())}`, {
+        signal: controller.signal
+      })
+        .then(res => res.json())
+        .then(data => {
+          setProductResults(Array.isArray(data.products) ? data.products : []);
+          setMatchedCategory(data.category || null);
+          setProductLoading(false);
+        })
+        .catch(() => {
+          setProductResults([]);
+          setMatchedCategory(null);
+          setProductLoading(false);
+        });
+    }, 250);
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+      setProductLoading(false);
+      setMatchedCategory(null);
+    };
+  }, [searchText]);
 
   return (
     <Dialog
@@ -356,7 +385,6 @@ export default function SearchCategoryDialog() {
                 style={{ cursor: 'pointer' }}
                 loading='eager'
                 priority
-                
               />
             </IconButton>
           </motion.div>
@@ -477,120 +505,231 @@ export default function SearchCategoryDialog() {
                 <SkeletonLoader />
               </div>
             </Fade>
-          ) : suggestions.length ? (
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={{
-                hidden: { opacity: 0 },
-                visible: {
-                  opacity: 1,
-                  transition: {
-                    staggerChildren: 0.05
-                  }
-                }
-              }}
-            >
-              <List>
-                {suggestions.map((text, i) => (
-                  <motion.div
-                    key={i}
-                    variants={{
-                      hidden: { opacity: 0, x: -10 },
-                      visible: { opacity: 1, x: 0 }
-                    }}
-                  >
-                    <ListItem
-                      className={searchStyles.suggestionItem}
-                      sx={{ 
-                        cursor: 'pointer',
-                        backgroundColor: 'white',
-                        mb: 1,
-                        borderRadius: '12px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                      }}
-                      onClick={() => handleSuggestionClick(text)}
-                    >
-                      <ListItemIcon sx={{ minWidth: '40px' }}>
-                        <Image
-                          src={`${baseUrl}/assets/icons/thin-search.png`}
-                          width={20}
-                          height={20}
-                          alt="search"
-                          priority
-                        />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <Box display="flex" alignItems="center">
-                            <Typography 
-                              variant="body1" 
-                              component="span" 
-                              sx={{ 
-                                fontFamily: 'Jost',
-                                fontWeight: 500
-                              }}
-                            >
-                              {text}
-                            </Typography>
-                            {isNewItem(text) && (
-                              <span className={searchStyles.newLabel}>New</span>
-                            )}
-                          </Box>
-                        }
-                      />
-                    </ListItem>
-                  </motion.div>
-                ))}
-              </List>
-            </motion.div>
           ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Box 
-                sx={{ 
-                  mt: 8, 
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  p: 2 
-                }}
-              >
-                <Image
-                  src={`${baseUrl}/assets/icons/search.png`}
-                  width={60}
-                  height={60}
-                  alt="search"
-                  style={{ opacity: 0.5, marginBottom: '1rem' }}
-                />
-                <Typography 
-                  variant="body1" 
-                  align="center" 
-                  sx={{ 
-                    fontFamily: 'Jost',
-                    color: '#666',
-                    fontWeight: 500 
+            <>
+              {/* Product search results UI */}
+              {searchText.trim() && productResults.length > 0 && (
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={{
+                    hidden: { opacity: 0 },
+                    visible: {
+                      opacity: 1,
+                      transition: {
+                        staggerChildren: 0.08
+                      }
+                    }
                   }}
                 >
-                  No matching categories found
-                </Typography>
-                <Typography
-                  variant="body2"
-                  align="center"
-                  sx={{
-                    fontFamily: 'Jost',
-                    color: '#888',
-                    mt: 1
+                  {/* <Typography variant="subtitle2" sx={{ color: '#888', fontFamily: 'Jost', fontWeight: 500, mb: 1, ml: 1 }}>
+                    Products
+                  </Typography> */}
+                  <List>
+                    {productResults.map((product, i) => (
+                      <motion.div
+                        key={product._id}
+                        variants={{
+                          hidden: { opacity: 0, x: -10 },
+                          visible: { opacity: 1, x: 0 }
+                        }}
+                      >
+                        <ListItem
+                          className={searchStyles.suggestionItem}
+                          sx={{
+                            cursor: 'pointer',
+                            backgroundColor: 'white',
+                            mb: 1,
+                            borderRadius: '12px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            minHeight: 90,
+                            transition: 'box-shadow 0.2s',
+                            '&:hover': {
+                              boxShadow: '0 4px 16px rgba(0,0,0,0.10)'
+                            }
+                          }}
+                          onClick={() => handleProductClick(product)}
+                        >
+                          <Box sx={{ width: 64, height: 64, borderRadius: 2, overflow: 'hidden', mr: 2, background: '#f7f7f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Image
+                              src={product.images && product.images[0] ? `${baseUrl}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}` : '/images/assets/gifs/helmetloadinggiflandscape2.gif'}
+                              alt={product.name}
+                              width={64}
+                              height={64}
+                              style={{ objectFit: 'cover', borderRadius: 8 }}
+                            />
+                          </Box>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontFamily: 'Jost', fontWeight: 600, color: '#222', fontSize: '1.08rem', lineHeight: 1.2, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                            >
+                              {product.name}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{ fontFamily: 'Jost', color: '#666', fontWeight: 400, fontSize: '0.98rem', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                            >
+                              {product.title}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                              <Typography sx={{ fontWeight: 700, color: '#1a8917', fontFamily: 'Jost', fontSize: '1.05rem', mr: 1 }}>
+                                ₹{product.price}
+                              </Typography>
+                              <Typography sx={{ color: '#888', textDecoration: 'line-through', fontSize: '0.98rem', fontFamily: 'Jost', fontWeight: 400 }}>
+                                ₹{product.MRP}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </ListItem>
+                      </motion.div>
+                    ))}
+                  </List>
+
+                  {/* Matched category - show 'See all (Category)' below products */}
+                  {matchedCategory && (
+                    <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+                      <ListItem
+                        className={searchStyles.suggestionItem}
+                        sx={{
+                          cursor: 'pointer',
+                          backgroundColor: 'white',
+                          mb: 1,
+                          borderRadius: '12px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          minHeight: 64
+                        }}
+                        onClick={() => {
+                          router.push(`/shop/${matchedCategory.pageSlug}`);
+                          handleClose(true);
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 40 }}>
+                          <Image src={`${baseUrl}/assets/icons/thin-search.png`} width={20} height={20} alt="search" />
+                        </ListItemIcon>
+                        <ListItemText primary={<Typography sx={{ fontWeight: 600, fontFamily: 'Jost', color: '#222' }}>{`See all ${matchedCategory.name}`}</Typography>} />
+                      </ListItem>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+              {/* Suggestions UI (show only when input is empty) */}
+              {searchText.trim() === '' && suggestions.length > 0 && (
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={{
+                    hidden: { opacity: 0 },
+                    visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
                   }}
+                  style={{ marginBottom: productResults.length > 0 ? 24 : 0 }}
                 >
-                  Try a different search term
-                </Typography>
-              </Box>
-            </motion.div>
+                  <List>
+                    {suggestions.map((text, i) => (
+                      <motion.div
+                        key={i}
+                        variants={{ hidden: { opacity: 0, x: -10 }, visible: { opacity: 1, x: 0 } }}
+                      >
+                        <ListItem
+                          className={searchStyles.suggestionItem}
+                          sx={{
+                            cursor: 'pointer',
+                            backgroundColor: 'white',
+                            mb: 1,
+                            borderRadius: '12px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                          }}
+                          onClick={() => handleSuggestionClick(text)}
+                        >
+                          <ListItemIcon sx={{ minWidth: '40px' }}>
+                            <Image
+                              src={`${baseUrl}/assets/icons/thin-search.png`}
+                              width={20}
+                              height={20}
+                              alt="search"
+                              priority
+                            />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={
+                              <Box display="flex" alignItems="center">
+                                <Typography
+                                  variant="body1"
+                                  component="span"
+                                  sx={{ fontFamily: 'Jost', fontWeight: 500 }}
+                                >
+                                  {text}
+                                </Typography>
+                                {isNewItem(text) && <span className={searchStyles.newLabel}>New</span>}
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                      </motion.div>
+                    ))}
+                  </List>
+                </motion.div>
+              )}
+              {/* If nothing found or loading */}
+              {searchText.trim() && (productLoading || (suggestions.length === 0 && productResults.length === 0)) && (
+                <>
+                  {productLoading ? (
+                    <SkeletonLoader />
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <Box 
+                        sx={{ 
+                          mt: 8, 
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          p: 2 
+                        }}
+                      >
+                        <Image
+                          src={`${baseUrl}/assets/icons/search.png`}
+                          width={60}
+                          height={60}
+                          alt="search"
+                          style={{ opacity: 0.5, marginBottom: '1rem' }}
+                        />
+                        <Typography 
+                          variant="body1" 
+                          align="center" 
+                          sx={{ 
+                            fontFamily: 'Jost',
+                            color: '#666',
+                            fontWeight: 500 
+                          }}
+                        >
+                          No result found
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          align="center"
+                          sx={{
+                            fontFamily: 'Jost',
+                            color: '#888',
+                            mt: 1
+                          }}
+                        >
+                          Try a different search term
+                        </Typography>
+                      </Box>
+                    </motion.div>
+                  )}
+                </>
+              )}
+            </>
           )}
         </Box>
       </Box>
