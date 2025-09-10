@@ -41,7 +41,7 @@ export async function GET(req) {
                     {
                       text: {
                         query: word,
-                        path: ['title', 'name', 'mainTags'],
+                        path: ['title', 'mainTags', 'searchKeywords'],
                         fuzzy: { maxEdits: 1, prefixLength: 1 },
                         score: { boost: { value: 1.5 } }
                       }
@@ -49,7 +49,7 @@ export async function GET(req) {
                     {
                       wildcard: {
                         query: `*${word}*`,
-                        path: ['title', 'name', 'mainTags'],
+                        path: ['title', 'mainTags', 'searchKeywords'],
                         score: { boost: { value: 1 } }
                       }
                     }
@@ -63,7 +63,7 @@ export async function GET(req) {
               {
                 text: {
                   query: trimmedQuery,
-                  path: ['title', 'name'],
+                  path: ['title'],
                   score: { boost: { value: 3 } },
                   fuzzy: { maxEdits: 1, prefixLength: 1 }
                 }
@@ -71,7 +71,7 @@ export async function GET(req) {
               {
                 text: {
                   query: trimmedQuery,
-                  path: 'mainTags',
+                  path: ['mainTags', 'searchKeywords'],
                   score: { boost: { value: 2 } },
                   fuzzy: { maxEdits: 1 }
                 }
@@ -79,7 +79,7 @@ export async function GET(req) {
               {
                 wildcard: {
                   query: `*${trimmedQuery}*`,
-                  path: ['title', 'name'],
+                  path: ['title'],
                   score: { boost: { value: 1.5 } }
                 }
               }
@@ -131,10 +131,10 @@ export async function GET(req) {
         }
       },
       { $sort: { score: -1 } },
-      // Group by name to ensure unique products
+      // Group by title to ensure unique products (since we removed name)
       {
         $group: {
-          _id: '$name',
+          _id: '$title',
           doc: { $first: '$$ROOT' },
           maxScore: { $max: '$score' }
         }
@@ -145,13 +145,13 @@ export async function GET(req) {
       {
         $project: {
           _id: 1,
-          name: 1,
           title: 1,
           images: 1,
           price: 1,
           MRP: 1,
           pageSlug: 1,
           mainTags: 1,
+          searchKeywords: 1,
           specificCategory: 1,
           specificCategoryVariant: 1,
           hasOptions: { $cond: { if: { $gt: [{ $size: { $ifNull: ['$options', []] } }, 0] }, then: true, else: false } }
@@ -169,8 +169,8 @@ export async function GET(req) {
             ...queryWords.map(word => ({
               $or: [
                 { title: { $regex: word, $options: 'i' } },
-                { name: { $regex: word, $options: 'i' } },
-                { mainTags: { $in: [new RegExp(word, 'i')] } }
+                { mainTags: { $in: [new RegExp(word, 'i')] } },
+                { searchKeywords: { $in: [new RegExp(word, 'i')] } }
               ]
             }))
           ]
@@ -215,7 +215,7 @@ export async function GET(req) {
       },
       {
         $group: {
-          _id: '$name',
+          _id: '$title',
           doc: { $first: '$$ROOT' }
         }
       },
@@ -224,13 +224,13 @@ export async function GET(req) {
       {
         $project: {
           _id: 1,
-          name: 1,
           title: 1,
           images: 1,
           price: 1,
           MRP: 1,
           pageSlug: 1,
           mainTags: 1,
+          searchKeywords: 1,
           specificCategory: 1,
           specificCategoryVariant: 1,
           hasOptions: { $cond: { if: { $gt: [{ $size: { $ifNull: ['$options', []] } }, 0] }, then: true, else: false } }
