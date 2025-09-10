@@ -130,7 +130,7 @@ export default function SearchCategoryDialog() {
     const trackingKey = `${trimmedQuery}:${resultType}:${clickedPageSlug || 'none'}`;
     
     // Check if we've already tracked this exact event recently (within 5 seconds)
-    if (recentTracksRef.current.has(trackingKey)) {
+    if (recentTracksRef.current.has(trackingKey) || clickedPageSlug === null) {
       return;
     }
 
