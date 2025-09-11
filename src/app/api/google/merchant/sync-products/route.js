@@ -15,7 +15,7 @@ export async function GET() {
     await connectToDatabase();
 
     // 2. Initialize API client(s)
-  const useMerchantApi = process.env.USE_MERCHANT_API === 'true';
+  const useMerchantApi =true;
     let contentApi = null;
     if (!useMerchantApi) {
       contentApi = initializeContentApi();
@@ -62,6 +62,7 @@ export async function GET() {
         const entry = batch[i];
         const fd = entry.feedData || {};
         const productId = fd.id;
+        const offerId = productId; // Use productId as offerId
         console.info(`Syncing product ${productId} to Merchant API`);
         const merchantProduct = {
           offerId,
