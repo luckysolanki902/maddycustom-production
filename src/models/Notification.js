@@ -53,7 +53,6 @@ const NotificationSchema = new mongoose.Schema({
       'promotional',
       'custom'
     ],
-    index: true,
   },
 
   // Human-friendly unique name for this notification (requested unique)
@@ -61,7 +60,6 @@ const NotificationSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    index: true,
     trim: true,
   },
   
@@ -207,11 +205,8 @@ const NotificationSchema = new mongoose.Schema({
 
 // Indexes for efficient querying
 NotificationSchema.index({ status: 1, scheduleTime: 1 });
-NotificationSchema.index({ notificationType: 1 });
 NotificationSchema.index({ phoneNumber: 1, notificationType: 1 });
 NotificationSchema.index({ user: 1, notificationType: 1 });
-NotificationSchema.index({ name: 1 }, { unique: true });
-NotificationSchema.index({ dedupeKey: 1 }, { unique: true, sparse: true });
 NotificationSchema.index({ 'info.key': 1, 'info.value': 1 });
 
 // Ensure every selected channel has a corresponding channelStatus row
