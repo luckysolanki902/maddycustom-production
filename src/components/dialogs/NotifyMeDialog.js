@@ -119,8 +119,6 @@ export default function NotifyMeDialog({
         ],
       };
 
-      console.log('NotifyMeDialog: Sending request:', requestBody);
-
       const response = await fetch('/api/notifications', {
         method: 'POST',
         headers: {
@@ -129,9 +127,7 @@ export default function NotifyMeDialog({
         body: JSON.stringify(requestBody),
       });
 
-      console.log('NotifyMeDialog: Response status:', response.status);
       const data = await response.json();
-      console.log('NotifyMeDialog: Response data:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to create notification');
@@ -155,21 +151,24 @@ export default function NotifyMeDialog({
       }, 2000);
 
     } catch (err) {
-      console.log('NotifyMeDialog: Error occurred:', err);
-      console.log('NotifyMeDialog: Error message:', err.message);
-      console.log('NotifyMeDialog: Error stack:', err.stack);
+      console.error('NotifyMeDialog: Error occurred:', err.message);
       
       // Improve error messages for better user experience
       let userFriendlyMessage = 'Something went wrong. Please try again.';
       
-      if (err.message.includes('similar notification is already pending') || 
+      if (err.message.includes('You\'re already set to be notified') || 
           err.message.includes('already exists') ||
-          err.message.includes('duplicate')) {
+          err.message.includes('duplicate') ||
+          err.message.includes('already opted') ||
+          err.message.includes('notification is already pending') ||
+          err.message.includes('similar notification')) {
         userFriendlyMessage = 'You\'re already set to be notified for this item! We\'ll let you know as soon as it\'s back in stock.';
       } else if (err.message.includes('template not found')) {
         userFriendlyMessage = 'Notification service is temporarily unavailable. Please try again later.';
       } else if (err.message.includes('Invalid phone number')) {
         userFriendlyMessage = 'Please enter a valid 10-digit mobile number.';
+      } else if (err.message.includes('Phone number, template name')) {
+        userFriendlyMessage = 'Please fill in all required information.';
       }
       
       setError(userFriendlyMessage);

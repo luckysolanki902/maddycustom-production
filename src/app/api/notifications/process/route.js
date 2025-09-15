@@ -32,6 +32,13 @@ export async function POST(request) {
       );
     }
 
+    if (!notification.template) {
+      return NextResponse.json(
+        { error: 'Notification template not found' },
+        { status: 404 }
+      );
+    }
+
     // Check if channel is enabled for this notification
     if (!notification.channels.includes(channel)) {
       return NextResponse.json(
@@ -84,7 +91,7 @@ export async function POST(request) {
     
     // For restocking notifications, use specific media; otherwise fallback
     if (notification.notificationType === 'restocking' || notification.template.name === 'restocked') {
-      variables.thumbnail = `${cloudfront}/assets/marketing/aisensy-whatsapp-media/restocking-notifications.png`;
+      variables.thumbnail = variables.thumbnail || `${cloudfront}/assets/marketing/aisensy-whatsapp-media/restocking-notifications.png`;
     } else {
       variables.thumbnail = variables.thumbnail || `${cloudfront}/assets/logos/just-helmet.png`;
     }
@@ -143,6 +150,12 @@ export async function POST(request) {
             let media = null;
             if (notification.whatsappParams?.media) {
               media = notification.whatsappParams.media;
+              // Replace variables in media URL if needed
+              if (media.url && typeof media.url === 'string') {
+                for (const [key, value] of Object.entries(variables)) {
+                  media.url = media.url.replace(new RegExp(`{{${key}}}`, 'g'), value || '');
+                }
+              }
             } else if (notification.template.whatsapp.media) {
               media = { ...notification.template.whatsapp.media };
               // Replace template variables in media URL
@@ -155,13 +168,15 @@ export async function POST(request) {
 
             // Prepare buttons - use notification's whatsappParams if available, otherwise template defaults  
             let buttons = [];
-            if (notification.whatsappParams?.buttons) {
+            if (notification.whatsappParams?.buttons && Array.isArray(notification.whatsappParams.buttons)) {
+              // Use buttons from notification's whatsappParams (already processed with variables)
               buttons = notification.whatsappParams.buttons;
             } else if (notification.template.whatsapp.buttons) {
+              // Process template buttons with variable replacement
               buttons = notification.template.whatsapp.buttons.map(button => {
                 const processedButton = { ...button };
                 // Replace variables in button parameters
-                if (button.parameters) {
+                if (button.parameters && Array.isArray(button.parameters)) {
                   processedButton.parameters = button.parameters.map(param => ({
                     ...param,
                     text: param.text ? Object.entries(variables).reduce(
@@ -176,14 +191,14 @@ export async function POST(request) {
 
             // Prepare carousel cards if available
             let carouselCards = [];
-            if (notification.whatsappParams?.carouselCards) {
+            if (notification.whatsappParams?.carouselCards && Array.isArray(notification.whatsappParams.carouselCards)) {
               carouselCards = notification.whatsappParams.carouselCards;
             }
 
             result = await sendWhatsAppMessage({
               user: {
-                _id: notification.user,
-                name: notification.userName,
+                _id: notification.user || notification._id, // Fallback to notification ID if no user
+                name: notification.userName || 'Customer',
                 phoneNumber: notification.phoneNumber,
               },
               campaignName: notification.template.whatsapp.campaignName,
@@ -272,7 +287,11 @@ export async function POST(request) {
     }
 
   } catch (error) {
-    console.error('Error processing notification:', error);
+    console.error('Error processing notification:', {
+      notificationId: body?.notificationId,
+      channel: body?.channel,
+      error: error.message
+    });
     return NextResponse.json(
       { 
         error: 'Internal server error',

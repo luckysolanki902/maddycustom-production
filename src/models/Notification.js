@@ -79,35 +79,8 @@ const NotificationSchema = new mongoose.Schema({
   
   // WhatsApp-specific parameters for dynamic content
   whatsappParams: {
-    templateParams: [String], // Dynamic values for template placeholders
-    media: {
-      url: String,
-      filename: String,
-      type: {
-        type: String,
-        enum: ['image', 'video', 'document'],
-        default: 'image',
-      },
-    },
-    buttons: [{
-      type: {
-        type: String,
-        enum: ['url', 'call', 'quick_reply'],
-      },
-      title: String,
-      url: String,
-      phoneNumber: String,
-      // AiSensy button structure
-      sub_type: String,
-      index: String,
-      parameters: [{
-        type: String,
-        text: String,
-      }],
-    }],
-    carouselCards: [{
-      type: mongoose.Schema.Types.Mixed, // Flexible structure for carousel cards
-    }],
+    type: mongoose.Schema.Types.Mixed, // Completely flexible for AiSensy structures
+    default: {},
   },
   
   // Scheduling
@@ -225,4 +198,7 @@ NotificationSchema.pre('save', function(next) {
   next();
 });
 
+if (mongoose.models.Notification) {
+  delete mongoose.models.Notification;
+}
 module.exports = mongoose.models.Notification || mongoose.model('Notification', NotificationSchema);
