@@ -73,51 +73,65 @@ export default function NotifyMeDialog({
         return `${baseUrl}/assets/logos/just-helmet.png`;
       };
 
+      const requestBody = {
+        phoneNumber: cleanPhone,
+        templateName: 'restocked',
+        notificationType: 'restocking',
+        name: `restock_${product._id}_${selectedOption?._id || 'base'}_${cleanPhone}`,
+        productId: product._id,
+        optionId: selectedOption?._id,
+        channels: ['whatsapp'], // WhatsApp only for restocking
+        variables: {
+          productTitle: product.title || product.name,
+          productUrl: `${window.location.origin}${product.pageSlug}`,
+          cloudfrontUrl: process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL,
+          thumbnail: getThumbnail(),
+          optionDetails: selectedOption?.optionDetails ? 
+            Object.entries(selectedOption.optionDetails).map(([k, v]) => `${k}: ${v}`).join(', ') : 
+            '',
+        },
+        whatsappParams: {
+          templateParams: [product.title || product.name],
+          buttons: [
+            {
+              type: "url",
+              sub_type: "url",
+              index: "0",
+              parameters: [
+                {
+                  type: "text",
+                  text: `${window.location.origin}${product.pageSlug}`
+                }
+              ]
+            }
+          ]
+        },
+        info: [
+          { key: 'productTitle', value: product.title || product.name },
+          { key: 'productSlug', value: product.pageSlug },
+          { key: 'thumbnail', value: getThumbnail() },
+          { key: 'inventoryId', value: selectedOption?.inventoryData?._id || product.inventoryData?._id },
+          { key: 'source', value: 'notify_dialog' },
+          ...(selectedOption ? [
+            { key: 'optionSku', value: selectedOption.sku },
+            { key: 'optionDetails', value: JSON.stringify(selectedOption.optionDetails) }
+          ] : [])
+        ],
+      };
+
+      console.log('NotifyMeDialog: Sending request:', requestBody);
+
       const response = await fetch('/api/notifications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          phoneNumber: cleanPhone,
-          templateName: 'restocked',
-          notificationType: 'restocking',
-          name: `restock_${product._id}_${selectedOption?._id || 'base'}_${cleanPhone}`,
-          productId: product._id,
-          optionId: selectedOption?._id,
-          channels: ['whatsapp'], // WhatsApp only for restocking
-          variables: {
-            productTitle: product.title || product.name,
-            productUrl: `${window.location.origin}${product.pageSlug}`,
-            thumbnail: getThumbnail(),
-            optionDetails: selectedOption?.optionDetails ? 
-              Object.entries(selectedOption.optionDetails).map(([k, v]) => `${k}: ${v}`).join(', ') : 
-              '',
-          },
-          whatsappParams: {
-            variables: [product.title || product.name],
-            buttons: [
-              {
-                type: 'url',
-                url: `${window.location.origin}${product.pageSlug}`
-              }
-            ]
-          },
-          info: [
-            { key: 'productTitle', value: product.title || product.name },
-            { key: 'productSlug', value: product.pageSlug },
-            { key: 'thumbnail', value: getThumbnail() },
-            { key: 'inventoryId', value: selectedOption?.inventoryData?._id || product.inventoryData?._id },
-            { key: 'source', value: 'notify_dialog' },
-            ...(selectedOption ? [
-              { key: 'optionSku', value: selectedOption.sku },
-              { key: 'optionDetails', value: JSON.stringify(selectedOption.optionDetails) }
-            ] : [])
-          ],
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('NotifyMeDialog: Response status:', response.status);
       const data = await response.json();
+      console.log('NotifyMeDialog: Response data:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to create notification');
@@ -141,6 +155,10 @@ export default function NotifyMeDialog({
       }, 2000);
 
     } catch (err) {
+      console.error('NotifyMeDialog: Error occurred:', err);
+      console.error('NotifyMeDialog: Error message:', err.message);
+      console.error('NotifyMeDialog: Error stack:', err.stack);
+      
       // Improve error messages for better user experience
       let userFriendlyMessage = 'Something went wrong. Please try again.';
       
