@@ -100,7 +100,7 @@ export default function NotifyMeDialog({
               parameters: [
                 {
                   type: "text",
-                  text: `${window.location.origin}${product.pageSlug}`
+                  text: `${product.pageSlug}`
                 }
               ]
             }
