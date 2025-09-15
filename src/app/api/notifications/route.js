@@ -12,7 +12,6 @@ export async function POST(request) {
     await connectToDatabase();
     
     const body = await request.json();
-    console.log('📥 Notification API: Received request body:', JSON.stringify(body, null, 2));
     
     const {
       phoneNumber,
@@ -30,23 +29,8 @@ export async function POST(request) {
       dedupeKey,
       info = [],
       whatsappParams = {}, // New field for WhatsApp-specific parameters
-    } = body;
-
-    console.log('📋 Notification API: Parsed fields:', {
-      phoneNumber,
-      templateName,
-      notificationType,
-      name,
-      channels,
-      whatsappParams
-    });    // Validate required fields
+    } = body;    // Validate required fields
     if (!phoneNumber || !templateName || !notificationType || !name) {
-      console.error('❌ Notification API: Missing required fields:', {
-        phoneNumber: !!phoneNumber,
-        templateName: !!templateName,
-        notificationType: !!notificationType,
-        name: !!name
-      });
       return NextResponse.json(
         { error: 'Phone number, template name, notification type, and name are required' },
         { status: 400 }
@@ -56,7 +40,6 @@ export async function POST(request) {
     // Validate phone number format
     const phoneRegex = /^[0-9]{10,15}$/;
     if (!phoneRegex.test(phoneNumber.replace(/\D/g, ''))) {
-      console.error('❌ Notification API: Invalid phone number:', phoneNumber);
       return NextResponse.json(
         { error: 'Invalid phone number format' },
         { status: 400 }
@@ -64,23 +47,12 @@ export async function POST(request) {
     }
 
     // Find the notification template
-    console.log('🔍 Notification API: Looking for template:', templateName);
     const template = await NotificationTemplate.findOne({ 
       name: templateName, 
       active: true 
     });
     
-    console.log('📋 Notification API: Found template:', template ? 'YES' : 'NO');
-    if (template) {
-      console.log('📋 Template details:', {
-        name: template.name,
-        whatsappEnabled: template.whatsapp?.enabled,
-        smsEnabled: template.sms?.enabled
-      });
-    }
-    
     if (!template) {
-      console.error('❌ Notification API: Template not found:', templateName);
       return NextResponse.json(
         { error: 'Notification template not found or inactive' },
         { status: 404 }
@@ -195,15 +167,54 @@ export async function POST(request) {
         ...(productId ? [{ key: 'productId', value: productId }] : []),
         ...(optionId ? [{ key: 'optionId', value: optionId }] : []),
       ],
-      // Add WhatsApp-specific parameters if provided
-      whatsappParams: whatsappParams,
     };
+
+    // Add WhatsApp-specific parameters if provided
+    if (whatsappParams && Object.keys(whatsappParams).length > 0) {
+      // Ensure whatsappParams is properly structured
+      const sanitizedWhatsappParams = {};
+      
+      if (whatsappParams.templateParams) {
+        sanitizedWhatsappParams.templateParams = Array.isArray(whatsappParams.templateParams) 
+          ? whatsappParams.templateParams 
+          : [whatsappParams.templateParams];
+      }
+      
+      if (whatsappParams.media) {
+        sanitizedWhatsappParams.media = whatsappParams.media;
+      }
+      
+      if (whatsappParams.buttons) {
+        sanitizedWhatsappParams.buttons = Array.isArray(whatsappParams.buttons) 
+          ? whatsappParams.buttons 
+          : [whatsappParams.buttons];
+      }
+      
+      if (whatsappParams.carouselCards) {
+        sanitizedWhatsappParams.carouselCards = Array.isArray(whatsappParams.carouselCards) 
+          ? whatsappParams.carouselCards 
+          : [whatsappParams.carouselCards];
+      }
+      
+      notificationData.whatsappParams = sanitizedWhatsappParams;
+    }
 
     // Add optional fields
     if (userId) notificationData.user = userId;
     if (dedupeKey) notificationData.dedupeKey = dedupeKey;
 
     const notification = new Notification(notificationData);
+    
+    // Validate before saving
+    const validationError = notification.validateSync();
+    if (validationError) {
+      console.error('Notification validation failed:', validationError.message);
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.message },
+        { status: 400 }
+      );
+    }
+    
     await notification.save();
 
     // Populate the response with template info
@@ -218,8 +229,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('❌ Notification API: Error creating notification:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('Notification API error:', error.message);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }
