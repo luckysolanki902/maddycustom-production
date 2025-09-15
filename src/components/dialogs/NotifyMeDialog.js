@@ -155,9 +155,9 @@ export default function NotifyMeDialog({
       }, 2000);
 
     } catch (err) {
-      console.error('NotifyMeDialog: Error occurred:', err);
-      console.error('NotifyMeDialog: Error message:', err.message);
-      console.error('NotifyMeDialog: Error stack:', err.stack);
+      console.log('NotifyMeDialog: Error occurred:', err);
+      console.log('NotifyMeDialog: Error message:', err.message);
+      console.log('NotifyMeDialog: Error stack:', err.stack);
       
       // Improve error messages for better user experience
       let userFriendlyMessage = 'Something went wrong. Please try again.';

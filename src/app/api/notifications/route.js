@@ -12,6 +12,8 @@ export async function POST(request) {
     await connectToDatabase();
     
     const body = await request.json();
+    console.log('📥 Notification API: Received request body:', JSON.stringify(body, null, 2));
+    
     const {
       phoneNumber,
       email,
@@ -23,15 +25,28 @@ export async function POST(request) {
       variables = {},
       productId,
       optionId,
-  channels = [], // Empty default, we'll set based on notification type
+      channels = [], // Empty default, we'll set based on notification type
       scheduleDelayMinutes = 0,
       dedupeKey,
       info = [],
       whatsappParams = {}, // New field for WhatsApp-specific parameters
     } = body;
 
-    // Validate required fields
+    console.log('📋 Notification API: Parsed fields:', {
+      phoneNumber,
+      templateName,
+      notificationType,
+      name,
+      channels,
+      whatsappParams
+    });    // Validate required fields
     if (!phoneNumber || !templateName || !notificationType || !name) {
+      console.error('❌ Notification API: Missing required fields:', {
+        phoneNumber: !!phoneNumber,
+        templateName: !!templateName,
+        notificationType: !!notificationType,
+        name: !!name
+      });
       return NextResponse.json(
         { error: 'Phone number, template name, notification type, and name are required' },
         { status: 400 }
@@ -41,6 +56,7 @@ export async function POST(request) {
     // Validate phone number format
     const phoneRegex = /^[0-9]{10,15}$/;
     if (!phoneRegex.test(phoneNumber.replace(/\D/g, ''))) {
+      console.error('❌ Notification API: Invalid phone number:', phoneNumber);
       return NextResponse.json(
         { error: 'Invalid phone number format' },
         { status: 400 }
@@ -48,12 +64,23 @@ export async function POST(request) {
     }
 
     // Find the notification template
+    console.log('🔍 Notification API: Looking for template:', templateName);
     const template = await NotificationTemplate.findOne({ 
       name: templateName, 
       active: true 
     });
     
+    console.log('📋 Notification API: Found template:', template ? 'YES' : 'NO');
+    if (template) {
+      console.log('📋 Template details:', {
+        name: template.name,
+        whatsappEnabled: template.whatsapp?.enabled,
+        smsEnabled: template.sms?.enabled
+      });
+    }
+    
     if (!template) {
+      console.error('❌ Notification API: Template not found:', templateName);
       return NextResponse.json(
         { error: 'Notification template not found or inactive' },
         { status: 404 }
@@ -191,9 +218,10 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('Error creating notification:', error);
+    console.error('❌ Notification API: Error creating notification:', error);
+    console.error('❌ Error stack:', error.stack);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }
