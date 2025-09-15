@@ -100,7 +100,7 @@ export default function NotifyMeDialog({
               parameters: [
                 {
                   type: "text",
-                  text: `${product.pageSlug}`
+                  text: product.pageSlug.startsWith('/') ? product.pageSlug : `/${product.pageSlug}`
                 }
               ]
             }
