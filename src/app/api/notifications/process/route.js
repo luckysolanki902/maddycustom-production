@@ -77,7 +77,17 @@ export async function POST(request) {
     
     // Ensure we have required variables with fallbacks
     variables.productTitle = variables.productTitle || variables.productName || 'Product';
-    variables.thumbnail = variables.thumbnail || `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/logos/just-helmet.png`;
+    
+    // Set CloudFront URL for media and thumbnail handling
+    const cloudfront = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '';
+    variables.cloudfrontUrl = cloudfront;
+    
+    // For restocking notifications, use specific media; otherwise fallback
+    if (notification.notificationType === 'restocking' || notification.template.name === 'restocked') {
+      variables.thumbnail = `${cloudfront}/assets/marketing/aisensy-whatsapp-media/restocking-notifications.png`;
+    } else {
+      variables.thumbnail = variables.thumbnail || `${cloudfront}/assets/logos/just-helmet.png`;
+    }
 
     let result = { success: false, message: 'Unknown error' };
 
@@ -119,18 +129,55 @@ export async function POST(request) {
 
         case 'whatsapp':
           if (notification.template.whatsapp?.enabled) {
-            // Prepare template parameters
-            const templateParams = notification.template.whatsapp.templateParams?.map(
-              param => variables[param] || ''
-            ) || [];
+            // Prepare template parameters - use notification's whatsappParams if available, otherwise template defaults
+            let templateParams = [];
+            if (notification.whatsappParams?.templateParams) {
+              templateParams = notification.whatsappParams.templateParams;
+            } else if (notification.template.whatsapp.templateParams) {
+              templateParams = notification.template.whatsapp.templateParams.map(
+                param => variables[param] || ''
+              );
+            }
 
-            // Prepare media with thumbnail
-            let media = notification.template.whatsapp.media;
-            if (media && media.url && media.url.includes('{{thumbnail}}')) {
-              media = {
-                ...media,
-                url: variables.thumbnail
-              };
+            // Prepare media - use notification's whatsappParams if available, otherwise template defaults
+            let media = null;
+            if (notification.whatsappParams?.media) {
+              media = notification.whatsappParams.media;
+            } else if (notification.template.whatsapp.media) {
+              media = { ...notification.template.whatsapp.media };
+              // Replace template variables in media URL
+              if (media.url) {
+                for (const [key, value] of Object.entries(variables)) {
+                  media.url = media.url.replace(new RegExp(`{{${key}}}`, 'g'), value || '');
+                }
+              }
+            }
+
+            // Prepare buttons - use notification's whatsappParams if available, otherwise template defaults  
+            let buttons = [];
+            if (notification.whatsappParams?.buttons) {
+              buttons = notification.whatsappParams.buttons;
+            } else if (notification.template.whatsapp.buttons) {
+              buttons = notification.template.whatsapp.buttons.map(button => {
+                const processedButton = { ...button };
+                // Replace variables in button parameters
+                if (button.parameters) {
+                  processedButton.parameters = button.parameters.map(param => ({
+                    ...param,
+                    text: param.text ? Object.entries(variables).reduce(
+                      (text, [key, value]) => text.replace(new RegExp(`{{${key}}}`, 'g'), value || ''),
+                      param.text
+                    ) : param.text
+                  }));
+                }
+                return processedButton;
+              });
+            }
+
+            // Prepare carousel cards if available
+            let carouselCards = [];
+            if (notification.whatsappParams?.carouselCards) {
+              carouselCards = notification.whatsappParams.carouselCards;
             }
 
             result = await sendWhatsAppMessage({
@@ -142,7 +189,8 @@ export async function POST(request) {
               campaignName: notification.template.whatsapp.campaignName,
               templateParams,
               media,
-              buttons: notification.template.whatsapp.buttons,
+              buttons,
+              carouselCards,
             });
           } else {
             result = { success: false, message: 'WhatsApp not enabled for this template' };

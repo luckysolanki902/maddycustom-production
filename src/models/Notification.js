@@ -79,6 +79,39 @@ const NotificationSchema = new mongoose.Schema({
     required: true,
   }],
   
+  // WhatsApp-specific parameters for dynamic content
+  whatsappParams: {
+    templateParams: [String], // Dynamic values for template placeholders
+    media: {
+      url: String,
+      filename: String,
+      type: {
+        type: String,
+        enum: ['image', 'video', 'document'],
+        default: 'image',
+      },
+    },
+    buttons: [{
+      type: {
+        type: String,
+        enum: ['url', 'call', 'quick_reply'],
+      },
+      title: String,
+      url: String,
+      phoneNumber: String,
+      // AiSensy button structure
+      sub_type: String,
+      index: String,
+      parameters: [{
+        type: String,
+        text: String,
+      }],
+    }],
+    carouselCards: [{
+      type: mongoose.Schema.Types.Mixed, // Flexible structure for carousel cards
+    }],
+  },
+  
   // Scheduling
   scheduleTime: {
     type: Date,

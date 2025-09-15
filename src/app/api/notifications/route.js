@@ -23,10 +23,11 @@ export async function POST(request) {
       variables = {},
       productId,
       optionId,
-      channels = ['sms'], // Default to SMS
+      channels = [], // Empty default, we'll set based on notification type
       scheduleDelayMinutes = 0,
       dedupeKey,
       info = [],
+      whatsappParams = {}, // New field for WhatsApp-specific parameters
     } = body;
 
     // Validate required fields
@@ -57,6 +58,26 @@ export async function POST(request) {
         { error: 'Notification template not found or inactive' },
         { status: 404 }
       );
+    }
+
+    // Set default channels based on notification type and template capabilities
+    let defaultChannels = [];
+    if (channels.length === 0) {
+      // For restocking notifications, prefer WhatsApp only
+      if (notificationType === 'restocking' || templateName === 'restocked') {
+        if (template.whatsapp?.enabled) {
+          defaultChannels = ['whatsapp'];
+        }
+      } else {
+        // For other notifications, use SMS as fallback, then WhatsApp
+        if (template.sms?.enabled) {
+          defaultChannels.push('sms');
+        }
+        if (template.whatsapp?.enabled) {
+          defaultChannels.push('whatsapp');
+        }
+      }
+      channels = defaultChannels;
     }
 
     // Validate channels against template capabilities
@@ -141,10 +162,13 @@ export async function POST(request) {
           key: item.key,
           value: item.value
         })),
+        { key: 'createdVia', value: 'api' },
         // Add productId and optionId to info array if provided
         ...(productId ? [{ key: 'productId', value: productId }] : []),
         ...(optionId ? [{ key: 'optionId', value: optionId }] : []),
       ],
+      // Add WhatsApp-specific parameters if provided
+      whatsappParams: whatsappParams,
     };
 
     // Add optional fields
