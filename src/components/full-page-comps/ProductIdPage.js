@@ -258,8 +258,18 @@ export default function ProductIdPage({
       ? product.inventoryData.availableQuantity
       : null;
 
-  const isOutOfStock =
-    optionInventory !== null ? optionInventory <= 0 : productInventory !== null ? productInventory <= 0 : false; // If no inventory data, assume out of stock
+  // Treat on-demand categories (like Wraps) as always in stock
+  const isOnDemand = useMemo(() => {
+    return (
+      category?.inventoryMode === 'on-demand' ||
+      (typeof product?.category === 'string' && product.category.toLowerCase() === 'wraps') ||
+      (typeof product?.subCategory === 'string' && product.subCategory.toLowerCase().includes('wrap'))
+    );
+  }, [category?.inventoryMode, product?.category, product?.subCategory]);
+
+  const rawIsOutOfStock =
+    optionInventory !== null ? optionInventory <= 0 : productInventory !== null ? productInventory <= 0 : false;
+  const isOutOfStock = isOnDemand ? false : rawIsOutOfStock; // On-demand products are never out of stock
 
   // --- FIRE THE viewContent PIXEL ONCE ---
   useEffect(() => {
@@ -485,21 +495,29 @@ export default function ProductIdPage({
 
                 {/* Render options using OptionSelector */}
                 {options &&
-                  options.some(
-                    opt =>
-                      opt.optionDetails &&
-                      Object.keys(opt.optionDetails).length > 0 &&
-                      opt.inventoryData &&
-                      opt.inventoryData.availableQuantity > 0
+                  (
+                    // For on-demand categories, don't require inventory to show options
+                    (isOnDemand && options.some(opt => opt.optionDetails && Object.keys(opt.optionDetails).length > 0)) ||
+                    (!isOnDemand && options.some(
+                      opt =>
+                        opt.optionDetails &&
+                        Object.keys(opt.optionDetails).length > 0 &&
+                        opt.inventoryData &&
+                        opt.inventoryData.availableQuantity > 0
+                    ))
                   ) && (
                     <OptionSelector
-                      options={options.filter(
-                        opt =>
-                          opt.optionDetails &&
-                          Object.keys(opt.optionDetails).length > 0 &&
-                          opt.inventoryData &&
-                          opt.inventoryData.availableQuantity > 0
-                      )}
+                      options={isOnDemand
+                        ? options.filter(
+                            opt => opt.optionDetails && Object.keys(opt.optionDetails).length > 0
+                          )
+                        : options.filter(
+                            opt =>
+                              opt.optionDetails &&
+                              Object.keys(opt.optionDetails).length > 0 &&
+                              opt.inventoryData &&
+                              opt.inventoryData.availableQuantity > 0
+                          )}
                       selectedOption={selectedOption}
                       handleOptionChange={handleColorChange}
                       optionLabel={optionLabel}

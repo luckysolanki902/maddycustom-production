@@ -61,13 +61,28 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
 
   // Helper to decide which image to show and stock status (same logic as ProductCard, adapted for hasVariants=null short-circuit)
   const getDisplayImage = (product) => {
-    // Before cache resolves or when variants exist, show as in-stock
-    let outOfStock = (hasVariants === null || hasVariants === true)
+    // Treat on-demand categories as always in stock (e.g., Wraps)
+    const isOnDemand = (
+      product?.category?.inventoryMode === 'on-demand' ||
+      product?.inventoryMode === 'on-demand' ||
+      (typeof product?.category === 'string' && product.category.toLowerCase() === 'wraps') ||
+      (typeof product?.subCategory === 'string' && product.subCategory.toLowerCase().includes('wrap'))
+    );
+
+    // Before cache resolves or when variants exist, show as in-stock. Avoid using product.category.available if category is a string
+    const categoryAvailable = (product?.category && typeof product.category === 'object')
+      ? (product.category.available !== false)
+      : true;
+    const variantAvailable = product?.variantDetails ? (product.variantDetails.available !== false) : true;
+
+    let outOfStock = isOnDemand
       ? false
-      : (!product?.variantDetails?.available || !product?.category?.available);
+      : ((hasVariants === null || hasVariants === true)
+          ? false
+          : (!(variantAvailable && categoryAvailable)));
 
     if (product.images && product.images.length > 0) {
-      if (hasVariants === false) {
+      if (!isOnDemand && hasVariants === false) {
         outOfStock = outOfStock || product.inventoryData?.availableQuantity === 0;
       }
       return { imageUrl: product.images[0], outOfStock };
@@ -76,7 +91,7 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
     if (product.options && product.options.length > 0) {
       for (const option of product.options) {
         if (option.images && option.images.length > 0) {
-          if (hasVariants === false) {
+          if (!isOnDemand && hasVariants === false) {
             outOfStock = outOfStock || option.inventoryData?.availableQuantity === 0;
           }
           return { imageUrl: option.images[0], outOfStock };
@@ -84,7 +99,7 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
       }
     }
 
-    return { imageUrl: null, outOfStock: hasVariants === false };
+    return { imageUrl: null, outOfStock: isOnDemand ? false : (hasVariants === false) };
   };
 
   // Handle card click to redirect to product page
