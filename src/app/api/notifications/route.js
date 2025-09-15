@@ -23,7 +23,7 @@ export async function POST(request) {
       variables = {},
       productId,
       optionId,
-      channels = [], // Empty default, we'll set based on notification type
+  channels = [], // Empty default, we'll set based on notification type
       scheduleDelayMinutes = 0,
       dedupeKey,
       info = [],
@@ -61,8 +61,9 @@ export async function POST(request) {
     }
 
     // Set default channels based on notification type and template capabilities
+    let resolvedChannels = channels;
     let defaultChannels = [];
-    if (channels.length === 0) {
+    if (resolvedChannels.length === 0) {
       // For restocking notifications, prefer WhatsApp only
       if (notificationType === 'restocking' || templateName === 'restocked') {
         if (template.whatsapp?.enabled) {
@@ -77,18 +78,18 @@ export async function POST(request) {
           defaultChannels.push('whatsapp');
         }
       }
-      channels = defaultChannels;
+      resolvedChannels = defaultChannels;
     }
 
     // Validate channels against template capabilities
     const enabledChannels = [];
-    if (channels.includes('sms') && template.sms?.enabled) {
+    if (resolvedChannels.includes('sms') && template.sms?.enabled) {
       enabledChannels.push('sms');
     }
-    if (channels.includes('whatsapp') && template.whatsapp?.enabled) {
+    if (resolvedChannels.includes('whatsapp') && template.whatsapp?.enabled) {
       enabledChannels.push('whatsapp');
     }
-    if (channels.includes('email') && template.email?.enabled && email) {
+    if (resolvedChannels.includes('email') && template.email?.enabled && email) {
       enabledChannels.push('email');
     }
 
