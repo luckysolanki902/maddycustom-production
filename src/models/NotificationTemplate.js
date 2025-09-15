@@ -52,6 +52,11 @@ const NotificationTemplateSchema = new mongoose.Schema({
     media: {
       url: String,
       filename: String,
+      type: {
+        type: String,
+        enum: ['image', 'video', 'document'],
+        default: 'image',
+      },
     },
     buttons: [{
       type: {
@@ -61,7 +66,25 @@ const NotificationTemplateSchema = new mongoose.Schema({
       title: String,
       url: String,
       phoneNumber: String,
+      // AiSensy button structure
+      sub_type: String,
+      index: String,
+      parameters: [{
+        type: String,
+        text: String,
+      }],
     }],
+    // Support for carousel messages
+    carouselSupport: {
+      type: Boolean,
+      default: false,
+    },
+    carouselTemplate: {
+      cardCount: Number,
+      cardFields: [{
+        type: String, // e.g., 'productTitle', 'productImage', 'productPrice'
+      }],
+    },
   },
   // Email template
   email: {

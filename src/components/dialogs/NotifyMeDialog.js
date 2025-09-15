@@ -80,12 +80,12 @@ export default function NotifyMeDialog({
         },
         body: JSON.stringify({
           phoneNumber: cleanPhone,
-          templateName: 'restocking_alert',
+          templateName: 'restocked',
           notificationType: 'restocking',
           name: `restock_${product._id}_${selectedOption?._id || 'base'}_${cleanPhone}`,
           productId: product._id,
           optionId: selectedOption?._id,
-          channels: ['sms', 'whatsapp'], // Default both channels
+          channels: ['whatsapp'], // WhatsApp only for restocking
           variables: {
             productTitle: product.title || product.name,
             productUrl: `${window.location.origin}${product.pageSlug}`,
@@ -93,6 +93,15 @@ export default function NotifyMeDialog({
             optionDetails: selectedOption?.optionDetails ? 
               Object.entries(selectedOption.optionDetails).map(([k, v]) => `${k}: ${v}`).join(', ') : 
               '',
+          },
+          whatsappParams: {
+            variables: [product.title || product.name],
+            buttons: [
+              {
+                type: 'url',
+                url: `${window.location.origin}${product.pageSlug}`
+              }
+            ]
           },
           info: [
             { key: 'productTitle', value: product.title || product.name },
