@@ -299,7 +299,7 @@ export default function AddToCartButton({
   };
 
   const handleNotifySuccess = () => {
-    setShowNotifyDialog(false);
+    // Don't close the dialog here - let the user close it manually with the "Done" button
     // Success message is already handled within the NotifyMeDialog component
   };
 
@@ -462,7 +462,7 @@ export default function AddToCartButton({
             {isSubscribedToNotification ? (
               <>
                 <CheckCircleIcon style={{ fontSize: '1rem' }} />
-                <span>Notified</span>
+                <span>Notify Me</span>
               </>
             ) : (
               <>
@@ -576,7 +576,7 @@ export default function AddToCartButton({
             {isSubscribedToNotification ? (
               <>
                 <CheckCircleIcon style={{ fontSize: '1rem' }} />
-                <span>Notified</span>
+                <span>Notify Me</span>
               </>
             ) : (
               <>

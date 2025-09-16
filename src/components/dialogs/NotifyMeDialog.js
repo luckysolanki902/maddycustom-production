@@ -89,7 +89,13 @@ export default function NotifyMeDialog({
     }
   }, [isAlreadySubscribed, open]);
 
-  const handleSubmit = async () => {
+    const handleDoneClick = () => {
+    onClose();
+    setSuccess('');
+    setPhoneNumber('');
+  };
+
+  const handleFormSubmit = async (e) => {
     // If already subscribed, just show success
     if (isAlreadySubscribed) {
       setSuccess('You\'re already set to be notified for this item!');
@@ -200,12 +206,7 @@ export default function NotifyMeDialog({
         onSuccess(data.notification);
       }
 
-      // Close dialog after 2 seconds
-      setTimeout(() => {
-        onClose();
-        setSuccess('');
-        setPhoneNumber('');
-      }, 2000);
+      // Don't close automatically - let user click "Done" button
 
     } catch (err) {
       // Check if this is an "already subscribed" case first (not a real error)
@@ -235,12 +236,12 @@ export default function NotifyMeDialog({
           onSuccess({ message: 'Already subscribed' });
         }
         
-        // Close dialog after 2 seconds
+        // Close dialog after 4 seconds (longer to read the message)
         setTimeout(() => {
           onClose();
           setSuccess('');
           setPhoneNumber('');
-        }, 2000);
+        }, 4000);
         
         return; // Exit early, don't treat as error
       }
@@ -446,7 +447,7 @@ export default function NotifyMeDialog({
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && phoneNumber.length === 10 && !loading && !success) {
-                    handleSubmit();
+                    handleFormSubmit();
                   }
                 }}
                 style={{
@@ -483,7 +484,7 @@ export default function NotifyMeDialog({
 
             {/* Submit Button */}
             <Button
-              onClick={handleSubmit}
+              onClick={handleFormSubmit}
               disabled={loading || success || phoneNumber.length !== 10}
               sx={{
                 borderRadius: '16px',
@@ -519,6 +520,37 @@ export default function NotifyMeDialog({
               {loading ? 'Setting up...' : success ? 'Done!' : 'Notify Me'}
             </Button>
           </Box>
+          )}
+
+          {/* Success State Action Button */}
+          {success && (
+            <Button
+              onClick={handleDoneClick}
+              sx={{
+                borderRadius: '16px',
+                padding: '12px 24px',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                fontFamily: 'Jost, sans-serif',
+                background: 'rgba(76, 175, 80, 0.1)',
+                color: '#4caf50',
+                border: '2px solid rgba(76, 175, 80, 0.2)',
+                cursor: 'pointer',
+                textTransform: 'none',
+                minWidth: '120px',
+                '&:hover': {
+                  background: 'rgba(76, 175, 80, 0.15)',
+                  borderColor: 'rgba(76, 175, 80, 0.3)',
+                  transform: 'translateY(-1px)',
+                },
+                '&:active': {
+                  transform: 'translateY(0px)',
+                },
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Done
+            </Button>
           )}
         </Box>
       </DialogContent>

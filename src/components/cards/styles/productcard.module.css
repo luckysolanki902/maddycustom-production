@@ -171,7 +171,7 @@
 }
 
 .outOfStockOverlay > span {
-  background: rgba(45, 45, 45, 0.9);
+  background: #e53935;
   color: white;
   padding: 2px 8px;
   border-radius: 12px;
