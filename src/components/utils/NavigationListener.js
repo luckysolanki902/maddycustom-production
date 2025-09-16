@@ -1,0 +1,24 @@
+'use client';
+
+import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { useDispatch } from 'react-redux';
+import { closeAllDialogs } from '@/store/slices/uiSlice';
+import { setLoginDialogShown } from '@/store/slices/orderFormSlice';
+
+/**
+ * NavigationListener - Automatically closes all open drawers/dialogs when navigation occurs
+ * This ensures a clean UI state when users navigate between pages
+ */
+export default function NavigationListener() {
+  const pathname = usePathname();
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    // Close all dialogs/drawers whenever the pathname changes
+    dispatch(closeAllDialogs());
+    dispatch(setLoginDialogShown(false));
+  }, [pathname, dispatch]);
+
+  return null; // This component doesn't render anything
+}
