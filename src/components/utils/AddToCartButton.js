@@ -11,9 +11,13 @@ import AddIcon from "@mui/icons-material/Add";
 import { addItem, incrementQuantity, decrementQuantity, removeItem, setDefaultWrapFinish } from "../../store/slices/cartSlice";
 import { openCartDrawer, openRecommendationDrawer, markRecommendationDrawerSeen } from "../../store/slices/uiSlice";
 import { setVariantsCache, setPendingRequest, clearPendingRequest, removeExpiredCache } from "../../store/slices/variantsSlice";
+import { selectIsSubscribedToNotification } from "../../store/slices/notificationSlice";
 import { addToCart as trackAddToCart } from "@/lib/metadata/facebookPixels";
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SimilarProductsToast from "../notifications/SimilarProductsToast";
+import NotifyMeDialog from "../dialogs/NotifyMeDialog";
 import { Dialog, DialogContent, Box, Typography, Divider, Button, Checkbox, FormControlLabel, Skeleton, Chip, IconButton, CircularProgress } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { setPageSlug } from "../../store/slices/variantPreferenceSlice";
@@ -72,7 +76,8 @@ export default function AddToCartButton({
   hideRecommendationPopup = false,
   showOnlyChooseVariants = false,
   disableRecommendationTrigger = false,
-  flexResponsiveness = false
+  flexResponsiveness = false,
+  disableNotifyMe = false // New prop to disable notify functionality for POD items
 }) {
   // Use custom hook to classify pageType if not provided
   const pageType = usePageType();
@@ -87,6 +92,9 @@ export default function AddToCartButton({
   const cacheTimestamps = useSelector(state => state.variants.lastUpdated);
   const pendingRequests = useSelector(state => state.variants.pendingRequests);
 
+  // Check if user is already subscribed to notifications for this product
+  const isSubscribedToNotification = useSelector(selectIsSubscribedToNotification(product, product.selectedOption));
+
   // State to track last action for animation
   const [lastAction, setLastAction] = useState(null); // 'increment' or 'decrement'
 
@@ -99,7 +107,16 @@ export default function AddToCartButton({
   const [hasVariants, setHasVariants] = useState(false);
   const [showVariantDialog, setShowVariantDialog] = useState(false);
   const [isLoadingVariants, setIsLoadingVariants] = useState(true);
+  
+  // Notify me dialog state
+  const [showNotifyDialog, setShowNotifyDialog] = useState(false);
+  
   const router = useRouter();
+  
+  // Debug log for notify dialog state
+  if (showNotifyDialog) {
+    console.log('showNotifyDialog state:', showNotifyDialog);
+  }
   // React Spring animation for quantity
   const props = useSpring({
     // Animate scale and color based on lastAction
@@ -242,6 +259,50 @@ export default function AddToCartButton({
     setShowSimilarToast(false);
   };
 
+  // Helper function to check if product is out of stock
+  const isProductOutOfStock = () => {
+    // If notify functionality is disabled (POD items), never show as out of stock
+    if (disableNotifyMe) {
+      return false;
+    }
+    
+    // Check if variant/category is not available
+    if (!product?.variantDetails?.available || !product?.category?.available) {
+      return true;
+    }
+    
+    // Check inventory - using same logic as AddToCartButton's inventory management
+    if (inventoryData && inventoryData.availableQuantity <= 0) {
+      return true;
+    }
+    
+    // Check if maxAllowed is 0 (no stock available)
+    if (maxAllowed === 0) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Notify me handlers
+  const handleNotifyMe = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    console.log('Notify button clicked, opening dialog...');
+    setShowNotifyDialog(true);
+  };
+
+  const handleNotifyDialogClose = () => {
+    setShowNotifyDialog(false);
+  };
+
+  const handleNotifySuccess = () => {
+    setShowNotifyDialog(false);
+    // Success message is already handled within the NotifyMeDialog component
+  };
+
   // Variant selection handlers
   const handleVariantClick = pageSlug => {
     const category = product.category;
@@ -367,32 +428,76 @@ export default function AddToCartButton({
   }
 
   if ((!enableVariantSelection || !hasVariants) && cartItem) {
+    const outOfStock = isProductOutOfStock();
+    
     return (
       <div style={{ display: 'flex', flexDirection: flexResponsiveness ? 'row' : 'column', alignItems: flexResponsiveness ? 'center' : 'flex-start', justifyContent: flexResponsiveness ? 'flex-start' : 'flex-start', gap: flexResponsiveness ? '1rem' : '0' }} onClick={e => e.stopPropagation()}>
-        <div className={mainClasses} style={{ marginBottom: showRecoButton ? '.45rem' : 0 }}>
-          <button onClick={handleDecrement} className={styles.decrement}>
-            <RemoveIcon fontSize="1rem" />
-          </button>
-          <animated.div
-            onClick={e => e.stopPropagation()}
-            style={{
-              transform: props.scale.to(s => `scale(${s})`),
-              color: props.color,
-              opacity: props.opacity,
-            }}
-            className={styles.quantity}
-          >
-            {cartItem.quantity}
-          </animated.div>
+        {outOfStock ? (
+          // If product is now out of stock, show notify button instead of quantity controls
           <button
-            onClick={handleIncrement}
-            className={styles.increment}
-            disabled={isLimited && currentQuantity >= maxAllowed}
-            title={isLimited && currentQuantity >= maxAllowed ? "Maximum quantity reached for this item" : ""}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!isSubscribedToNotification) {
+                handleNotifyMe(e);
+              }
+            }}
+            className={`${styles.main} ${styles.notifyButton}`}
+            style={{ 
+              outline: "none", 
+              border: "none",
+              background: isSubscribedToNotification 
+                ? 'linear-gradient(90deg, #4caf50, #66bb6a)' 
+                : 'linear-gradient(90deg, #2d2d2d, #424242)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              justifyContent: 'center',
+              marginBottom: showRecoButton ? '.45rem' : 0,
+              cursor: isSubscribedToNotification ? 'default' : 'pointer',
+              opacity: isSubscribedToNotification ? 0.9 : 1
+            }}
           >
-            <AddIcon fontSize="1rem" />
+            {isSubscribedToNotification ? (
+              <>
+                <CheckCircleIcon style={{ fontSize: '1rem' }} />
+                <span>Notified</span>
+              </>
+            ) : (
+              <>
+                <NotificationsIcon style={{ fontSize: '1rem' }} />
+                <span>Notify Me</span>
+              </>
+            )}
           </button>
-        </div>
+        ) : (
+          // Show quantity controls if still in stock
+          <div className={mainClasses} style={{ marginBottom: showRecoButton ? '.45rem' : 0 }}>
+            <button onClick={handleDecrement} className={styles.decrement}>
+              <RemoveIcon fontSize="1rem" />
+            </button>
+            <animated.div
+              onClick={e => e.stopPropagation()}
+              style={{
+                transform: props.scale.to(s => `scale(${s})`),
+                color: props.color,
+                opacity: props.opacity,
+              }}
+              className={styles.quantity}
+            >
+              {cartItem.quantity}
+            </animated.div>
+            <button
+              onClick={handleIncrement}
+              className={styles.increment}
+              disabled={isLimited && currentQuantity >= maxAllowed}
+              title={isLimited && currentQuantity >= maxAllowed ? "Maximum quantity reached for this item" : ""}
+            >
+              <AddIcon fontSize="1rem" />
+            </button>
+          </div>
+        )}
         {showRecoButton && (
           <button
             data-clarity="see-matching-picks"
@@ -436,17 +541,61 @@ export default function AddToCartButton({
 
   if (showOnlyChooseVariants && (!enableVariantSelection || !hasVariants)) return null;
 
+  // Check if product is out of stock
+  const outOfStock = isProductOutOfStock();
+
   return (
     <>
-      <div style={{ display: 'flex', flexDirection: flexResponsiveness ? 'row' : 'column', alignItems: flexResponsiveness ? 'center' : 'flex-start', gap: flexResponsiveness ? '1rem' : '.5rem' }}>
-        <button
-          onClick={enableVariantSelection && hasVariants ? handleChooseVariant : handleAdd}
-          className={addToCartClasses}
-          style={{ outline: "none", border: "none" }}
-          disabled={isLimited && currentQuantity + 1 > maxAllowed}
-        >
-          <span>{enableVariantSelection && hasVariants ? "Choose Variant" : "Add to cart"}</span>
-        </button>
+      <div style={{ display: 'flex', flexDirection: flexResponsiveness ? 'row' : 'column', alignItems: flexResponsiveness ? 'center' : 'flex-start', gap: flexResponsiveness ? '1rem' : '.5rem' }} onClick={e => e.stopPropagation()}>
+        {outOfStock ? (
+          // Show Notify Me button for out of stock products
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!isSubscribedToNotification) {
+                handleNotifyMe(e);
+              }
+            }}
+            className={`${styles.main} ${styles.notifyButton}`}
+            style={{ 
+              outline: "none", 
+              border: "none",
+              background: isSubscribedToNotification 
+                ? 'linear-gradient(90deg, #4caf50, #66bb6a)' 
+                : 'linear-gradient(90deg, #2d2d2d, #424242)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              justifyContent: 'center',
+              cursor: isSubscribedToNotification ? 'default' : 'pointer',
+              opacity: isSubscribedToNotification ? 0.9 : 1
+            }}
+          >
+            {isSubscribedToNotification ? (
+              <>
+                <CheckCircleIcon style={{ fontSize: '1rem' }} />
+                <span>Notified</span>
+              </>
+            ) : (
+              <>
+                <NotificationsIcon style={{ fontSize: '1rem' }} />
+                <span>Notify Me</span>
+              </>
+            )}
+          </button>
+        ) : (
+          // Show regular Add to Cart button for available products
+          <button
+            onClick={enableVariantSelection && hasVariants ? handleChooseVariant : handleAdd}
+            className={addToCartClasses}
+            style={{ outline: "none", border: "none" }}
+            disabled={isLimited && currentQuantity + 1 > maxAllowed}
+          >
+            <span>{enableVariantSelection && hasVariants ? "Choose Variant" : "Add to cart"}</span>
+          </button>
+        )}
 
         {showRecoButton && (
           <button
@@ -494,6 +643,15 @@ export default function AddToCartButton({
         onClose={handleCloseToast}
         onViewSimilar={handleViewSimilar}
         embedded={true}
+      />
+
+      {/* Notify Me Dialog */}
+      <NotifyMeDialog
+        open={showNotifyDialog}
+        onClose={handleNotifyDialogClose}
+        product={product}
+        selectedOption={product.selectedOption}
+        onSuccess={handleNotifySuccess}
       />
     </>
   );

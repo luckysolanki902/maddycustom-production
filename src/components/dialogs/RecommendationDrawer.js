@@ -324,7 +324,13 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
               {outOfStock ? (
                 <Typography sx={{ fontSize: 13, my: 1, color: "red", fontFamily: "Jost, sans-serif" }}>Out of stock</Typography>
               ) : (
-                <AddToCartButton product={product} enableVariantSelection hideRecommendationPopup size="small" />
+                <AddToCartButton 
+                  product={product} 
+                  enableVariantSelection 
+                  hideRecommendationPopup 
+                  size="small"
+                  disableNotifyMe={true} // Disable notify for POD items in recommendations
+                />
               )}
             </Box>
           </Box>

@@ -201,3 +201,58 @@
     min-width: 85px;
   }
 }
+
+/* Notify Me Button Styles */
+.notifyButton {
+  background: linear-gradient(90deg, #2d2d2d, #424242) !important;
+  color: white !important;
+  border: none !important;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.notifyButton:hover {
+  background: linear-gradient(90deg, #424242, #555555) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(66, 66, 66, 0.3);
+}
+
+.notifyButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(238, 90, 82, 0.2);
+}
+
+.notifyButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.4), transparent);
+  transform: skewX(-25deg);
+  animation: notifyButtonShine 2s infinite;
+}
+
+@keyframes notifyButtonShine {
+  0% {
+    left: -100%;
+  }
+  50% {
+    left: 100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Responsive notify button styles */
+@media (max-width: 600px) {
+  .notifyButton {
+    font-size: 0.85rem;
+    min-width: 120px;
+    width: 120px;
+  }
+}

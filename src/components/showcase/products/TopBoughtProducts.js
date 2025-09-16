@@ -419,6 +419,7 @@ const ProductCard = memo(function ProductCard({ product }) {
           onClick={(e) => e.stopPropagation()}
           insertionDetails={insertionDetails}
           enableVariantSelection
+          disableNotifyMe={true} // Disable notify for POD items in top bought
         />
       </CardContent>
     </Card>

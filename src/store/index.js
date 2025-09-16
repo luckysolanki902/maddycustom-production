@@ -25,6 +25,7 @@ import navigationReducer from './slices/navigationSlice'; // Import navigation s
 import b2bSelectionReducer from './slices/b2bSelectionSlice';
 import b2bFormReducer from './slices/b2bFormSlice';
 import variantsReducer from './slices/variantsSlice'; // Import variants cache slice
+import notificationReducer from './slices/notificationSlice'; // Import notification slice
 
 const rootReducer = combineReducers({
   cart: cartReducer,
@@ -39,12 +40,13 @@ const rootReducer = combineReducers({
   b2bSelection: b2bSelectionReducer,
   b2bForm: b2bFormReducer,
   variants: variantsReducer, // Add variants cache reducer
+  notification: notificationReducer, // Add notification reducer
 });
 
 const persistConfig = {
-  key: 'root_v7', // bump version after adding B2B persistence
+  key: 'root_v8', // bump version after adding notification persistence
   storage,
-  // Persist B2B selection + form so quantities & form fields survive reloads
+  // Persist notification state for phone and subscription tracking
   whitelist: [
     'cart',
     'orderForm',
@@ -55,6 +57,7 @@ const persistConfig = {
     'displayAssets',
     'b2bSelection',
     'b2bForm',
+    'notification',
   ],
 };
 

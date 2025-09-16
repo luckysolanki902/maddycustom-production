@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,19 @@ import {
 } from '@mui/material';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import CloseIcon from '@mui/icons-material/Close';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { keyframes } from '@mui/system';
+import {
+  selectUserPhone,
+  selectIsSubscribedToNotification,
+  addNotificationSubscription,
+  setUserPhone,
+  setNotificationLoading,
+  setNotificationError,
+  clearNotificationError,
+  cleanupExpiredNotifications,
+  selectNeedsCleanup,
+} from '@/store/slices/notificationSlice';
 
 // Animations matching SubscribeDialog
 const slideUp = keyframes`
@@ -42,12 +55,47 @@ export default function NotifyMeDialog({
   selectedOption = null,
   onSuccess 
 }) {
+  const dispatch = useDispatch();
+  
+  // Redux state
+  const storedPhone = useSelector(selectUserPhone);
+  const isAlreadySubscribed = useSelector(selectIsSubscribedToNotification(product, selectedOption));
+  const needsCleanup = useSelector(selectNeedsCleanup);
+  
+  // Local state
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Initialize phone number from Redux store
+  useEffect(() => {
+    if (storedPhone) {
+      setPhoneNumber(storedPhone);
+    }
+  }, [storedPhone]);
+
+  // Cleanup expired notifications if needed
+  useEffect(() => {
+    if (needsCleanup) {
+      dispatch(cleanupExpiredNotifications());
+    }
+  }, [dispatch, needsCleanup]);
+
+  // Check if already subscribed
+  useEffect(() => {
+    if (isAlreadySubscribed && open) {
+      setSuccess('You\'re already set to be notified for this item!');
+    }
+  }, [isAlreadySubscribed, open]);
+
   const handleSubmit = async () => {
+    // If already subscribed, just show success
+    if (isAlreadySubscribed) {
+      setSuccess('You\'re already set to be notified for this item!');
+      return;
+    }
+
     // Validate phone number
     const cleanPhone = phoneNumber.replace(/\D/g, '');
     if (cleanPhone.length !== 10) {
@@ -57,6 +105,7 @@ export default function NotifyMeDialog({
 
     setLoading(true);
     setError('');
+    dispatch(clearNotificationError());
 
     try {
       // Get thumbnail image - prioritize option image, fallback to product image
@@ -135,8 +184,16 @@ export default function NotifyMeDialog({
 
       setSuccess('Great! We\'ll notify you when this item is back in stock.');
       
-      // Store phone number in localStorage for future checks
-      localStorage.setItem('userPhoneNumber', cleanPhone);
+      // Success! Update Redux store
+      dispatch(addNotificationSubscription({
+        product,
+        selectedOption,
+        phoneNumber: cleanPhone,
+        timestamp: Date.now()
+      }));
+
+      // Update stored phone number
+      dispatch(setUserPhone({ phoneNumber: cleanPhone, verified: true }));
       
       // Call success callback if provided
       if (onSuccess) {
@@ -151,19 +208,50 @@ export default function NotifyMeDialog({
       }, 2000);
 
     } catch (err) {
-      console.error('NotifyMeDialog: Error occurred:', err.message);
-      
-      // Improve error messages for better user experience
-      let userFriendlyMessage = 'Something went wrong. Please try again.';
-      
+      // Check if this is an "already subscribed" case first (not a real error)
       if (err.message.includes('You\'re already set to be notified') || 
           err.message.includes('already exists') ||
           err.message.includes('duplicate') ||
           err.message.includes('already opted') ||
           err.message.includes('notification is already pending') ||
           err.message.includes('similar notification')) {
-        userFriendlyMessage = 'You\'re already set to be notified for this item! We\'ll let you know as soon as it\'s back in stock.';
-      } else if (err.message.includes('template not found')) {
+        
+        // User is already subscribed, update Redux state and show success
+        dispatch(addNotificationSubscription({
+          product,
+          selectedOption,
+          phoneNumber: cleanPhone,
+          timestamp: Date.now()
+        }));
+        
+        // Update stored phone number
+        dispatch(setUserPhone({ phoneNumber: cleanPhone, verified: true }));
+        
+        const successMessage = 'You\'re already set to be notified for this item! We\'ll let you know as soon as it\'s back in stock.';
+        setSuccess(successMessage);
+        
+        // Call success callback if provided
+        if (onSuccess) {
+          onSuccess({ message: 'Already subscribed' });
+        }
+        
+        // Close dialog after 2 seconds
+        setTimeout(() => {
+          onClose();
+          setSuccess('');
+          setPhoneNumber('');
+        }, 2000);
+        
+        return; // Exit early, don't treat as error
+      }
+      
+      // Only log actual errors, not "already subscribed" cases
+      console.error('NotifyMeDialog: Error occurred:', err.message);
+      
+      // Handle other error types
+      let userFriendlyMessage = 'Something went wrong. Please try again.';
+      
+      if (err.message.includes('template not found')) {
         userFriendlyMessage = 'Notification service is temporarily unavailable. Please try again later.';
       } else if (err.message.includes('Invalid phone number')) {
         userFriendlyMessage = 'Please enter a valid 10-digit mobile number.';
@@ -172,6 +260,7 @@ export default function NotifyMeDialog({
       }
       
       setError(userFriendlyMessage);
+      dispatch(setNotificationError(userFriendlyMessage));
     } finally {
       setLoading(false);
     }
@@ -247,18 +336,30 @@ export default function NotifyMeDialog({
             sx={{
               p: 2,
               borderRadius: '50%',
-              backgroundColor: 'rgba(45, 45, 45, 0.05)',
+              backgroundColor: success 
+                ? 'rgba(76, 175, 80, 0.1)' 
+                : 'rgba(45, 45, 45, 0.05)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              transition: 'all 0.3s ease',
             }}
           >
-            <NotificationsActiveIcon 
-              sx={{ 
-                fontSize: '2rem', 
-                color: '#2d2d2d' 
-              }} 
-            />
+            {success ? (
+              <CheckCircleIcon 
+                sx={{ 
+                  fontSize: '2rem', 
+                  color: '#4caf50' 
+                }} 
+              />
+            ) : (
+              <NotificationsActiveIcon 
+                sx={{ 
+                  fontSize: '2rem', 
+                  color: '#2d2d2d' 
+                }} 
+              />
+            )}
           </Box>
 
           {/* Title and Description */}
@@ -267,14 +368,15 @@ export default function NotifyMeDialog({
               variant="h5"
               sx={{
                 fontWeight: 700,
-                color: '#2d2d2d',
+                color: success ? '#4caf50' : '#2d2d2d',
                 mb: 1.5,
                 fontSize: '1.5rem',
                 fontFamily: 'Jost, sans-serif',
                 lineHeight: 1.3,
+                transition: 'all 0.3s ease',
               }}
             >
-              Get notified when available
+              {success ? 'You\'re all set! 🎉' : 'Get notified when available'}
             </Typography>
             
             <Typography
@@ -287,12 +389,18 @@ export default function NotifyMeDialog({
                 fontFamily: 'Jost, sans-serif',
               }}
             >
-              We&apos;ll notify you via SMS & WhatsApp when <strong>{product.title || product.name}</strong>
-              {selectedOption && (
-                <span>
-                  {' '}({Object.entries(selectedOption.optionDetails || {}).map(([k, v]) => `${k}: ${v}`).join(', ')})
-                </span>
-              )} is back in stock
+              {success ? (
+                'We\'ll notify you as soon as this item is back in stock!'
+              ) : (
+                <>
+                  We&apos;ll notify you via SMS & WhatsApp when <strong>{product.title || product.name}</strong>
+                  {selectedOption && (
+                    <span>
+                      {' '}({Object.entries(selectedOption.optionDetails || {}).map(([k, v]) => `${k}: ${v}`).join(', ')})
+                    </span>
+                  )} is back in stock
+                </>
+              )}
             </Typography>
           </Box>
 
@@ -311,30 +419,17 @@ export default function NotifyMeDialog({
             </Alert>
           )}
 
-          {success && (
-            <Alert 
-              severity="success" 
+          {/* Form - Hidden when success is shown */}
+          {!success && (
+            <Box 
               sx={{ 
                 width: '100%',
                 maxWidth: '280px',
-                borderRadius: '12px',
-                fontSize: '0.9rem'
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 2.5
               }}
             >
-              {success}
-            </Alert>
-          )}
-
-          {/* Form */}
-          <Box 
-            sx={{ 
-              width: '100%',
-              maxWidth: '280px',
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: 2.5
-            }}
-          >
             {/* Phone Input */}
             <Box sx={{ position: 'relative', width: '100%' }}>
               <input
@@ -424,6 +519,7 @@ export default function NotifyMeDialog({
               {loading ? 'Setting up...' : success ? 'Done!' : 'Notify Me'}
             </Button>
           </Box>
+          )}
         </Box>
       </DialogContent>
     </Dialog>
