@@ -26,6 +26,7 @@ import CartInitializer from '@/components/utils/CartInitializer';
 import CouponTimerBanner from '@/components/showcase/banners/CouponTimerBanner';
 import ClientUIWrappers from '@/components/layouts/ClientUIWrappers';
 import FullPageLoader from '@/components/utils/FullPageLoader';
+import NavigationListener from '@/components/utils/NavigationListener';
 
 // Configure Krona One with its only available weight
 const kronaOne = Krona_One({
@@ -80,6 +81,7 @@ export default function RootLayout({ children }) {
       <body>
         <ReduxProvider>
           <ScrollProvider>
+            <NavigationListener />
             <UTMCapture />
             <CouponTimerBanner/>
             {/* <UTMLogger /> */}
