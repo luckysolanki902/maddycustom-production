@@ -355,8 +355,8 @@ const ProductCard = memo(function ProductCard({ product }) {
         sx={{
           position: "relative",
           pt: "75%",
-          filter: outOfStock ? "grayscale(100%) brightness(1.3)" : "none",
-          opacity: outOfStock ? 0.7 : 1,
+          filter: outOfStock ? "grayscale(20%) brightness(0.95)" : "none",
+          opacity: outOfStock ? 0.9 : 1,
         }}
       >
         <Image src={thumb} alt={product.name || "product"} fill sizes="200px" style={{ objectFit: "cover" }} />
@@ -364,18 +364,20 @@ const ProductCard = memo(function ProductCard({ product }) {
           <Box
             sx={{
               position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: '#cc0000',
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '4px',
+              top: 8,
+              right: 8,
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              color: '#d32f2f',
+              padding: '4px 8px',
+              borderRadius: '8px',
               fontWeight: '600',
-              fontSize: '0.9rem',
+              fontSize: '0.75rem',
               fontFamily: 'Jost, sans-serif',
               textAlign: 'center',
-              zIndex: 1
+              zIndex: 1,
+              border: '1px solid rgba(211, 47, 47, 0.2)',
+              backdropFilter: 'blur(8px)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
             }}
           >
             Out of Stock
@@ -390,7 +392,13 @@ const ProductCard = memo(function ProductCard({ product }) {
           ₹{product.price}
         </Typography>
         {!outOfStock ? (
-          <AddToCartButton fullWidth product={cartPayload} onClick={e => e.stopPropagation()} insertionDetails={insertionDetails} />
+          <AddToCartButton 
+            fullWidth 
+            product={cartPayload} 
+            onClick={e => e.stopPropagation()} 
+            insertionDetails={insertionDetails}
+            disableNotifyMe={true} // Disable notify for POD items in similar products
+          />
         ) : (
           <Button  onClick={handleClick} sx={{ mt: 1, width: '100%', borderRadius: '0.4rem', bgcolor: 'grey.800', textTransform: 'none', fontSize: '1rem', fontWeight: 500, fontFamily: 'Jost' }} variant="contained">
             View Product

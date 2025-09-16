@@ -26,6 +26,7 @@ import PaymentModes from '../page-sections/viewcart/PaymentModes';
 import Footer from '../page-sections/viewcart/Footer';
 import ApplyCoupon from '../dialogs/ApplyCoupon';
 import OrderForm from '../dialogs/OrderForm';
+import MinimumCartDialog from '../dialogs/MinimumCartDialog';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
 import {
@@ -155,6 +156,7 @@ export default function ViewCart({ isDrawer = false }) {
   const [selectedPM, setSelectedPM] = useState(null);
   const [loadingPM, setLoadingPM] = useState(true);
   const [dlgOrder, setDlgOrder] = useState(false);
+  const [dlgMinimumCart, setDlgMinimumCart] = useState(false);
 
   const [lockedCoupon, setLockedCoupon] = useState(null);
   const [lockedShort, setLockedShort] = useState(0);
@@ -504,11 +506,7 @@ export default function ViewCart({ isDrawer = false }) {
   const handleCheckout = async () => {
     // Check if total amount meets minimum purchase requirement
     if (totalPay < minPurchaseAmt) {
-      const shortfall = minPurchaseAmt - totalPay;
-      snack(
-        `Almost there—add ₹${shortfall} to your cart to place your order.`,
-        'info'
-      );
+      setDlgMinimumCart(true);
       return;
     }
 
@@ -879,6 +877,19 @@ export default function ViewCart({ isDrawer = false }) {
         discountAmountFinal={disc}
         items={cartItems}
         subTotal={subTot}
+      />
+
+      <MinimumCartDialog
+        open={dlgMinimumCart}
+        onClose={() => setDlgMinimumCart(false)}
+        currentAmount={totalPay}
+        minimumAmount={minPurchaseAmt}
+        shortfall={minPurchaseAmt - totalPay}
+        onContinueShopping={() => {
+          if (isDrawer) {
+            dispatch(closeCartDrawer());
+          }
+        }}
       />
 
       <CustomSnackbar

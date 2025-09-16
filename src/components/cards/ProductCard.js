@@ -116,8 +116,8 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
           loading="lazy"
           title={product.title}
           style={{ 
-            filter: outOfStock ? 'grayscale(100%)' : 'none',
-            opacity: outOfStock ? 0.9 : 1
+            filter: outOfStock ? 'grayscale(30%)' : 'none',
+            opacity: outOfStock ? 0.95 : 1
           }}
         />
         {outOfStock && (
@@ -155,8 +155,8 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
           </div>
         )}
 
-        {product.variantDetails?.available && !outOfStock && !hideCartButton && (
-          <div className={styles.addToCart}>
+        {!hideCartButton && (
+          <div className={styles.addToCart} onClick={(e) => e.stopPropagation()}>
             <AddToCartButton
               product={{
                 ...product,
@@ -166,7 +166,6 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
               }}
               insertionDetails={insertionDetails}
               flexResponsiveness={true}
-
             />
           </div>
         )}
