@@ -11,6 +11,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
   addItem,
   incrementQuantity,
@@ -20,6 +21,7 @@ import {
 } from '../../store/slices/cartSlice';
 import { openCartDrawer, openRecommendationDrawer } from '../../store/slices/uiSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
+import { selectIsSubscribedToNotification } from "../../store/slices/notificationSlice";
 import Link from 'next/link';
 import Image from 'next/image';
 import { useMediaQuery } from '@mui/material';
@@ -33,11 +35,12 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   const cartItem = cartItems.find((item) => item.productId === product._id);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
+  // Check if user is already subscribed to notifications for this product
+  const isSubscribedToNotification = useSelector(selectIsSubscribedToNotification(product, product.selectedOption));
+
   // State to track last action (for animation)
   const [lastAction, setLastAction] = useState(null);
   const [showNotifyDialog, setShowNotifyDialog] = useState(false);
-  const [hasNotification, setHasNotification] = useState(false);
-  const [checkingNotification, setCheckingNotification] = useState(false);
 
   // React Spring animation for quantity display
   const props = useSpring({
@@ -193,22 +196,21 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   };
 
   const handleNotifyMe = (e) => {
-    e.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    console.log('Notify button clicked, opening dialog...');
     setShowNotifyDialog(true);
   };
 
-  const handleNotifySuccess = (notification) => {
-    // Store phone number in localStorage for future checks
-    const phoneNumber = notification.phoneNumber;
-    if (phoneNumber) {
-      localStorage.setItem('userPhoneNumber', phoneNumber);
-    }
-    
-    // Update notification state
-    setHasNotification(true);
-    
-    // You can add success tracking or analytics here
-    console.log('Notification created successfully:', notification);
+  const handleNotifyDialogClose = () => {
+    setShowNotifyDialog(false);
+  };
+
+  const handleNotifySuccess = () => {
+    // Don't close the dialog here - let the user close it manually with the "Done" button
+    // Success message is already handled within the NotifyMeDialog component
   };
 
   // Recommendation trigger visibility: only if in cart & has designGroupId
@@ -288,23 +290,18 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
           <div className={`${styles.orderNowSection} ${styles.halfWidth}`}>
             {outOfStock ? (
               <div
-                onClick={hasNotification ? undefined : handleNotifyMe}
+                onClick={isSubscribedToNotification ? undefined : handleNotifyMe}
                 className={styles.orderNowButton}
-                style={hasNotification ? { 
-                  opacity: 0.7, 
+                style={isSubscribedToNotification ? { 
+                  opacity: 0.9, 
                   cursor: 'default',
-                  backgroundColor: '#28a745'
+                  backgroundColor: '#4caf50'
                 } : {}}
               >
-                {checkingNotification ? (
+                {isSubscribedToNotification ? (
                   <>
-                    <NotificationsActiveIcon fontSize="medium" className={styles.boltIcon} />
-                    Checking...
-                  </>
-                ) : hasNotification ? (
-                  <>
-                    <NotificationsActiveIcon fontSize="medium" className={styles.boltIcon} />
-                    ✓ You&apos;ll be notified
+                    <CheckCircleIcon fontSize="medium" className={styles.boltIcon} />
+                    Notify Me
                   </>
                 ) : (
                   <>
@@ -358,7 +355,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       {/* Notify Me Dialog */}
       <NotifyMeDialog
         open={showNotifyDialog}
-        onClose={() => setShowNotifyDialog(false)}
+        onClose={handleNotifyDialogClose}
         product={product}
         selectedOption={product.selectedOption}
         onSuccess={handleNotifySuccess}
