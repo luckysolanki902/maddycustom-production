@@ -2,6 +2,12 @@
 import React, { useState } from 'react';
 import styles from './styles/Faq.module.css';
 
+const categories = {
+  "Order Related": ["Did not receive order ID", "Can't track order", "Shipping delay", "Other"],
+  "Product Related": ["Size doubts", "Material queries", "Installation help", "Other"],
+  Other: [],
+};
+
 const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
   const [issue, setIssue] = useState('');
   const [mobile, setMobile] = useState('');
@@ -10,22 +16,6 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
   const [subcategory, setSubcategory] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-
-  const categories = {
-    "Order Related": [
-      "Did not receive order ID",
-      "Can't track order",
-      "Shipping delay",
-      "Other"
-    ],
-    "Product Related": [
-      "Size doubts",
-      "Material queries",
-      "Installation help",
-      "Other"
-    ],
-    "Other": []
-  };
 
   // A simple regex-based validation for a 10-digit mobile number
   const validateMobile = (number) => {
