@@ -12,6 +12,11 @@ const initialState = {
     lastFetched: null, // Timestamp when data was last fetched
     isLoading: false,
   },
+  subscribeDialog: {
+    lastDismissedAt: null, // Timestamp when dialog was last dismissed
+    hasSuccessfullySubscribed: false, // Whether user has ever successfully subscribed
+    cooldownHours: 2, // Hours to wait before showing again after dismissal
+  },
 };
 
 const persistentUiSlice = createSlice({
@@ -78,6 +83,37 @@ const persistentUiSlice = createSlice({
         state.searchCategories.isLoading = false;
       }
     },
+    // Subscribe dialog tracking actions
+    markSubscribeDialogDismissed(state) {
+      // Ensure subscribeDialog object exists before setting properties
+      if (!state.subscribeDialog) {
+        state.subscribeDialog = {
+          lastDismissedAt: null,
+          hasSuccessfullySubscribed: false,
+          cooldownHours: 2,
+        };
+      }
+      state.subscribeDialog.lastDismissedAt = Date.now();
+    },
+    markSubscribeDialogSuccess(state) {
+      // Ensure subscribeDialog object exists before setting properties
+      if (!state.subscribeDialog) {
+        state.subscribeDialog = {
+          lastDismissedAt: null,
+          hasSuccessfullySubscribed: false,
+          cooldownHours: 2,
+        };
+      }
+      state.subscribeDialog.hasSuccessfullySubscribed = true;
+      state.subscribeDialog.lastDismissedAt = null; // Clear dismissal since they subscribed
+    },
+    resetSubscribeDialogState(state) {
+      state.subscribeDialog = {
+        lastDismissedAt: null,
+        hasSuccessfullySubscribed: false,
+        cooldownHours: 2,
+      };
+    },
   },
 });
 
@@ -86,7 +122,10 @@ export const {
   clearShippingTimer, 
   setSearchCategoriesLoading, 
   setSearchCategories, 
-  clearSearchCategories 
+  clearSearchCategories,
+  markSubscribeDialogDismissed,
+  markSubscribeDialogSuccess,
+  resetSubscribeDialogState,
 } = persistentUiSlice.actions;
 
 export default persistentUiSlice.reducer;
