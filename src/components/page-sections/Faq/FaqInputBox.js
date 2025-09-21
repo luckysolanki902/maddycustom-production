@@ -33,23 +33,19 @@ const FaqInputBox = ({ onChatResponse, onReopenChat }) => {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/openai/chat', {
+      // Deprecated endpoint replaced by /api/assistant/chat
+      const res = await fetch('/api/assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userMessage: issue,
-          mobile,
-          email,
-          category,
-          subcategory,
+          // adapt to assistant route: combine structured fields into message
+          message: `[Category: ${category}] [Sub: ${subcategory}] [Mobile: ${mobile}] [Email: ${email || 'N/A'}] Issue: ${issue}`,
+          userId: mobile || 'guest',
         }),
       });
-      // Retrieve the support query ID from headers
-      const requestId = res.headers.get('X-Request-ID');
-      const data = await res.text();
-
-      // Show the AI response dialog in parent
-      onChatResponse(data, requestId);
+      const data = await res.json();
+      const reply = data?.reply || 'No response.';
+      onChatResponse(reply, data.threadId || null);
 
       // Once submitted, hide the submit button
       setSubmitted(true);

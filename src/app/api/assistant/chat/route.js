@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server';
 import connectToDb from '@/lib/middleware/connectToDb';
 import AssistantThread from '@/models/AssistantThread';
 import UserMessage from '@/models/UserMessage';
+import helpingData from '@/lib/faq/helpingdata';
+
+// Tag marker for internal knowledge messages we do NOT expose to UI
+const INTERNAL_KNOWLEDGE_TAG = '__INTERNAL_KNOWLEDGE__';
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -30,6 +34,10 @@ export async function GET(request) {
     const messagesResp = await client.beta.threads.messages.list(threadId);
 
     const messages = messagesResp.data
+      .filter(m => {
+        const txt = m.content?.[0]?.text?.value || '';
+        return !txt.startsWith(INTERNAL_KNOWLEDGE_TAG); // hide internal knowledge injection
+      })
       .slice()
       .reverse()
       .map(m => ({
@@ -82,7 +90,7 @@ export async function POST(request) {
     if (!global.__ASSISTANT_ID) {
       const a = await client.beta.assistants.create({
         name: 'MaddyCustom Chatbot',
-        // instructions: 'You are a helpful assistant.',
+        instructions: `You are the official support assistant for MaddyCustom. Use the following domain knowledge about products, wraps, installation, shipping, durability, fragrance variants, JDM keychains, ordering & tracking. Never fabricate policies. If unsure, ask the user for clarification. ALWAYS be concise, friendly, respectful and avoid markdown formatting. Domain Knowledge:\n\n${helpingData}`,
         model: 'gpt-4.1-mini',
       });
       global.__ASSISTANT_ID = a.id;
@@ -91,6 +99,7 @@ export async function POST(request) {
 
     // Determine threadId for this user via DB mapping or incoming threadId
     let threadId = null;
+    let newThreadCreated = false;
     if (!threadId) {
       const mapping = await AssistantThread.findOne({ userId }).lean();
       if (mapping?.threadId) threadId = mapping.threadId;
@@ -99,7 +108,7 @@ export async function POST(request) {
     if (!threadId) {
       const t = await client.beta.threads.create();
       threadId = t.id;
-      // persist mapping
+      newThreadCreated = true;
       await AssistantThread.findOneAndUpdate(
         { userId },
         { threadId },
@@ -107,11 +116,13 @@ export async function POST(request) {
       );
     }
 
-    // Append user message
-    await client.beta.threads.messages.create(threadId, {
-      role: 'user',
-      content: message,
-    });
+    // Inject hidden knowledge message ONLY once per new thread (not shown to UI)
+    if (newThreadCreated) {
+      await client.beta.threads.messages.create(threadId, { role: 'assistant', content: `${INTERNAL_KNOWLEDGE_TAG}\n${helpingData}` });
+    }
+
+    // Append the exact user message without UI-visible hints
+    await client.beta.threads.messages.create(threadId, { role: 'user', content: message });
 
     UserMessage.create({ userId, message }).catch(err => console.error('Failed to save user message', err));
 
@@ -128,7 +139,14 @@ export async function POST(request) {
 
     // Fetch messages from thread
     const messagesResp = await client.beta.threads.messages.list(threadId);
-    const assistantMessages = messagesResp.data.filter(m => m.role === "assistant");
+    // Select most recent assistant reply that is NOT the internal knowledge message
+    const assistantMessages = messagesResp.data
+      .filter(m => m.role === 'assistant')
+      .filter(m => {
+        const txt = m.content?.[0]?.text?.value || '';
+        return !txt.startsWith(INTERNAL_KNOWLEDGE_TAG);
+      })
+      .sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
     const reply = assistantMessages[0]?.content?.[0]?.text?.value || "No reply from assistant";
 
     return NextResponse.json({ reply, threadId });
