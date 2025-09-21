@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, Box, IconButton, Button, Typography } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUserDetails, setUserExists, setLoginDialogShown } from '../../store/slices/orderFormSlice';
+import { markSubscribeDialogDismissed, markSubscribeDialogSuccess } from '../../store/slices/persistentUiSlice';
 import CustomSnackbar from '../notifications/CustomSnackbar';
 import { usePathname } from 'next/navigation';
 import CloseIcon from '@mui/icons-material/Close';
@@ -51,6 +52,12 @@ const SubscribeDialog = () => {
   const loginDialogShown = useSelector((state) => state.orderForm.loginDialogShown);
   const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
   const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector((state) => state.userBehavior);
+  const subscribeDialogFromState = useSelector((state) => state.persistentUi.subscribeDialog);
+  const subscribeDialog = useMemo(() => subscribeDialogFromState || {
+    lastDismissedAt: null,
+    hasSuccessfullySubscribed: false,
+    cooldownHours: 2,
+  }, [subscribeDialogFromState]);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   
   const { control, handleSubmit, reset, formState: { errors } } = useForm({
@@ -65,6 +72,26 @@ const SubscribeDialog = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Helper function to check if dialog should be shown based on dismissal cooldown
+  const shouldShowDialog = useCallback(() => {
+    // Never show if user has already successfully subscribed
+    if (subscribeDialog?.hasSuccessfullySubscribed) {
+      return false;
+    }
+
+    // Check if dialog was dismissed recently and still in cooldown period
+    if (subscribeDialog?.lastDismissedAt) {
+      const cooldownPeriod = (subscribeDialog?.cooldownHours || 2) * 60 * 60 * 1000; // Convert hours to milliseconds
+      const timeSinceDismissal = Date.now() - subscribeDialog.lastDismissedAt;
+      
+      if (timeSinceDismissal < cooldownPeriod) {
+        return false; // Still in cooldown period
+      }
+    }
+
+    return true;
+  }, [subscribeDialog]);
 
   // Function to show snackbar
   const showSnackbar = (message, severity = 'success') => {
@@ -85,9 +112,11 @@ const SubscribeDialog = () => {
       if (response.data.message === 'User already exists' || response.data.message === 'User exists and name updated') {
         dispatch(setUserExists(true));
         dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.userId }));
+        dispatch(markSubscribeDialogSuccess()); // Mark as successful subscription
         showSnackbar('🎉 You\'re all set! Get ready for exclusive deals!', 'success');
       } else if (response.data.message === 'User created successfully') {
         dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.user.userId }));
+        dispatch(markSubscribeDialogSuccess()); // Mark as successful subscription
         showSnackbar('🎉 Welcome to the VIP club! Exclusive deals coming your way!', 'success');
       }
       reset();
@@ -103,6 +132,7 @@ const SubscribeDialog = () => {
   const handleClose = () => {
     setOpen(false);
     dispatch(setLoginDialogShown(true));
+    dispatch(markSubscribeDialogDismissed()); // Mark as dismissed for cooldown tracking
   };
 
   // Open the dialog if conditions are met
@@ -114,7 +144,8 @@ const SubscribeDialog = () => {
       !isUserPhoneNumberValid &&
       !userExists &&
       !isCartDrawerOpen &&
-      !pathname.startsWith('/orders/myorder/')
+      !pathname.startsWith('/orders/myorder/') &&
+      shouldShowDialog() // Check dismissal cooldown and subscription status
     ) {
       setOpen(true);
       dispatch(setLoginDialogShown(true));
@@ -127,7 +158,8 @@ const SubscribeDialog = () => {
     pathname, 
     dispatch, 
     isUserPhoneNumberValid, 
-    isCartDrawerOpen
+    isCartDrawerOpen,
+    shouldShowDialog,
   ]);
 
   // Prevent rendering if cart drawer is open
