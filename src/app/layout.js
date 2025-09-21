@@ -6,6 +6,7 @@ import { generateWebsiteSchema, generateOrganizationSchema } from '@/lib/metadat
 import ReduxProvider from '@/components/layouts/ReduxProvider';
 import { ScrollProvider } from '@/contexts/ScrollContext';
 import FloatingActionBar from '@/components/utils/FloatingActionButton';
+import { ChatSessionProvider } from '@/components/Chat/ChatSessionContext';
 import TopLoadingBar from '@/components/utils/TopLoadingBar';
 import AnalyticsHead from '@/components/layouts/AnalyticsHead';
 import UTMCapture from '@/components/analytics/UTMCapture';
@@ -86,6 +87,7 @@ export default function RootLayout({ children }) {
             <CouponTimerBanner/>
             {/* <UTMLogger /> */}
             <TopLoadingBar />
+            <ChatSessionProvider>
             <FullPageLoader />
             <Topbar />
             <Sidebar />
@@ -101,11 +103,16 @@ export default function RootLayout({ children }) {
             <ScrollChecker />
             {/* Client-only utilities (conditionally hidden in B2B) */}
             <ClientUIWrappers />
+            {/* Chat launcher (client only) */}
+            <SupportChatProvider />
+            </ChatSessionProvider>
           </ScrollProvider>
         </ReduxProvider>
       </body>
     </html>
   );
 }
+
+import SupportChatProvider from '@/components/Chat/SupportChatProvider';
 
 // Dummy component placeholder (real implementation moved to client file)
