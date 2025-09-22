@@ -1,5 +1,5 @@
 // @/components/analytics/GoogleAnalytics.js
-import Script from 'next/script';
+import Script from "next/script";
 
 const GoogleAnalytics = () => (
   <>
@@ -16,7 +16,10 @@ const GoogleAnalytics = () => (
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
 
+          // GA4
           gtag('config', 'G-5RNLTQL0W7');
+          // Google Ads
+          gtag('config', 'AW-17482342674');
         `,
       }}
     />
