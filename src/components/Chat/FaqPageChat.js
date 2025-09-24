@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useChatSession } from './ChatSessionContext';
 import { v4 as uuidv4 } from 'uuid';
+import ProductGalleryMessage from './ProductGalleryMessage';
 
 // Static templates for FAQ page
 const faqTemplates = [
@@ -13,7 +14,7 @@ const faqTemplates = [
 ];
 
 export default function FaqPageChat() {
-  const { messages, loading, pendingAssistant, loadingHistory, sendMessage, resetChat, retryLast } = useChatSession() || {};
+  const { messages, loading, pendingAssistant, loadingHistory, sendMessage, resetChat, retryLast, invokeProductSearch } = useChatSession() || {};
   const [input, setInput] = useState('');
   const [showTemplates, setShowTemplates] = useState(messages.length === 0);
   const containerRef = useRef(null);
@@ -56,7 +57,7 @@ export default function FaqPageChat() {
         <div style={{ padding: '16px 22px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(45,45,45,0.08)' }}>
           <div style={{ width: 44, height: 44, borderRadius: 16, background: '#2d2d2d', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>MD</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#2d2d2d' }}>Support Chat</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#2d2d2d' }}>Maddy.ai</div>
             <div style={{ fontSize: 12, color: 'rgba(45,45,45,0.55)', fontWeight: 500 }}>{loadingHistory ? 'Loading...' : 'Ask anything or choose a topic'}</div>
           </div>
           <button onClick={openReset} title="New chat" style={iconBtn}>↺</button>
@@ -74,14 +75,35 @@ export default function FaqPageChat() {
               )}
             </div>
           )}
-          {messages.map(m => (
-            <motion.div key={m.id || uuidv4()} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 14 }}>
-              <div style={m.role === 'user' ? userBubble : botBubble}>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
-                <div style={timeMeta}>{new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
-              </div>
-            </motion.div>
-          ))}
+          {messages.map(m => {
+            if (m.type === 'product_gallery') {
+              return (
+                <div key={m.id} style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 14 }}>
+                  <ProductGalleryMessage
+                    products={m.products}
+                    hasMore={m.hasMore}
+                    pending={pendingAssistant}
+                    onShowMore={() => invokeProductSearch({
+                      query: m.queryEcho?.query,
+                      maxPrice: m.queryEcho?.maxPrice,
+                      minPrice: m.queryEcho?.minPrice,
+                      keywords: m.queryEcho?.keywords,
+                      page: (m.page || 1) + 1,
+                      limit: m.limit || 6
+                    })}
+                  />
+                </div>
+              );
+            }
+            return (
+              <motion.div key={m.id || uuidv4()} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 14 }}>
+                <div style={m.role === 'user' ? userBubble : botBubble}>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
+                  <div style={timeMeta}>{new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+                </div>
+              </motion.div>
+            );
+          })}
           {pendingAssistant && <div style={botBubble}>...</div>}
         </div>
         <div style={{ padding: '14px 20px 18px', borderTop: '1px solid rgba(45,45,45,0.08)' }}>

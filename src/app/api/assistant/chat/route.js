@@ -4,6 +4,8 @@ import connectToDb from '@/lib/middleware/connectToDb';
 import AssistantThread from '@/models/AssistantThread';
 import UserMessage from '@/models/UserMessage';
 import helpingData from '@/lib/faq/helpingdata';
+import { searchProducts, categoryFirstSuggestions } from '@/lib/assistant/productSearch';
+import { store } from '@/store';
 
 // Tag marker for internal knowledge messages we do NOT expose to UI
 const INTERNAL_KNOWLEDGE_TAG = '__INTERNAL_KNOWLEDGE__';
@@ -62,7 +64,7 @@ export async function POST(request) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { action, message, userId } = body || {};
+  const { action, message, userId, toolInvocation } = body || {};
 
     await connectToDb();
 
@@ -78,12 +80,13 @@ export async function POST(request) {
       }
     }
 
-    if (!message) {
-      return NextResponse.json({ error: 'message required' }, { status: 400 });
-    }
-
     if (!userId) {
       return NextResponse.json({ error: 'userId required in POST body' }, { status: 400 });
+    }
+
+    // Allow tool calls without a free-form message
+    if (!message && !(action && action.startsWith('tool:'))) {
+      return NextResponse.json({ error: 'message required' }, { status: 400 });
     }
 
     // Ensure assistant exists (create once)
@@ -121,7 +124,67 @@ export async function POST(request) {
       await client.beta.threads.messages.create(threadId, { role: 'assistant', content: `${INTERNAL_KNOWLEDGE_TAG}\n${helpingData}` });
     }
 
-    // Append the exact user message without UI-visible hints
+    // Tool invocation short-circuit (for pagination / show more etc.)
+    if (action === 'tool:search_products') {
+      // Expect toolInvocation object with params
+      const params = toolInvocation || {};
+      const {
+        query,
+        maxPrice,
+        minPrice,
+        categoryTitle,
+        page = 1,
+        limit = 6,
+        keywords
+      } = params;
+
+      // Access assistantContext from redux store (non-persisted) for additional hints
+      let pageContext = null;
+      try {
+        pageContext = store.getState().assistantContext;
+      } catch {}
+
+      const sanitizeText = (txt) => {
+        if (!txt || typeof txt !== 'string') return undefined;
+        // Basic sanitation: trim, collapse whitespace, strip control chars
+        return txt.replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 120);
+      };
+      const numberOrUndefined = v => {
+        if (v === null || v === undefined || v === '') return undefined;
+        const num = Number(v);
+        if (isNaN(num)) return undefined;
+        return num;
+      };
+      let safeMax = numberOrUndefined(maxPrice);
+      let safeMin = numberOrUndefined(minPrice);
+      if (safeMax !== undefined && safeMax < 0) safeMax = 0;
+      if (safeMin !== undefined && safeMin < 0) safeMin = 0;
+      if (safeMax !== undefined && safeMin !== undefined && safeMin > safeMax) {
+        // swap if inverted
+        const tmp = safeMin; safeMin = safeMax; safeMax = tmp;
+      }
+      const safeKeywords = Array.isArray(keywords) ? keywords.slice(0, 8).map(sanitizeText).filter(Boolean) : undefined;
+      const searchPayload = {
+        query: sanitizeText(query),
+        maxPrice: safeMax,
+        minPrice: safeMin,
+        categoryTitle: sanitizeText(categoryTitle) || pageContext?.categoryTitle,
+        keywords: safeKeywords,
+        page: Math.max(1, Number(page) || 1),
+        limit: Math.min(12, Math.max(1, Number(limit) || 6)),
+        pageContext
+      };
+      const result = query || maxPrice || minPrice || keywords?.length || categoryTitle
+        ? await searchProducts(searchPayload)
+        : await categoryFirstSuggestions({ limit });
+
+      return NextResponse.json({
+        tool: 'search_products',
+        data: result
+      });
+    }
+
+    // Append the exact user message without UI-visible hints to thread
     await client.beta.threads.messages.create(threadId, { role: 'user', content: message });
 
     UserMessage.create({ userId, message }).catch(err => console.error('Failed to save user message', err));
