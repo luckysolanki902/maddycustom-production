@@ -77,7 +77,8 @@ export default function AddToCartButton({
   showOnlyChooseVariants = false,
   disableRecommendationTrigger = false,
   flexResponsiveness = false,
-  disableNotifyMe = false // New prop to disable notify functionality for POD items
+  disableNotifyMe = false, // New prop to disable notify functionality for POD items
+  isProductIdPage = false
 }) {
   // Use custom hook to classify pageType if not provided
   const pageType = usePageType();
@@ -547,7 +548,7 @@ export default function AddToCartButton({
   return (
     <>
       <div style={{ display: 'flex', flexDirection: flexResponsiveness ? 'row' : 'column', alignItems: flexResponsiveness ? 'center' : 'flex-start', gap: flexResponsiveness ? '1rem' : '.5rem' }} onClick={e => e.stopPropagation()}>
-        {outOfStock ? (
+        {outOfStock && !showOnlyChooseVariants? (
           // Show Notify Me button for out of stock products
           <button
             onClick={(e) => {
@@ -590,14 +591,32 @@ export default function AddToCartButton({
           <button
             onClick={enableVariantSelection && hasVariants ? handleChooseVariant : handleAdd}
             className={addToCartClasses}
-            style={{ outline: "none", border: "none" }}
+            style={{
+              outline: "none",
+              border: "none",
+              ...(isProductIdPage
+                ? {
+                    background: "#E0FFFF",
+                    color: "#000",
+                    fontFamily: "Jost, sans-serif",
+                    fontWeight: 400,
+                    padding: "1.5rem 0.8rem",
+                    borderRadius: ".4rem",
+                    boxShadow: "0 5px 12px rgba(0,0,0,0.08), 0 3px 5px rgba(0,0,0,0.06)",
+                    cursor: "pointer",
+                    transition: "transform .14s ease, box-shadow .14s ease",
+                  }
+                : {}),
+            }}
             disabled={isLimited && currentQuantity + 1 > maxAllowed}
           >
-            <span>{enableVariantSelection && hasVariants ? "Choose Variant" : "Add to cart"}</span>
+            <span style={isProductIdPage ? { letterSpacing: ".5px" } : {}}>
+              {enableVariantSelection && hasVariants ? `${isProductIdPage ? "Change Variant" : "Choose Variant"}` : "Add to cart"}
+            </span>
           </button>
         )}
 
-        {showRecoButton && (
+        {showRecoButton && !showOnlyChooseVariants && (
           <button
             type="button"
             data-clarity="see-matching-picks"

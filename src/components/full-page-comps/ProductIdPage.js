@@ -462,14 +462,8 @@ export default function ProductIdPage({
               
               {/* Choose Variant Button below ImageGallery */}
               {!isZoomed && category && (
-                <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-start", marginLeft: "-1rem" }}>
-                  <ChangeVariantButton 
-                    category={category} 
-                    product={product}
-                    onExternalVariantCheck={handleExternalVariantCheck}
-                    hideIfSingleVariant={true}
-                    disableAutoPopup={true}
-                  />
+                <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-start", marginLeft: 20 }}>
+                  <AddToCartButton product={product} enableVariantSelection showOnlyChooseVariants isProductIdPage/>
                 </div>
               )}
             </div>
@@ -495,29 +489,28 @@ export default function ProductIdPage({
 
                 {/* Render options using OptionSelector */}
                 {options &&
-                  (
-                    // For on-demand categories, don't require inventory to show options
-                    (isOnDemand && options.some(opt => opt.optionDetails && Object.keys(opt.optionDetails).length > 0)) ||
-                    (!isOnDemand && options.some(
-                      opt =>
-                        opt.optionDetails &&
-                        Object.keys(opt.optionDetails).length > 0 &&
-                        opt.inventoryData &&
-                        opt.inventoryData.availableQuantity > 0
-                    ))
-                  ) && (
+                  // For on-demand categories, don't require inventory to show options
+                  ((isOnDemand && options.some(opt => opt.optionDetails && Object.keys(opt.optionDetails).length > 0)) ||
+                    (!isOnDemand &&
+                      options.some(
+                        opt =>
+                          opt.optionDetails &&
+                          Object.keys(opt.optionDetails).length > 0 &&
+                          opt.inventoryData &&
+                          opt.inventoryData.availableQuantity > 0
+                      ))) && (
                     <OptionSelector
-                      options={isOnDemand
-                        ? options.filter(
-                            opt => opt.optionDetails && Object.keys(opt.optionDetails).length > 0
-                          )
-                        : options.filter(
-                            opt =>
-                              opt.optionDetails &&
-                              Object.keys(opt.optionDetails).length > 0 &&
-                              opt.inventoryData &&
-                              opt.inventoryData.availableQuantity > 0
-                          )}
+                      options={
+                        isOnDemand
+                          ? options.filter(opt => opt.optionDetails && Object.keys(opt.optionDetails).length > 0)
+                          : options.filter(
+                              opt =>
+                                opt.optionDetails &&
+                                Object.keys(opt.optionDetails).length > 0 &&
+                                opt.inventoryData &&
+                                opt.inventoryData.availableQuantity > 0
+                            )
+                      }
                       selectedOption={selectedOption}
                       handleOptionChange={handleColorChange}
                       optionLabel={optionLabel}
@@ -651,7 +644,6 @@ export default function ProductIdPage({
               </div>
             )}
           </div>
-
 
           {/* Similar Products Section */}
           <SimilarProducts currentProduct={product} variant={variant} category={category} />
