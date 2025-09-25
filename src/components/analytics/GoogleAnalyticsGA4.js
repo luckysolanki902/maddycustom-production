@@ -1,7 +1,7 @@
-// @/components/analytics/GoogleAnalytics.js
+// @/components/analytics/GoogleAnalyticsGA4.js
 import Script from "next/script";
 
-const GoogleAnalytics = () => (
+const GoogleAnalyticsGA4 = () => (
   <>
     <Script
       async
@@ -26,4 +26,4 @@ const GoogleAnalytics = () => (
   </>
 );
 
-export default GoogleAnalytics;
+export default GoogleAnalyticsGA4;
