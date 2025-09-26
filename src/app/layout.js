@@ -109,5 +109,3 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
-
-// Dummy component placeholder (real implementation moved to client file)
