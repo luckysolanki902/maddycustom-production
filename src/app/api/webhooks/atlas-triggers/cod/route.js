@@ -1,5 +1,4 @@
 // app/api/webhooks/cod/verify-order/route.js
-
 import { NextResponse } from "next/server";
 import connectToDatabase from "@/lib/middleware/connectToDb";
 import mongoose from "mongoose";
@@ -12,71 +11,74 @@ import { createShiprocketOrder, getDimensionsAndWeight } from "@/lib/utils/shipr
 import { sendWhatsAppMessage } from "@/lib/utils/aiSensySender";
 
 // Helper: Update inventory
-async function updateInventory(inventoryId, delta, session) {
+async function updateInventory(inventoryId, delta, session, logs) {
+  logs.push(`Updating inventory ${inventoryId} by delta: ${delta}`);
   return await mongoose
     .model("Inventory")
     .updateOne({ _id: inventoryId }, { $inc: { availableQuantity: delta, reservedQuantity: -delta } }, { session });
 }
 
 export async function POST(req) {
-  await connectToDatabase();
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   const logs = [];
   let orderId = null;
 
   try {
+    logs.push("Starting COD route");
+    await connectToDatabase();
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     const body = await req.json();
+    logs.push(`Received body: ${JSON.stringify(body)}`);
     orderId = body.orderId;
 
-    if (!orderId) return NextResponse.json({ error: "No orderId provided." }, { status: 400 });
+    if (!orderId) {
+      logs.push("No orderId provided");
+      return NextResponse.json({ error: "No orderId provided.", logs }, { status: 400 });
+    }
 
     // 1. Fetch main order and linked orders
     const order = await Order.findById(orderId).session(session);
-    if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+    if (!order) {
+      logs.push(`Order ${orderId} not found`);
+      return NextResponse.json({ error: "Order not found.", logs }, { status: 404 });
+    }
 
     const linkedOrders = order.linkedOrderIds?.length
       ? await Order.find({ _id: { $in: order.linkedOrderIds } }).session(session)
       : [];
 
     const allOrders = [order, ...linkedOrders];
+    logs.push(`Processing ${allOrders.length} orders: main + linked`);
 
-    // 2. Mark COD payment as "paidPartially" or "allPaid"
+    // 2. Update paymentStatus
     for (const ord of allOrders) {
-      	// if (!["allPaid", "paidPartially"].includes(ord.paymentStatus)) {
-      	// 	ord.paymentDetails.amountPaidOnline = 0;
-      	// 	ord.paymentDetails.amountDueOnline = 0;
-				
-      	// 	if (ord.paymentDetails.amountDueCod <= 0) ord.paymentStatus = "allPaid";
-        // 		else ord.paymentStatus = "paidPartially";
-				// }
-
-      	ord.paymentStatus = "allToBePaidCod";
-
-        await ord.save({ session });
+      logs.push(`Updating paymentStatus for order ${ord._id} to "allToBePaidCod"`);
+      ord.paymentStatus = "allToBePaidCod";
+      await ord.save({ session });
     }
 
     // 3. Handle coupon usage increment (main order only)
     const mainOrder = allOrders.find(ord => ord.isMainOrder) || allOrders[0];
     if (mainOrder.couponApplied?.length > 0) {
       const [appliedCoupon] = mainOrder.couponApplied;
+      logs.push(`Checking coupon for main order: ${appliedCoupon.couponCode}`);
       if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
         const couponDoc = await Coupon.findOne({ code: appliedCoupon.couponCode }).session(session);
         if (couponDoc) {
+          logs.push(`Incrementing usage for coupon ${appliedCoupon.couponCode}`);
           couponDoc.usageCount += 1;
           await couponDoc.save({ session });
 
-          // Propagate incremented flag to all orders
           for (const ord of allOrders) {
             if (ord.couponApplied?.length) {
               ord.couponApplied = ord.couponApplied.map(c =>
                 c.couponCode === appliedCoupon.couponCode ? { ...c.toObject(), incrementedCouponUsage: true } : c
               );
               await ord.save({ session });
+              logs.push(`Marked coupon as incremented for order ${ord._id}`);
             }
           }
-          logs.push(`Coupon usage incremented: ${appliedCoupon.couponCode}`);
         }
       }
     }
@@ -84,16 +86,23 @@ export async function POST(req) {
     // 4. Deduct inventory
     for (const ord of allOrders) {
       if (!ord.inventoryDeducted && !ord.isTestingOrder) {
+        logs.push(`Deducting inventory for order ${ord._id}`);
         for (const item of ord.items) {
           if (item.option) {
+            logs.push(`Processing inventory for Option ${item.option} x ${item.quantity}`);
             const optionDoc = await Option.findById(item.option).session(session);
             if (optionDoc?.inventoryData) {
-              await updateInventory(optionDoc.inventoryData, -item.quantity, session);
+              await updateInventory(optionDoc.inventoryData, -item.quantity, session, logs);
+            } else {
+              logs.push(`Option ${item.option} has no inventoryData`);
             }
           } else if (item.product) {
+            logs.push(`Processing inventory for Product ${item.product} x ${item.quantity}`);
             const productDoc = await Product.findById(item.product).session(session);
             if (productDoc?.inventoryData) {
-              await updateInventory(productDoc.inventoryData, -item.quantity, session);
+              await updateInventory(productDoc.inventoryData, -item.quantity, session, logs);
+            } else {
+              logs.push(`Product ${item.product} has no inventoryData`);
             }
           }
         }
@@ -106,21 +115,18 @@ export async function POST(req) {
     const updatedOrders = await Promise.all(
       allOrders.map(ord =>
         Order.findById(ord._id)
-          .populate({
-            path: "items.product",
-            populate: { path: "specificCategoryVariant", model: "SpecificCategoryVariant" },
-          })
+          .populate({ path: "items.product", populate: { path: "specificCategoryVariant", model: "SpecificCategoryVariant" } })
           .session(session)
       )
     );
 
     for (const ord of updatedOrders) {
       if (ord.deliveryStatus === "pending" && !ord.shiprocketOrderId && !ord.isTestingOrder) {
+        logs.push(`Creating Shiprocket order for ${ord._id}`);
         try {
           const { length, breadth, height, weight } = await getDimensionsAndWeight(ord.items);
           const [firstName, ...rest] = ord.address.receiverName.split(" ");
           const lastName = rest.join(" ");
-
           const shiprocketOrderData = {
             order_id: ord._id.toString(),
             order_date: new Date().toISOString(),
@@ -154,16 +160,19 @@ export async function POST(req) {
               { shiprocketOrderId: srResponse.order_id, deliveryStatus: "orderCreated" },
               { session }
             );
-            logs.push(`Shiprocket order created for ${ord._id}`);
+            logs.push(`Shiprocket order created successfully for ${ord._id}`);
           }
         } catch (err) {
           logs.push(`Shiprocket creation failed for ${ord._id}: ${err.message}`);
         }
+      } else {
+        logs.push(`Skipping Shiprocket for order ${ord._id}`);
       }
     }
 
     await session.commitTransaction();
     session.endSession();
+    logs.push("Transaction committed successfully");
 
     // 6. Send WhatsApp notification
     try {
@@ -171,6 +180,7 @@ export async function POST(req) {
       if (!mainOrderForMsg.isTestingOrder) {
         const userDoc = await User.findById(mainOrderForMsg.user);
         if (userDoc) {
+          logs.push(`Sending WhatsApp to user ${userDoc._id}`);
           await sendWhatsAppMessage({
             user: userDoc,
             prefUserName: mainOrderForMsg.address.receiverName || "",
@@ -189,8 +199,7 @@ export async function POST(req) {
 
     return NextResponse.json({ message: "COD processed successfully", logs }, { status: 200 });
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
+    logs.push(`Error in COD route: ${err.message}`);
     return NextResponse.json({ error: `Internal server error: ${err.message}`, logs }, { status: 500 });
   }
 }
