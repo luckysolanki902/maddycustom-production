@@ -2,7 +2,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getFbp, getFbc, getFacebookTrackingParams, getFacebookTrackingParamsAsync } from '@/lib/utils/cookies';
 import { enhanceEventData } from '@/lib/utils/userDataEnhancer';
-const StopFacebookPixels = true; // Set to true to disable Facebook Pixel events
+const StopFacebookPixels = false; // Set to true to disable Facebook Pixel events
 
 // Enhanced IP address detection with better IPv6 support and fallback
 const getClientIp = async () => {

@@ -15,7 +15,7 @@ export default function AnalyticsHead() {
         <>
             <CssBaseline />
             <GoogleTagManager />
-            {/* <FacebookPixel /> */}
+            <FacebookPixel />
             <FacebookClickIdHandler />
             <FacebookPageViewTracker />
             <GoogleAnalyticsGA4 />
