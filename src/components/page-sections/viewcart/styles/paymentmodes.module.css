@@ -48,6 +48,11 @@
   box-shadow: 0 0 0 1px #2d2d2d;
 }
 
+.paymentOption.disabled {
+  opacity: 0.6;
+  filter: grayscale(20%);
+}
+
 .paymentOptionContent {
   display: flex;
   justify-content: space-between;
@@ -81,6 +86,12 @@
 .paymentOptionDescription {
   font-size: 12px;
   color: #757575;
+}
+
+.codUnavailable {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #c62828; /* red tone for warning */
 }
 
 .extraCharge {
