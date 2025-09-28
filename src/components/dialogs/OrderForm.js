@@ -20,7 +20,7 @@ import { useForm, Controller } from 'react-hook-form';
 import axios from 'axios';
 import indianStates from '../../lib/constants/indianStates';
 import { useSelector, useDispatch } from 'react-redux';
-import { clearCart } from '../../store/slices/cartSlice';
+import { clearCart, setInventoryGate } from '../../store/slices/cartSlice';
 import { clearUTMDetails } from '@/store/slices/utmSlice';
 import {
   resetOrderForm,
@@ -131,12 +131,12 @@ const OrderForm = ({
     addressLine1: addressDetails.addressLine1 || '',
     addressLine2: addressDetails.addressLine2 || '',
     // Structured address fields
-  areaLocality: dvStructArea,
-  floorInput: (dvStructFloor !== undefined ? String(dvStructFloor) : ''),
-  landmark: dvStructLandmark,
-  // directions removed; addressType removed per request
+    areaLocality: dvStructArea,
+    floorInput: (dvStructFloor !== undefined ? String(dvStructFloor) : ''),
+    landmark: dvStructLandmark,
+    // directions removed; addressType removed per request
     city: addressDetails.city || '',
-  state: addressDetails.state || '',
+    state: addressDetails.state || '',
     pincode: addressDetails.pincode || '',
     country: addressDetails.country || 'India',
     ...aggregatedExtraFields.reduce((acc, field) => {
@@ -176,7 +176,7 @@ const OrderForm = ({
     shouldUnregister: false // Prevents field unregistration which helps with focus issues
   });
 
-    const showSnackbar = useCallback((message, severity = 'success') => {
+  const showSnackbar = useCallback((message, severity = 'success') => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
@@ -274,7 +274,7 @@ const OrderForm = ({
 
   // Handle Prefilled Address (guard against overwriting existing redux address)
   useEffect(() => {
-  if (userExists && prefilledAddress) {
+    if (userExists && prefilledAddress) {
       const reduxAddress = addressDetails;
       const isReduxAddressEmpty = !(
         reduxAddress.addressLine1 ||
@@ -287,13 +287,22 @@ const OrderForm = ({
 
       if (isReduxAddressEmpty) {
         dispatch(setAddressDetails(prefilledAddress));
-  // hydrate form values only if the corresponding fields are empty
-  if (!getValues('addressLine1') && prefilledAddress.addressLine1) setValue('addressLine1', prefilledAddress.addressLine1);
-  // Prefer structured.areaLocality if present, fallback to addressLine2
-  const struct = prefilledAddress.structured || {};
-  if (!getValues('areaLocality') && (struct.areaLocality || prefilledAddress.addressLine2)) setValue('areaLocality', struct.areaLocality || prefilledAddress.addressLine2);
-  if (!getValues('landmark') && struct.landmark) setValue('landmark', struct.landmark);
-  if (!getValues('floorInput') && (struct.floor !== undefined)) setValue('floorInput', String(struct.floor));
+
+        // Using shared extractFloorFromAddressLine1 helper
+        // hydrate form values only if the corresponding fields are empty
+        if (!getValues('addressLine1') && prefilledAddress.addressLine1) {
+          const { base, floor } = extractFloorFromAddressLine1(prefilledAddress.addressLine1);
+          setValue('addressLine1', base);
+          const struct = prefilledAddress.structured || {};
+          if (!getValues('floorInput') && struct.floor === undefined && floor) {
+            setValue('floorInput', String(floor));
+          }
+        }
+        // Prefer structured.areaLocality if present, fallback to addressLine2
+        const struct = prefilledAddress.structured || {};
+        if (!getValues('areaLocality') && (struct.areaLocality || prefilledAddress.addressLine2)) setValue('areaLocality', struct.areaLocality || prefilledAddress.addressLine2);
+        if (!getValues('landmark') && struct.landmark) setValue('landmark', struct.landmark);
+        if (!getValues('floorInput') && (struct.floor !== undefined)) setValue('floorInput', String(struct.floor));
         if (!getValues('city') && prefilledAddress.city) setValue('city', prefilledAddress.city);
         if (!getValues('state') && prefilledAddress.state) setValue('state', prefilledAddress.state);
         if (!getValues('pincode') && prefilledAddress.pincode) setValue('pincode', prefilledAddress.pincode);
@@ -383,7 +392,7 @@ const OrderForm = ({
     };
   }, [isMobile, open]);
 
-  
+
 
   // Simple focus-based mobile optimization
   useEffect(() => {
@@ -480,6 +489,36 @@ const OrderForm = ({
     return `Floor ${t}`;                       // other strings => prefix
   }, []);
 
+  // Helper: extract floor token from legacy addressLine1 and return base + floor
+  function extractFloorFromAddressLine1(line1) {
+    if (!line1 || typeof line1 !== 'string') return { base: line1 || '', floor: '' };
+    let base = line1;
+    let floor = '';
+    // Common patterns: "floor 3", "3rd floor", "fl-3", etc.
+    const patterns = [
+      { regex: /\b(?:floor|flr|fl)\s*[-:]?\s*(\d{1,2})(?:\s*(?:st|nd|rd|th))?\b/i, group: 1 },
+      { regex: /\b(\d{1,2})(?:\s*(?:st|nd|rd|th))?\s*(?:floor|flr|fl)\b/i, group: 1 },
+    ];
+    for (const p of patterns) {
+      const m = base.match(p.regex);
+      if (m) {
+        floor = m[p.group] || '';
+        base = base.replace(p.regex, '');
+        break;
+      }
+    }
+    // Cleanup extra commas/spaces
+    base = base
+      .replace(/\s{2,}/g, ' ')
+      .replace(/,\s*,/g, ',')
+      .replace(/(^[\s,]+|[\s,]+$)/g, '')
+      .replace(/,\s*$/, '')
+      .trim();
+    return { base, floor };
+  }
+
+
+
   // UI-only capitalization for display (does not mutate stored values)
   const toTitleCase = useCallback((str) => {
     if (!str || typeof str !== 'string') return str || '';
@@ -553,30 +592,31 @@ const OrderForm = ({
           dispatch(setUserDetails({ userId: response.data.userId }));
 
           if (latestAddress) {
-              // Map legacy fields and populate structured UI fields if available
-              const struct = latestAddress.structured || {};
-              const mapped = {
-                addressLine1: latestAddress.addressLine1 || '',
-                addressLine2: latestAddress.addressLine2 || '',
-                city: latestAddress.city || '',
-                state: latestAddress.state || '',
-                pincode: latestAddress.pincode || '',
-                areaLocality: struct.areaLocality || latestAddress.addressLine2 || '',
-                landmark: struct.landmark || '',
-                floorInput: struct.floor !== undefined ? String(struct.floor) : '',
-              };
+            // Map legacy fields and populate structured UI fields if available
+            const struct = latestAddress.structured || {};
+            const { base: line1Base, floor: floorFromLine1 } = extractFloorFromAddressLine1(latestAddress.addressLine1 || '');
+            const mapped = {
+              addressLine1: line1Base || '',
+              addressLine2: latestAddress.addressLine2 || '',
+              city: latestAddress.city || '',
+              state: latestAddress.state || '',
+              pincode: latestAddress.pincode || '',
+              areaLocality: struct.areaLocality || latestAddress.addressLine2 || '',
+              landmark: struct.landmark || '',
+              floorInput: struct.floor !== undefined ? String(struct.floor) : (floorFromLine1 ? String(floorFromLine1) : ''),
+            };
 
-              Object.entries(mapped).forEach(([key, value]) => setValue(key, value || ''));
+            Object.entries(mapped).forEach(([key, value]) => setValue(key, value || ''));
 
-              // Keep redux addressDetails to legacy fields so other pages remain unaffected
-              dispatch(setAddressDetails({
-                addressLine1: latestAddress.addressLine1 || '',
-                addressLine2: latestAddress.addressLine2 || '',
-                city: latestAddress.city || '',
-                state: latestAddress.state || '',
-                pincode: latestAddress.pincode || '',
-                country: latestAddress.country || 'India',
-              }));
+            // Keep redux addressDetails to legacy fields so other pages remain unaffected
+            dispatch(setAddressDetails({
+              addressLine1: latestAddress.addressLine1 || '',
+              addressLine2: latestAddress.addressLine2 || '',
+              city: latestAddress.city || '',
+              state: latestAddress.state || '',
+              pincode: latestAddress.pincode || '',
+              country: latestAddress.country || 'India',
+            }));
 
             // Pre-validate pincode
             if (latestAddress.pincode && latestAddress.pincode.length === 6) {
@@ -705,6 +745,39 @@ const OrderForm = ({
         await Promise.all(initialValidationPromises).catch(error => {
           throw error;
         });
+      }
+
+      // Fresh inventory verification (no cache) just before placing order to avoid overselling
+      try {
+        const verifyPayload = {
+          items: cartItems.map(i => ({
+            productId: i.productId,
+            optionId: i.productDetails?.selectedOption?._id || null,
+            quantity: i.quantity,
+          })),
+          reserve: false,
+        };
+        const verifyRes = await axios.post(`/api/checkout/inventory/verify?_ts=${Date.now()}`,
+          verifyPayload,
+          { headers: { 'Cache-Control': 'no-store, no-cache' } }
+        );
+        if (!verifyRes.data?.ok) {
+          throw new Error(verifyRes.data?.message || 'Inventory verification failed.');
+        }
+        if (Array.isArray(verifyRes.data.excludedKeys) && verifyRes.data.excludedKeys.length > 0) {
+          const cartSignature = JSON.stringify(cartItems.map(i => ({ id: i.productId, qty: i.quantity, opt: i.productDetails?.selectedOption?._id || null })));
+          const { excludedKeys, itemsInfo, expiresAt } = verifyRes.data;
+          dispatch(setInventoryGate({ excludedKeys, itemsInfo, expiresAt: expiresAt || Date.now() + 15 * 60 * 1000, cartSignature }));
+          showSnackbar('Some items just went out of stock. We updated your cart. Please review.', 'warning');
+          setIsLoading(false);
+          setIsPaymentProcessing(false);
+          setPurchaseInitiated(false);
+          handleFullClose();
+          return; // Stop placing the order
+        }
+      } catch (invErr) {
+        console.error('Fresh inventory verification failed:', invErr);
+        throw invErr;
       }
 
       // Financial data is now sent directly
@@ -869,7 +942,7 @@ const OrderForm = ({
   }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
     totalCost, deliveryCost, utmDetails, cartItems, paymentModeConfig,
     discountAmountFinal, couponsDetails, isPincodeValid, reset, handleFullClose, router,
-  serviceabilityCache, geo, formatFloorForAddress]); // Maintained dependencies
+    serviceabilityCache, geo, formatFloorForAddress]); // Maintained dependencies
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
@@ -1625,7 +1698,12 @@ const OrderForm = ({
                             onChange={(e) => {
                               field.onChange(e);
                             }}
-                            onBlur={(e) => dispatch(setAddressDetails({ addressLine1: e.target.value }))}
+                            onBlur={(e) => {
+                              const base = e.target.value;
+                              const floor = getValues('floorInput');
+                              const composed = [base, formatFloorForAddress(floor)].filter(Boolean).join(', ');
+                              dispatch(setAddressDetails({ addressLine1: composed }));
+                            }}
                             InputProps={{ style: { textTransform: 'capitalize' } }}
                           />
                         )}
@@ -1643,7 +1721,14 @@ const OrderForm = ({
                             error={errors.floorInput}
                             helperText={errors.floorInput ? errors.floorInput.message : ''}
                             disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => field.onChange(e)}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              const base = getValues('addressLine1');
+                              const floor = e.target.value;
+                              const composed = [base, formatFloorForAddress(floor)].filter(Boolean).join(', ');
+                              // Keep legacy redux addressLine1 composed for compatibility
+                              dispatch(setAddressDetails({ addressLine1: composed }));
+                            }}
                           />
                         )}
                       />
@@ -1763,15 +1848,15 @@ const OrderForm = ({
                                 fontSize: '0.92rem'
                               }}
                             >
-                                {[
-                                  caps.line(watch('addressLine1')),
-                                  formatFloorForAddress(watch('floorInput')),
-                                  caps.area(watch('areaLocality')),
-                                  caps.landmark(watch('landmark')),
-                                  caps.city(watch('city')),
-                                  caps.state(watch('state')),
-                                  watch('pincode')
-                                ].filter(Boolean).join(', ')}
+                              {[
+                                caps.line(watch('addressLine1')),
+                                formatFloorForAddress(watch('floorInput')),
+                                caps.area(watch('areaLocality')),
+                                caps.landmark(watch('landmark')),
+                                caps.city(watch('city')),
+                                caps.state(watch('state')),
+                                watch('pincode')
+                              ].filter(Boolean).join(', ')}
                             </Typography>
                           </Box>
 
