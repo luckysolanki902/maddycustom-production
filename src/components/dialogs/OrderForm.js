@@ -47,6 +47,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'; // Added
 import MyLocationIcon from '@mui/icons-material/MyLocation';
+import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
 
@@ -457,6 +461,20 @@ const OrderForm = ({
     setShowPhoneConfirmation(false);
   }, [formattedPhone, setValue, dispatch]);
 
+  // Capitalize first letter if first non-space char is alphabetic
+  const capitalizeFirstAlpha = useCallback((str) => {
+    if (str === null || str === undefined) return str;
+    return String(str).replace(/^\s*([a-z])/, (m, p) => m.replace(p, p.toUpperCase()));
+  }, []);
+
+  // Title-case: capitalize first letter of every word for names
+  const toTitleCase = useCallback((str) => {
+    if (str === null || str === undefined) return str;
+    return String(str)
+      .toLowerCase()
+      .replace(/\b([a-z])/g, (m) => m.toUpperCase());
+  }, []);
+
   // Normalize floor display: avoid duplicating the word 'Floor'
   const formatFloorForAddress = useCallback((value) => {
     if (value === null || value === undefined) return '';
@@ -494,6 +512,7 @@ const OrderForm = ({
   const onSubmitUserDetails = useCallback(async (data) => {
     // Format phone number for submission if needed
     const phoneToUse = formatPhoneNumber(data.phoneNumber);
+    const nameToUse = toTitleCase(data.name || '');
 
     // Client-side validation to avoid unnecessary API calls
     if (phoneToUse.length !== 10 || !/^\d{10}$/.test(phoneToUse)) {
@@ -504,7 +523,7 @@ const OrderForm = ({
     // Optimistically update Redux store with user details before API call
     dispatch(
       setUserDetails({
-        name: data.name,
+        name: nameToUse,
         phoneNumber: phoneToUse,
         email: data.email,
       })
@@ -516,7 +535,7 @@ const OrderForm = ({
     // Perform user check in background without blocking UI
     pendingOperationsRef.current.userCheck = axios.patch('/api/user/check', {
       phoneNumber: phoneToUse,
-      name: data.name,
+      name: nameToUse,
       email: data.email,
     })
       .then(response => {
@@ -557,7 +576,7 @@ const OrderForm = ({
       .catch(error => {
         console.error('Error in background user check/create:', error);
       });
-  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode]);
+  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode, toTitleCase]);
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
@@ -895,6 +914,7 @@ const OrderForm = ({
         onFocus={() => isMobile && setIsInputFocused(true)}
         onBlur={(e) => {
           if (onBlurProp) onBlurProp(e);
+          if (field?.onBlur) field.onBlur(e);
           if (isMobile) setIsInputFocused(false);
         }}
         InputLabelProps={{
@@ -1220,6 +1240,11 @@ const OrderForm = ({
                             onChange={(e) => {
                               field.onChange(e);
                               dispatch(setUserDetails({ name: e.target.value }));
+                            }}
+                            onBlur={(e) => {
+                              const next = toTitleCase(e.target.value);
+                              if (next !== e.target.value) setValue('name', next, { shouldDirty: true, shouldValidate: true });
+                              dispatch(setUserDetails({ name: next }));
                             }}
                           />
                         )}
@@ -1576,7 +1601,11 @@ const OrderForm = ({
                             onChange={(e) => {
                               field.onChange(e);
                             }}
-                            onBlur={(e) => dispatch(setAddressDetails({ addressLine1: e.target.value }))}
+                            onBlur={(e) => {
+                              const next = capitalizeFirstAlpha(e.target.value);
+                              if (next !== e.target.value) setValue('addressLine1', next, { shouldDirty: true, shouldValidate: true });
+                              dispatch(setAddressDetails({ addressLine1: next }));
+                            }}
                           />
                         )}
                       />
@@ -1615,7 +1644,11 @@ const OrderForm = ({
                                 onChange={(e) => {
                                   field.onChange(e);
                                 }}
-                                onBlur={(e) => dispatch(setAddressDetails({ addressLine2: e.target.value }))}
+                                onBlur={(e) => {
+                                  const next = capitalizeFirstAlpha(e.target.value);
+                                  if (next !== e.target.value) setValue('areaLocality', next, { shouldDirty: true, shouldValidate: true });
+                                  dispatch(setAddressDetails({ addressLine2: next }));
+                                }}
                               />
                             )}
                           />
@@ -1633,6 +1666,10 @@ const OrderForm = ({
                                 helperText={errors.landmark ? errors.landmark.message : ''}
                                 disabled={isLoading || isPaymentProcessing}
                                 onChange={(e) => field.onChange(e)}
+                                onBlur={(e) => {
+                                  const next = capitalizeFirstAlpha(e.target.value);
+                                  if (next !== e.target.value) setValue('landmark', next, { shouldDirty: true, shouldValidate: true });
+                                }}
                               />
                             )}
                           />
@@ -1682,35 +1719,71 @@ const OrderForm = ({
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
                         <Box sx={{
                           mt: 1,
-                          p: 1.2,
+                          p: 1.1,
                           border: `1px dashed ${theme.palette.divider}`,
-                          borderRadius: '8px',
-                          backgroundColor: '#fafafa'
+                          borderRadius: '10px',
+                          backgroundColor: '#fcfcfc'
                         }}>
-                          <Typography variant="caption" sx={{ fontFamily: 'Jost, sans-serif', color: '#666', fontWeight: 600 }}>
-                            Address preview
+                          <Typography
+                            variant="overline"
+                            sx={{
+                              fontFamily: 'Jost, sans-serif',
+                              color: '#888',
+                              letterSpacing: '0.06em',
+                              fontWeight: 600,
+                              display: 'block'
+                            }}
+                          >
+                            Address Preview
                           </Typography>
-                          <Typography variant="body2" sx={{ fontFamily: 'Jost, sans-serif', mt: 0.5, color: '#2d2d2d' }}>
-                            {[
-                              watch('addressLine1'),
-                              formatFloorForAddress(watch('floorInput')),
-                              watch('areaLocality'),
-                              watch('landmark'),
-                              watch('city'),
-                              watch('state'),
-                              watch('pincode')
-                            ]
-                              .filter(Boolean)
-                              .join(', ')}
-                          </Typography>
-                          <Typography variant="body2" sx={{ fontFamily: 'Jost, sans-serif', mt: 0.5, color: '#2d2d2d' }}>
-                            {[
-                              watch('name') || userDetails.name,
-                              watch('email') || userDetails.email,
-                              watch('phoneNumber') || userDetails.phoneNumber
-                            ].filter(Boolean).join(' | ')}
-                          </Typography>
-                          <Typography variant="caption" sx={{ fontFamily: 'Jost, sans-serif', display: 'block', mt: 0.75, color: '#0f8a5a' }}>
+
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mt: 0.25 }}>
+                            <LocationOnOutlinedIcon sx={{ fontSize: 16, color: '#999', mt: '2px' }} />
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontFamily: 'Jost, sans-serif',
+                                color: '#333',
+                                lineHeight: 1.4,
+                                fontSize: '0.92rem'
+                              }}
+                            >
+                              {[
+                                watch('addressLine1'),
+                                formatFloorForAddress(watch('floorInput')),
+                                watch('areaLocality'),
+                                watch('landmark'),
+                                watch('city'),
+                                watch('state'),
+                                watch('pincode')
+                              ].filter(Boolean).join(', ')}
+                            </Typography>
+                          </Box>
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.6 }}>
+                            <PersonOutlineIcon sx={{ fontSize: 16, color: '#999' }} />
+                            <Typography
+                              variant="body2"
+                              sx={{ fontFamily: 'Jost, sans-serif', color: '#444', fontSize: '0.9rem' }}
+                            >
+                              {[
+                                watch('name') || userDetails.name,
+                                watch('email') || userDetails.email,
+                                watch('phoneNumber') || userDetails.phoneNumber
+                              ].filter(Boolean).join(' | ')}
+                            </Typography>
+                          </Box>
+
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontFamily: 'Jost, sans-serif',
+                              display: 'block',
+                              mt: 0.8,
+                              color: '#2e7d32',
+                              opacity: 0.95
+                            }}
+                          >
                             Please check your address and contact details so our delivery partner can reach you without delays.
                           </Typography>
                         </Box>
