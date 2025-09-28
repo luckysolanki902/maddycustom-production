@@ -4,6 +4,7 @@
 
 import React from 'react';
 import styles from './styles/paymentmodes.module.css';
+import { MAX_ORDER_VALUE_FOR_COD } from '@/lib/constants/payments';
 import PaymentIcon from '@mui/icons-material/Payment';
 import CircularProgress from '@mui/material/CircularProgress';
 import Radio from '@mui/material/Radio';
@@ -30,8 +31,8 @@ const getPaymentIcon = (type) => {
   }
 };
 
-// Max order value allowed for Cash on Delivery
-const maxOrderValueForCOD = 3000; // INR - adjust as needed
+// Max order value allowed for Cash on Delivery (from shared constant)
+const maxOrderValueForCOD = MAX_ORDER_VALUE_FOR_COD;
 
 const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange, totalAmount = 0 }) => {
   if (isLoading) {
@@ -107,7 +108,7 @@ const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange, 
                           {isCodDisabled && (
                             <span className={styles.codUnavailable}>
                               Cash on Delivery isn’t available for orders above ₹{maxOrderValueForCOD}.
-                              Please choose Online Payment.
+                              Please choose Online or Split Payment.
                             </span>
                           )}
                         </div>
