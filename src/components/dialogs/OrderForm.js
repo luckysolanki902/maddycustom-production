@@ -53,6 +53,7 @@ import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
+import reverseGeocodeClient from '@/lib/utils/reverseGeocodeClient';
 
 const OrderForm = ({
   open,
@@ -119,6 +120,10 @@ const OrderForm = ({
   }, [items]);
 
   // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
+  const dvStructArea = orderForm?.prefilledAddress?.structured?.areaLocality || '';
+  const dvStructLandmark = orderForm?.prefilledAddress?.structured?.landmark || '';
+  const dvStructFloor = orderForm?.prefilledAddress?.structured?.floor;
+
   const defaultValues = useMemo(() => ({
     name: userDetails.name || '',
     phoneNumber: userDetails.phoneNumber || '',
@@ -126,12 +131,12 @@ const OrderForm = ({
     addressLine1: addressDetails.addressLine1 || '',
     addressLine2: addressDetails.addressLine2 || '',
     // Structured address fields
-    areaLocality: '',
-    floorInput: '',
-    landmark: '',
+  areaLocality: dvStructArea,
+  floorInput: (dvStructFloor !== undefined ? String(dvStructFloor) : ''),
+  landmark: dvStructLandmark,
   // directions removed; addressType removed per request
     city: addressDetails.city || '',
-    state: addressDetails.state || '',
+  state: addressDetails.state || '',
     pincode: addressDetails.pincode || '',
     country: addressDetails.country || 'India',
     ...aggregatedExtraFields.reduce((acc, field) => {
@@ -141,7 +146,7 @@ const OrderForm = ({
   }), [userDetails.name, userDetails.phoneNumber, userDetails.email,
   addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
   addressDetails.state, addressDetails.pincode, addressDetails.country,
-    aggregatedExtraFields]);
+    aggregatedExtraFields, dvStructArea, dvStructLandmark, dvStructFloor]);
 
   // Geolocation capture
   const [geo, setGeo] = useState({ lat: null, lng: null });
@@ -269,7 +274,7 @@ const OrderForm = ({
 
   // Handle Prefilled Address (guard against overwriting existing redux address)
   useEffect(() => {
-    if (userExists && prefilledAddress) {
+  if (userExists && prefilledAddress) {
       const reduxAddress = addressDetails;
       const isReduxAddressEmpty = !(
         reduxAddress.addressLine1 ||
@@ -282,9 +287,13 @@ const OrderForm = ({
 
       if (isReduxAddressEmpty) {
         dispatch(setAddressDetails(prefilledAddress));
-        // hydrate form values only if the corresponding fields are empty
-        if (!getValues('addressLine1') && prefilledAddress.addressLine1) setValue('addressLine1', prefilledAddress.addressLine1);
-        if (!getValues('areaLocality') && prefilledAddress.addressLine2) setValue('areaLocality', prefilledAddress.addressLine2);
+  // hydrate form values only if the corresponding fields are empty
+  if (!getValues('addressLine1') && prefilledAddress.addressLine1) setValue('addressLine1', prefilledAddress.addressLine1);
+  // Prefer structured.areaLocality if present, fallback to addressLine2
+  const struct = prefilledAddress.structured || {};
+  if (!getValues('areaLocality') && (struct.areaLocality || prefilledAddress.addressLine2)) setValue('areaLocality', struct.areaLocality || prefilledAddress.addressLine2);
+  if (!getValues('landmark') && struct.landmark) setValue('landmark', struct.landmark);
+  if (!getValues('floorInput') && (struct.floor !== undefined)) setValue('floorInput', String(struct.floor));
         if (!getValues('city') && prefilledAddress.city) setValue('city', prefilledAddress.city);
         if (!getValues('state') && prefilledAddress.state) setValue('state', prefilledAddress.state);
         if (!getValues('pincode') && prefilledAddress.pincode) setValue('pincode', prefilledAddress.pincode);
@@ -461,20 +470,6 @@ const OrderForm = ({
     setShowPhoneConfirmation(false);
   }, [formattedPhone, setValue, dispatch]);
 
-  // Capitalize first letter if first non-space char is alphabetic
-  const capitalizeFirstAlpha = useCallback((str) => {
-    if (str === null || str === undefined) return str;
-    return String(str).replace(/^\s*([a-z])/, (m, p) => m.replace(p, p.toUpperCase()));
-  }, []);
-
-  // Title-case: capitalize first letter of every word for names
-  const toTitleCase = useCallback((str) => {
-    if (str === null || str === undefined) return str;
-    return String(str)
-      .toLowerCase()
-      .replace(/\b([a-z])/g, (m) => m.toUpperCase());
-  }, []);
-
   // Normalize floor display: avoid duplicating the word 'Floor'
   const formatFloorForAddress = useCallback((value) => {
     if (value === null || value === undefined) return '';
@@ -484,6 +479,21 @@ const OrderForm = ({
     if (/\bfloor\b/i.test(t)) return t;      // already contains 'floor'
     return `Floor ${t}`;                       // other strings => prefix
   }, []);
+
+  // UI-only capitalization for display (does not mutate stored values)
+  const toTitleCase = useCallback((str) => {
+    if (!str || typeof str !== 'string') return str || '';
+    return str
+      .toLowerCase()
+      .replace(/\b([a-z])(\w*)/g, (m, p1, p2) => p1.toUpperCase() + p2);
+  }, []);
+  const caps = useMemo(() => ({
+    line: (s) => toTitleCase(s),
+    city: (s) => toTitleCase(s),
+    state: (s) => toTitleCase(s),
+    area: (s) => toTitleCase(s),
+    landmark: (s) => toTitleCase(s),
+  }), [toTitleCase]);
 
 
 
@@ -512,7 +522,6 @@ const OrderForm = ({
   const onSubmitUserDetails = useCallback(async (data) => {
     // Format phone number for submission if needed
     const phoneToUse = formatPhoneNumber(data.phoneNumber);
-    const nameToUse = toTitleCase(data.name || '');
 
     // Client-side validation to avoid unnecessary API calls
     if (phoneToUse.length !== 10 || !/^\d{10}$/.test(phoneToUse)) {
@@ -523,7 +532,7 @@ const OrderForm = ({
     // Optimistically update Redux store with user details before API call
     dispatch(
       setUserDetails({
-        name: nameToUse,
+        name: data.name,
         phoneNumber: phoneToUse,
         email: data.email,
       })
@@ -535,7 +544,7 @@ const OrderForm = ({
     // Perform user check in background without blocking UI
     pendingOperationsRef.current.userCheck = axios.patch('/api/user/check', {
       phoneNumber: phoneToUse,
-      name: nameToUse,
+      name: data.name,
       email: data.email,
     })
       .then(response => {
@@ -544,14 +553,30 @@ const OrderForm = ({
           dispatch(setUserDetails({ userId: response.data.userId }));
 
           if (latestAddress) {
-            // Update form with existing address
-            Object.entries(latestAddress).forEach(([key, value]) => {
-              if (setValue && key !== '_id') {
-                setValue(key, value || '');
-              }
-            });
+              // Map legacy fields and populate structured UI fields if available
+              const struct = latestAddress.structured || {};
+              const mapped = {
+                addressLine1: latestAddress.addressLine1 || '',
+                addressLine2: latestAddress.addressLine2 || '',
+                city: latestAddress.city || '',
+                state: latestAddress.state || '',
+                pincode: latestAddress.pincode || '',
+                areaLocality: struct.areaLocality || latestAddress.addressLine2 || '',
+                landmark: struct.landmark || '',
+                floorInput: struct.floor !== undefined ? String(struct.floor) : '',
+              };
 
-            dispatch(setAddressDetails(latestAddress));
+              Object.entries(mapped).forEach(([key, value]) => setValue(key, value || ''));
+
+              // Keep redux addressDetails to legacy fields so other pages remain unaffected
+              dispatch(setAddressDetails({
+                addressLine1: latestAddress.addressLine1 || '',
+                addressLine2: latestAddress.addressLine2 || '',
+                city: latestAddress.city || '',
+                state: latestAddress.state || '',
+                pincode: latestAddress.pincode || '',
+                country: latestAddress.country || 'India',
+              }));
 
             // Pre-validate pincode
             if (latestAddress.pincode && latestAddress.pincode.length === 6) {
@@ -576,7 +601,7 @@ const OrderForm = ({
       .catch(error => {
         console.error('Error in background user check/create:', error);
       });
-  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode, toTitleCase]);
+  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode]);
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
@@ -655,6 +680,10 @@ const OrderForm = ({
           state: data.state,
           pincode: data.pincode,
           country: data.country || 'India',
+          // structured fields (saved in User.addresses.structured)
+          areaLocality: data.areaLocality,
+          landmark: data.landmark,
+          floor: (typeof floorParsed !== 'undefined') ? floorParsed : undefined,
           geo: geo,
           ...orderForm.extraFields,
         },
@@ -914,7 +943,6 @@ const OrderForm = ({
         onFocus={() => isMobile && setIsInputFocused(true)}
         onBlur={(e) => {
           if (onBlurProp) onBlurProp(e);
-          if (field?.onBlur) field.onBlur(e);
           if (isMobile) setIsInputFocused(false);
         }}
         InputLabelProps={{
@@ -1241,11 +1269,6 @@ const OrderForm = ({
                               field.onChange(e);
                               dispatch(setUserDetails({ name: e.target.value }));
                             }}
-                            onBlur={(e) => {
-                              const next = toTitleCase(e.target.value);
-                              if (next !== e.target.value) setValue('name', next, { shouldDirty: true, shouldValidate: true });
-                              dispatch(setUserDetails({ name: next }));
-                            }}
                           />
                         )}
                       />
@@ -1395,8 +1418,7 @@ const OrderForm = ({
                               const lat = pos.coords.latitude;
                               const lng = pos.coords.longitude;
                               setGeo({ lat, lng });
-                              fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`)
-                                .then(res => res.json())
+                              reverseGeocodeClient(lat, lng)
                                 .then(addr => {
                                   if (addr?.pincode) {
                                     setValue('pincode', addr.pincode);
@@ -1472,6 +1494,7 @@ const OrderForm = ({
                                   field.onChange(e);
                                 }}
                                 onBlur={(e) => dispatch(setAddressDetails({ city: e.target.value }))}
+                                InputProps={{ style: { textTransform: 'capitalize' } }}
                               />
                             )}
                           />
@@ -1549,6 +1572,7 @@ const OrderForm = ({
                                         style: {
                                           fontFamily: 'Jost, sans-serif',
                                           fontSize: '0.95rem',
+                                          textTransform: 'capitalize'
                                         },
                                       }}
                                     />
@@ -1601,11 +1625,8 @@ const OrderForm = ({
                             onChange={(e) => {
                               field.onChange(e);
                             }}
-                            onBlur={(e) => {
-                              const next = capitalizeFirstAlpha(e.target.value);
-                              if (next !== e.target.value) setValue('addressLine1', next, { shouldDirty: true, shouldValidate: true });
-                              dispatch(setAddressDetails({ addressLine1: next }));
-                            }}
+                            onBlur={(e) => dispatch(setAddressDetails({ addressLine1: e.target.value }))}
+                            InputProps={{ style: { textTransform: 'capitalize' } }}
                           />
                         )}
                       />
@@ -1644,11 +1665,8 @@ const OrderForm = ({
                                 onChange={(e) => {
                                   field.onChange(e);
                                 }}
-                                onBlur={(e) => {
-                                  const next = capitalizeFirstAlpha(e.target.value);
-                                  if (next !== e.target.value) setValue('areaLocality', next, { shouldDirty: true, shouldValidate: true });
-                                  dispatch(setAddressDetails({ addressLine2: next }));
-                                }}
+                                onBlur={(e) => dispatch(setAddressDetails({ addressLine2: e.target.value }))}
+                                InputProps={{ style: { textTransform: 'capitalize' } }}
                               />
                             )}
                           />
@@ -1666,10 +1684,7 @@ const OrderForm = ({
                                 helperText={errors.landmark ? errors.landmark.message : ''}
                                 disabled={isLoading || isPaymentProcessing}
                                 onChange={(e) => field.onChange(e)}
-                                onBlur={(e) => {
-                                  const next = capitalizeFirstAlpha(e.target.value);
-                                  if (next !== e.target.value) setValue('landmark', next, { shouldDirty: true, shouldValidate: true });
-                                }}
+                                InputProps={{ style: { textTransform: 'capitalize' } }}
                               />
                             )}
                           />
@@ -1748,15 +1763,15 @@ const OrderForm = ({
                                 fontSize: '0.92rem'
                               }}
                             >
-                              {[
-                                watch('addressLine1'),
-                                formatFloorForAddress(watch('floorInput')),
-                                watch('areaLocality'),
-                                watch('landmark'),
-                                watch('city'),
-                                watch('state'),
-                                watch('pincode')
-                              ].filter(Boolean).join(', ')}
+                                {[
+                                  caps.line(watch('addressLine1')),
+                                  formatFloorForAddress(watch('floorInput')),
+                                  caps.area(watch('areaLocality')),
+                                  caps.landmark(watch('landmark')),
+                                  caps.city(watch('city')),
+                                  caps.state(watch('state')),
+                                  watch('pincode')
+                                ].filter(Boolean).join(', ')}
                             </Typography>
                           </Box>
 

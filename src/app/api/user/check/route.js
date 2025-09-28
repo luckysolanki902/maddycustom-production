@@ -31,7 +31,7 @@ export async function PATCH(request) {
     // Lean query for better performance - only fetch necessary fields
     const user = await User.findOne(
       { phoneNumber }, 
-      { name: 1, email: 1, addresses: 1 } // Only get these fields
+      { name: 1, email: 1, addresses: 1 } // Include structured by default in addresses
     ).lean();
 
     if (!user) {
