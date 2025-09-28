@@ -249,6 +249,14 @@ export default function ViewCart({ isDrawer = false }) {
   const extraCharge = selectedPM?.extraCharge || 0;
   const totalPay = grand + deliveryCost + extraCharge;
 
+  // If COD becomes unavailable due to order value, auto-deselect it
+  useEffect(() => {
+    const maxOrderValueForCOD = 3000;
+    if ((selectedPM?.name || '').toLowerCase() === 'cod' && totalPay > maxOrderValueForCOD) {
+      setSelectedPM(null);
+    }
+  }, [selectedPM?.name, totalPay]);
+
   // Determine if this is a split payment based on payment mode configuration, 
   const isSplitPayment = selectedPM?.name === 'split' ||
     (selectedPM?.configuration?.onlinePercentage > 0 &&
@@ -792,6 +800,7 @@ export default function ViewCart({ isDrawer = false }) {
                 isLoading={loadingPM}
                 selectedPaymentMode={selectedPM}
                 onChange={e => setSelectedPM(paymentModes.find(m => m.name === e.target.value))}
+                totalAmount={totalPay}
               />
             </section>
 

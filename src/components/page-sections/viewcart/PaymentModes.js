@@ -30,7 +30,10 @@ const getPaymentIcon = (type) => {
   }
 };
 
-const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange }) => {
+// Max order value allowed for Cash on Delivery
+const maxOrderValueForCOD = 3000; // INR - adjust as needed
+
+const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange, totalAmount = 0 }) => {
   if (isLoading) {
     return (
       <div className={styles.loadingContainer}>
@@ -65,6 +68,8 @@ const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange }
         >
           {paymentModes.map((mode) => {
             const hasCharge = mode.extraCharge > 0;
+            const isCod = (mode?.name || '').toLowerCase() === 'cod';
+            const isCodDisabled = isCod && totalAmount > maxOrderValueForCOD;
 
             return (
               <motion.div
@@ -72,13 +77,15 @@ const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange }
                 className={`
                   ${styles.paymentOption}
                   ${selectedPaymentMode?.name === mode.name ? styles.selected : ''}
+                  ${isCodDisabled ? styles.disabled : ''}
                 `}
                 whileHover={{ scale: 1.01 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 10 }}
               >
                 <FormControlLabel
                   value={mode.name}
-                  control={<Radio sx={{ color: '#2d2d2d', '&.Mui-checked': { color: '#2d2d2d' } }} size="small" />}
+                  control={<Radio sx={{ color: '#2d2d2d', '&.Mui-checked': { color: '#2d2d2d' } }} size="small" disabled={isCodDisabled} />}
+                  disabled={isCodDisabled}
                   label={
                     <div className={styles.paymentOptionContent}>
                       <div className={styles.paymentOptionLeft}>
@@ -95,6 +102,12 @@ const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange }
                                   <br />
                                 </React.Fragment>
                               ))}
+                            </span>
+                          )}
+                          {isCodDisabled && (
+                            <span className={styles.codUnavailable}>
+                              Cash on Delivery isn’t available for orders above ₹{maxOrderValueForCOD}.
+                              Please choose Online Payment.
                             </span>
                           )}
                         </div>
