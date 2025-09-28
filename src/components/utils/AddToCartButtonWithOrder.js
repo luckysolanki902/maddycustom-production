@@ -41,6 +41,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   // State to track last action (for animation)
   const [lastAction, setLastAction] = useState(null);
   const [showNotifyDialog, setShowNotifyDialog] = useState(false);
+  // Track background check and existing notification state
+  const [checkingNotification, setCheckingNotification] = useState(false);
+  const [hasNotification, setHasNotification] = useState(false);
 
   // React Spring animation for quantity display
   const props = useSpring({
@@ -218,6 +221,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     // cartItem &&
      product?.designGroupId);
 
+  // Derived: already subscribed either via redux selector or server check
+  const alreadySubscribed = isSubscribedToNotification || hasNotification;
+
   // Combine classes for the main container
   const mainClasses = [
     styles.container,
@@ -290,15 +296,15 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
           <div className={`${styles.orderNowSection} ${styles.halfWidth}`}>
             {outOfStock ? (
               <div
-                onClick={isSubscribedToNotification ? undefined : handleNotifyMe}
+                onClick={alreadySubscribed ? undefined : handleNotifyMe}
                 className={styles.orderNowButton}
-                style={isSubscribedToNotification ? { 
+                style={alreadySubscribed ? { 
                   opacity: 0.9, 
                   cursor: 'default',
                   backgroundColor: '#4caf50'
                 } : {}}
               >
-                {isSubscribedToNotification ? (
+                {alreadySubscribed ? (
                   <>
                     <CheckCircleIcon fontSize="medium" className={styles.boltIcon} />
                     Notify Me
