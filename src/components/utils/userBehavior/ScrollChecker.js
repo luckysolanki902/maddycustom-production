@@ -29,7 +29,6 @@ const ScrollChecker = () => {
 
     if (scrollPercentage > 60) {
       if (!scrolledMoreThan60Percent) {
-        console.log('ScrollChecker: User scrolled more than 60%', { scrollPercentage: Math.round(scrollPercentage) });
         dispatch(setScrolledMoreThan60Percent(true));
       }
     }
