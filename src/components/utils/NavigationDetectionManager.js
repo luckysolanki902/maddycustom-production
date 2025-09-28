@@ -32,7 +32,6 @@ class NavigationDetectionManager {
     this.setupCompletionDetection();
     this.isInitialized = true;
     
-    console.log('🚀 Navigation Detection Manager initialized');
   }
 
   // Layer 1: Programmatic Navigation Detection
@@ -50,35 +49,30 @@ class NavigationDetectionManager {
 
     // Override router.push
     this.router.push = (href, options) => {
-      console.log('🔗 Router.push detected:', href);
       this.startNavigationInstantly({ url: href, method: 'push' });
       return this.originalRouterMethods.push(href, options);
     };
 
     // Override router.replace
     this.router.replace = (href, options) => {
-      console.log('🔄 Router.replace detected:', href);
       this.startNavigationInstantly({ url: href, method: 'replace' });
       return this.originalRouterMethods.replace(href, options);
     };
 
     // Override router.back
     this.router.back = () => {
-      console.log('⬅️ Router.back detected');
       this.startNavigationInstantly({ method: 'back' });
       return this.originalRouterMethods.back();
     };
 
     // Override router.forward
     this.router.forward = () => {
-      console.log('➡️ Router.forward detected');
       this.startNavigationInstantly({ method: 'forward' });
       return this.originalRouterMethods.forward();
     };
 
     // Override router.refresh
     this.router.refresh = () => {
-      console.log('🔃 Router.refresh detected');
       this.startNavigationInstantly({ method: 'refresh' });
       return this.originalRouterMethods.refresh();
     };
@@ -135,7 +129,6 @@ class NavigationDetectionManager {
     if (linkPath === currentPath) return;
 
     // This is a valid navigation link - start loading immediately
-    console.log('🖱️ Navigation link clicked:', href);
     this.startNavigationInstantly({ url: href, method: 'link-click' });
   }
 
@@ -150,15 +143,12 @@ class NavigationDetectionManager {
     // Visibility change (for when user navigates away)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden' && this.loadingActive) {
-        console.log('👁️ Page hidden - completing navigation');
         this.completeNavigationInstantly();
       }
     });
   }
 
   handlePopState(event) {
-    console.log('⬅️➡️ PopState detected (back/forward)');
-    
     // For browser navigation, start loading immediately
     this.startNavigationInstantly({ method: 'popstate' });
     
@@ -168,7 +158,6 @@ class NavigationDetectionManager {
 
   handleBeforeUnload() {
     if (this.loadingActive) {
-      console.log('🚪 Page unloading - completing navigation');
       this.completeNavigationInstantly();
     }
   }
@@ -177,15 +166,12 @@ class NavigationDetectionManager {
   startNavigationInstantly(details = {}) {
     // Prevent double triggers
     if (this.loadingActive) {
-      console.log('⚠️ Navigation already active, skipping...', details);
       return;
     }
 
     this.loadingActive = true;
     this.lastNavigationType = details.method;
     this.navigationStartTime = Date.now();
-    console.log('🚀 Starting navigation instantly:', details);
-    
     this.dispatch(startNavigation({
       url: details.url,
       method: details.method,
@@ -196,7 +182,6 @@ class NavigationDetectionManager {
     const timeoutDuration = details.method === 'popstate' ? 3000 : 8000; // Shorter for browser nav
     setTimeout(() => {
       if (this.loadingActive) {
-        console.warn(`⏰ Navigation safety timeout (${timeoutDuration}ms) triggered - auto-completing`);
         this.completeNavigationInstantly();
       }
     }, timeoutDuration);
@@ -204,25 +189,22 @@ class NavigationDetectionManager {
 
   completeNavigationInstantly() {
     if (!this.loadingActive) {
-      console.log('ℹ️ Navigation already completed, skipping...');
       return;
     }
     
     this.loadingActive = false;
     this.lastNavigationType = null;
     this.navigationStartTime = null;
-    console.log('✅ Completing navigation instantly');
     
     this.dispatch(completeNavigation());
   }
 
   cancelNavigationInstantly() {
     if (!this.loadingActive) return;
-    
+
     this.loadingActive = false;
     this.lastNavigationType = null;
     this.navigationStartTime = null;
-    console.log('❌ Canceling navigation');
     
     this.dispatch(cancelNavigation());
   }
@@ -234,12 +216,6 @@ class NavigationDetectionManager {
       this.currentUrl = newUrl;
       this.dispatch(setCurrentUrl(newUrl));
       
-      console.log('🎯 Route completion detected:', { 
-        from: oldUrl, 
-        to: newUrl, 
-        type: this.lastNavigationType,
-        duration: this.navigationStartTime ? Date.now() - this.navigationStartTime : 'unknown'
-      });
       
       // Adjust completion delay based on navigation type
       const completionDelay = this.lastNavigationType === 'popstate' ? 150 : 80;
@@ -270,7 +246,7 @@ class NavigationDetectionManager {
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
 
     this.isInitialized = false;
-    console.log('🧹 Navigation Detection Manager cleaned up');
+    
   }
 }
 

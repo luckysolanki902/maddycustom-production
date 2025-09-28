@@ -96,13 +96,12 @@ const SubscribeDialog = () => {
     try {
       // Validate subscribeDialog object exists
       if (!subscribeDialog || typeof subscribeDialog !== 'object') {
-        console.log('SubscribeDialog: Invalid subscribeDialog state');
         return false;
       }
 
+
       // NEVER show if user has already successfully subscribed (strict rule)
       if (subscribeDialog.hasSuccessfullySubscribed === true) {
-        console.log('SubscribeDialog: NEVER showing - user has successfully subscribed (permanent)');
         return false;
       }
 
@@ -113,14 +112,12 @@ const SubscribeDialog = () => {
       if (subscribeDialog.lastShownAt && typeof subscribeDialog.lastShownAt === 'number') {
         // Validate timestamp isn't in the future (invalid data)
         if (subscribeDialog.lastShownAt > now) {
-          console.log('SubscribeDialog: Invalid lastShown timestamp - resetting');
           return true;
         }
         
         const timeSinceLastShown = now - subscribeDialog.lastShownAt;
         if (timeSinceLastShown < cooldownPeriod) {
           const hoursRemaining = Math.ceil((cooldownPeriod - timeSinceLastShown) / (60 * 60 * 1000));
-          console.log(`SubscribeDialog: Not showing - 24hr cooldown active (${hoursRemaining} hours remaining since last shown)`);
           return false;
         }
       }
@@ -128,19 +125,16 @@ const SubscribeDialog = () => {
       // Also check dismissal cooldown as backup (legacy support)
       if (subscribeDialog.lastDismissedAt && typeof subscribeDialog.lastDismissedAt === 'number') {
         if (subscribeDialog.lastDismissedAt > now) {
-          console.log('SubscribeDialog: Invalid dismissal timestamp - resetting');
           return true;
         }
         
         const timeSinceDismissal = now - subscribeDialog.lastDismissedAt;
         if (timeSinceDismissal < cooldownPeriod) {
           const hoursRemaining = Math.ceil((cooldownPeriod - timeSinceDismissal) / (60 * 60 * 1000));
-          console.log(`SubscribeDialog: Not showing - dismissal cooldown active (${hoursRemaining} hours remaining)`);
           return false;
         }
       }
 
-      console.log('SubscribeDialog: All cooldown checks passed');
       return true;
     } catch (error) {
       console.error('SubscribeDialog: Error in shouldShowDialog:', error);
@@ -196,7 +190,6 @@ const SubscribeDialog = () => {
     if (!open) return;
 
     const handlePopState = (event) => {
-      console.log('SubscribeDialog: Back button pressed, closing dialog instead of navigating');
       
       // Prevent default browser navigation
       event.preventDefault();
@@ -253,29 +246,10 @@ const SubscribeDialog = () => {
         .filter(([_, value]) => !value)
         .map(([key, _]) => key);
       
-      console.log('SubscribeDialog condition check:', {
-        allConditionsMet,
-        failed: failedConditions,
-        values: {
-          isPageReady,
-          timeSpentOnWebsite,
-          scrolledMoreThan60Percent,
-          subscribeDialogShownThisSession,
-          isUserPhoneNumberValid,
-          userExists,
-          isCartDrawerOpen,
-          pathname,
-          open
-        }
-      });
+ 
     }
     
     if (allConditionsMet) {
-      console.log('SubscribeDialog: All conditions met, showing dialog', {
-        timeSpent: timeSpentOnWebsite,
-        scrolled: scrolledMoreThan60Percent,
-        meetsBothRequirements: timeSpentOnWebsite >= 30 && scrolledMoreThan60Percent
-      });
       setOpen(true);
       dispatch(markSubscribeDialogShown()); // Mark as shown with timestamp - starts 24hr cooldown
       dispatch(setSubscribeDialogShownThisSession(true));

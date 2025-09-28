@@ -10,8 +10,10 @@ import {
   Typography,
   useMediaQuery,
   CircularProgress,
-  alpha
+  alpha,
+  Button
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlackButton from '../utils/BlackButton';
 import { useForm, Controller } from 'react-hook-form';
@@ -44,6 +46,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'; // Added
+import MyLocationIcon from '@mui/icons-material/MyLocation';
 import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
 
@@ -92,6 +95,7 @@ const OrderForm = ({
 
   const [isLoading, setIsLoading] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   // Extract and aggregate unique extraFields from cart items - memoized
@@ -117,6 +121,11 @@ const OrderForm = ({
     email: userDetails.email || '',
     addressLine1: addressDetails.addressLine1 || '',
     addressLine2: addressDetails.addressLine2 || '',
+    // Structured address fields
+    areaLocality: '',
+    floorInput: '',
+    landmark: '',
+  // directions removed; addressType removed per request
     city: addressDetails.city || '',
     state: addressDetails.state || '',
     pincode: addressDetails.pincode || '',
@@ -129,6 +138,9 @@ const OrderForm = ({
   addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
   addressDetails.state, addressDetails.pincode, addressDetails.country,
     aggregatedExtraFields]);
+
+  // Geolocation capture
+  const [geo, setGeo] = useState({ lat: null, lng: null });
 
   // Initialize extraFields in Redux store when dialog opens
   useEffect(() => {
@@ -146,6 +158,7 @@ const OrderForm = ({
     handleSubmit,
     setValue,
     reset,
+    getValues,
     formState: { errors },
     watch,
   } = useForm({
@@ -153,6 +166,50 @@ const OrderForm = ({
     mode: 'onChange',
     shouldUnregister: false // Prevents field unregistration which helps with focus issues
   });
+
+    const showSnackbar = useCallback((message, severity = 'success') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  }, []);
+
+  // Enhanced pincode validation with proactive serviceability check
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const validatePincode = useCallback(
+    debounce(async (pincode) => {
+      if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
+        setPincodeCheckInProgress(true);
+
+        // Check cache first
+        if (serviceabilityCache.current[pincode] !== undefined) {
+          setPincodeCheckInProgress(false);
+          setIsPincodeValid(serviceabilityCache.current[pincode]);
+          return;
+        }
+
+        try {
+          const response = await axios.get(
+            `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${pincode}`
+          );
+
+          const isValid = response.data.serviceable;
+          serviceabilityCache.current[pincode] = isValid;
+          setIsPincodeValid(isValid);
+
+          if (!isValid) {
+            showSnackbar(`Pincode ${pincode} is not serviceable. Please try a different one.`, 'warning');
+          }
+        } catch (error) {
+          console.error('Error checking pincode:', error);
+        } finally {
+          setPincodeCheckInProgress(false);
+        }
+      } else {
+        setIsPincodeValid(false);
+      }
+    }, 300),
+    [showSnackbar]
+  );
 
   // Watch pincode for immediate validation
   const watchedPincode = watch('pincode');
@@ -167,7 +224,7 @@ const OrderForm = ({
         validatePincode(watchedPincode);
       }
     }
-  }, [watchedPincode]);
+  }, [watchedPincode, validatePincode]);
 
   // Prevent multiple form submissions
   const [purchaseInitiated, setPurchaseInitiated] = useState(false);
@@ -187,7 +244,11 @@ const OrderForm = ({
       setValue('phoneNumber', userDetails.phoneNumber || '');
       setValue('email', userDetails.email || '');
       setValue('addressLine1', addressDetails.addressLine1 || '');
-      setValue('addressLine2', addressDetails.addressLine2 || '');
+      // Do not reset areaLocality/floor/landmark here to avoid wiping user input mid-typing
+      // If areaLocality is empty but we have addressLine2 from redux, initialize it once
+      if (!getValues('areaLocality') && addressDetails.addressLine2) {
+        setValue('areaLocality', addressDetails.addressLine2);
+      }
       setValue('city', addressDetails.city || '');
       setValue('state', addressDetails.state || '');
       setValue('pincode', addressDetails.pincode || '');
@@ -198,14 +259,32 @@ const OrderForm = ({
         validatePincode(addressDetails.pincode);
       }
     }
-  }, [open, setValue, userDetails.name, userDetails.phoneNumber, userDetails.email,
+  }, [open, userDetails.name, userDetails.phoneNumber, userDetails.email,
     addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
-    addressDetails.state, addressDetails.pincode, addressDetails.country]);
+    addressDetails.state, addressDetails.pincode, addressDetails.country, validatePincode, setValue, getValues]);
 
-  // Handle Prefilled Address
+  // Handle Prefilled Address (guard against overwriting existing redux address)
   useEffect(() => {
     if (userExists && prefilledAddress) {
-      dispatch(setAddressDetails(prefilledAddress));
+      const reduxAddress = addressDetails;
+      const isReduxAddressEmpty = !(
+        reduxAddress.addressLine1 ||
+        reduxAddress.addressLine2 ||
+        reduxAddress.city ||
+        reduxAddress.state ||
+        reduxAddress.pincode ||
+        reduxAddress.country
+      );
+
+      if (isReduxAddressEmpty) {
+        dispatch(setAddressDetails(prefilledAddress));
+        // hydrate form values only if the corresponding fields are empty
+        if (!getValues('addressLine1') && prefilledAddress.addressLine1) setValue('addressLine1', prefilledAddress.addressLine1);
+        if (!getValues('areaLocality') && prefilledAddress.addressLine2) setValue('areaLocality', prefilledAddress.addressLine2);
+        if (!getValues('city') && prefilledAddress.city) setValue('city', prefilledAddress.city);
+        if (!getValues('state') && prefilledAddress.state) setValue('state', prefilledAddress.state);
+        if (!getValues('pincode') && prefilledAddress.pincode) setValue('pincode', prefilledAddress.pincode);
+      }
       dispatch(setUserExists(false));
       dispatch(setPrefilledAddress(null));
       setTabIndex(1);
@@ -233,7 +312,7 @@ const OrderForm = ({
         }
       }
     }
-  }, [userExists, prefilledAddress, dispatch, addressDetails]);
+  }, [userExists, prefilledAddress, dispatch, addressDetails, validatePincode, setValue, getValues]);
 
   // Prevent dialog shrinking on mobile keyboard
   useEffect(() => {
@@ -291,6 +370,8 @@ const OrderForm = ({
     };
   }, [isMobile, open]);
 
+  
+
   // Simple focus-based mobile optimization
   useEffect(() => {
     if (!isMobile || !isInputFocused) return;
@@ -314,11 +395,7 @@ const OrderForm = ({
     setTabIndex(newValue);
   }, []);
 
-  const showSnackbar = useCallback((message, severity = 'success') => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
-  }, []);
+
 
   // State for formatted phone number display - memoized
   const [formattedPhone, setFormattedPhone] = useState('');
@@ -380,42 +457,17 @@ const OrderForm = ({
     setShowPhoneConfirmation(false);
   }, [formattedPhone, setValue, dispatch]);
 
-  // Enhanced pincode validation with proactive serviceability check
-  const validatePincode = useCallback(
-    debounce(async (pincode) => {
-      if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
-        setPincodeCheckInProgress(true);
+  // Normalize floor display: avoid duplicating the word 'Floor'
+  const formatFloorForAddress = useCallback((value) => {
+    if (value === null || value === undefined) return '';
+    const t = String(value).trim();
+    if (!t) return '';
+    if (/^\d+$/.test(t)) return `Floor ${t}`; // pure number => prefix
+    if (/\bfloor\b/i.test(t)) return t;      // already contains 'floor'
+    return `Floor ${t}`;                       // other strings => prefix
+  }, []);
 
-        // Check cache first
-        if (serviceabilityCache.current[pincode] !== undefined) {
-          setPincodeCheckInProgress(false);
-          setIsPincodeValid(serviceabilityCache.current[pincode]);
-          return;
-        }
 
-        try {
-          const response = await axios.get(
-            `/api/checkout/order/shiprocket/serviceability?pickup_postcode=226005&delivery_postcode=${pincode}`
-          );
-
-          const isValid = response.data.serviceable;
-          serviceabilityCache.current[pincode] = isValid;
-          setIsPincodeValid(isValid);
-
-          if (!isValid) {
-            showSnackbar(`Pincode ${pincode} is not serviceable. Please try a different one.`, 'warning');
-          }
-        } catch (error) {
-          console.error('Error checking pincode:', error);
-        } finally {
-          setPincodeCheckInProgress(false);
-        }
-      } else {
-        setIsPincodeValid(false);
-      }
-    }, 300),
-    [showSnackbar]
-  );
 
   // New function to fully close everything - both OrderForm and CartDrawer
   const handleFullClose = useCallback(() => {
@@ -556,17 +608,35 @@ const OrderForm = ({
         initialValidationPromises.push(pendingOperationsRef.current.userCheck);
       }
 
+      // Compose address lines from structured fields, include optional Floor
+      const composedAddressLine1 = [
+        data.addressLine1,
+        formatFloorForAddress(data.floorInput)
+      ].filter(Boolean).join(', ');
+      const composedAddressLine2 = [data.areaLocality, data.landmark]
+        .filter(Boolean)
+        .join(', ');
+
+      // Parse floor value: numeric-if-any -> number; otherwise keep as string
+      const floorRaw = (data.floorInput || '').toString().trim();
+      let floorParsed = undefined;
+      if (floorRaw) {
+        const match = floorRaw.match(/\d+/);
+        floorParsed = match ? Number(match[0]) : floorRaw; // extract first number if present
+      }
+
       const addAddressPayload = {
         phoneNumber: orderForm.userDetails.phoneNumber,
         address: {
           receiverName: orderForm.userDetails.name || '',
           receiverPhoneNumber: orderForm.userDetails.phoneNumber,
-          addressLine1: data.addressLine1,
-          addressLine2: data.addressLine2,
+          addressLine1: composedAddressLine1,
+          addressLine2: composedAddressLine2,
           city: data.city,
           state: data.state,
           pincode: data.pincode,
           country: data.country || 'India',
+          geo: geo,
           ...orderForm.extraFields,
         },
       };
@@ -613,12 +683,13 @@ const OrderForm = ({
         address: {
           receiverName: orderForm.userDetails.name || '',
           receiverPhoneNumber: orderForm.userDetails.phoneNumber,
-          addressLine1: data.addressLine1,
-          addressLine2: data.addressLine2,
+          addressLine1: composedAddressLine1,
+          addressLine2: composedAddressLine2,
           city: data.city,
           state: data.state,
           pincode: data.pincode,
           country: data.country || 'India',
+          geo: geo,
         },
         // Raw financial details are sent:
         totalAmount: totalCost,
@@ -630,7 +701,13 @@ const OrderForm = ({
         },
         utmDetails: utmDetails.utmDetails || null,
         utmHistory: utmDetails.utmHistory || [],
-        extraFields: orderForm.extraFields,
+        extraFields: {
+          ...orderForm.extraFields,
+          geo,
+          areaLocality: data.areaLocality,
+          landmark: data.landmark,
+          ...(floorParsed !== undefined ? { floor: floorParsed } : {}),
+        },
       };
 
       const [orderCreationResponse] = await Promise.all([
@@ -744,7 +821,7 @@ const OrderForm = ({
   }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
     totalCost, deliveryCost, utmDetails, cartItems, paymentModeConfig,
     discountAmountFinal, couponsDetails, isPincodeValid, reset, handleFullClose, router,
-    serviceabilityCache, prefilledAddress, userDetails, addressDetails]); // Maintained dependencies
+  serviceabilityCache, geo, formatFloorForAddress]); // Maintained dependencies
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
@@ -798,7 +875,7 @@ const OrderForm = ({
   }), []);
 
   // Custom styled text field component with memoization to prevent rerenders
-  const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, type = "text", maxWidth, InputProps }) => (
+  const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, onBlur: onBlurProp, type = "text", maxWidth, InputProps }) => (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -806,6 +883,7 @@ const OrderForm = ({
     >
       <TextField
         variant="outlined"
+        size="small"
         {...field}
         label={label}
         fullWidth
@@ -815,22 +893,25 @@ const OrderForm = ({
         disabled={disabled}
         onChange={onChange}
         onFocus={() => isMobile && setIsInputFocused(true)}
-        onBlur={() => isMobile && setIsInputFocused(false)}
+        onBlur={(e) => {
+          if (onBlurProp) onBlurProp(e);
+          if (isMobile) setIsInputFocused(false);
+        }}
         InputLabelProps={{
           style: {
             fontFamily: 'Jost, sans-serif',
-            fontSize: '0.9rem',
+            fontSize: '0.85rem',
           },
         }}
         InputProps={{
           style: {
             fontFamily: 'Jost, sans-serif',
-            fontSize: '1rem',
+            fontSize: '0.95rem',
           },
           ...InputProps
         }}
         sx={{
-          marginBottom: '1rem',
+          marginBottom: '0.8rem',
           maxWidth: maxWidth,
           '& .MuiOutlinedInput-root': {
             borderRadius: '8px',
@@ -1276,46 +1357,101 @@ const OrderForm = ({
                       paddingTop: '0.5rem',
                       px: { xs: 0.5, sm: 1 },
                     }}> {/* Added horizontal padding */}
-                      <Controller
-                        name="addressLine1"
-                        control={control}
-                        rules={{ required: 'Address is required' }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Address"
-                            error={errors.addressLine1}
-                            helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              dispatch(setAddressDetails({ addressLine1: e.target.value }));
-                            }}
-                          />
-                        )}
-                      />
+                      {/* Current Location at top */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        {/* <Typography variant="subtitle2" sx={{ fontFamily: 'Jost, sans-serif', color: '#333' }}>Delivery Address</Typography> */}
+                        <Button
+                          size="small"
+                          startIcon={<MyLocationIcon />}
+                          onClick={() => {
+                            if (!navigator.geolocation) return;
+                            setIsLocating(true);
+                            navigator.geolocation.getCurrentPosition((pos) => {
+                              const lat = pos.coords.latitude;
+                              const lng = pos.coords.longitude;
+                              setGeo({ lat, lng });
+                              fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`)
+                                .then(res => res.json())
+                                .then(addr => {
+                                  if (addr?.pincode) {
+                                    setValue('pincode', addr.pincode);
+                                    dispatch(setAddressDetails({ pincode: addr.pincode }));
+                                  }
+                                  if (addr?.city) {
+                                    setValue('city', addr.city);
+                                    dispatch(setAddressDetails({ city: addr.city }));
+                                  }
+                                  if (addr?.state) {
+                                    setValue('state', addr.state);
+                                    dispatch(setAddressDetails({ state: addr.state }));
+                                  }
+                                  if (addr?.areaLocality && !getValues('areaLocality')) {
+                                    setValue('areaLocality', addr.areaLocality);
+                                    dispatch(setAddressDetails({ addressLine2: addr.areaLocality }));
+                                  }
+                                  // Use road/houseNumber/poi to help suggest fields
+                                  if ((addr?.houseNumber || addr?.road) && !getValues('addressLine1')) {
+                                    const part = [addr.houseNumber, addr.road].filter(Boolean).join(', ');
+                                    setValue('addressLine1', part);
+                                    dispatch(setAddressDetails({ addressLine1: part }));
+                                  }
+                                  if (addr?.poi && !getValues('landmark')) {
+                                    setValue('landmark', addr.poi);
+                                  }
+                                  showSnackbar('Address auto-filled from your location.', 'success');
+                                })
+                                .catch(() => showSnackbar('Could not auto-fill address. Please enter manually.', 'warning'))
+                                .finally(() => setIsLocating(false));
+                            }, () => { setIsLocating(false); showSnackbar('Unable to get location. Please allow permission.', 'warning'); }, { enableHighAccuracy: true, timeout: 10000 });
+                          }}
+                        >
+                          Use Current Location
+                        </Button>
+                      </Box>
 
-                      <Controller
-                        name="city"
-                        control={control}
-                        rules={{ required: 'City is required' }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="City"
-                            error={errors.city}
-                            helperText={errors.city ? errors.city.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              dispatch(setAddressDetails({ city: e.target.value }));
-                            }}
+                      {/* Locating state */}
+                      {isLocating && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            p: 1,
+                            borderRadius: '8px',
+                            background: 'linear-gradient(90deg, #f7f7f7, #fff)',
+                            border: `1px solid ${alpha('#2d2d2d', 0.15)}`,
+                            mb: 0.5
+                          }}>
+                            <CircularProgress size={16} sx={{ color: '#2d2d2d' }} />
+                            <Typography variant="caption" sx={{ fontFamily: 'Jost, sans-serif', color: '#2d2d2d' }}>
+                              Locating you and fetching your address…
+                            </Typography>
+                          </Box>
+                        </motion.div>
+                      )}
+                      {/* City, State, Pincode at top for visibility after geolocation */}
+                      <Grid container spacing={1.5} sx={{ width: '100%', mb: 0.5 }}>
+                        <Grid item xs={12} sm={12}>
+                          <Controller
+                            name="city"
+                            control={control}
+                            rules={{ required: 'City is required' }}
+                            render={({ field }) => (
+                              <StyledTextField
+                                field={field}
+                                label="City"
+                                error={errors.city}
+                                helperText={errors.city ? errors.city.message : ''}
+                                disabled={isLoading || isPaymentProcessing}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                }}
+                                onBlur={(e) => dispatch(setAddressDetails({ city: e.target.value }))}
+                              />
+                            )}
                           />
-                        )}
-                      />
-
-                      <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-                        <Box sx={{ flex: 2 }}>
+                        </Grid>
+                        <Grid item xs={6} sm={6}>
                           <Controller
                             name="state"
                             control={control}
@@ -1324,7 +1460,7 @@ const OrderForm = ({
                               <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.3, delay: 0.3 }}
+                                transition={{ duration: 0.3, delay: 0.1 }}
                               >
                                 <Autocomplete
                                   options={indianStates}
@@ -1335,39 +1471,59 @@ const OrderForm = ({
                                     dispatch(setAddressDetails({ state: newValue }));
                                   }}
                                   disableClearable
+                                  slotProps={{
+                                    paper: {
+                                      sx: {
+                                        '& .MuiAutocomplete-listbox': {
+                                          p: 0,
+                                          '& .MuiAutocomplete-option': {
+                                            fontSize: '0.85rem',
+                                            minHeight: '32px',
+                                            py: 0.5
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }}
+                                  sx={{
+                                    '& .MuiInputBase-root': {
+                                      height: 40,
+                                    },
+                                    '& .MuiOutlinedInput-root': {
+                                      borderRadius: '8px',
+                                      minHeight: '40px',
+                                      paddingTop: 0,
+                                      paddingBottom: 0,
+                                    },
+                                    '& .MuiAutocomplete-inputRoot': {
+                                      paddingTop: '2px',
+                                      paddingBottom: '2px',
+                                    },
+                                    '& .MuiAutocomplete-input': {
+                                      fontFamily: 'Jost, sans-serif',
+                                      fontSize: '0.95rem',
+                                      padding: '7px 4px !important',
+                                    },
+                                  }}
                                   renderInput={(params) => (
                                     <TextField
                                       {...params}
+                                      size="small"
                                       label="State"
                                       error={!!errors.state}
                                       helperText={errors.state ? errors.state.message : ''}
                                       variant="outlined"
-                                      sx={{
-                                        marginBottom: '1rem',
-                                        '& .MuiOutlinedInput-root': {
-                                          borderRadius: '8px',
-                                          fontFamily: 'Jost, sans-serif',
-                                          transition: 'transform 0.2s, box-shadow 0.2s',
-                                          '&:hover': {
-                                            boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
-                                          },
-                                          '&.Mui-focused': {
-                                            transform: 'translateY(-2px)',
-                                            boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
-                                          }
-                                        },
-                                      }}
                                       InputLabelProps={{
                                         style: {
                                           fontFamily: 'Jost, sans-serif',
-                                          fontSize: '0.9rem',
+                                          fontSize: '0.85rem',
                                         },
                                       }}
                                       InputProps={{
                                         ...params.InputProps,
                                         style: {
                                           fontFamily: 'Jost, sans-serif',
-                                          fontSize: '1rem',
+                                          fontSize: '0.95rem',
                                         },
                                       }}
                                     />
@@ -1377,8 +1533,8 @@ const OrderForm = ({
                               </motion.div>
                             )}
                           />
-                        </Box>
-                        <Box sx={{ flex: 1 }}>
+                        </Grid>
+                        <Grid item xs={6} sm={6}>
                           <Controller
                             name="pincode"
                             control={control}
@@ -1397,15 +1553,95 @@ const OrderForm = ({
                                 disabled={isLoading || isPaymentProcessing}
                                 onChange={(e) => {
                                   field.onChange(e);
-                                  dispatch(setAddressDetails({ pincode: e.target.value }));
                                 }}
+                                onBlur={(e) => dispatch(setAddressDetails({ pincode: e.target.value }))}
                                 type="tel"
                                 maxWidth="100%"
                               />
                             )}
                           />
-                        </Box>
-                      </Box>
+                        </Grid>
+                      </Grid>
+                      <Controller
+                        name="addressLine1"
+                        control={control}
+                        rules={{ required: 'Address is required' }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="Flat/House no/Building name"
+                            error={errors.addressLine1}
+                            helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => {
+                              field.onChange(e);
+                            }}
+                            onBlur={(e) => dispatch(setAddressDetails({ addressLine1: e.target.value }))}
+                          />
+                        )}
+                      />
+
+                      {/* Floor (optional) */}
+                      <Controller
+                        name="floorInput"
+                        control={control}
+                        rules={{ required: false }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="Floor (optional)"
+                            error={errors.floorInput}
+                            helperText={errors.floorInput ? errors.floorInput.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => field.onChange(e)}
+                          />
+                        )}
+                      />
+
+                      {/* Area / Locality and Landmark */}
+                      <Grid container spacing={1.5} sx={{ width: '100%' }}>
+                        <Grid item xs={12}>
+                          <Controller
+                            name="areaLocality"
+                            control={control}
+                            rules={{ required: 'Area/Sector/Locality is required' }}
+                            render={({ field }) => (
+                              <StyledTextField
+                                field={field}
+                                label="Area/Sector/Locality"
+                                error={errors.areaLocality}
+                                helperText={errors.areaLocality ? errors.areaLocality.message : ''}
+                                disabled={isLoading || isPaymentProcessing}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                }}
+                                onBlur={(e) => dispatch(setAddressDetails({ addressLine2: e.target.value }))}
+                              />
+                            )}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Controller
+                            name="landmark"
+                            control={control}
+                            rules={{ required: false }}
+                            render={({ field }) => (
+                              <StyledTextField
+                                field={field}
+                                label="Nearby Landmark (optional)"
+                                error={errors.landmark}
+                                helperText={errors.landmark ? errors.landmark.message : ''}
+                                disabled={isLoading || isPaymentProcessing}
+                                onChange={(e) => field.onChange(e)}
+                              />
+                            )}
+                          />
+                        </Grid>
+                        {/* Removed separate Apartment/Block field; merged into Area/Locality */}
+                      </Grid>
+
+                      {/* moved current-location button to top */}
+
                       {/* Pincode non-serviceable message */}
                       {watchedPincode?.length === 6 && !isPincodeValid && !pincodeCheckInProgress && (
                         <motion.div
@@ -1441,6 +1677,44 @@ const OrderForm = ({
                           </Box>
                         </motion.div>
                       )}
+
+                      {/* Address Preview */}
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+                        <Box sx={{
+                          mt: 1,
+                          p: 1.2,
+                          border: `1px dashed ${theme.palette.divider}`,
+                          borderRadius: '8px',
+                          backgroundColor: '#fafafa'
+                        }}>
+                          <Typography variant="caption" sx={{ fontFamily: 'Jost, sans-serif', color: '#666', fontWeight: 600 }}>
+                            Address preview
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontFamily: 'Jost, sans-serif', mt: 0.5, color: '#2d2d2d' }}>
+                            {[
+                              watch('addressLine1'),
+                              formatFloorForAddress(watch('floorInput')),
+                              watch('areaLocality'),
+                              watch('landmark'),
+                              watch('city'),
+                              watch('state'),
+                              watch('pincode')
+                            ]
+                              .filter(Boolean)
+                              .join(', ')}
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontFamily: 'Jost, sans-serif', mt: 0.5, color: '#2d2d2d' }}>
+                            {[
+                              watch('name') || userDetails.name,
+                              watch('email') || userDetails.email,
+                              watch('phoneNumber') || userDetails.phoneNumber
+                            ].filter(Boolean).join(' | ')}
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontFamily: 'Jost, sans-serif', display: 'block', mt: 0.75, color: '#0f8a5a' }}>
+                            Please check your address and contact details so our delivery partner can reach you without delays.
+                          </Typography>
+                        </Box>
+                      </motion.div>
                       {/* Removed Button from here, will be in fixed footer */}
                     </Box>
                   </motion.div>
