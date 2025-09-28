@@ -18,6 +18,7 @@ import {
 } from '@/store/slices/orderFormSlice';
 
 /* ---------------- UI + util imports (unchanged) ------------------- */
+import { MAX_ORDER_VALUE_FOR_COD } from '@/lib/constants/payments';
 import styles from './styles/viewcart.module.css';
 import ViewCartHeader from '../page-sections/viewcart/ViewCartHeader';
 import CartList from '../page-sections/viewcart/CartList';
@@ -251,8 +252,7 @@ export default function ViewCart({ isDrawer = false }) {
 
   // If COD becomes unavailable due to order value, auto-deselect it
   useEffect(() => {
-    const maxOrderValueForCOD = 3000;
-    if ((selectedPM?.name || '').toLowerCase() === 'cod' && totalPay > maxOrderValueForCOD) {
+    if ((selectedPM?.name || '').toLowerCase() === 'cod' && totalPay > MAX_ORDER_VALUE_FOR_COD) {
       setSelectedPM(null);
     }
   }, [selectedPM?.name, totalPay]);
