@@ -52,7 +52,7 @@ const persistConfig = {
     'orderForm',
     'utm',
     'variantPreference',
-    'userBehavior',
+    // 'userBehavior', // Keep out of persistence, use sessionStorage for time tracking
     'persistentUi',
     'displayAssets',
     'b2bSelection',
