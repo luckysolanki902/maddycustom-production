@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import ModeOfPayment from '@/models/ModeOfPayment';
 
-export const revalidate = 3600; // seconds
+// export const revalidate = 3600; // seconds
 export async function GET() {
   try {
     // Connect to the database
