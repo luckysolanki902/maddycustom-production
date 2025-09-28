@@ -191,150 +191,150 @@ export async function POST(request) {
       }, { status: 200 });
     }
 
-    // Determine inventory action based on mapped status
-    let inventoryAction = null;
-    if (mappedStatus === 'cancelled') {
-      inventoryAction = 'restore';
-      console.log(`Order cancelled - will restore inventory`);
-    } else if (mappedStatus === 'delivered') {
-      inventoryAction = 'clearReserved';
-      console.log(`Order delivered - will clear reserved inventory`);
-    } else {
-      console.log(`Status "${mappedStatus}" does not require inventory adjustment`);
-    }
+    //// Determine inventory action based on mapped status
+    // let inventoryAction = null;
+    // if (mappedStatus === 'cancelled') {
+    //   inventoryAction = 'restore';
+    //   console.log(`Order cancelled - will restore inventory`);
+    // } else if (mappedStatus === 'delivered') {
+    //   inventoryAction = 'clearReserved';
+    //   console.log(`Order delivered - will clear reserved inventory`);
+    // } else {
+    //   console.log(`Status "${mappedStatus}" does not require inventory adjustment`);
+    // }
 
-    // Track inventory processing results
-    const inventoryResults = {
-      processed: [],
-      failed: [],
-      skipped: []
-    };
+    // // Track inventory processing results
+    // const inventoryResults = {
+    //   processed: [],
+    //   failed: [],
+    //   skipped: []
+    // };
 
-    // Process inventory adjustments if needed
-    if (inventoryAction && order.items && order.items.length > 0) {
-      console.log(`Processing inventory for ${order.items.length} items`);
+    //// Process inventory adjustments if needed
+    // if (inventoryAction && order.items && order.items.length > 0) {
+    //   console.log(`Processing inventory for ${order.items.length} items`);
       
-      for (const [index, item] of order.items.entries()) {
-        const itemLog = {
-          index,
-          sku: item.sku,
-          quantity: item.quantity,
-          hasOption: !!(item.Option || item.option),
-          hasProduct: !!item.product
-        };
+    //   for (const [index, item] of order.items.entries()) {
+    //     const itemLog = {
+    //       index,
+    //       sku: item.sku,
+    //       quantity: item.quantity,
+    //       hasOption: !!(item.Option || item.option),
+    //       hasProduct: !!item.product
+    //     };
 
-        try {
-          // Check for Option reference (both legacy uppercase and new lowercase)
-          if (item.Option || item.option) {
-            const optionId = item.Option || item.option;
-            console.log(`Processing item ${index} with option: ${optionId}`);
+    //     try {
+          //// Check for Option reference (both legacy uppercase and new lowercase)
+          // if (item.Option || item.option) {
+          //   const optionId = item.Option || item.option;
+          //   console.log(`Processing item ${index} with option: ${optionId}`);
             
-            const optionDoc = await Option.findById(optionId).session(session);
-            if (optionDoc?.inventoryData) {
-              console.log(`Found option with inventory reference: ${optionDoc.inventoryData}`);
+          //   const optionDoc = await Option.findById(optionId).session(session);
+          //   if (optionDoc?.inventoryData) {
+          //     console.log(`Found option with inventory reference: ${optionDoc.inventoryData}`);
               
-              let result;
-              if (inventoryAction === 'restore') {
-                result = await restoreInventory(optionDoc.inventoryData, item.quantity, session);
-              } else if (inventoryAction === 'clearReserved') {
-                result = await clearReservedInventory(optionDoc.inventoryData, item.quantity, session);
-              }
+          //     let result;
+          //     if (inventoryAction === 'restore') {
+          //       result = await restoreInventory(optionDoc.inventoryData, item.quantity, session);
+          //     } else if (inventoryAction === 'clearReserved') {
+          //       result = await clearReservedInventory(optionDoc.inventoryData, item.quantity, session);
+          //     }
               
-              if (result.success) {
-                inventoryResults.processed.push({
-                  ...itemLog,
-                  inventoryId: optionDoc.inventoryData,
-                  action: inventoryAction,
-                  quantityProcessed: result.quantityProcessed
-                });
-              } else {
-                inventoryResults.failed.push({
-                  ...itemLog,
-                  inventoryId: optionDoc.inventoryData,
-                  error: result.error,
-                  action: inventoryAction
-                });
-                console.error(`Failed inventory operation for option ${optionId}:`, result.error);
-              }
-            } else {
-              inventoryResults.skipped.push({
-                ...itemLog,
-                reason: `Option ${optionId} has no inventory reference`,
-                optionExists: !!optionDoc
-              });
-              console.warn(`Option ${optionId} ${optionDoc ? 'exists but has no inventory reference' : 'not found'}`);
-            }
-          } 
+          //     if (result.success) {
+          //       inventoryResults.processed.push({
+          //         ...itemLog,
+          //         inventoryId: optionDoc.inventoryData,
+          //         action: inventoryAction,
+          //         quantityProcessed: result.quantityProcessed
+          //       });
+          //     } else {
+          //       inventoryResults.failed.push({
+          //         ...itemLog,
+          //         inventoryId: optionDoc.inventoryData,
+          //         error: result.error,
+          //         action: inventoryAction
+          //       });
+          //       console.error(`Failed inventory operation for option ${optionId}:`, result.error);
+          //     }
+          //   } else {
+          //     inventoryResults.skipped.push({
+          //       ...itemLog,
+          //       reason: `Option ${optionId} has no inventory reference`,
+          //       optionExists: !!optionDoc
+          //     });
+          //     console.warn(`Option ${optionId} ${optionDoc ? 'exists but has no inventory reference' : 'not found'}`);
+          //   }
+          // } 
           // Check for direct Product reference
-          else if (item.product) {
-            const productId = item.product;
-            console.log(`Processing item ${index} with product: ${productId}`);
+      //     else if (item.product) {
+      //       const productId = item.product;
+      //       console.log(`Processing item ${index} with product: ${productId}`);
             
-            const productDoc = await Product.findById(productId).session(session);
-            if (productDoc?.inventoryData) {
-              console.log(`Found product with inventory reference: ${productDoc.inventoryData}`);
+      //       const productDoc = await Product.findById(productId).session(session);
+      //       if (productDoc?.inventoryData) {
+      //         console.log(`Found product with inventory reference: ${productDoc.inventoryData}`);
               
-              let result;
-              if (inventoryAction === 'restore') {
-                result = await restoreInventory(productDoc.inventoryData, item.quantity, session);
-              } else if (inventoryAction === 'clearReserved') {
-                result = await clearReservedInventory(productDoc.inventoryData, item.quantity, session);
-              }
+      //         let result;
+      //         if (inventoryAction === 'restore') {
+      //           result = await restoreInventory(productDoc.inventoryData, item.quantity, session);
+      //         } else if (inventoryAction === 'clearReserved') {
+      //           result = await clearReservedInventory(productDoc.inventoryData, item.quantity, session);
+      //         }
               
-              if (result.success) {
-                inventoryResults.processed.push({
-                  ...itemLog,
-                  inventoryId: productDoc.inventoryData,
-                  action: inventoryAction,
-                  quantityProcessed: result.quantityProcessed
-                });
-              } else {
-                inventoryResults.failed.push({
-                  ...itemLog,
-                  inventoryId: productDoc.inventoryData,
-                  error: result.error,
-                  action: inventoryAction
-                });
-                console.error(`Failed inventory operation for product ${productId}:`, result.error);
-              }
-            } else {
-              inventoryResults.skipped.push({
-                ...itemLog,
-                reason: `Product ${productId} has no inventory reference`,
-                productExists: !!productDoc
-              });
-              console.warn(`Product ${productId} ${productDoc ? 'exists but has no inventory reference' : 'not found'}`);
-            }
-          } else {
-            inventoryResults.skipped.push({
-              ...itemLog,
-              reason: 'No option or product reference found'
-            });
-            console.warn(`Order item ${index} has neither option nor product reference`);
-          }
-        } catch (error) {
-          inventoryResults.failed.push({
-            ...itemLog,
-            error: error.message,
-            action: inventoryAction
-          });
-          console.error(`Error processing inventory for item ${index}:`, error);
-        }
-      }
+      //         if (result.success) {
+      //           inventoryResults.processed.push({
+      //             ...itemLog,
+      //             inventoryId: productDoc.inventoryData,
+      //             action: inventoryAction,
+      //             quantityProcessed: result.quantityProcessed
+      //           });
+      //         } else {
+      //           inventoryResults.failed.push({
+      //             ...itemLog,
+      //             inventoryId: productDoc.inventoryData,
+      //             error: result.error,
+      //             action: inventoryAction
+      //           });
+      //           console.error(`Failed inventory operation for product ${productId}:`, result.error);
+      //         }
+      //       } else {
+      //         inventoryResults.skipped.push({
+      //           ...itemLog,
+      //           reason: `Product ${productId} has no inventory reference`,
+      //           productExists: !!productDoc
+      //         });
+      //         console.warn(`Product ${productId} ${productDoc ? 'exists but has no inventory reference' : 'not found'}`);
+      //       }
+      //     } else {
+      //       inventoryResults.skipped.push({
+      //         ...itemLog,
+      //         reason: 'No option or product reference found'
+      //       });
+      //       console.warn(`Order item ${index} has neither option nor product reference`);
+      //     }
+      //   } catch (error) {
+      //     inventoryResults.failed.push({
+      //       ...itemLog,
+      //       error: error.message,
+      //       action: inventoryAction
+      //     });
+      //     console.error(`Error processing inventory for item ${index}:`, error);
+      //   }
+      // }
       
-      // Log summary of inventory processing
-      console.log(`Inventory processing summary for order ${order._id}:`, {
-        total: order.items.length,
-        processed: inventoryResults.processed.length,
-        failed: inventoryResults.failed.length,
-        skipped: inventoryResults.skipped.length
-      });
+      //// Log summary of inventory processing
+    //   console.log(`Inventory processing summary for order ${order._id}:`, {
+    //     total: order.items.length,
+    //     processed: inventoryResults.processed.length,
+    //     failed: inventoryResults.failed.length,
+    //     skipped: inventoryResults.skipped.length
+    //   });
       
-      // If there were failures but some successes, continue but log warnings
-      if (inventoryResults.failed.length > 0) {
-        console.warn(`${inventoryResults.failed.length} inventory operations failed:`, inventoryResults.failed);
-      }
-    }
+    //   // If there were failures but some successes, continue but log warnings
+    //   if (inventoryResults.failed.length > 0) {
+    //     console.warn(`${inventoryResults.failed.length} inventory operations failed:`, inventoryResults.failed);
+    //   }
+    // }
 
     // Update order delivery status
     const previousStatus = order.deliveryStatus;
