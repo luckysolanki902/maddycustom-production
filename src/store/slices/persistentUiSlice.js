@@ -14,8 +14,9 @@ const initialState = {
   },
   subscribeDialog: {
     lastDismissedAt: null, // Timestamp when dialog was last dismissed
+    lastShownAt: null, // Timestamp when dialog was last shown (any outcome)
     hasSuccessfullySubscribed: false, // Whether user has ever successfully subscribed
-    cooldownHours: 2, // Hours to wait before showing again after dismissal
+    cooldownHours: 24, // Hours to wait before showing again after any appearance
   },
 };
 
@@ -89,8 +90,9 @@ const persistentUiSlice = createSlice({
       if (!state.subscribeDialog) {
         state.subscribeDialog = {
           lastDismissedAt: null,
+          lastShownAt: null,
           hasSuccessfullySubscribed: false,
-          cooldownHours: 2,
+          cooldownHours: 24,
         };
       }
       state.subscribeDialog.lastDismissedAt = Date.now();
@@ -100,18 +102,33 @@ const persistentUiSlice = createSlice({
       if (!state.subscribeDialog) {
         state.subscribeDialog = {
           lastDismissedAt: null,
+          lastShownAt: null,
           hasSuccessfullySubscribed: false,
-          cooldownHours: 2,
+          cooldownHours: 24,
         };
       }
       state.subscribeDialog.hasSuccessfullySubscribed = true;
       state.subscribeDialog.lastDismissedAt = null; // Clear dismissal since they subscribed
+      // Keep lastShownAt to prevent re-showing even after successful subscription
+    },
+    markSubscribeDialogShown(state) {
+      // Ensure subscribeDialog object exists before setting properties
+      if (!state.subscribeDialog) {
+        state.subscribeDialog = {
+          lastDismissedAt: null,
+          lastShownAt: null,
+          hasSuccessfullySubscribed: false,
+          cooldownHours: 24,
+        };
+      }
+      state.subscribeDialog.lastShownAt = Date.now();
     },
     resetSubscribeDialogState(state) {
       state.subscribeDialog = {
         lastDismissedAt: null,
+        lastShownAt: null,
         hasSuccessfullySubscribed: false,
-        cooldownHours: 2,
+        cooldownHours: 24,
       };
     },
   },
@@ -125,6 +142,7 @@ export const {
   clearSearchCategories,
   markSubscribeDialogDismissed,
   markSubscribeDialogSuccess,
+  markSubscribeDialogShown,
   resetSubscribeDialogState,
 } = persistentUiSlice.actions;
 

@@ -25,6 +25,20 @@ const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = 
   const onlineAmount = isSplitPayment ? Math.round((totalCost * onlinePercentage) / 100) : totalCost;
   const codAmount = isSplitPayment ? totalCost - onlineAmount : 0;
 
+  // Determine primary payment mode label for non-split payments
+  const paymentModeLabel = (() => {
+    if (typeof onlinePercentage === 'number') {
+      if (onlinePercentage >= 100) return 'Pay Online';
+      if (onlinePercentage <= 0) return 'Cash On Delivery';
+    }
+    if (typeof codPercentage === 'number') {
+      if (codPercentage >= 100) return 'Cash On Delivery';
+      if (codPercentage <= 0) return 'Pay Online';
+    }
+    // Default to COD if unclear
+    return 'Cash On Delivery';
+  })();
+
   return (
     <div className={styles.footerContainer}>
       <div className={styles.priceContainer}>
@@ -75,6 +89,15 @@ const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = 
                 <span className={styles.originalPrice}>
                   ₹{originalTotal > totalCost ? originalTotal.toFixed(0) : (totalCost * 1.2).toFixed(0)}
                 </span>
+              </div>
+            </div>
+
+            {/* Payment mode tag (same styling as split payment, no amount) */}
+            <div className={styles.paymentSplitContainer} style={{ marginLeft: 12 }}>
+              <div className={styles.paymentOption}>
+                <div>
+                  <span className={styles.paymentLabel}>{paymentModeLabel}</span>
+                </div>
               </div>
             </div>
             
