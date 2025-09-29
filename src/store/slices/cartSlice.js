@@ -3,6 +3,13 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   items: [], // Each item: { productId, quantity, productDetails, insertionDetails }
+  // Inventory verification gate: persist excluded (out-of-stock) items with TTL
+  inventoryGate: {
+    excludedKeys: [], // array of item keys excluded from order (not counted in totals/offers)
+    itemsInfo: {},    // key -> { productId, optionId, quantity, reason, name, image, sku }
+    expiresAt: null,  // timestamp ms
+    lastCartSignature: null, // signature of cart at the time of verification
+  }
 };
 
 const cartSlice = createSlice({
@@ -52,6 +59,7 @@ const cartSlice = createSlice({
     },
     clearCart: (state) => {
       state.items = [];
+      state.inventoryGate = { excludedKeys: [], itemsInfo: {}, expiresAt: null, lastCartSignature: null };
     },
     updateQuantity: (state, action) => {
       const { productId, quantity } = action.payload;
@@ -87,6 +95,21 @@ const cartSlice = createSlice({
       if (itemIndex !== -1) {
         state.items[itemIndex].productDetails.wrapFinish = wrapFinish;
       }
+    },
+    // Inventory verification results
+    setInventoryGate: (state, action) => {
+      // payload: { excludedKeys, itemsInfo, expiresAt, cartSignature }
+      const { excludedKeys = [], itemsInfo = {}, expiresAt = null, cartSignature = null } = action.payload || {};
+      if (!state.inventoryGate) {
+        state.inventoryGate = { excludedKeys: [], itemsInfo: {}, expiresAt: null, lastCartSignature: null };
+      }
+      state.inventoryGate.excludedKeys = excludedKeys;
+      state.inventoryGate.itemsInfo = itemsInfo;
+      state.inventoryGate.expiresAt = expiresAt;
+      state.inventoryGate.lastCartSignature = cartSignature;
+    },
+    clearInventoryGate: (state) => {
+      state.inventoryGate = { excludedKeys: [], itemsInfo: {}, expiresAt: null, lastCartSignature: null };
     }
   },
 });
@@ -100,7 +123,9 @@ export const {
   clearCart,
   updateQuantity,
   setDefaultWrapFinish,
-  setWrapFinish
+  setWrapFinish,
+  setInventoryGate,
+  clearInventoryGate,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

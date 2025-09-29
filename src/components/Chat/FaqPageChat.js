@@ -14,7 +14,7 @@ const faqTemplates = [
 ];
 
 export default function FaqPageChat() {
-  const { messages, loading, pendingAssistant, loadingHistory, sendMessage, resetChat, retryLast, invokeProductSearch } = useChatSession() || {};
+  const { messages, loading, pendingAssistant, loadingHistory, isResetting, sendMessage, resetChat, retryLast, invokeProductSearch } = useChatSession() || {};
   const [input, setInput] = useState('');
   const [showTemplates, setShowTemplates] = useState(messages.length === 0);
   const containerRef = useRef(null);
@@ -58,10 +58,13 @@ export default function FaqPageChat() {
           <div style={{ width: 44, height: 44, borderRadius: 16, background: '#2d2d2d', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>MD</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 600, color: '#2d2d2d' }}>Maddy.ai</div>
-            <div style={{ fontSize: 12, color: 'rgba(45,45,45,0.55)', fontWeight: 500 }}>{loadingHistory ? 'Loading...' : 'Ask anything or choose a topic'}</div>
+            <div style={{ fontSize: 12, color: 'rgba(45,45,45,0.55)', fontWeight: 500 }}>{isResetting ? 'Starting a new chat…' : (loadingHistory ? 'Loading...' : 'Ask anything or choose a topic')}</div>
           </div>
-          <button onClick={openReset} title="New chat" style={iconBtn}>↺</button>
+          <button onClick={openReset} title="New chat" style={{...iconBtn, opacity: isResetting ? 0.5 : 1, pointerEvents: isResetting ? 'none' : 'auto'}}>{isResetting ? '…' : '↺'}</button>
         </div>
+        {isResetting && (
+          <motion.div initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 0.8, repeat: Infinity, repeatType: 'mirror' }} style={{ height: 2, background: '#2d2d2d' }} />
+        )}
         <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', padding: '20px 22px 16px', background: 'radial-gradient(circle at 80% 8%, rgba(45,45,45,0.04), transparent 65%)' }}>
           {messages.length === 0 && !loadingHistory && (
             <div style={{ marginBottom: 20 }}>
@@ -69,7 +72,7 @@ export default function FaqPageChat() {
               {showTemplates && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {faqTemplates.map(t => (
-                    <motion.button key={t} whileTap={{ scale: 0.94 }} onClick={() => handleTemplate(t)} style={templateBtn}>{t}</motion.button>
+                    <motion.button key={t} whileTap={{ scale: 0.94 }} disabled={isResetting} onClick={() => handleTemplate(t)} style={{...templateBtn, opacity: isResetting ? 0.55 : 1}}>{t}</motion.button>
                   ))}
                 </div>
               )}
@@ -113,10 +116,10 @@ export default function FaqPageChat() {
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
               placeholder="Message..."
-              style={inputBox}
+              style={{...inputBox, opacity: isResetting ? 0.6 : 1}}
               rows={1}
             />
-            <motion.button whileTap={{ scale: 0.94 }} disabled={!input.trim() || loading || pendingAssistant} onClick={handleSend} style={{ ...sendBtn, opacity: !input.trim() || loading || pendingAssistant ? 0.55 : 1 }}>{loading || pendingAssistant ? '...' : 'Send'}</motion.button>
+            <motion.button whileTap={{ scale: 0.94 }} disabled={!input.trim() || loading || pendingAssistant || isResetting} onClick={handleSend} style={{ ...sendBtn, opacity: (!input.trim() || loading || pendingAssistant || isResetting) ? 0.55 : 1 }}>{(loading || pendingAssistant || isResetting) ? '...' : 'Send'}</motion.button>
           </div>
           {messages.length > 0 && messages[messages.length - 1].meta?.error && (
             <div style={{ marginTop: 10, textAlign: 'center' }}>
@@ -131,11 +134,22 @@ export default function FaqPageChat() {
             <div style={{ fontSize: 18, fontWeight: 600, color: '#2d2d2d', marginBottom: 10 }}>Start New Chat?</div>
             <div style={{ fontSize: 13, lineHeight: 1.55, color: 'rgba(45,45,45,0.70)', fontWeight: 500, marginBottom: 18 }}>This clears only local messages. Server history remains for quality improvement.</div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <button onClick={() => setConfirmOpen(false)} style={overlayBtnSecondary}>Cancel</button>
-              <button onClick={doReset} style={overlayBtnPrimary}>Start Fresh</button>
+              <button onClick={() => setConfirmOpen(false)} style={{...overlayBtnSecondary, opacity: isResetting ? 0.6 : 1}} disabled={isResetting}>Cancel</button>
+              <button onClick={doReset} style={{...overlayBtnPrimary, opacity: isResetting ? 0.6 : 1}} disabled={isResetting}>{isResetting ? 'Starting…' : 'Start Fresh'}</button>
             </div>
           </div>
         </div>
+      )}
+      {isResetting && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3500 }}>
+          <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }} style={{ background: 'rgba(255,255,255,0.96)', border: '1px solid rgba(45,45,45,0.16)', borderRadius: 24, padding: '20px 22px', boxShadow: '0 26px 72px -14px rgba(0,0,0,0.35)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }} style={{ width: 22, height: 22, border: '2px solid rgba(45,45,45,0.35)', borderTopColor: '#2d2d2d', borderRadius: '50%' }} />
+              <div style={{ fontSize: 14, color: '#2d2d2d', fontWeight: 600 }}>Starting a new chat…</div>
+            </div>
+            <motion.div initial={{ width: '10%' }} animate={{ width: '100%' }} transition={{ repeat: Infinity, repeatType: 'mirror', duration: 1.6 }} style={{ height: 3, background: '#2d2d2d', marginTop: 10, borderRadius: 2 }} />
+          </motion.div>
+        </motion.div>
       )}
     </section>
   );

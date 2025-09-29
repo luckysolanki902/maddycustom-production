@@ -15,7 +15,7 @@ import PaymentIcon from '@mui/icons-material/Payment';
 import { updateQuantity } from '@/store/slices/cartSlice';
 import Image from 'next/image';
 
-const CartItem = ({ item, onRemove }) => {
+const CartItem = ({ item, onRemove, readonly = false }) => {
   const dispatch = useDispatch();
   const { productDetails, quantity } = item;
   const { name, price, MRP } = productDetails;
@@ -66,7 +66,7 @@ const CartItem = ({ item, onRemove }) => {
 
   return (
     <motion.div 
-      className={styles.cartItem}
+      className={`${styles.cartItem} ${readonly ? styles.oosItem : ''}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -95,12 +95,16 @@ const CartItem = ({ item, onRemove }) => {
               </div>
             )}
             <h3 className={styles.productName}>{name}</h3>
+            {readonly && (
+              <div className={styles.oosBadge}>Out of Stock</div>
+            )}
           </div>
           
           <button 
             className={styles.removeBtn} 
             onClick={() => onRemove(productDetails._id)}
             type="button"
+            title={readonly ? 'Remove from cart' : 'Remove from cart'}
           >
             <DeleteOutlineIcon fontSize="small" />
           </button>
@@ -116,9 +120,9 @@ const CartItem = ({ item, onRemove }) => {
 
           <div className={styles.quantityControls}>
             <button 
-              className={`${styles.quantityBtn} ${quantity <= 1 ? styles.disabled : ''}`}
-              onClick={() => handleUpdateQuantity(quantity - 1)}
-              disabled={quantity <= 1}
+              className={`${styles.quantityBtn} ${(quantity <= 1 || readonly) ? styles.disabled : ''}`}
+              onClick={() => !readonly && handleUpdateQuantity(quantity - 1)}
+              disabled={quantity <= 1 || readonly}
               type="button"
             >
               <RemoveIcon style={{ fontSize: '16px' }} />
@@ -127,9 +131,10 @@ const CartItem = ({ item, onRemove }) => {
             <span className={styles.quantity}>{quantity}</span>
             
             <button 
-              className={styles.quantityBtn}
-              onClick={() => handleUpdateQuantity(quantity + 1)}
+              className={`${styles.quantityBtn} ${readonly ? styles.disabled : ''}`}
+              onClick={() => !readonly && handleUpdateQuantity(quantity + 1)}
               type="button"
+              disabled={readonly}
             >
               <AddIcon style={{ fontSize: '16px' }} />
             </button>
@@ -140,7 +145,7 @@ const CartItem = ({ item, onRemove }) => {
   );
 };
 
-const ProductSpecifications = () => {
+export const ProductSpecifications = () => {
   return (
     <motion.div 
       className={styles.specContainer}
@@ -176,21 +181,28 @@ const ProductSpecifications = () => {
   );
 };
 
-export default function CartList({ cartItems, onRemove }) {
+export default function CartList({ cartItems, onRemove, readonly = false, sectionTitle = null, sectionNote = null, showSpecs = false }) {
   return (
     <div className={styles.cartList}>
+      {sectionTitle && (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+          <h4 style={{ margin: 0, fontSize: 14, color: '#2d2d2d', fontWeight: 600 }}>{sectionTitle}</h4>
+          {sectionNote && <span style={{ fontSize: 12, color: '#6b7280' }}>{sectionNote}</span>}
+        </div>
+      )}
       <AnimatePresence>
         {cartItems.map(item => (
           <CartItem 
             key={item.productDetails._id} 
             item={item} 
             onRemove={onRemove} 
+            readonly={readonly}
           />
         ))}
       </AnimatePresence>
       
-      {/* Add the specifications section */}
-      {cartItems.length > 0 && <ProductSpecifications />}
+      {/* Add the specifications section only when explicitly requested */}
+      {showSpecs && cartItems.length > 0 && !readonly && <ProductSpecifications />}
     </div>
   );
 }

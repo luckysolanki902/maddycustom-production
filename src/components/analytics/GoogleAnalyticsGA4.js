@@ -1,7 +1,7 @@
-// @/components/analytics/GoogleAnalytics.js
-import Script from 'next/script';
+// @/components/analytics/GoogleAnalyticsGA4.js
+import Script from "next/script";
 
-const GoogleAnalytics = () => (
+const GoogleAnalyticsGA4 = () => (
   <>
     <Script
       async
@@ -16,11 +16,14 @@ const GoogleAnalytics = () => (
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
 
+          // GA4
           gtag('config', 'G-5RNLTQL0W7');
+          // Google Ads
+          gtag('config', 'AW-17482342674');
         `,
       }}
     />
   </>
 );
 
-export default GoogleAnalytics;
+export default GoogleAnalyticsGA4;
