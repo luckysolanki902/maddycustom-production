@@ -1,5 +1,7 @@
 // Client-side reverse geocoding via Nominatim with caching
 // Note: Browsers block setting a custom User-Agent header; Nominatim accepts browser UA + Referer.
+// IMPORTANT: Only autofill city, state, and pincode from Nominatim. All other fields are intentionally left blank
+// so users can enter them manually.
 
 const MEM_CACHE = new Map();
 const LS_KEY = 'maddy_reverse_geo_cache_v1';
@@ -64,29 +66,16 @@ export async function reverseGeocodeClient(lat, lng, { ttlMs = 12 * 60 * 60 * 10
   const data = await res.json();
   const a = data.address || {};
 
-  const areaCandidates = [
-    a.neighbourhood,
-    a.locality,
-    a.quarter,
-    a.suburb,
-    a.ward,
-    a.city_district,
-    a.residential,
-    a.village,
-    a.town,
-    a.hamlet,
-  ].filter(Boolean);
-  const areaLocality = areaCandidates[0] || '';
-  const poi = a.amenity || a.building || a.shop || a.office || a.tourism || a.leisure || data.name || '';
-
+  // Only provide city, state, and pincode; everything else stays blank for manual input.
   const payload = {
-    areaLocality,
-    road: a.road || a.pedestrian || a.cycleway || a.footway || '',
-    houseNumber: a.house_number || '',
-    poi,
     city: a.city || a.town || a.village || a.suburb || a.county || '',
     state: a.state || a.state_district || '',
     pincode: a.postcode || '',
+    // Intentionally blank fields (do not autofill)
+    areaLocality: '',
+    road: '',
+    houseNumber: '',
+    poi: '',
   };
 
   const entry = { ts: now, payload };
