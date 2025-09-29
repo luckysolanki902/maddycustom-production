@@ -69,8 +69,8 @@ export default function SupportChatLauncher() {
 
 const launcherStyle = {
   position: 'fixed',
-  bottom: 24,
-  right: 24,
+  bottom: 14,
+  right: 14,
   width: 62,
   height: 62,
   borderRadius: 22,

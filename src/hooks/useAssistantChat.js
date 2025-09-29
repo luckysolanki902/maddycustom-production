@@ -143,13 +143,18 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 	}, []);
 
 	// --- Detect very broad "show products" intent to present a category grid ---
-	const detectGenericBrowseIntent = useCallback((raw) => {
+		const detectGenericBrowseIntent = useCallback((raw) => {
 		if (!raw) return null;
 		const text = raw.toLowerCase().trim();
 		// Examples: "show me products", "show products", "show me all products", "all products", "browse products", "view products"
-		if (/^(show\s+me\s+)?(all\s+)?products$/.test(text) || /\b(browse|view)\s+products\b/.test(text) || /^all\s+products$/.test(text)) {
+			if (/^(show\s+me\s+)?(all\s+)?products$/.test(text) || /\b(browse|view)\s+products\b/.test(text) || /^all\s+products$/.test(text)) {
 			return { intent: 'browse_categories' };
 		}
+			// If user mentions a color with a domain word, nudge to product_search instead of browse
+			const color = /(red|blue|black|white|silver|grey|gray|green|yellow|gold|orange|purple|violet|pink|beige|brown)\b/.exec(text);
+			if (color && /(car|bike|wrap|sticker|decal|fragrance|keychain|accessor)/.test(text)) {
+				return { intent: 'product_search', params: { query: raw } };
+			}
 		return null;
 	}, []);
 

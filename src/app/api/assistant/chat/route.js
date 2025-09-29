@@ -309,7 +309,8 @@ Functions:
     query?: string; // user query
     maxPrice?: number; minPrice?: number;
     categoryTitle?: string; // pick one closest from the categories list below (e.g., 'window pillar wrap', 'tank wrap', 'bike wrap', 'car wrap', 'car fragrance', 'keychain')
-    page?: number; limit?: number; // limit max 10
+    diversifyCategories?: boolean; // set true for generic domain-only queries (e.g., "something for my red car") to return a mix from different specific categories (pillar wraps, bonnet wraps, roof wraps, etc.)
+    page?: number; limit?: number; // limit max 10 (use 10 when diversifyCategories is true)
     keywords?: string[]; // optional extra terms
     sortBy?: 'orders' | 'price_asc' | 'price_desc'
   }
@@ -325,7 +326,9 @@ Functions:
 
 Decision policy:
 - If the user is generically browsing (e.g., "show me products", "show me all products", "browse products", "everything", "all items"), choose browse_categories.
-- Choose search_products when the user specifies a concrete product concept, keywords, or category (e.g., "window pillar wrap", "perfume under 500", "most ordered pillar wraps"). When the user mentions a domain like bike/car/interior/exterior, select the closest categoryTitle from the categories list (e.g., "bike wrap" for bike, "car wrap" for car, specific variants like "tank wrap", "roof wrap", "window pillar wrap" when present). Also include the relevant domain keyword in args.keywords (e.g., ["bike"]).
+- Choose search_products when the user specifies a concrete product concept, keywords, or category (e.g., "window pillar wrap", "perfume under 500", "most ordered pillar wraps"). When the user mentions a domain like bike/car/interior/exterior:
+  - If they ALSO mention a specific structure/category (e.g., pillar/tank/roof/bonnet/window), set categoryTitle accordingly (e.g., "window pillar wrap").
+  - If they ONLY mention the domain without a specific category (e.g., "show me something for my red car"), DO NOT set categoryTitle. Instead set args.keywords with the domain (e.g., ["car"]) and set diversifyCategories=true with limit=10 so results are a diverse mix across different specific categories (pillar, roof, bonnet, etc.).
 - Choose get_order_status only if the user asks to track an order or provides a valid order id.
 - Keep args minimal and relevant; do not invent values. Never exceed limit 10.
 
@@ -337,30 +340,38 @@ Examples:
 5) User: "show something for bike" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "bike wrap", "keywords": ["bike"], "limit": 6 }, "reason": "User mentioned bike; choose closest category from list" }
 6) User: "show something for car interiors" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "car interiors", "keywords": ["car","interior"], "limit": 6 }, "reason": "User mentioned car interiors" }
 7) User: "car roof" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "roof wrap", "limit": 6 }, "reason": "Roof wraps for car" }
+8) User: "show me something for my red car" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["car","red"], "diversifyCategories": true, "limit": 10 }, "reason": "Generic car domain with color; diversify across categories" }
 
 Decision JSON schema:
 { "action": "call_tool" | "direct_answer", "tool"?: "search_products"|"get_order_status"|"browse_categories", "args"?: object, "reason": string }
 `;
-    let rawPlan = '{}';
-    if (plannerMode === 'rule') {
-      const plan = ruleBasedPlan(plannerMessage || '');
-      rawPlan = JSON.stringify(plan);
+    // If client explicitly invoked a tool, honor it to avoid planner overriding color/style searches
+    let plan = null;
+    if (action === 'tool:search_products' || action === 'tool:get_order_status' || action === 'tool:browse_categories') {
+      const map = { 'tool:search_products': 'search_products', 'tool:get_order_status': 'get_order_status', 'tool:browse_categories': 'browse_categories' };
+      plan = { action: 'call_tool', tool: map[action], args: toolInvocation || {}, reason: 'client-requested tool' };
+      console.log('[temp-debug] honoring explicit tool from client ->', plan.tool);
     } else {
-      const planner = await client.chat.completions.create({
-        model: 'gpt-4.1-mini',
-        temperature: 0,
-        messages: [
-          { role: 'system', content: 'You are a careful planner. Decide the best next step and return STRICT JSON matching the schema.' },
-          { role: 'system', content: categoriesSummary },
-          { role: 'system', content: functionDocs },
-          { role: 'user', content: plannerMessage || '' }
-        ]
-      });
-      rawPlan = planner.choices?.[0]?.message?.content || '{}';
+      let rawPlan = '{}';
+      if (plannerMode === 'rule') {
+        const p = ruleBasedPlan(plannerMessage || '');
+        rawPlan = JSON.stringify(p);
+      } else {
+        const planner = await client.chat.completions.create({
+          model: 'gpt-4.1-mini',
+          temperature: 0,
+          messages: [
+            { role: 'system', content: 'You are a careful planner. Decide the best next step and return STRICT JSON matching the schema.' },
+            { role: 'system', content: categoriesSummary },
+            { role: 'system', content: functionDocs },
+            { role: 'user', content: plannerMessage || '' }
+          ]
+        });
+        rawPlan = planner.choices?.[0]?.message?.content || '{}';
+      }
+      console.log('[temp-debug] planner raw:', rawPlan);
+      try { plan = JSON.parse(rawPlan); } catch { plan = { action: 'direct_answer', reason: 'fallback-parse' }; }
     }
-    console.log('[temp-debug] planner raw:', rawPlan);
-    let plan;
-    try { plan = JSON.parse(rawPlan); } catch { plan = { action: 'direct_answer', reason: 'fallback-parse' }; }
     // Normalize planner action if it returned an unexpected value but provided a tool
     if (plan && typeof plan === 'object') {
       const toolName = typeof plan.tool === 'string' ? plan.tool : undefined;
@@ -402,6 +413,10 @@ Decision JSON schema:
         if (safeMin !== undefined && safeMin < 0) safeMin = 0;
         if (safeMax !== undefined && safeMin !== undefined && safeMin > safeMax) { const tmp = safeMin; safeMin = safeMax; safeMax = tmp; }
         const safeKeywords = Array.isArray(args.keywords) ? args.keywords.slice(0, 8).map(sanitizeText).filter(Boolean) : undefined;
+        const safeDiversify = args.diversifyCategories === true;
+        // If diversification requested and no explicit limit, force 10 per requirement
+        const explicitLimit = Number(args.limit);
+        const effectiveLimit = safeDiversify && (isNaN(explicitLimit) || explicitLimit <= 0) ? 10 : explicitLimit;
         const searchPayload = {
           query: sanitizeText(args.query),
           maxPrice: safeMax,
@@ -409,7 +424,8 @@ Decision JSON schema:
           categoryTitle: sanitizeText(args.categoryTitle) || pageContext?.categoryTitle,
           keywords: safeKeywords,
           page: Math.max(1, Number(args.page) || 1),
-          limit: Math.min(10, Math.max(1, Number(args.limit) || 6)),
+          limit: Math.min(10, Math.max(1, Number(effectiveLimit) || 6)),
+          diversifyCategories: safeDiversify,
           sortBy: typeof args.sortBy === 'string' ? args.sortBy : undefined,
           pageContext
         };

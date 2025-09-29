@@ -37,7 +37,9 @@ const STOPWORDS = new Set([
   'show','some','find','suggest','recommend','get','need','want','see','me','for','a','an','the','please','pls','with','and','or','to','of','under','below','less','than','over','above','more','rs','price','cost','in','on','at','any',
   // Popularity & generic product words we don't want as filters
   'popular','best','top','bestselling','selling','trending','hot',
-  'product','products','item','items'
+  'product','products','item','items',
+  // Style noise
+  'theme','themed'
 ]);
 // Words we consider too generic in automotive context (optionally removable)
 const GENERIC_DOMAIN = new Set(['car','bike','window','vehicle','model','size','sizes']);
@@ -49,7 +51,12 @@ function extractKeywords(q) {
     .toLowerCase()
     .replace(/\bwraps\b/g, 'wrap');
   const raw = normalized.split(/[^a-z0-9]+/).filter(Boolean);
-  const filtered = raw.filter(w => w.length > 2 && !STOPWORDS.has(w) && !GENERIC_DOMAIN.has(w));
+  const filtered = raw.filter(w => {
+    if (w.length <= 1) return false;
+    if (STOPWORDS.has(w)) return false;
+    if (GENERIC_DOMAIN.has(w)) return false;
+    return true; // keep color words like 'red', 'blue'
+  });
   return [...new Set(filtered)];
 }
 
@@ -127,6 +134,7 @@ export async function searchProducts({
   limit,
   sortBy,
   pageContext,
+  diversifyCategories,
 }) {
   console.log('[temp-debug] searchProducts start', { query, maxPrice, minPrice, categoryTitle, keywords, page, limit, sortBy });
   await connectToDb();
@@ -143,20 +151,43 @@ export async function searchProducts({
   // Cap to first 3 to avoid over-constraining AND clauses
   if (allKeywords.length > 3) allKeywords = allKeywords.slice(0,3);
 
-  // Domain intent detection from the raw text (do not rely on keyword extraction that removes generic domains)
+  // Domain intent detection: consider raw text AND explicit keywords
+  // Note: extractKeywords removes generic tokens like 'car'/'bike', so rely on explicitKeywords too
   const rawText = `${query || ''} ${categoryTitle || ''}`.toLowerCase();
-  const wantsBike = /\bbike(s)?\b/.test(rawText);
-  const wantsCar = /\bcar(s)?\b/.test(rawText);
-  const wantsInterior = /\binterior(s)?\b/.test(rawText);
-  const wantsExterior = /\bexterior(s)?\b/.test(rawText);
+  const wantsBike = /\bbike(s)?\b/.test(rawText) || explicitKeywords.includes('bike');
+  const wantsCar = /\bcar(s)?\b/.test(rawText) || explicitKeywords.includes('car');
+  const wantsInterior = /\binterior(s)?\b/.test(rawText) || explicitKeywords.includes('interior');
+  const wantsExterior = /\bexterior(s)?\b/.test(rawText) || explicitKeywords.includes('exterior');
+  console.log('[temp-debug] domain flags', { wantsCar, wantsBike, wantsInterior, wantsExterior });
 
   // Identify structural (category-like) tokens that we want to enforce strictly
-  const STRUCTURAL_TOKENS = new Set(['wrap','wraps','pillar','tank','fragrance','perfume','scent','keychain','sticker','decal']);
-  const requiredWords = allKeywords.filter(w => STRUCTURAL_TOKENS.has(w)).slice(0, 2);
-  // If we didn't detect any structural tokens, require the first keyword only (if any)
-  const fallbackRequired = (!requiredWords.length && allKeywords.length) ? [allKeywords[0]] : [];
-  const effectiveRequired = requiredWords.length ? requiredWords : fallbackRequired;
+  const STRUCTURAL_TOKENS = new Set(['wrap','wraps','pillar','tank','roof','bonnet','fragrance','perfume','scent','keychain','sticker','decal']);
+  const DOMAIN_TOKENS = new Set(['car','bike','interior','exterior']);
+  const structural = allKeywords.filter(w => STRUCTURAL_TOKENS.has(w));
+  const theme = allKeywords.filter(w => !STRUCTURAL_TOKENS.has(w));
+  // When diversifying and no explicit category, avoid forcing domain words like 'car'/'bike' as required; prefer actual theme (e.g., colors)
+  const themeNoDomain = (diversifyCategories && !categoryTitle)
+    ? theme.filter(w => !DOMAIN_TOKENS.has(w))
+    : theme;
+
+  // Prefer narrowing by one theme (e.g., 'anime' or a color) + one structural (e.g., 'pillar') when available
+  let effectiveRequired = [];
+  if (themeNoDomain.length) {
+    // pick first theme keyword (non-domain when diversifying)
+    const preferredTheme = themeNoDomain[0];
+    // prefer 'pillar' when present, else first structural token
+    let preferredStructural = null;
+    if (structural.includes('pillar')) preferredStructural = 'pillar';
+    else if (structural.length) preferredStructural = structural[0];
+    effectiveRequired = [preferredTheme, preferredStructural].filter(Boolean);
+  } else if (!diversifyCategories && structural.length) {
+    // Only use structural as required when not diversifying; during diversify we keep structural optional to widen category pool
+    effectiveRequired = structural.slice(0, 2);
+  } else if (!diversifyCategories && allKeywords.length) {
+    effectiveRequired = [allKeywords[0]];
+  }
   const optionalWords = allKeywords.filter(w => !effectiveRequired.includes(w));
+  console.log('[temp-debug] keywords breakdown', { allKeywords, structural, theme, effectiveRequired, optionalWords });
 
   // Apply parsed price hints only if explicit values not given
   const priceFilter = {};
@@ -199,6 +230,20 @@ export async function searchProducts({
         ]
       }))
     });
+  } else if (theme.length) {
+    // If we only have theme tokens (e.g., color like 'red'), still build a broad OR to search products by that
+    const ors = [];
+    const themeForFilters = themeNoDomain.length ? themeNoDomain : theme; // prefer non-domain theme tokens for filtering
+    themeForFilters.slice(0, 2).forEach(word => {
+      const reg = new RegExp(word, 'i');
+      ors.push(
+        { title: reg },
+        { searchKeywords: reg },
+        { mainTags: reg },
+        { pageSlug: reg }
+      );
+    });
+    if (ors.length) andClauses.push({ $or: ors });
   }
   console.log('[temp-debug] searchProducts filters', { effectiveRequired, optionalWords, priceFilter, categoryTitle, skip, clampedLimit });
 
@@ -224,13 +269,54 @@ export async function searchProducts({
     if (categoryTitleMatchedIds.length) {
       andClauses.push({ specificCategory: { $in: categoryTitleMatchedIds } });
     }
+    // If category seems like a variantable structure (pillar/tank), prefer categories that include those tokens in classificationTags
+    const ct = String(categoryTitle).toLowerCase();
+    if (/pillar|tank|roof|bonnet/.test(ct) && catDocs.length) {
+      const tightened = catDocs.filter(c => (c.classificationTags||[]).some(t => /pillar|tank|roof|bonnet/i.test(String(t))));
+      if (tightened.length) {
+        const ids = tightened.map(c => c._id);
+        andClauses.push({ specificCategory: { $in: ids } });
+      }
+    }
   }
 
-  // Domain filter: if user clearly asked for bike vs car and not both, constrain Product.subCategory
+  // Domain filter: if user clearly asked for bike vs car and not both
   if (wantsBike && !wantsCar) {
-    andClauses.push({ subCategory: { $regex: /bike/i } });
+    // Include bike signals and exclude car signals
+    andClauses.push({ $or: [
+      { subCategory: { $regex: /bike/i } },
+      { vehicles: { $regex: /bike/i } },
+      { mainTags: { $regex: /bike/i } },
+      { searchKeywords: { $regex: /bike/i } },
+      { title: { $regex: /bike/i } },
+      { pageSlug: { $regex: /bike/i } },
+    ]});
+    andClauses.push({ $nor: [
+      { subCategory: { $regex: /car/i } },
+      { vehicles: { $regex: /car/i } },
+      { mainTags: { $regex: /car/i } },
+      { searchKeywords: { $regex: /car/i } },
+      { title: { $regex: /car/i } },
+      { pageSlug: { $regex: /car/i } },
+    ]});
   } else if (wantsCar && !wantsBike) {
-    andClauses.push({ subCategory: { $regex: /car/i } });
+    // Include car signals and exclude bike signals
+    andClauses.push({ $or: [
+      { subCategory: { $regex: /car/i } },
+      { vehicles: { $regex: /car/i } },
+      { mainTags: { $regex: /car/i } },
+      { searchKeywords: { $regex: /car/i } },
+      { title: { $regex: /car/i } },
+      { pageSlug: { $regex: /car/i } },
+    ]});
+    andClauses.push({ $nor: [
+      { subCategory: { $regex: /bike/i } },
+      { vehicles: { $regex: /bike/i } },
+      { mainTags: { $regex: /bike/i } },
+      { searchKeywords: { $regex: /bike/i } },
+      { title: { $regex: /bike/i } },
+      { pageSlug: { $regex: /bike/i } },
+    ]});
   }
 
   // Category classificationTags discovery (broad, influences scoring not filtering)
@@ -248,15 +334,34 @@ export async function searchProducts({
   }
   const classificationTagMatchedCatIds = new Set(classificationTagMatchedCats.map(c => c._id.toString()));
 
+  // Domain-based category exclusions: if the user explicitly wants car (and not bike), exclude categories tagged as bike, and vice versa
+  if (wantsCar && !wantsBike) {
+    const bikeCats = await SpecificCategory.find({ classificationTags: { $in: [/bike/i] }, available: { $ne: false } }).select('_id').lean();
+    const bikeCatIds = bikeCats.map(c => c._id);
+    if (bikeCatIds.length) {
+      andClauses.push({ $or: [ { specificCategory: { $nin: bikeCatIds } }, { specificCategory: { $exists: false } } ] });
+      console.log('[temp-debug] domain exclusion applied: excluded bike categories count', bikeCatIds.length);
+    }
+  } else if (wantsBike && !wantsCar) {
+    const carCats = await SpecificCategory.find({ classificationTags: { $in: [/car/i] }, available: { $ne: false } }).select('_id').lean();
+    const carCatIds = carCats.map(c => c._id);
+    if (carCatIds.length) {
+      andClauses.push({ $or: [ { specificCategory: { $nin: carCatIds } }, { specificCategory: { $exists: false } } ] });
+      console.log('[temp-debug] domain exclusion applied: excluded car categories count', carCatIds.length);
+    }
+  }
+
   const queryMatch = andClauses.length ? { $and: andClauses } : {};
 
   // Base product find (limit + extra for post-filter)
+  // Over-fetch more aggressively when diversifying to ensure we have enough categories to sample from
+  const overFetchFactor = (diversifyCategories && !categoryTitle) ? 8 : 2;
   const raw = await Product.find(queryMatch)
     .select('title price MRP images pageSlug specificCategory specificCategoryVariant productSource inventoryData searchKeywords mainTags available options')
     .lean()
     .skip(skip)
-    .limit(clampedLimit * 2); // over-fetch to allow post filtering of inventory & variant availability
-  console.log('[temp-debug] searchProducts raw candidates', raw.length);
+    .limit(clampedLimit * overFetchFactor); // over-fetch to allow post filtering and diversification
+  console.log('[temp-debug] searchProducts raw candidates', raw.length, 'overFetchFactor=', overFetchFactor);
 
   const catIds = [...new Set(raw.filter(p => p.specificCategory).map(p => p.specificCategory))];
   const varIds = [...new Set(raw.filter(p => p.specificCategoryVariant).map(p => p.specificCategoryVariant))];
@@ -342,9 +447,9 @@ export async function searchProducts({
     // Optional words influence ranking more than filtering
     const allForScoring = [...effectiveRequired, ...optionalWords];
     allForScoring.forEach(w => {
-      if (lowerTitle.includes(w)) score += 3;
-      if ((p.searchKeywords||[]).some(sk => (sk||'').toLowerCase().includes(w))) score += 2;
-      if ((p.mainTags||[]).some(tag => (tag||'').toLowerCase().includes(w))) score += 1.75;
+  if (lowerTitle.includes(w)) score += 3;
+  if ((p.searchKeywords||[]).some(sk => (sk||'').toLowerCase().includes(w))) score += 2.25;
+  if ((p.mainTags||[]).some(tag => (tag||'').toLowerCase().includes(w))) score += 2.1; // slightly higher to respect theme tags like 'anime'
       if ((p.pageSlug||'').toLowerCase().includes(w)) score += 1.5;
     });
     // Category classificationTags relevance boost
@@ -382,7 +487,40 @@ export async function searchProducts({
   } else {
     scored = scored.sort((a, b) => b.score - a.score);
   }
-  scored = scored.slice(0, clampedLimit);
+  // Diversification across categories when requested for generic domain-only queries
+  if (diversifyCategories && !categoryTitle) {
+    // Group by specificCategory and pick top-per-category round-robin
+    const byCat = new Map();
+    for (const item of scored) {
+      const key = item.p.specificCategory ? String(item.p.specificCategory) : 'uncategorized';
+      if (!byCat.has(key)) byCat.set(key, []);
+      byCat.get(key).push(item);
+    }
+    console.log('[temp-debug] diversification buckets=', byCat.size);
+    // Sort each category bucket by score desc (already is), then round-robin sample
+    const buckets = Array.from(byCat.values()).map(arr => arr.sort((a,b) => b.score - a.score));
+    const diversified = [];
+    let i = 0;
+    while (diversified.length < Math.min(10, clampedLimit) && buckets.length) {
+      const idx = i % buckets.length;
+      const bucket = buckets[idx];
+      const next = bucket.shift();
+      if (next) {
+        diversified.push(next);
+      }
+      // Remove empty buckets
+      if (bucket.length === 0) {
+        buckets.splice(idx, 1);
+        // Do not increment i this round to fill from next bucket at same index
+        continue;
+      }
+      i++;
+    }
+    console.log('[temp-debug] diversification selected count=', diversified.length);
+    scored = diversified;
+  }
+
+  scored = scored.slice(0, diversifyCategories ? Math.min(10, clampedLimit) : clampedLimit);
 
   const products = scored.map(({ p }) => {
     const firstImage = Array.isArray(p.images) && p.images.length ? buildImageUrl(p.images[0]) : null;
@@ -524,20 +662,21 @@ export async function searchProducts({
 
   const result = {
     page: Math.max(1, page),
-    limit: clampedLimit,
+    limit: diversifyCategories ? Math.min(10, clampedLimit) : clampedLimit,
     products,
     hasMore,
     totalApprox: filtered.length,
-  queryEcho: { query, maxPrice: effMax, minPrice: effMin, keywords: allKeywords, sortBy: requestedSort, relaxedInventoryUsed: usedRelaxedInventory },
+  queryEcho: { query, maxPrice: effMax, minPrice: effMin, keywords: allKeywords, sortBy: requestedSort, relaxedInventoryUsed: usedRelaxedInventory, diversifyCategories: !!diversifyCategories },
     continuation: {
       page: Math.max(1, page),
-      limit: clampedLimit,
+      limit: diversifyCategories ? Math.min(10, clampedLimit) : clampedLimit,
       filters: {
         keywords: allKeywords,
         maxPrice: effMax ?? null,
         minPrice: effMin ?? null,
         categoryTitle: categoryTitle || null,
         sortBy: requestedSort || null,
+        diversifyCategories: !!diversifyCategories,
       },
       hint: hasMore ? 'Say "show more" to see additional results.' : null,
     }
