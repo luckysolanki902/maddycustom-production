@@ -42,7 +42,7 @@ const ResetOverlay = ({ visible }) => {
 	);
 };
 const templateSets = {
-	home: ['Show me popular wrap designs', 'Show me something for my car roof', 'Do you ship across India?', 'Where is my order?', 'What products do you sell?'],
+	home: ['Show me something for my red car', 'Show me something for my car roof', 'Do you ship across India?', 'Where is my order?', 'What products do you sell?'],
 	productList: ['Suggest some red designs', 'What material is used?', 'Show me anime-themed wraps'],
 	productDetail: ['What material is used?', 'How long does the product last?', 'How long does shipping take?'],
 	orderSuccess: ['Track my new order', 'Can I change the shipping address?', 'How long until delivery?', 'When will packaging start?'],
