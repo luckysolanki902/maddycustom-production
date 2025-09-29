@@ -27,6 +27,7 @@ import SimilarProducts from "../page-sections/product-id-page/SimilarProducts";
 import AddToCartButton from "../utils/AddToCartButton";
 import ChangeVariantButton from "../page-sections/products-page/ChangeVariantButton";
 import VariantSelectionDialog from "../dialogs/VariantSelectionDialog";
+import { setAssistantContext } from '@/store/slices/assistantContextSlice';
 
 // Memoize components that do not need to update on option change
 const MemoizedImageGallery = memo(ImageGallery);
@@ -146,6 +147,19 @@ export default function ProductIdPage({
     }
   }, [options, selectedOption]);
   useEffect(() => {}, []);
+  // Assistant context: product detail
+  useEffect(() => {
+    try {
+      dispatch(setAssistantContext({
+        pageType: 'product_detail',
+        categoryTitle: category?.name || category?.title || null,
+        productTitle: product?.title || product?.name || null,
+        variantTitle: variant?.name || null,
+      }));
+    } catch (e) {
+      console.warn('Failed to set assistant context (detail)', e);
+    }
+  }, [dispatch, category?.name, category?.title, product?.title, product?.name, variant?.name]);
   useEffect(() => {
     if (product.category.toLowerCase() == "wraps") {
       cartItems.forEach(item => {

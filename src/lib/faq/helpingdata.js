@@ -1,21 +1,244 @@
 // helpingdata.js
 
 const helpingData = `
-Our window pillar wraps are designed to cover both pillars on each side of the car; one set includes a pair that ensures complete coverage. These pillar wraps fit all cars thanks to a safe area zone that accommodates a variety of pillar sizes. Our vinyl wraps, including bonnet wraps, tank wraps, pillar wraps, and more, are carefully constructed with a matte 3D-like texture to create a raw, bold look.
+===============================
+          CHATBOT
+===============================
 
-Bonnet wraps are universal for most standard cars since they include extra material in the safe area that can be trimmed to fit smaller cars; however, they don’t fit heavy loading vehicles such as Ashok Leyland, Dost, and similar commercial trucks.
-
-For bikes, we offer specialized tank wraps in multiple size categories (medium, slim, and wide), which correspond to common tank shapes. For example, medium tank wraps are suitable for bikes like Classic 350, Jawa, Hunter 350; slim tank wraps fit bikes like Pulsar, Honda Shine, Passion Pro; and wide tank wraps are appropriate for bikes such as TVS Raider, R15, Yamaha FZ, Yamaha MT-15, Apache, and other models with more expansive or broader tank designs. If you are unsure which category best fits your bike, we provide a “Change Variant” button on the product page. You can also reach out to us for guidance. In addition to tank wraps, we have variants for fuel cap wraps by fuel type (electric, petrol, diesel, or CNG), and variants for car fresheners based on different fragrance options like Sea Vibes, Blue Violet, Musk, and Lemon Zest.
-
-Our wraps are durable and can last 5+ years—similar to automotive paint—if properly applied and maintained. They adhere best to metal or other smooth, plain surfaces; on rough or uneven plastic surfaces, the adhesion may not be as strong. For best results, always ensure the surface is clean, dry, and free of dust. Application is fairly straightforward: we include a cutter and slider in the package for easy installation. However, if you feel unsure about doing it yourself, you can take assistance from any local store or professional applicator.
-
-We also offer car fragrances that come with an impactful lifespan of around 28 days. Depending on your preference, they are available in various fragrance variants. Our range of car and bike accessories also extends to JDM keychains, which are designed to look and work like the real thing. Choose from a variety of options including gear keychain, shocker keychain, and disk break keychain. Each keychain is carefully crafted to provide a realistic look and feel, making them a great conversation starter. They are the perfect accessory for any car enthusiast and also make a great gift for friends and family.
-
-Our shipping process typically takes about 7 days under normal conditions, but it can extend to 10 days in areas with local restrictions or logistical challenges. Each order usually generates a unique order ID within 1–2 days—an email or WhatsApp message is sent out once it's officially processed and shipped. You can track your package by visiting {link: https://www.maddycustom.com/orders/track, linkText: our tracking page} and entering your order ID. If you have trouble tracking or have not received your order ID, simply wait 1–2 days, and if it still doesn’t arrive, contact us for further assistance.
+PRODUCT - SPECIFICATION, APPLICATION AND COMPATIBILITY
 
 
+===============================
+EXTERIOR PRODUCTS (WRAPS)
+===============================
 
-We attempt delivery up to three times if the first attempt fails, which means the courier will return on two more occasions. In the event of any problems, such as receiving the wrong product or needing to change your shipping address after placing an order, you can message our team on WhatsApp at 8112673988. Our support team is ready to help with any issues or questions you might have about your order, product specifications, installation instructions, or other concerns.
+1. WINDOW PILLAR WRAP
+---------------------
+Specifications:
+- Material: Premium Vinyl (Matte & Gloss finishes available)
+- Printing: UV 3D Printing
+- Quantity: Pack of 2 pieces
+
+Key Features & Durability:
+- Dust-resistant, waterproof
+- Strong adhesive (removable without damaging paint)
+- Durability: Lasts up to 2 years
+
+Compatibility:
+- Universal fit for most cars
+
+Application:
+- Professional installation recommended
+- Includes squeegee & precision cutter
+
+
+2. BONNET WRAP
+--------------
+Specifications:
+- Material: Premium Vinyl (Matte & Gloss finishes available)
+- Printing: UV 3D Printing
+- Quantity: 1 piece
+
+Key Features & Durability:
+- Protects bonnet from dust, waterproof
+- Strong but removable adhesive
+- Durability: Lasts up to 2 years
+
+Compatibility:
+- Universal fit for most cars
+
+Application:
+- Professional installation recommended
+
+
+3. TANK WRAP (FOR BIKES)
+------------------------
+Specifications:
+- Material: Premium Vinyl (Matte & Gloss finishes available)
+- Printing: UV 3D Printing
+- Quantity: 1 piece
+
+Key Features & Durability:
+- Dust-resistant, waterproof
+- Strong adhesive
+- Durability: Lasts up to 1 year
+
+Compatibility:
+- Slim Tank Wrap: Fits sports bikes & slim tanks (e.g., Bajaj Pulsar, Honda Shine)
+- Medium Tank Wrap: Fits medium tanks (e.g., Royal Enfield Classic, Hunter, Jawa)
+- Wide Tank Wrap: Fits wide tanks (e.g., Royal Enfield Classic, Hunter, Jawa)
+
+Application:
+- Professional installation recommended
+
+
+4. ROOF WRAP
+------------
+Specifications:
+- Material: Premium Automotive Vinyl (Matte & Gloss finishes available)
+- Printing: UV Technology
+
+Key Features & Durability:
+- Weatherproof
+- Seamless finish
+- Strong adhesive (removable without residue)
+- Durability: Lasts up to 2 years
+
+Compatibility (specific to car type):
+- Hatchback: 72x48 in (WagonR, i20, Altroz)
+- Sedan: 66x48 in (Verna, Amaze, Dzire)
+- SUV: 72x48 in (Creta, Brezza, XUV700)
+- MPV: 96x58.8 in (Innova Crysta, Ertiga, XL6)
+
+Application:
+- Professional installation recommended
+
+
+5. FUEL CAP WRAP
+----------------
+Specifications:
+- Material: Premium Vinyl (Matte finish)
+- Printing: UV 3D Printing
+
+Key Features & Durability:
+- Scratch-resistant, waterproof, UV-resistant
+- Durability: Lasts up to 1 year
+
+Compatibility:
+- Universal fit for all car fuel caps
+- Variants for CNG, Petrol, Diesel, and Electric models
+- Fits both circular and rectangular shapes
+
+Application:
+- Easy DIY (Do-It-Yourself)
+
+
+===============================
+INTERIOR PRODUCTS
+===============================
+
+1. CAR FRAGRANCE
+----------------
+Specifications:
+- Volume: 45ml concentrated fragrance
+- Design: Glass bottle with wooden cap
+
+Key Features & Durability:
+- Eliminates odors
+- Eco-friendly
+- Leak-proof design
+- Durability: Lasts 30-45 days
+
+Compatibility:
+- Universal for any vehicle
+
+Application:
+- Hang inside the car
+
+
+2. CAR CUSHION
+--------------
+Specifications:
+- Quantity: Set of 2
+- Material: PU foam inner cushioning, Leatherette/Leather outer cover
+- Printing: FiberFusion Print Technology (fade-resistant)
+
+Key Features & Durability:
+- Ergonomic back support
+- Stylish cohesive look
+- Durability: Up to 2 years
+
+Compatibility:
+- Universal fit for car seats
+
+Application:
+- Place on the car seat
+
+
+3. NECK REST
+------------
+Specifications:
+- Quantity: Set of 2
+- Material: PU foam inner cushioning, Leatherette/Leather outer cover
+- Printing: FiberFusion Print Technology
+
+Key Features & Durability:
+- Ergonomic design
+- Relieves pain
+- Luxurious look
+- Durability: Up to 2 years
+
+Compatibility:
+- Universal fit for car seats
+
+Application:
+- Easy to apply at home
+
+
+4. SEAT BELT COVER
+------------------
+Specifications:
+- Quantity: Set of 2
+- Material: PU foam inner cushioning, Leatherette/Leather outer cover
+- Printing: FiberFusion Print Technology
+
+Key Features & Durability:
+- Prevents seatbelt edge friction
+- Secure fastening system
+- Durability: Up to 2 years
+
+Compatibility:
+- Universal for standard car seatbelts
+
+Application:
+- Wraps around the seatbelt
+
+
+5. STEERING COVER
+-----------------
+Specifications:
+- Material: Leatherette or Leather
+- Printing: FiberFusion Print Technology
+
+Key Features & Durability:
+- Superior grip
+- Protects original steering wheel
+- Luxurious feel
+- Durability: Up to 2 years
+
+Compatibility:
+- Universal fit for most steering wheels
+
+Application:
+- Easy slip-on installation
+- No tools required
+
+
+===============================
+ORDER SHIPPING, TRACKING & DELIVERY
+===============================
+- Orders processed & shipped within 2-3 business days
+- Delivery takes 7-10 business days after dispatch
+- Track your order: https://www.maddycustom.com/orders/track
+- Secure delivery with OTP verification
+- Up to 3 delivery attempts
+- Delivery times may vary due to holidays or local restrictions
+
+
+===============================
+RETURN, REFUND AND EXCHANGE POLICY
+===============================
+We do not offer refunds or returns.  
+However, free replacements are available for:
+
+1. Damaged Product:
+   - Report within 48 hours of delivery with clear photos
+   - Free replacement sent within 2-3 business days
+
+2. Incorrect Size:
+   - Request replacement within 3 days of delivery
+   - Reshipping charge: ₹100
+   - Original item must be unused & in pristine condition
 `;
 
 export default helpingData;
