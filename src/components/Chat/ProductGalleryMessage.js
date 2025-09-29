@@ -46,10 +46,10 @@ const wrapperStyle = {
   padding: '14px 14px 18px',
   borderRadius: 22,
   fontFamily: 'Jost, sans-serif',
-  maxWidth: 360
+  maxWidth: '100%'
 };
 const titleRow = { fontSize: 13, fontWeight: 600, color: '#2d2d2d', marginBottom: 10 };
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 12 };
+const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 12, width: '100%' };
 const cardStyle = {
   textDecoration: 'none',
   background: '#fff',

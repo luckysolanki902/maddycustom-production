@@ -2,6 +2,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getFbp, getFbc, getFacebookTrackingParams, getFacebookTrackingParamsAsync } from '@/lib/utils/cookies';
 import { enhanceEventData } from '@/lib/utils/userDataEnhancer';
+const StopFacebookPixels = false; // Set to true to disable Facebook Pixel events
 
 // Enhanced IP address detection with better IPv6 support and fallback
 const getClientIp = async () => {
@@ -80,6 +81,7 @@ const isValidIPv4 = (ip) => {
  * @param {object} options - Additional event parameters.
  */
 const sendToServer = async (eventName, options) => {
+  if (StopFacebookPixels) return;
   try {
     const res = await fetch('/api/meta/conversion-api', {
       method: 'POST',
@@ -100,6 +102,7 @@ const sendToServer = async (eventName, options) => {
  * @param {object} otherOptions - Additional options and parameters for the event.
  */
 const trackEvent = async (name, formData = {}, otherOptions = {}) => {
+  if (StopFacebookPixels) return;
   try {
     const eventId = otherOptions.eventID || uuidv4(); // Allow passing eventID
     const eventTime = Math.floor(Date.now() / 1000); // Use current timestamp in seconds
@@ -129,8 +132,6 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       fbp = fallbackParams.fbp;
       fbc = fallbackParams.fbc;
     }
-
-
 
     // Enhanced event parameters with better data structure
     const eventParams = {

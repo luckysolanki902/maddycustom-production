@@ -5,7 +5,8 @@ import { Dialog, DialogContent, Box, IconButton, Button, Typography } from '@mui
 import { useForm, Controller } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUserDetails, setUserExists, setLoginDialogShown } from '../../store/slices/orderFormSlice';
-import { markSubscribeDialogDismissed, markSubscribeDialogSuccess } from '../../store/slices/persistentUiSlice';
+import { markSubscribeDialogDismissed, markSubscribeDialogSuccess, markSubscribeDialogShown } from '../../store/slices/persistentUiSlice';
+import { setSubscribeDialogShownThisSession } from '../../store/slices/userBehaviorSlice';
 import CustomSnackbar from '../notifications/CustomSnackbar';
 import { usePathname } from 'next/navigation';
 import CloseIcon from '@mui/icons-material/Close';
@@ -51,12 +52,13 @@ const SubscribeDialog = () => {
   const userExists = useSelector((state) => state.orderForm.userExists);
   const loginDialogShown = useSelector((state) => state.orderForm.loginDialogShown);
   const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
-  const { timeSpentOnWebsite, scrolledMoreThan60Percent } = useSelector((state) => state.userBehavior);
+  const { timeSpentOnWebsite, scrolledMoreThan60Percent, subscribeDialogShownThisSession } = useSelector((state) => state.userBehavior);
   const subscribeDialogFromState = useSelector((state) => state.persistentUi.subscribeDialog);
   const subscribeDialog = useMemo(() => subscribeDialogFromState || {
     lastDismissedAt: null,
+    lastShownAt: null,
     hasSuccessfullySubscribed: false,
-    cooldownHours: 2,
+    cooldownHours: 24,
   }, [subscribeDialogFromState]);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   
@@ -66,31 +68,78 @@ const SubscribeDialog = () => {
     },
   });
   
-  const isUserPhoneNumberValid = useSelector((state) => state.orderForm.userDetails?.phoneNumber?.length === 10);
+  const isUserPhoneNumberValid = useSelector((state) => {
+    const phoneNumber = state.orderForm.userDetails?.phoneNumber;
+    return phoneNumber && 
+           typeof phoneNumber === 'string' && 
+           phoneNumber.trim().length === 10 && 
+           /^\d{10}$/.test(phoneNumber.trim());
+  });
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPageReady, setIsPageReady] = useState(false);
 
-  // Helper function to check if dialog should be shown based on dismissal cooldown
+  // Ensure page is fully loaded before showing dialog
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsPageReady(true);
+    }, 1000); // Wait 1 second after component mount to ensure page is stable
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Helper function to check if dialog should be shown based on strict rules
   const shouldShowDialog = useCallback(() => {
-    // Never show if user has already successfully subscribed
-    if (subscribeDialog?.hasSuccessfullySubscribed) {
+    try {
+      // Validate subscribeDialog object exists
+      if (!subscribeDialog || typeof subscribeDialog !== 'object') {
+        return false;
+      }
+
+
+      // NEVER show if user has already successfully subscribed (strict rule)
+      if (subscribeDialog.hasSuccessfullySubscribed === true) {
+        return false;
+      }
+
+      const now = Date.now();
+      const cooldownPeriod = (subscribeDialog.cooldownHours || 24) * 60 * 60 * 1000; // 24 hours in milliseconds
+
+      // Check if dialog was shown recently (any outcome) - 24 hour cooldown from last appearance
+      if (subscribeDialog.lastShownAt && typeof subscribeDialog.lastShownAt === 'number') {
+        // Validate timestamp isn't in the future (invalid data)
+        if (subscribeDialog.lastShownAt > now) {
+          return true;
+        }
+        
+        const timeSinceLastShown = now - subscribeDialog.lastShownAt;
+        if (timeSinceLastShown < cooldownPeriod) {
+          const hoursRemaining = Math.ceil((cooldownPeriod - timeSinceLastShown) / (60 * 60 * 1000));
+          return false;
+        }
+      }
+
+      // Also check dismissal cooldown as backup (legacy support)
+      if (subscribeDialog.lastDismissedAt && typeof subscribeDialog.lastDismissedAt === 'number') {
+        if (subscribeDialog.lastDismissedAt > now) {
+          return true;
+        }
+        
+        const timeSinceDismissal = now - subscribeDialog.lastDismissedAt;
+        if (timeSinceDismissal < cooldownPeriod) {
+          const hoursRemaining = Math.ceil((cooldownPeriod - timeSinceDismissal) / (60 * 60 * 1000));
+          return false;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('SubscribeDialog: Error in shouldShowDialog:', error);
       return false;
     }
-
-    // Check if dialog was dismissed recently and still in cooldown period
-    if (subscribeDialog?.lastDismissedAt) {
-      const cooldownPeriod = (subscribeDialog?.cooldownHours || 2) * 60 * 60 * 1000; // Convert hours to milliseconds
-      const timeSinceDismissal = Date.now() - subscribeDialog.lastDismissedAt;
-      
-      if (timeSinceDismissal < cooldownPeriod) {
-        return false; // Still in cooldown period
-      }
-    }
-
-    return true;
   }, [subscribeDialog]);
 
   // Function to show snackbar
@@ -112,11 +161,11 @@ const SubscribeDialog = () => {
       if (response.data.message === 'User already exists' || response.data.message === 'User exists and name updated') {
         dispatch(setUserExists(true));
         dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.userId }));
-        dispatch(markSubscribeDialogSuccess()); // Mark as successful subscription
+        dispatch(markSubscribeDialogSuccess()); // Mark as successful subscription - will persist in Redux
         showSnackbar('🎉 You\'re all set! Get ready for exclusive deals!', 'success');
       } else if (response.data.message === 'User created successfully') {
         dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.user.userId }));
-        dispatch(markSubscribeDialogSuccess()); // Mark as successful subscription
+        dispatch(markSubscribeDialogSuccess()); // Mark as successful subscription - will persist in Redux
         showSnackbar('🎉 Welcome to the VIP club! Exclusive deals coming your way!', 'success');
       }
       reset();
@@ -129,53 +178,115 @@ const SubscribeDialog = () => {
   };
 
   // Function to handle closing the dialog
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setOpen(false);
-    dispatch(setLoginDialogShown(true));
+    dispatch(setSubscribeDialogShownThisSession(true)); // Mark as shown this session
+    dispatch(setLoginDialogShown(true)); // Keep for backward compatibility  
     dispatch(markSubscribeDialogDismissed()); // Mark as dismissed for cooldown tracking
-  };
+  }, [dispatch]);
+
+  // Handle browser back button to close dialog
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePopState = (event) => {
+      
+      // Prevent default browser navigation
+      event.preventDefault();
+      event.stopPropagation();
+      
+      // Close the dialog instead of navigating
+      handleClose();
+      
+      // Push the current URL back to history to prevent actual navigation
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    // Add a history entry when dialog opens
+    window.history.pushState({ subscribeDialogOpen: true }, '', window.location.href);
+    
+    // Listen for back button
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [open, handleClose]);
 
   // Open the dialog if conditions are met
   useEffect(() => {
-    if (
-      timeSpentOnWebsite >= 30 &&
-      scrolledMoreThan60Percent &&
-      !loginDialogShown &&
-      !isUserPhoneNumberValid &&
-      !userExists &&
-      !isCartDrawerOpen &&
-      !pathname.startsWith('/orders/myorder/') &&
-      shouldShowDialog() // Check dismissal cooldown and subscription status
-    ) {
+    // Robust condition checking with detailed logging
+    const conditions = {
+      pageReady: isPageReady,
+      timeSpent: timeSpentOnWebsite >= 30, // Must be at least 30 seconds
+      scrolled: Boolean(scrolledMoreThan60Percent),
+      bothTimeAndScroll: timeSpentOnWebsite >= 30 && Boolean(scrolledMoreThan60Percent), // Both conditions must be met
+      notShownThisSession: !subscribeDialogShownThisSession,
+      phoneInvalid: !isUserPhoneNumberValid,
+      userNotExists: !userExists,
+      cartNotOpen: !isCartDrawerOpen,
+      validPathname: pathname && 
+        !pathname.startsWith('/orders/myorder/') && 
+        !pathname.startsWith('/viewcart') &&
+        !pathname.startsWith('/b2b') &&
+        !pathname.startsWith('/api') &&
+        pathname !== '/_error' &&
+        pathname !== '/404' &&
+        pathname !== '/500',
+      dialogAllowed: shouldShowDialog(),
+      notAlreadyOpen: !open,
+      browserSupport: typeof window !== 'undefined' && window.document
+    };
+    
+    const allConditionsMet = Object.values(conditions).every(Boolean);
+    
+    // Debug logging to help identify issues
+    if (process.env.NODE_ENV === 'development') {
+      const failedConditions = Object.entries(conditions)
+        .filter(([_, value]) => !value)
+        .map(([key, _]) => key);
+      
+ 
+    }
+    
+    if (allConditionsMet) {
       setOpen(true);
-      dispatch(setLoginDialogShown(true));
+      dispatch(markSubscribeDialogShown()); // Mark as shown with timestamp - starts 24hr cooldown
+      dispatch(setSubscribeDialogShownThisSession(true));
+      dispatch(setLoginDialogShown(true)); // Keep for backward compatibility
     }
   }, [
+    isPageReady,
     timeSpentOnWebsite, 
     scrolledMoreThan60Percent, 
-    loginDialogShown, 
+    subscribeDialogShownThisSession,
     userExists, 
     pathname, 
     dispatch, 
     isUserPhoneNumberValid, 
     isCartDrawerOpen,
     shouldShowDialog,
+    open
   ]);
 
   // Prevent rendering if cart drawer is open
   if (isCartDrawerOpen) return null;
+
+  // Prevent rendering in server-side or if not ready
+  if (typeof window === 'undefined' || !isPageReady) return null;
 
   return (
     <>
       <Dialog
         open={open}
         onClose={(event, reason) => {
+          // Allow closing via explicit close button click or back button
           if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
+            handleClose(); // Allow ESC key and backdrop click to close and trigger cooldown
             return;
           }
           handleClose();
         }}
-        disableEscapeKeyDown
         fullWidth
         maxWidth="xs"
         PaperProps={{
@@ -194,7 +305,12 @@ const SubscribeDialog = () => {
           {/* Minimal Close Button */}
           <IconButton
             aria-label="close"
-            onClick={handleClose}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleClose();
+            }}
+            type="button"
             sx={{
               position: 'absolute',
               top: 16,
@@ -287,7 +403,10 @@ const SubscribeDialog = () => {
             {/* Form */}
             <Box 
               component="form" 
-              onSubmit={handleSubmit(onSubmit)} 
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSubmit(onSubmit)(e);
+              }}
               sx={{ 
                 width: '100%',
                 maxWidth: '280px',
@@ -380,6 +499,10 @@ const SubscribeDialog = () => {
               <Button
                 type="submit"
                 disabled={isSubmitting}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSubmit(onSubmit)(e);
+                }}
                 sx={{
                   borderRadius: '16px',
                   padding: '16px 24px',

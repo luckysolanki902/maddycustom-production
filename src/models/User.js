@@ -1,5 +1,22 @@
 const mongoose = require('mongoose');
 
+// Optional structured fields for addresses (UI-only helpers)
+const AddressStructuredSchema = new mongoose.Schema(
+  {
+    areaLocality: { type: String },
+    landmark: { type: String },
+    // floor can be number or string ("Ground", "Mezzanine")
+    floor: { type: mongoose.Schema.Types.Mixed },
+    geo: {
+      lat: { type: Number },
+      lng: { type: Number },
+    },
+    // A convenience, concatenated address for admin display/search
+    fullAddress: { type: String },
+  },
+  { _id: false }
+);
+
 const UserSchema = new mongoose.Schema(
   {
     // Phone number used for login
@@ -68,6 +85,8 @@ const UserSchema = new mongoose.Schema(
           required: true,
           maxlength: 10,
         },
+        // New, non-breaking structured fields for richer UI/UX
+        structured: { type: AddressStructuredSchema, default: undefined },
       },
     ],
     // OTP for login/verification

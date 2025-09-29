@@ -17,6 +17,9 @@ export default function NavigationListener() {
   useEffect(() => {
     // Close all dialogs/drawers whenever the pathname changes
     dispatch(closeAllDialogs());
+    // Only reset loginDialogShown if we're navigating away from a page where a user might have interacted
+    // This prevents the subscribe dialog from showing multiple times during a session
+    // The dialog itself will handle when it should be shown based on persistent state
     dispatch(setLoginDialogShown(false));
   }, [pathname, dispatch]);
 

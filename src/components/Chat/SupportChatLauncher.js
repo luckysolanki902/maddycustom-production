@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import SupportChatDialog from './SupportChatDialog';
+import useBackButtonToClose from './useBackButtonToClose';
 import { usePathname } from 'next/navigation';
 
 export default function SupportChatLauncher() {
@@ -37,6 +38,9 @@ export default function SupportChatLauncher() {
   useEffect(() => {
     if (hidden && open) setOpen(false);
   }, [hidden, open]);
+
+  // Hook to intercept browser back and close the chat instead of navigating back
+  useBackButtonToClose(open, () => setOpen(false));
 
   if (hidden || !routeAllowed) return null;
 

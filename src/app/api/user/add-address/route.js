@@ -40,6 +40,29 @@ export async function POST(request) {
     }
 
     // Set defaults and trim values
+    // Extract potential structured fields without breaking existing schema
+    const structured = {
+      areaLocality: (address.areaLocality || address.addressLine2 || '').trim() || undefined,
+      landmark: (address.landmark || '').trim() || undefined,
+      floor: address.floor !== undefined ? address.floor : undefined,
+      geo: address.geo && (address.geo.lat || address.geo.lng) ? {
+        lat: Number(address.geo.lat) || undefined,
+        lng: Number(address.geo.lng) || undefined,
+      } : undefined,
+    };
+
+    // Build a friendly fullAddress string for admin display/search
+    const fullAddress = [
+      address.addressLine1,
+      structured.floor !== undefined && structured.floor !== '' ? (typeof structured.floor === 'number' ? `Floor ${structured.floor}` : (/floor/i.test(String(structured.floor)) ? String(structured.floor) : `Floor ${structured.floor}`)) : null,
+      structured.areaLocality,
+      structured.landmark,
+      address.city,
+      address.state,
+      address.pincode,
+      address.country || 'India',
+    ].filter(Boolean).join(', ');
+
     const processedAddress = {
       receiverName: (address.receiverName || '').trim(),
       receiverPhoneNumber: (address.receiverPhoneNumber || phoneNumber).trim(),
@@ -49,6 +72,10 @@ export async function POST(request) {
       state: address.state.trim(),
       pincode: address.pincode.trim(),
       country: (address.country || 'India').trim(),
+      structured: {
+        ...structured,
+        fullAddress,
+      }
     };
 
     // Connect to the database

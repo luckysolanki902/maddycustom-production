@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux';
 import axios from 'axios';
 
-import { removeItem } from '@/store/slices/cartSlice';
+import { removeItem, setInventoryGate, clearInventoryGate } from '@/store/slices/cartSlice';
 import { closeCartDrawer } from '@/store/slices/uiSlice';
 import {
   startShippingTimer as startPersistentShippingTimer,
@@ -18,9 +18,11 @@ import {
 } from '@/store/slices/orderFormSlice';
 
 /* ---------------- UI + util imports (unchanged) ------------------- */
+import { MAX_ORDER_VALUE_FOR_COD } from '@/lib/constants/payments';
 import styles from './styles/viewcart.module.css';
+import cartListStyles from '../page-sections/viewcart/styles/cartlist.module.css';
 import ViewCartHeader from '../page-sections/viewcart/ViewCartHeader';
-import CartList from '../page-sections/viewcart/CartList';
+import CartList, { ProductSpecifications } from '../page-sections/viewcart/CartList';
 import PriceDetails from '../page-sections/viewcart/PriceDetails';
 import PaymentModes from '../page-sections/viewcart/PaymentModes';
 import Footer from '../page-sections/viewcart/Footer';
@@ -47,6 +49,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SplitPayment from '../page-sections/viewcart/SplitPayment';
 import EndOfMonth from '../showcase/banners/EndOfMonth';
 import CouponTimerBanner from '../showcase/banners/CouponTimerBanner';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Box, Divider } from '@mui/material';
+import BlackButton from '../utils/BlackButton';
+import useHistoryState from '@/hooks/useHistoryState';
 
 /* ---------------- helper ------------------------------------------------ */
 const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
@@ -157,6 +162,10 @@ export default function ViewCart({ isDrawer = false }) {
   const [loadingPM, setLoadingPM] = useState(true);
   const [dlgOrder, setDlgOrder] = useState(false);
   const [dlgMinimumCart, setDlgMinimumCart] = useState(false);
+  const [dlgOOS, setDlgOOS] = useState(false);
+  const [oosData, setOosData] = useState({ excludedKeys: [], itemsInfo: {}, includedCount: 0, restockedKeys: [], couponInvalidated: false, couponName: '' });
+  const [verifyingInventory, setVerifyingInventory] = useState(false);
+  const [preparing, setPreparing] = useState(false);
 
   const [lockedCoupon, setLockedCoupon] = useState(null);
   const [lockedShort, setLockedShort] = useState(0);
@@ -239,8 +248,23 @@ export default function ViewCart({ isDrawer = false }) {
 
   /* ---------- cart totals ------------------------------------------- */
   const qty = calculateTotalQuantity(cartItems);
-  const subTot = calculateTotalCostBeforeDiscount(cartItems);
-  const MrpTotal = calcluateTotalMrp(cartItems);
+  // Split available vs unavailable once and reuse everywhere
+  const inventoryGate = useSelector(s => s.cart.inventoryGate);
+  const { availableItems, unavailableItems } = useMemo(() => {
+    const excludedSet = new Set(inventoryGate?.excludedKeys || []);
+    const isExcluded = (i) => {
+      const key = `${i.productDetails?._id || i.productId}${i.productDetails?.selectedOption?._id ? ':' + i.productDetails.selectedOption._id : ''}`;
+      return excludedSet.has(key);
+    };
+    return {
+      availableItems: cartItems.filter(i => !isExcluded(i)),
+      unavailableItems: cartItems.filter(i => isExcluded(i)),
+    };
+  }, [cartItems, inventoryGate?.excludedKeys]);
+
+  // Totals and MRP only for available items
+  const subTot = calculateTotalCostBeforeDiscount(availableItems);
+  const MrpTotal = calcluateTotalMrp(availableItems);
   const disc = calculateDiscountAmount(subTot, couponState);
   const grand = calculateTotalCostAfterDiscount(subTot, disc);
 
@@ -248,6 +272,16 @@ export default function ViewCart({ isDrawer = false }) {
   const standardDeliveryCost = 100; // Standard delivery fee that is being waived
   const extraCharge = selectedPM?.extraCharge || 0;
   const totalPay = grand + deliveryCost + extraCharge;
+
+  // Ensure browser back closes the OOS dialog instead of navigating away
+  useHistoryState(dlgOOS, () => setDlgOOS(false), 'oosDialog', 9);
+
+  // If COD becomes unavailable due to order value, auto-deselect it
+  useEffect(() => {
+    if ((selectedPM?.name || '').toLowerCase() === 'cod' && totalPay > MAX_ORDER_VALUE_FOR_COD) {
+      setSelectedPM(null);
+    }
+  }, [selectedPM?.name, totalPay]);
 
   // Determine if this is a split payment based on payment mode configuration, 
   const isSplitPayment = selectedPM?.name === 'split' ||
@@ -425,7 +459,7 @@ export default function ViewCart({ isDrawer = false }) {
               auto: true,
               totalCost: subTot,
               isFirstOrder,
-              cartItems: flattenCart(cartItems),
+              cartItems: flattenCart(availableItems),
               currentCouponCode: couponState.couponApplied ? couponState.couponName : '',
               currentDiscountAmount: couponState.couponApplied ? couponState.couponDiscount : 0,
             }),
@@ -454,7 +488,7 @@ export default function ViewCart({ isDrawer = false }) {
         }
       })();
     }
-  }, [qty, subTot, cartItems, couponState.couponApplied, couponState.couponName, couponState.couponDiscount, blocked, manualCoupon, dispatch, applyCoupon, isFirstOrder]);
+  }, [qty, subTot, availableItems, couponState.couponApplied, couponState.couponName, couponState.couponDiscount, blocked, manualCoupon, dispatch, applyCoupon, isFirstOrder]);
   /* ---------- RE‑VALIDATE on cart changes (unchanged) --------------- */
   const revalidateCoupon = useCallback(async (silent = false) => {
     if (!couponState.couponApplied) return true;
@@ -467,7 +501,7 @@ export default function ViewCart({ isDrawer = false }) {
           code: couponState.couponName,
           totalCost: subTot,
           isFirstOrder,
-          cartItems: flattenCart(cartItems),
+          cartItems: flattenCart(availableItems),
         }),
       });
       const data = await res.json();      if (!res.ok || !data.valid || data.discountValue <= 0) {
@@ -488,7 +522,7 @@ export default function ViewCart({ isDrawer = false }) {
       if (!silent) snack('Could not verify coupon.', 'error');
       return false;
     }  }, [couponState.couponApplied, couponState.couponName, couponState.couponDiscount, 
-      subTot, isFirstOrder, cartItems, removeCoupon, couponRedux, dispatch, snack]);  /* run on cart changes */  useEffect(() => { 
+      subTot, isFirstOrder, availableItems, removeCoupon, couponRedux, dispatch, snack]);  /* run on cart changes */  useEffect(() => { 
     const revalidate = async () => {
       if (couponState.couponApplied) {
         const isValid = await revalidateCoupon(true);
@@ -500,7 +534,7 @@ export default function ViewCart({ isDrawer = false }) {
     };
     
     revalidate();
-  }, [cartItems, subTot, revalidateCoupon, couponState.couponApplied, couponState.couponName]);
+  }, [availableItems, subTot, revalidateCoupon, couponState.couponApplied, couponState.couponName]);
 
   /* ---------- validate before checkout (updated with min purchase check) ------------------ */
   const handleCheckout = async () => {
@@ -510,7 +544,81 @@ export default function ViewCart({ isDrawer = false }) {
       return;
     }
 
-    setDlgOrder(true);
+    // Run pre-checks with a fresh inventory verification, and block UI with a single Preparing state
+    try {
+      setVerifyingInventory(true);
+      setPreparing(true);
+      const cartSignature = JSON.stringify(cartItems.map(i => ({ id: i.productDetails?._id || i.productId, qty: i.quantity, opt: i.productDetails?.selectedOption?._id || null })));
+      const prevExcluded = inventoryGate?.excludedKeys || [];
+
+      // Always perform a fresh verify (no cache)
+      const verifyRes = await axios.post(`/api/checkout/inventory/verify`, {
+        items: cartItems.map(i => ({
+          productId: i.productDetails?._id || i.productId,
+          optionId: i.productDetails?.selectedOption?._id || null,
+          quantity: i.quantity,
+        })),
+        reserve: false,
+      });
+
+      if (!verifyRes.data?.ok) throw new Error(verifyRes.data?.message || 'Inventory check failed');
+
+      const excludedKeys = verifyRes.data.excludedKeys || [];
+      const itemsInfo = verifyRes.data.itemsInfo || {};
+      // Do not use TTL/15 minutes logic anymore; keep expiresAt null
+      dispatch(setInventoryGate({ excludedKeys, itemsInfo, expiresAt: null, cartSignature }));
+
+      // Compute restocked keys (previously excluded but now not excluded)
+      const restockedKeys = prevExcluded.filter(k => !excludedKeys.includes(k));
+      const includedCount = cartItems.filter(i => {
+        const key = `${i.productDetails?._id || i.productId}${i.productDetails?.selectedOption?._id ? ':' + i.productDetails.selectedOption._id : ''}`;
+        return !excludedKeys.includes(key);
+      }).reduce((sum, i) => sum + i.quantity, 0);
+
+      // If there was a previously applied coupon, revalidate it against current available items
+      let couponInvalidated = false;
+      if (couponState.couponApplied) {
+        try {
+          const availableNow = cartItems.filter(i => {
+            const key = `${i.productDetails?._id || i.productId}${i.productDetails?.selectedOption?._id ? ':' + i.productDetails.selectedOption._id : ''}`;
+            return !excludedKeys.includes(key);
+          });
+          const subtotalNow = availableNow.reduce((sum, i) => sum + (i.price ?? i.productDetails.price) * i.quantity, 0);
+          const res = await fetch('/api/checkout/coupons/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code: couponState.couponName,
+              totalCost: subtotalNow,
+              isFirstOrder,
+              cartItems: flattenCart(availableNow),
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.valid || data.discountValue <= 0) {
+            couponInvalidated = true;
+          }
+        } catch (e) {
+          // Fail-safe: don't block flow on coupon check
+        }
+      }
+
+      // If any restocks OR any exclusions, show dialog (force review)
+      if (restockedKeys.length > 0 || excludedKeys.length > 0) {
+        setOosData({ excludedKeys, itemsInfo, includedCount, restockedKeys, couponInvalidated, couponName: couponState.couponName });
+        setDlgOOS(true);
+        return;
+      }
+
+      // No changes and all available => open order form
+      setDlgOrder(true);
+    } catch (e) {
+      console.error('Inventory verify error', e);
+      snack('Could not verify inventory. Please try again.', 'error');
+    } finally {
+      setVerifyingInventory(false);
+      setPreparing(false);
+    }
   };
 
   /* ---------- memo for suggestions (unchanged) ---------------------- */
@@ -568,10 +676,27 @@ export default function ViewCart({ isDrawer = false }) {
 
 
 
+              {/* Split available vs unavailable using inventoryGate; specs moved to end */}
               <CartList
-                cartItems={cartItems}
+                cartItems={availableItems}
                 onRemove={id => dispatch(removeItem({ productId: id }))}
+                sectionTitle={null}
+                showSpecs={false}
               />
+              {unavailableItems.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <CartList
+                    cartItems={unavailableItems}
+                    onRemove={id => dispatch(removeItem({ productId: id }))}
+                    readonly
+                    sectionTitle={'Unavailable items'}
+                    sectionNote={null}
+                    showSpecs={false}
+                  />
+                </div>
+              )}
+              {/* Place ProductSpecifications at the end of the cart section */}
+              {availableItems.length > 0 && <ProductSpecifications />}
             </section>
 
             <section className={styles.detailsSection}>
@@ -792,6 +917,7 @@ export default function ViewCart({ isDrawer = false }) {
                 isLoading={loadingPM}
                 selectedPaymentMode={selectedPM}
                 onChange={e => setSelectedPM(paymentModes.find(m => m.name === e.target.value))}
+                totalAmount={totalPay}
               />
             </section>
 
@@ -851,7 +977,7 @@ export default function ViewCart({ isDrawer = false }) {
             onCheckout={handleCheckout}
             onlinePercentage={selectedPM?.configuration?.onlinePercentage || 0}
             codPercentage={selectedPM?.configuration?.codPercentage || 0}
-            isRevalidatingCoupons={revalidatingCoupons}
+            isRevalidatingCoupons={preparing}
             discount={disc}
           />
         </motion.div>)
@@ -875,9 +1001,121 @@ export default function ViewCart({ isDrawer = false }) {
         couponsDetails={couponRedux}
         deliveryCost={deliveryCost}
         discountAmountFinal={disc}
-        items={cartItems}
+        items={availableItems}
         subTotal={subTot}
       />
+
+      {/* Out of Stock / Restock Dialog - styled like CartList */}
+      <Dialog open={dlgOOS} onClose={() => setDlgOOS(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#fff', color: '#2d2d2d', fontWeight: 700, fontSize: '1rem', pb: 0.5 }}>
+          {oosData.restockedKeys?.length > 0 && oosData.excludedKeys?.length === 0
+            ? 'Items are back in stock'
+            : oosData.excludedKeys?.length > 0 && oosData.restockedKeys?.length === 0
+              ? 'Some items are unavailable'
+              : 'Your cart was updated'}
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: '#fff', pt: 1.5 }}>
+          <Typography variant="body2" sx={{ color: '#2d2d2d', mb: 1.5 }}>
+            {oosData.restockedKeys?.length > 0 && oosData.excludedKeys?.length === 0
+              ? 'Good news — some items in your cart are back in stock. Please review your cart before continuing.'
+              : oosData.excludedKeys?.length > 0 && oosData.restockedKeys?.length === 0
+                ? 'We’re sorry — some items are out of stock. Please review and continue with the available items.'
+                : 'Your cart was updated — some items are back in stock and some are unavailable. Please review and continue with the available items.'}
+          </Typography>
+
+          {oosData.restockedKeys?.length > 0 && (
+            <Box sx={{ mb: 1.5 }}>
+              {oosData.excludedKeys?.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+                  <h4 style={{ margin: 0, fontSize: 14, color: '#065f46', fontWeight: 700 }}>Back in stock</h4>
+                </div>
+              )}
+              <div className={cartListStyles.cartList}>
+                {oosData.restockedKeys.map(key => {
+                  const info = oosData.itemsInfo[key];
+                  if (!info) return null;
+                  return (
+                    <div key={`restock-${key}`} className={cartListStyles.cartItem}>
+                      <div className={cartListStyles.productImage}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={info.image} alt={info.name || 'product'} className={cartListStyles.image} width={70} height={70} />
+                      </div>
+                      <div className={cartListStyles.productInfo}>
+                        <div className={cartListStyles.infoTop}>
+                          <div className={cartListStyles.nameSection}>
+                            <h3 className={cartListStyles.productName}>{info.name || 'Product'}</h3>
+                          </div>
+                        </div>
+                        <div className={cartListStyles.infoBottom}>
+                          <span style={{ fontSize: 12, color: '#065f46', fontWeight: 600 }}>Back in Stock</span>
+                          <span style={{ fontSize: 12, color: '#6b7280' }}>Qty: {info.quantity}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Box>
+          )}
+
+          {oosData.excludedKeys?.length > 0 && (
+            <>
+              {oosData.restockedKeys?.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+                  <h4 style={{ margin: 0, fontSize: 14, color: '#2d2d2d', fontWeight: 700 }}>Unavailable items</h4>
+                </div>
+              )}
+              <div className={cartListStyles.cartList} style={{ maxHeight: 320, overflowY: 'auto' }}>
+                {oosData.excludedKeys.map(key => {
+                  const info = oosData.itemsInfo[key];
+                  if (!info) return null;
+                  return (
+                    <div key={key} className={`${cartListStyles.cartItem} ${cartListStyles.oosItem}`}>
+                      <div className={cartListStyles.productImage}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={info.image} alt={info.name || 'product'} className={cartListStyles.image} width={70} height={70} />
+                      </div>
+                      <div className={cartListStyles.productInfo}>
+                        <div className={cartListStyles.infoTop}>
+                          <div className={cartListStyles.nameSection}>
+                            <h3 className={cartListStyles.productName}>{info.name || 'Product'}</h3>
+                            <div className={cartListStyles.oosBadge}>Unavailable</div>
+                          </div>
+                        </div>
+                        <div className={cartListStyles.infoBottom}>
+                          <span style={{ fontSize: 12, color: '#6b7280' }}>Reason: {info.reason === 'insufficient' ? 'Out of stock' : (info.reason || '').replaceAll('_',' ')}</span>
+                          <span style={{ fontSize: 12, color: '#6b7280' }}>Qty: {info.quantity}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+          {oosData.couponInvalidated && (
+            <Box sx={{ mt: 1.25, p: 1, borderRadius: 1, border: '1px dashed #f59e0b', bgcolor: '#fffbeb' }}>
+              <Typography variant="caption" sx={{ color: '#92400e' }}>
+                The previously applied offer {oosData.couponName ? `(${oosData.couponName})` : ''} is no longer applicable with the current cart. You can review offers again after updating your cart.
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ bgcolor: '#fff', p: 2, justifyContent: 'space-between' }}>
+          <Button onClick={() => setDlgOOS(false)} sx={{ color: '#6b7280', textTransform: 'none' }}>Review Cart</Button>
+          {oosData.restockedKeys?.length === 0 && (
+            <BlackButton
+              onClick={() => {
+                setDlgOOS(false);
+                // open OrderForm after dialog unmount to avoid focus/transition glitches
+                setTimeout(() => setDlgOrder(true), 80);
+              }}
+              disabled={oosData.includedCount <= 0}
+              buttonText={`Continue with ${oosData.includedCount} items`}
+            />
+          )}
+        </DialogActions>
+      </Dialog>
 
       <MinimumCartDialog
         open={dlgMinimumCart}

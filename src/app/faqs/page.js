@@ -1,8 +1,10 @@
 // Minimal FAQ showcase page (chat bubble still globally available)
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 import FaqShowcaseSection from '@/components/page-sections/Faq/FaqShowcaseSection';
-import FaqPageChat from '@/components/Chat/FaqPageChat';
+import SupportChatDialog from '@/components/Chat/SupportChatDialog';
+import useBackButtonToClose from '@/components/Chat/useBackButtonToClose';
 
 // Example FAQ data (could be sourced from existing faqData util or CMS)
 const faqs = [
@@ -17,10 +19,49 @@ const faqs = [
 ];
 
 export default function FaqsPage() {
+  const orderUserId = useSelector(s => s.orderForm.userDetails?.userId);
+  const [open, setOpen] = useState(false);
+  useBackButtonToClose(open, () => setOpen(false));
+
+  const openChat = () => setOpen(true);
+  const closeChat = () => setOpen(false);
+
   return (
     <main style={{ paddingTop: 10 }}>
-      <FaqPageChat />
+      {/* Chat CTA section */}
+      <section style={{ maxWidth: 1180, margin: '0 auto', padding: '24px 16px 10px' }}>
+        <div style={{
+          borderRadius: 28,
+          border: '1px solid rgba(45,45,45,0.12)',
+          background: 'linear-gradient(180deg, #ffffff, #fafafa)',
+          padding: '20px 22px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          boxShadow: '0 18px 44px -16px rgba(0,0,0,0.18)'
+        }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#2d2d2d', marginBottom: 6 }}>Need more help?</div>
+            <div style={{ fontSize: 13.5, color: 'rgba(45,45,45,0.66)', fontWeight: 500 }}>Chat with our assistant for sizing, compatibility and order support.</div>
+          </div>
+          <button
+            onClick={openChat}
+            style={{
+              background: '#2d2d2d', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: 16,
+              fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 10px 26px -10px rgba(0,0,0,0.45)'
+            }}
+            aria-haspopup="dialog"
+            aria-expanded={open}
+          >
+            Open Chat
+          </button>
+        </div>
+      </section>
+
       <FaqShowcaseSection title="FAQs" faqs={faqs} />
+
+      <SupportChatDialog open={open} onClose={closeChat} userId={orderUserId} />
     </main>
   );
 }

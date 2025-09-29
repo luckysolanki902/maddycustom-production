@@ -321,12 +321,16 @@ export async function POST(request) {
         state: address.state,
         country: address.country || 'India',
         pincode: address.pincode,
+        // geo is not part of legacy Order.address schema; keep it out to avoid breaking queries
       },
       paymentStatus: paymentStatus,
       deliveryStatus: 'pending',
       utmDetails: utmDetails,
       utmHistory: utmHistoryId,
-      extraFields: extraFields,
+      extraFields: {
+        ...extraFields,
+        geo: address.geo || extraFields?.geo || undefined,
+      },
     };
 
     // Group items by inventory management

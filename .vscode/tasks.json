@@ -1,0 +1,23 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Quick chat planner dry-run",
+			"type": "shell",
+			"command": "curl -s -X POST \"$env:NEXT_PUBLIC_BASE_URL/api/assistant/chat\" -H \"Content-Type: application/json\" -H \"x-dry-run: true\" -H \"x-planner-mode: llm\" -d '{\"userId\":\"test-user\",\"message\":\"show something for bike\"}' | jq .",
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Planner dry-run (rule mode)",
+			"type": "shell",
+			"command": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$body = @{ userId='test-user'; message='show something for bike' } | ConvertTo-Json; Invoke-RestMethod -Method Post -Uri 'http://localhost:3000/api/assistant/chat' -Headers @{ 'x-planner-mode'='rule'; 'x-dry-run'='true'; 'Content-Type'='application/json' } -Body $body | ConvertTo-Json -Depth 6\"",
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
+		}
+	]
+}
