@@ -26,6 +26,7 @@ import b2bSelectionReducer from './slices/b2bSelectionSlice';
 import b2bFormReducer from './slices/b2bFormSlice';
 import variantsReducer from './slices/variantsSlice'; // Import variants cache slice
 import notificationReducer from './slices/notificationSlice'; // Import notification slice
+import assistantContextReducer from './slices/assistantContextSlice';
 
 const rootReducer = combineReducers({
   cart: cartReducer,
@@ -41,6 +42,7 @@ const rootReducer = combineReducers({
   b2bForm: b2bFormReducer,
   variants: variantsReducer, // Add variants cache reducer
   notification: notificationReducer, // Add notification reducer
+  assistantContext: assistantContextReducer, // Non-persisted context for assistant
 });
 
 const persistConfig = {
@@ -58,6 +60,7 @@ const persistConfig = {
     'b2bSelection',
     'b2bForm',
     'notification',
+    // Do NOT persist assistantContext to avoid stale context across sessions
   ],
 };
 

@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useMediaQuery, Pagination } from '@mui/material';
 import { useSpring, animated } from 'react-spring';
 import { useDispatch } from 'react-redux';
+import { setAssistantContext } from '@/store/slices/assistantContextSlice';
 
 import styles from './styles/products.module.css';
 import wrapperStyles from '../cards/styles/productswrapper.module.css';
@@ -133,8 +134,19 @@ export default function ProductsPage({
   // }, [variant?.popupDetails]);
 
   useEffect(() => {
+    // Dispatch assistant browsing context
+    try {
+      dispatch(setAssistantContext({
+        pageType: 'product_list',
+        categoryTitle: category?.name || category?.title || variant?.name || null,
+        productTitle: null,
+        variantTitle: variant?.name || null,
+      }));
+    } catch (e) {
+      console.warn('Failed to set assistant context (list)', e);
+    }
     setShowLayout2(variant?.listLayout === '2');
-  }, [variant]);
+  }, [dispatch, category?.name, category?.title, variant?.name, variant?.listLayout]);
 
   // TopStrip management effect
   useEffect(() => {

@@ -263,7 +263,7 @@ const ChatDialog = ({ open, onClose, message, requestId }) => {
             mb: 1,
           }}
         >
-          Support Chat
+          Maddy.Ai
           <IconButton
             aria-label="close"
             onClick={onClose}

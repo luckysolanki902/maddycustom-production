@@ -6,11 +6,13 @@ import { generateWebsiteSchema, generateOrganizationSchema } from '@/lib/metadat
 import ReduxProvider from '@/components/layouts/ReduxProvider';
 import { ScrollProvider } from '@/contexts/ScrollContext';
 import FloatingActionBar from '@/components/utils/FloatingActionButton';
+import { ChatSessionProvider } from '@/components/Chat/ChatSessionContext';
 import TopLoadingBar from '@/components/utils/TopLoadingBar';
 import AnalyticsHead from '@/components/layouts/AnalyticsHead';
 import { GoogleTagManagerNoScript } from '@/components/analytics/GoogleTagManager';
 import UTMCapture from '@/components/analytics/UTMCapture';
 // import UTMLogger from '@/components/analytics/UTMLogger';
+import SupportChatProvider from '@/components/Chat/SupportChatProvider';
 
 // Google Fonts
 import { Krona_One, Jost, Montserrat } from 'next/font/google';
@@ -88,6 +90,7 @@ export default function RootLayout({ children }) {
             <CouponTimerBanner/>
             {/* <UTMLogger /> */}
             <TopLoadingBar />
+            <ChatSessionProvider>
             <FullPageLoader />
             <Topbar />
             <Sidebar />
@@ -103,9 +106,14 @@ export default function RootLayout({ children }) {
             <ScrollChecker />
             {/* Client-only utilities (conditionally hidden in B2B) */}
             <ClientUIWrappers />
+            {/* Chat launcher (client only) */}
+            <SupportChatProvider />
+            </ChatSessionProvider>
           </ScrollProvider>
         </ReduxProvider>
       </body>
     </html>
   );
 }
+
+
