@@ -4,6 +4,59 @@ import { getFbp, getFbc, getFacebookTrackingParams, getFacebookTrackingParamsAsy
 import { enhanceEventData } from '@/lib/utils/userDataEnhancer';
 const StopFacebookPixels = false; // Set to true to disable Facebook Pixel events
 
+// Standard FB event names that should use fbq('track', ...). Others use 'trackCustom'.
+const STANDARD_EVENTS = new Set([
+  // ViewContent: Fire when a user views a product/content detail page.
+  // Use to build remarketing audiences and measure interest.
+  // Params: content_ids, content_type ('product' | 'product_group'), content_category, value, currency, contents[].
+  'ViewContent',
+
+  // Search: Fire when a user performs a search on the site/app.
+  // Helps optimize for users actively looking for items.
+  // Params: search_string, content_category, value (optional), currency, contents[], content_ids.
+  'Search',
+
+  // AddToCart: Fire when an item is added to the cart (including quick-add).
+  // Critical for lower-funnel optimization and dynamic ads.
+  // Params: value (line or cart value at the time), currency, contents[] (id, quantity, item_price), content_ids, content_type, num_items.
+  'AddToCart',
+
+  // AddToWishlist: Fire when an item is saved to a wishlist/favorites.
+  // Signals interest slightly higher than a view, lower than cart.
+  // Params: value (optional), currency, contents[], content_ids, content_type, content_category.
+  'AddToWishlist',
+
+  // InitiateCheckout: Fire when the checkout process starts (first step).
+  // Use to measure funnel progression; include eventID for server deduplication.
+  // Params: value (cart total at start), currency, contents[], content_ids, content_type, num_items.
+  'InitiateCheckout',
+
+  // AddPaymentInfo: Fire when payment info is submitted/selected (e.g., card entry, UPI, COD).
+  // Indicates deep intent before purchase.
+  // Params: value (order total or step value), currency, payment_method (string), contents[], content_ids, content_type.
+  'AddPaymentInfo',
+
+  // Purchase: Fire only after a successful order completion/confirmation.
+  // Must include a stable eventID (e.g., orderId) to dedupe with server events.
+  // Params: value (order total), currency, order_id (recommended), contents[] (id, quantity, item_price), content_ids, num_items.
+  'Purchase',
+
+  // Lead: Fire when a user submits a lead or expresses interest (e.g., form submit, demo request).
+  // Useful for non-commerce or pre-sale objectives.
+  // Params: value (optional LTV estimate), currency, content_name/category, lead_type (optional).
+  'Lead',
+
+  // CompleteRegistration: Fire when account/registration completes successfully.
+  // Measures signup conversions and onboarding funnel success.
+  // Params: value (optional), currency, registration_method (optional), status (optional).
+  'CompleteRegistration',
+
+  // Contact: Fire when a user makes contact (e.g., contact form submit, email/phone click).
+  // Tracks successful contact intent.
+  // Params: method ('phone' | 'email' | 'form'), content_name/category, value/currency (optional).
+  'Contact'
+]);
+
 // Enhanced IP address detection with better IPv6 support and fallback
 const getClientIp = async () => {
   try {
@@ -156,7 +209,7 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
     }
 
     // Send event to Facebook Pixel (client-side)
-    if (window.fbq) {
+    if (typeof window !== 'undefined' && window.fbq) {
       // Create pixel event parameters (exclude server-specific fields)
       const pixelParams = { ...eventParams };
       delete pixelParams.eventID;
@@ -169,8 +222,9 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       delete pixelParams.fbc;
       delete pixelParams.external_ids;
       delete pixelParams.first_name; // Don't send PII to client-side pixel
-      
-      window.fbq('track', name, pixelParams, { eventID: eventId });
+
+      const cmd = STANDARD_EVENTS.has(name) ? 'track' : 'trackCustom';
+      window.fbq(cmd, name, pixelParams, { eventID: eventId });
     }
 
     // Send event to server-side Conversion API
@@ -311,5 +365,132 @@ export const initiateCheckout = async (checkoutData, userData = {}) => {
     });
   } catch (error) {
     // console.error('Error in initiateCheckout function:', error);
+  }
+};
+
+/**
+ * Custom event: user provided contact info (name, phone/email) on checkout step 1.
+ * @param {object} userData - { firstName, email, phoneNumber }
+ * @param {object} context - { totalValue, contents, numItems }
+ */
+export const contactInfoProvided = async (userData = {}, context = {}) => {
+  try {
+    await trackEvent('ContactInfoProvided', userData, {
+      eventID: uuidv4(),
+      value: context.totalValue || 0,
+      currency: 'INR',
+      contents: (context.contents || []).map(item => ({
+        id: item.productId || item._id,
+        quantity: item.quantity,
+        item_price: item.price || 0,
+        brand: item.brand,
+        category: item.category,
+        title: item.name
+      })),
+      content_name: context.contentName,
+      content_category: 'checkout_contact',
+      content_type: 'product',
+      content_ids: (context.contents || []).map(item => item.productId || item._id),
+      num_items: context.numItems || 0,
+      step: 'contact'
+    });
+  } catch (error) {
+    // swallow
+  }
+};
+
+/**
+ * Custom event: user initiated payment (opened payment gateway)
+ * @param {object} paymentData - { value, amount_due_online, payment_mode, payment_mode_id, is_split_payment, contents, numItems, orderId? }
+ * @param {object} userData - { email, phoneNumber }
+ */
+export const paymentInitiated = async (paymentData = {}, userData = {}) => {
+  try {
+    await trackEvent('PaymentInitiated', userData, {
+      eventID: uuidv4(),
+      value: paymentData.value || 0,
+      currency: 'INR',
+      amount_due_online: paymentData.amount_due_online || 0,
+      payment_mode: paymentData.payment_mode || '',
+      payment_mode_id: paymentData.payment_mode_id || '',
+      is_split_payment: !!paymentData.is_split_payment,
+      orderId: paymentData.orderId,
+      contents: (paymentData.contents || []).map(item => ({
+        id: item.productId || item._id,
+        quantity: item.quantity,
+        item_price: item.price || 0,
+        brand: item.brand,
+        category: item.category,
+        title: item.name
+      })),
+      content_name: paymentData.contentName,
+      content_category: 'payment',
+      content_type: 'product',
+      content_ids: (paymentData.contents || []).map(item => item.productId || item._id),
+      num_items: paymentData.numItems || 0,
+    });
+  } catch (error) {
+    // swallow
+  }
+};
+
+/**
+ * Lead event helper
+ * @param {object} userData - { email?, phoneNumber?, firstName? }
+ * @param {object} details - { value?, currency?, content_name?, content_category?, lead_type?, contents?, num_items? }
+ */
+export const lead = async (userData = {}, details = {}) => {
+  try {
+    await trackEvent('Lead', userData, {
+      eventID: uuidv4(),
+      value: details.value || 0,
+      currency: details.currency || 'INR',
+      content_name: details.content_name,
+      content_category: details.content_category || 'lead',
+      lead_type: details.lead_type,
+      contents: (details.contents || []).map(item => ({
+        id: item.productId || item._id,
+        quantity: item.quantity || 1,
+        item_price: item.price || 0,
+        brand: item.brand,
+        category: item.category,
+        title: item.name
+      })),
+      content_type: details.content_type || 'product',
+      content_ids: (details.contents || []).map(item => item.productId || item._id),
+      num_items: details.num_items || (details.contents ? details.contents.length : 0),
+    });
+  } catch (error) {
+    // swallow
+  }
+};
+
+/**
+ * Search event helper
+ * @param {object} details - { search_string, content_category?, value?, currency?, contents?, num_items? }
+ * @param {object} userData - optional { email?, phoneNumber? }
+ */
+export const searchEvent = async (details = {}, userData = {}) => {
+  try {
+    await trackEvent('Search', userData, {
+      eventID: uuidv4(),
+      search_string: details.search_string || details.query || '',
+      value: details.value || 0,
+      currency: details.currency || 'INR',
+      content_category: details.content_category || 'search',
+      contents: (details.contents || []).map(item => ({
+        id: item.productId || item._id,
+        quantity: item.quantity || 1,
+        item_price: item.price || 0,
+        brand: item.brand,
+        category: item.category,
+        title: item.name
+      })),
+      content_type: details.content_type || 'product',
+      content_ids: (details.contents || []).map(item => item.productId || item._id),
+      num_items: details.num_items || (details.contents ? details.contents.length : 0),
+    });
+  } catch (error) {
+    // swallow
   }
 };

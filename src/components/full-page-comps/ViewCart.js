@@ -28,6 +28,7 @@ import PaymentModes from '../page-sections/viewcart/PaymentModes';
 import Footer from '../page-sections/viewcart/Footer';
 import ApplyCoupon from '../dialogs/ApplyCoupon';
 import OrderForm from '../dialogs/OrderForm';
+import { initiateCheckout } from '@/lib/metadata/facebookPixels';
 import MinimumCartDialog from '../dialogs/MinimumCartDialog';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
@@ -548,10 +549,17 @@ export default function ViewCart({ isDrawer = false }) {
     try {
       setVerifyingInventory(true);
       setPreparing(true);
-      const cartSignature = JSON.stringify(cartItems.map(i => ({ id: i.productDetails?._id || i.productId, qty: i.quantity, opt: i.productDetails?.selectedOption?._id || null })));
+
+      const cartSignature = JSON.stringify(
+        cartItems.map(i => ({
+          id: i.productDetails?._id || i.productId,
+          qty: i.quantity,
+          opt: i.productDetails?.selectedOption?._id || null
+        }))
+      );
       const prevExcluded = inventoryGate?.excludedKeys || [];
 
-      // Always perform a fresh verify (no cache)
+      // Always perform a fresh verify (no cache) — primary network call
       const verifyRes = await axios.post(`/api/checkout/inventory/verify`, {
         items: cartItems.map(i => ({
           productId: i.productDetails?._id || i.productId,
@@ -565,26 +573,34 @@ export default function ViewCart({ isDrawer = false }) {
 
       const excludedKeys = verifyRes.data.excludedKeys || [];
       const itemsInfo = verifyRes.data.itemsInfo || {};
-      // Do not use TTL/15 minutes logic anymore; keep expiresAt null
+
+      // Update gate immediately (sync) so UI reflects most recent state; no TTL
       dispatch(setInventoryGate({ excludedKeys, itemsInfo, expiresAt: null, cartSignature }));
 
-      // Compute restocked keys (previously excluded but now not excluded)
-      const restockedKeys = prevExcluded.filter(k => !excludedKeys.includes(k));
-      const includedCount = cartItems.filter(i => {
+      // Derive availableNow with latest exclusions
+      const availableNow = cartItems.filter(i => {
         const key = `${i.productDetails?._id || i.productId}${i.productDetails?.selectedOption?._id ? ':' + i.productDetails.selectedOption._id : ''}`;
         return !excludedKeys.includes(key);
-      }).reduce((sum, i) => sum + i.quantity, 0);
+      });
 
-      // If there was a previously applied coupon, revalidate it against current available items
-      let couponInvalidated = false;
-      if (couponState.couponApplied) {
-        try {
-          const availableNow = cartItems.filter(i => {
-            const key = `${i.productDetails?._id || i.productId}${i.productDetails?.selectedOption?._id ? ':' + i.productDetails.selectedOption._id : ''}`;
-            return !excludedKeys.includes(key);
-          });
-          const subtotalNow = availableNow.reduce((sum, i) => sum + (i.price ?? i.productDetails.price) * i.quantity, 0);
-          const res = await fetch('/api/checkout/coupons/apply', {
+      // Compute these locally while coupon re-check runs in parallel
+      const restockedKeys = prevExcluded.filter(k => !excludedKeys.includes(k));
+      const includedCount = availableNow.reduce((sum, i) => sum + i.quantity, 0);
+      const subtotalNow = availableNow.reduce((sum, i) => sum + (i.price ?? i.productDetails.price) * i.quantity, 0);
+
+      // Prepare analytics contents (based on latest availableNow)
+      const contents = availableNow.map(item => ({
+        productId: item.productDetails?._id || item.productId,
+        quantity: item.quantity,
+        price: item.price ?? item.productDetails.price,
+        brand: item.productDetails?.brand,
+        category: item.productDetails?.category?.name || item.productDetails?.category,
+        name: item.productDetails?.name,
+      }));
+
+      // If coupon applied, revalidate concurrently while we compute other things
+      const couponCheckPromise = couponState.couponApplied
+        ? fetch('/api/checkout/coupons/apply', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -593,24 +609,49 @@ export default function ViewCart({ isDrawer = false }) {
               isFirstOrder,
               cartItems: flattenCart(availableNow),
             }),
-          });
+          })
+        : Promise.resolve(null);
+
+      // Await coupon validation result before deciding any dialogs
+      let couponInvalidated = false;
+      try {
+        const res = await couponCheckPromise;
+        if (res) {
           const data = await res.json();
           if (!res.ok || !data.valid || data.discountValue <= 0) {
             couponInvalidated = true;
           }
-        } catch (e) {
-          // Fail-safe: don't block flow on coupon check
         }
+      } catch {
+        // Do not block flow on coupon check failures
       }
 
-      // If any restocks OR any exclusions, show dialog (force review)
+      // If any restocks OR any exclusions, show dialog (force review) — only after all checks
       if (restockedKeys.length > 0 || excludedKeys.length > 0) {
-        setOosData({ excludedKeys, itemsInfo, includedCount, restockedKeys, couponInvalidated, couponName: couponState.couponName });
+        setOosData({
+          excludedKeys,
+          itemsInfo,
+          includedCount,
+          restockedKeys,
+          couponInvalidated,
+          couponName: couponState.couponName,
+        });
         setDlgOOS(true);
         return;
       }
 
-      // No changes and all available => open order form
+      // No changes and all available => fire InitiateCheckout and open order form
+      try {
+        initiateCheckout({
+          eventID: `chk_${Date.now()}`,
+          totalValue: totalPay,
+          contents,
+          contentName: contents.map(c => c.name).filter(Boolean).join(', '),
+          contentCategory: 'checkout',
+          numItems: contents.length,
+        }).catch(() => {});
+      } catch {}
+
       setDlgOrder(true);
     } catch (e) {
       console.error('Inventory verify error', e);
@@ -1107,7 +1148,29 @@ export default function ViewCart({ isDrawer = false }) {
             <BlackButton
               onClick={() => {
                 setDlgOOS(false);
-                // open OrderForm after dialog unmount to avoid focus/transition glitches
+                // Fire InitiateCheckout for remaining available items, then open OrderForm after dialog unmount
+                try {
+                  const excludedSet = new Set(oosData.excludedKeys || []);
+                  const remaining = cartItems.filter(i => {
+                    const key = `${i.productDetails?._id || i.productId}${i.productDetails?.selectedOption?._id ? ':' + i.productDetails.selectedOption._id : ''}`;
+                    return !excludedSet.has(key);
+                  }).map((item) => ({
+                    productId: item.productDetails?._id || item.productId,
+                    quantity: item.quantity,
+                    price: item.price ?? item.productDetails.price,
+                    brand: item.productDetails?.brand,
+                    category: item.productDetails?.category?.name || item.productDetails?.category,
+                    name: item.productDetails?.name
+                  }));
+                  initiateCheckout({
+                    eventID: `chk_${Date.now()}`,
+                    totalValue: remaining.reduce((s, i) => s + (i.price || 0) * (i.quantity || 0), 0),
+                    contents: remaining,
+                    contentName: remaining.map(c => c.name).filter(Boolean).join(', '),
+                    contentCategory: 'checkout',
+                    numItems: remaining.length,
+                  }).catch(() => {});
+                } catch {}
                 setTimeout(() => setDlgOrder(true), 80);
               }}
               disabled={oosData.includedCount <= 0}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { searchEvent } from '@/lib/metadata/facebookPixels';
 import {
   Dialog,
   AppBar,
@@ -417,7 +418,8 @@ export default function SearchCategoryDialog() {
     );
     if (categoryObj && categoryObj.pageSlug) {
       // Track the click before navigation
-      trackSearch(searchText || suggestion, 'category', `/shop/${categoryObj.pageSlug}`);
+  trackSearch(searchText || suggestion, 'category', `/shop/${categoryObj.pageSlug}`);
+  try { void searchEvent({ search_string: (searchText || suggestion), content_category: 'category' }); } catch {}
       // Start full page loading
       dispatch(startNavigation());
       router.push(`/shop/${categoryObj.pageSlug}`);
@@ -439,7 +441,8 @@ export default function SearchCategoryDialog() {
   // Handle product click with variant checking
   const handleProductClick = useCallback(async (product) => {
     const pageSlug = `/shop/${product.pageSlug}`;
-    trackSearch(searchText, 'product', pageSlug);
+  trackSearch(searchText, 'product', pageSlug);
+  try { void searchEvent({ search_string: searchText, content_category: 'product' }); } catch {}
 
     // Check if product has specific category for variant checking
     if (!product.specificCategory) {
@@ -596,6 +599,7 @@ export default function SearchCategoryDialog() {
           const resultType = products.length > 0 ? 'product' : 
                             category ? 'category' : 'no_results';
           trackSearch(trimmedQuery, resultType);
+          try { void searchEvent({ search_string: trimmedQuery, content_category: resultType }); } catch {}
         })
         .catch(() => {
           setProductResults([]);
@@ -603,6 +607,7 @@ export default function SearchCategoryDialog() {
           setProductLoading(false);
           // Track failed search
           trackSearch(trimmedQuery, 'no_results');
+          try { void searchEvent({ search_string: trimmedQuery, content_category: 'no_results' }); } catch {}
         });
     }, 250);
     return () => {
@@ -801,6 +806,7 @@ export default function SearchCategoryDialog() {
                         }}
                         onClick={() => {
                           trackSearch(searchText, 'category', `/shop/${matchedCategory.pageSlug}`);
+                          try { void searchEvent({ search_string: searchText, content_category: 'category' }); } catch {}
                           // Start full page loading
                           dispatch(startNavigation());
                           router.push(`/shop/${matchedCategory.pageSlug}`);
