@@ -1,4 +1,3 @@
-// src/components/common-utils/AddToCartButton.js
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -13,6 +12,7 @@ import { openCartDrawer, openRecommendationDrawer, markRecommendationDrawerSeen 
 import { setVariantsCache, setPendingRequest, clearPendingRequest, removeExpiredCache } from "../../store/slices/variantsSlice";
 import { selectIsSubscribedToNotification } from "../../store/slices/notificationSlice";
 import { addToCart as trackAddToCart } from "@/lib/metadata/facebookPixels";
+import { gaAddToCart } from "@/lib/metadata/googleAds";
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -349,6 +349,19 @@ export default function AddToCartButton({
     // Track AddToCart event
     try {
       await trackAddToCart(product);
+      try {
+        gaAddToCart({
+          items: [{
+            productId: product._id,
+            name: product.name,
+            price: product.price,
+            quantity: 1,
+            brand: product.brand,
+            category: product.category?.name || product.category,
+          }],
+          value: product.price,
+        });
+      } catch {}
     } catch (error) {
       console.error("AddToCart tracking failed:", error);
       // Do not interfere with user experience
@@ -382,6 +395,19 @@ export default function AddToCartButton({
     // Track AddToCart event (increment)
     try {
       await trackAddToCart(product);
+      try {
+        gaAddToCart({
+          items: [{
+            productId: product._id,
+            name: product.name,
+            price: product.price,
+            quantity: 1,
+            brand: product.brand,
+            category: product.category?.name || product.category,
+          }],
+          value: product.price,
+        });
+      } catch {}
     } catch (error) {
       console.error("AddToCart tracking failed:", error);
       // Do not interfere with user experience

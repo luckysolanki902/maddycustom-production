@@ -41,6 +41,7 @@ import { getPaymentButtonText } from '../../lib/utils/orderFormUtils';
 import { ThemeProvider } from '@mui/material';
 import theme from '@/styles/theme';
 import { initiateCheckout, purchase, contactInfoProvided, paymentInitiated } from '@/lib/metadata/facebookPixels';
+import { gaAddBillingInfo, gaAddPaymentInfo, gaPurchase } from '@/lib/metadata/googleAds';
 import { v4 as uuidv4 } from 'uuid';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -594,6 +595,8 @@ const OrderForm = ({
         { firstName: data.name, email: data.email, phoneNumber: phoneToUse },
         { totalValue: totalCost, contents, numItems: contents.length, contentName: contents.map(c => c.name).filter(Boolean).join(', ') }
       );
+      // GA4: add_billing_info mirrors this step
+      try { gaAddBillingInfo({ value: totalCost, items: contents, coupon: (typeof couponCode === 'string' && couponCode) ? couponCode : undefined }); } catch {}
     } catch (_) {}
 
     // Perform user check in background without blocking UI
@@ -657,7 +660,7 @@ const OrderForm = ({
       .catch(error => {
         console.error('Error in background user check/create:', error);
       });
-  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode, cartItems, totalCost]);
+  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode, cartItems, totalCost, couponCode]);
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
@@ -887,6 +890,19 @@ const OrderForm = ({
           });
         } catch (_) {}
 
+        // GA4: add_payment_info at gateway open/initiation
+        try {
+          const gaContents = cartItems.map((item) => ({
+            productId: item.productId || item._id,
+            quantity: item.quantity,
+            price: item.priceAtPurchase || item.productDetails.price,
+            brand: item.productDetails?.brand,
+            category: item.productDetails?.category?.name || item.productDetails?.category,
+            name: item.productDetails?.name
+          }));
+          gaAddPaymentInfo({ value: amountDueOnline || totalCost, items: gaContents, payment_type: paymentModeConfig?.name || 'online', coupon: (typeof couponCode === 'string' && couponCode) ? couponCode : undefined });
+        } catch {}
+
         const paymentResult = await makePayment({
           customerName: orderForm.userDetails.name || '',
           customerMobile: orderForm.userDetails.phoneNumber,
@@ -932,6 +948,25 @@ const OrderForm = ({
         ).catch(error => {
           console.error('FB pixel purchase event error (non-critical):', error);
         });
+        // GA4: purchase event (full customer total)
+        try {
+          gaPurchase({
+            transaction_id: createdOrderId,
+            value: totalCost,
+            items: cartItems.map((item) => ({
+              product: item.productId,
+              name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+                ? item.productDetails.category?.name.slice(0, -1)
+                : item.productDetails.category?.name
+                }`,
+              quantity: item.quantity,
+              priceAtPurchase: item.priceAtPurchase,
+            })),
+            shipping: deliveryCost || 0,
+            tax: 0,
+            coupon: (typeof couponCode === 'string' && couponCode) ? couponCode : undefined,
+          });
+        } catch {}
       }
 
       pendingOperationsRef.current = {

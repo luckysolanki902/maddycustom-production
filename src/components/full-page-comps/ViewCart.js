@@ -29,6 +29,7 @@ import Footer from '../page-sections/viewcart/Footer';
 import ApplyCoupon from '../dialogs/ApplyCoupon';
 import OrderForm from '../dialogs/OrderForm';
 import { initiateCheckout } from '@/lib/metadata/facebookPixels';
+import { gaBeginCheckout } from '@/lib/metadata/googleAds';
 import MinimumCartDialog from '../dialogs/MinimumCartDialog';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
@@ -640,7 +641,7 @@ export default function ViewCart({ isDrawer = false }) {
         return;
       }
 
-      // No changes and all available => fire InitiateCheckout and open order form
+      // No changes and all available => fire InitiateCheckout (Meta) and begin_checkout (GA4) and open order form
       try {
         initiateCheckout({
           eventID: `chk_${Date.now()}`,
@@ -650,6 +651,7 @@ export default function ViewCart({ isDrawer = false }) {
           contentCategory: 'checkout',
           numItems: contents.length,
         }).catch(() => {});
+        gaBeginCheckout({ value: totalPay, items: contents });
       } catch {}
 
       setDlgOrder(true);
@@ -1170,6 +1172,7 @@ export default function ViewCart({ isDrawer = false }) {
                     contentCategory: 'checkout',
                     numItems: remaining.length,
                   }).catch(() => {});
+                  try { gaBeginCheckout({ value: remaining.reduce((s, i) => s + (i.price || 0) * (i.quantity || 0), 0), items: remaining }); } catch {}
                 } catch {}
                 setTimeout(() => setDlgOrder(true), 80);
               }}

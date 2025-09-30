@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { lead } from '@/lib/metadata/facebookPixels';
+import { gaGenerateLead } from '@/lib/metadata/googleAds';
 import { Dialog, DialogContent, Box, IconButton, Button, Typography } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
@@ -177,6 +178,7 @@ const SubscribeDialog = () => {
           content_category: 'subscription',
           lead_type: 'subscribe_popup'
         });
+        try { gaGenerateLead({ value: 1, lead_type: 'subscribe_popup', content_category: 'subscription' }); } catch {}
       } catch { }
       reset();
       setTimeout(() => handleClose(), 1500); // Auto-close after success

@@ -21,6 +21,7 @@ import {
 } from '../../store/slices/cartSlice';
 import { openCartDrawer, openRecommendationDrawer } from '../../store/slices/uiSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
+import { gaAddToCart } from '@/lib/metadata/googleAds';
 import { selectIsSubscribedToNotification } from "../../store/slices/notificationSlice";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -154,6 +155,19 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     // Track AddToCart event
     try {
       await trackAddToCart(product);
+      try {
+        gaAddToCart({
+          items: [{
+            productId: product._id,
+            name: product.name,
+            price: product.price,
+            quantity: 1,
+            brand: product.brand,
+            category: product.category?.name || product.category,
+          }],
+          value: product.price,
+        });
+      } catch {}
     } catch (error) {
       console.error('AddToCart tracking failed:', error);
     }
@@ -170,6 +184,19 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     // Track AddToCart event for increment
     try {
       await trackAddToCart(product);
+      try {
+        gaAddToCart({
+          items: [{
+            productId: product._id,
+            name: product.name,
+            price: product.price,
+            quantity: 1,
+            brand: product.brand,
+            category: product.category?.name || product.category,
+          }],
+          value: product.price,
+        });
+      } catch {}
     } catch (error) {
       console.error('AddToCart tracking failed:', error);
     }

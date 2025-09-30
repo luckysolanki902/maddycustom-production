@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { lead } from '@/lib/metadata/facebookPixels';
+import { gaGenerateLead } from '@/lib/metadata/googleAds';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Dialog,
@@ -199,6 +200,7 @@ export default function NotifyMeDialog({
           contents: [{ productId: product._id, name: product.title || product.name }],
           num_items: 1
         });
+        try { gaGenerateLead({ value: 1, lead_type: 'notify_me', content_category: 'restock' }); } catch {}
       } catch {}
       
       // Success! Update Redux store
