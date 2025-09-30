@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { lead } from '@/lib/metadata/facebookPixels';
+import { gaGenerateLead } from '@/lib/metadata/googleAds';
 import axios from "axios";
 import styles from "./styles/footer.module.css";
 import Image from "next/image";
@@ -88,6 +89,7 @@ const Footer = () => {
             content_category: 'subscription',
             lead_type: 'footer_subscribe'
           });
+          try { gaGenerateLead({ value: 1, lead_type: 'footer_subscribe', content_category: 'subscription' }); } catch {}
         } catch {}
       } else {
         setSubscriptionMessage("Subscription failed. Please try again.");

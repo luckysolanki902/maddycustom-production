@@ -271,10 +271,22 @@ export default function ProductIdPage({
     optionInventory !== null ? optionInventory <= 0 : productInventory !== null ? productInventory <= 0 : false;
   const isOutOfStock = isOnDemand ? false : rawIsOutOfStock; // On-demand products are never out of stock
 
-  // --- FIRE THE viewContent PIXEL ONCE ---
+  // --- FIRE THE viewContent PIXEL + GA4 view_item ONCE ---
   useEffect(() => {
     if (!hasTracked.current) {
       viewContent(product, { email, phoneNumber });
+      try {
+        const items = [{
+          productId: product._id,
+          name: product.name || product.title,
+          price: product.price,
+          quantity: 1,
+          brand: product.brand,
+          category: product.category?.name || product.category,
+        }];
+        const { gaViewItem } = require('@/lib/metadata/googleAds');
+        gaViewItem({ value: product.price, items });
+      } catch {}
       hasTracked.current = true;
     }
   }, [product, email, phoneNumber]);
