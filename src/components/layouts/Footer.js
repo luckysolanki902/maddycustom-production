@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from "react";
+import { lead } from '@/lib/metadata/facebookPixels';
 import axios from "axios";
 import styles from "./styles/footer.module.css";
 import Image from "next/image";
@@ -81,6 +82,13 @@ const Footer = () => {
       } else if (response.data.message === "User created successfully") {
         setSubscriptionMessage("Thank you for subscribing!");
         setPhoneNumber("");
+        try {
+          await lead({ phoneNumber }, {
+            content_name: 'Footer Subscribe',
+            content_category: 'subscription',
+            lead_type: 'footer_subscribe'
+          });
+        } catch {}
       } else {
         setSubscriptionMessage("Subscription failed. Please try again.");
       }

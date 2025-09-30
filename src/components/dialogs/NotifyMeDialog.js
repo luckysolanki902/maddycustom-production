@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { lead } from '@/lib/metadata/facebookPixels';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Dialog,
@@ -189,6 +190,16 @@ export default function NotifyMeDialog({
       }
 
       setSuccess('Great! We\'ll notify you when this item is back in stock.');
+      // Track lead for notify me subscription
+      try {
+        await lead({ phoneNumber: cleanPhone }, {
+          content_name: 'Notify Me',
+          content_category: 'restock',
+          lead_type: 'notify_me',
+          contents: [{ productId: product._id, name: product.title || product.name }],
+          num_items: 1
+        });
+      } catch {}
       
       // Success! Update Redux store
       dispatch(addNotificationSubscription({
@@ -337,9 +348,7 @@ export default function NotifyMeDialog({
             sx={{
               p: 2,
               borderRadius: '50%',
-              backgroundColor: success 
-                ? 'rgba(76, 175, 80, 0.1)' 
-                : 'rgba(45, 45, 45, 0.05)',
+              backgroundColor: success ? 'rgba(76, 175, 80, 0.1)' : 'rgba(45, 45, 45, 0.05)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

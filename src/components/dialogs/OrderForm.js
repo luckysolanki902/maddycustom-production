@@ -40,7 +40,7 @@ import CustomSnackbar from '../notifications/CustomSnackbar';
 import { getPaymentButtonText } from '../../lib/utils/orderFormUtils';
 import { ThemeProvider } from '@mui/material';
 import theme from '@/styles/theme';
-import { initiateCheckout, purchase } from '@/lib/metadata/facebookPixels';
+import { initiateCheckout, purchase, contactInfoProvided, paymentInitiated } from '@/lib/metadata/facebookPixels';
 import { v4 as uuidv4 } from 'uuid';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -580,6 +580,22 @@ const OrderForm = ({
     // Immediately move to the next tab for better UX
     setTabIndex(1);
 
+    // Fire custom event: Contact info provided (name/phone/email)
+    try {
+      const contents = cartItems.map((item) => ({
+        productId: item.productId || item._id,
+        quantity: item.quantity,
+        price: item.price ?? item.productDetails.price,
+        brand: item.productDetails?.brand,
+        category: item.productDetails?.category?.name || item.productDetails?.category,
+        name: item.productDetails?.name
+      }));
+      await contactInfoProvided(
+        { firstName: data.name, email: data.email, phoneNumber: phoneToUse },
+        { totalValue: totalCost, contents, numItems: contents.length, contentName: contents.map(c => c.name).filter(Boolean).join(', ') }
+      );
+    } catch (_) {}
+
     // Perform user check in background without blocking UI
     pendingOperationsRef.current.userCheck = axios.patch('/api/user/check', {
       phoneNumber: phoneToUse,
@@ -641,7 +657,7 @@ const OrderForm = ({
       .catch(error => {
         console.error('Error in background user check/create:', error);
       });
-  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode]);
+  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode, cartItems, totalCost]);
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
@@ -845,26 +861,31 @@ const OrderForm = ({
       dispatch(setLastOrderId(createdOrderId));
 
       if (razorpayOrder && amountDueOnline > 0) {
-        initiateCheckout(
-          {
-            eventID: uuidv4(),
-            totalValue: totalCost,
-            contents: cartItems.map((item) => ({
-              productId: item.productId || item._id,
-              quantity: item.quantity,
-              price: item.priceAtPurchase,
-            })),
-            contentName: cartItems.map((item) => item.productDetails.name).join(', '),
-            contentCategory: cartItems.map((item) => item.productDetails.category),
-            numItems: cartItems.length,
-          },
-          {
+        // Fire custom PaymentInitiated just before opening gateway
+        try {
+          const contents = cartItems.map((item) => ({
+            productId: item.productId || item._id,
+            quantity: item.quantity,
+            price: item.priceAtPurchase || item.productDetails.price,
+            brand: item.productDetails?.brand,
+            category: item.productDetails?.category?.name || item.productDetails?.category,
+            name: item.productDetails?.name
+          }));
+          await paymentInitiated({
+            value: totalCost,
+            amount_due_online: amountDueOnline,
+            payment_mode: paymentModeConfig?.name,
+            payment_mode_id: paymentModeConfig?._id,
+            is_split_payment: !!(paymentModeConfig?.configuration?.onlinePercentage > 0 && paymentModeConfig?.configuration?.onlinePercentage < 100),
+            contents,
+            numItems: contents.length,
+            contentName: contents.map(c => c.name).filter(Boolean).join(', '),
+            orderId: createdOrderId,
+          }, {
             email: orderForm.userDetails.email || '',
             phoneNumber: orderForm.userDetails.phoneNumber,
-          }
-        ).catch(error => {
-          console.error('FB pixel tracking error (non-critical):', error);
-        });
+          });
+        } catch (_) {}
 
         const paymentResult = await makePayment({
           customerName: orderForm.userDetails.name || '',

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { lead } from '@/lib/metadata/facebookPixels';
 import { Dialog, DialogContent, Box, IconButton, Button, Typography } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
@@ -168,6 +169,15 @@ const SubscribeDialog = () => {
         dispatch(markSubscribeDialogSuccess()); // Mark as successful subscription - will persist in Redux
         showSnackbar('🎉 Welcome to the VIP club! Exclusive deals coming your way!', 'success');
       }
+      
+      // Fire Lead event for newsletter/phone subscription
+      try {
+        await lead({ phoneNumber: data.phoneNumber }, {
+          content_name: 'Subscribe Dialog',
+          content_category: 'subscription',
+          lead_type: 'subscribe_popup'
+        });
+      } catch { }
       reset();
       setTimeout(() => handleClose(), 1500); // Auto-close after success
     } catch (error) {
