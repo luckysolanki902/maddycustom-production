@@ -7,8 +7,8 @@
  */
 export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrder }) =>
   new Promise((resolve, reject) => {
-    const key      = process.env.NEXT_PUBLIC_RAZORPAY_KEY;
-    const logoUrl  = `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/logos/maddy3logodark_rect.png`;
+    const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY;
+    const logoUrl = `${process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL}/assets/logos/maddy3logodark_rect.png`;
 
     if (!key || !logoUrl) {
       return reject(new Error('Payment configuration error'));
@@ -17,23 +17,29 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
     const options = {
       key,
       name: 'Maddy Custom',
-      currency   : razorpayOrder.currency,
-      amount     : razorpayOrder.amount.toString(),
-      order_id   : razorpayOrder.id,
+      currency: razorpayOrder.currency,
+      amount: razorpayOrder.amount.toString(),
+      order_id: razorpayOrder.id,
       description: 'Maddy Customers',
-      image      : logoUrl,
-      notes      : { orderId },
-      theme      : { color: '#000000' },
+      image: logoUrl,
+      notes: { orderId },
+      theme: { color: '#000000' },
+
+      /** 👇 this is the important bit */
+      method: 'upi',
+      upi: {
+        flow: 'intent',   // ensures Android shows “Open with…” dialog for UPI apps
+      },
 
       /** success‑callback */
       handler: async (resp) => {
         try {
           const ver = await fetch('/api/checkout/order/payment/verify', {
-            method : 'POST',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body   : JSON.stringify({
+            body: JSON.stringify({
               razorpay_payment_id: resp.razorpay_payment_id,
-              razorpay_order_id : resp.razorpay_order_id,
+              razorpay_order_id: resp.razorpay_order_id,
               razorpay_signature: resp.razorpay_signature,
               orderId,
             }),
@@ -56,9 +62,9 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
       },
 
       prefill: {
-        name   : customerName,
+        name: customerName,
         contact: customerMobile,
-        email  : '',           // optional
+        email: '',           // optional
       },
     };
 
