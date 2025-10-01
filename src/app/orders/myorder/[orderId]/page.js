@@ -9,8 +9,29 @@ import { Box, Card, Typography } from '@mui/material';
 import PurchasedProductSlider from '@/components/page-sections/orderSuccess/PurchasedProductSlider';
 import OrderDetails from '@/components/page-sections/orderSuccess/OrderDetails';
 import CommunityCard from '@/components/page-sections/orderSuccess/CommunityCard';
+import OrderSuccessTracker from '@/components/analytics/OrderSuccessTracker';
 
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+
+function toNumeric(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function toStringId(value) {
+  if (!value) return undefined;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    if (typeof value.toString === 'function') {
+      const str = value.toString();
+      return str && str !== '[object Object]' ? str : undefined;
+    }
+    if (value._id) {
+      return toStringId(value._id);
+    }
+  }
+  return undefined;
+}
 
 export default async function OrderPage({ params }) {
   const { orderId } = await params;
@@ -40,6 +61,81 @@ export default async function OrderPage({ params }) {
   const allOrders = [order, ...(order.linkedOrderIds || [])];
   const isMultiOrder = allOrders.length > 1;
 
+  const aggregate = allOrders.reduce(
+    (acc, ord) => {
+      const items = Array.isArray(ord.items) ? ord.items : [];
+      acc.totalAmount += toNumeric(ord.totalAmount);
+      acc.totalDiscount += toNumeric(ord.totalDiscount);
+      acc.totalQuantity += items.reduce((sum, item) => sum + toNumeric(item.quantity), 0);
+
+      const paymentDetails = ord.paymentDetails || {};
+      acc.amountPaidOnline += toNumeric(paymentDetails.amountPaidOnline);
+      acc.amountDueOnline += toNumeric(paymentDetails.amountDueOnline);
+      acc.amountDueCod += toNumeric(paymentDetails.amountDueCod);
+
+      items.forEach((item) => {
+        acc.items.push({
+          productId: toStringId(item.product),
+          name: item.name,
+          quantity: toNumeric(item.quantity),
+          price: toNumeric(item.priceAtPurchase),
+          sku: item.sku,
+        });
+      });
+
+      acc.orderIds.push(toStringId(ord._id));
+
+      return acc;
+    },
+    {
+      totalAmount: 0,
+      totalDiscount: 0,
+      totalQuantity: 0,
+      amountPaidOnline: 0,
+      amountDueOnline: 0,
+      amountDueCod: 0,
+      items: [],
+      orderIds: [],
+    }
+  );
+
+  const cartSummary = {
+    items: aggregate.totalQuantity || undefined,
+    value: aggregate.totalAmount || undefined,
+    currency: 'INR',
+  };
+
+  if (cartSummary.items === undefined) {
+    delete cartSummary.items;
+  }
+  if (cartSummary.value === undefined) {
+    delete cartSummary.value;
+    delete cartSummary.currency;
+  }
+
+  const couponCode = Array.isArray(order.couponApplied) && order.couponApplied.length > 0
+    ? order.couponApplied[0]?.couponCode
+    : undefined;
+
+  const trackingData = {
+    orderId: toStringId(order._id) || orderId,
+    totalValue: aggregate.totalAmount || undefined,
+    currency: 'INR',
+    couponCode,
+    cartSummary,
+    items: aggregate.items,
+    paymentMode: toStringId(order.paymentDetails?.mode),
+    paymentStatus: order.paymentStatus,
+    amountDueOnline: aggregate.amountDueOnline || undefined,
+    amountPaidOnline: aggregate.amountPaidOnline || undefined,
+    amountDueCod: aggregate.amountDueCod || undefined,
+    totalDiscount: aggregate.totalDiscount || undefined,
+    metadata: {
+      isSplitOrder: isMultiOrder,
+      orderIds: aggregate.orderIds,
+    },
+  };
+
   const formatDate = (dateString) => {
     const options = {
       year: 'numeric',
@@ -60,6 +156,7 @@ export default async function OrderPage({ params }) {
 
   return (
     <Box className={styles.main}>
+      <OrderSuccessTracker trackingData={trackingData} />
       {/* Header Section */}
       <Box className={styles.header}>
         <div style={{ backgroundColor: 'black' }}>

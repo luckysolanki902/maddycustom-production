@@ -20,11 +20,33 @@ function normalizePath(pathname = '/') {
     normalized = `/${normalized}`;
   }
 
+  normalized = normalized.replace(/\/{2,}/g, '/');
   if (normalized.length > 1) {
     normalized = normalized.replace(/\/+$/u, '');
   }
 
-  return normalized.length ? normalized : '/';
+  if (!normalized.length) {
+    return '/';
+  }
+
+  const segments = normalized
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (!segments.length) {
+    return '/';
+  }
+
+  if (segments[0] === 'shop') {
+    return normalized;
+  }
+
+  if (segments.length >= 4) {
+    return `/shop/${segments.join('/')}`;
+  }
+
+  return normalized;
 }
 
 function classifyShopPath(segments) {

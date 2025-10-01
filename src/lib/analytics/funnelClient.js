@@ -157,6 +157,14 @@ function safeSessionStorage() {
   }
 }
 
+function isApiPath(path) {
+  if (!path || typeof path !== 'string') return false;
+  const trimmed = path.trim();
+  if (!trimmed) return false;
+  const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return /^\/api(?:\/|$)/.test(normalized);
+}
+
 class FunnelClient {
   constructor() {
     this.initialized = false;
@@ -198,17 +206,20 @@ class FunnelClient {
     this.restoreBackupQueue();
 
     const landingPath = window.location.pathname || '/';
-    const landingClassification = classifyPage(landingPath);
+    const landingIsApi = isApiPath(landingPath);
+    const landingClassification = landingIsApi ? null : classifyPage(landingPath);
 
     this.sessionMeta = {
       ...this.buildDeviceSnapshot(),
       referrer: document.referrer || undefined,
-      landingPage: {
-        path: landingPath,
-        title: document.title,
-        name: landingClassification.pageName,
-        pageCategory: landingClassification.pageCategory,
-      },
+      landingPage: landingIsApi
+        ? undefined
+        : {
+            path: landingPath,
+            title: document.title,
+            name: landingClassification.pageName,
+            pageCategory: landingClassification.pageCategory,
+          },
       ...additionalMeta,
     };
 
@@ -598,6 +609,15 @@ class FunnelClient {
     if (!pathname || typeof window === 'undefined') return;
 
     const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
+    if (isApiPath(normalizedPath)) {
+      if (this.debug) {
+        console.info('[Funnel] Skipping visit tracking for API route', {
+          path: normalizedPath,
+        });
+      }
+      this.cancelPendingVisit(normalizedPath);
+      return;
+    }
     const classification = classifyPage(normalizedPath);
     const page = {
       path: normalizedPath,
@@ -627,6 +647,14 @@ class FunnelClient {
 
   scheduleVisitTrack({ path, metadata = {}, source = 'auto', delay = 220 } = {}) {
     if (typeof window === 'undefined') return;
+
+    if (isApiPath(path)) {
+      if (this.debug) {
+        console.info('[Funnel] visit scheduling skipped for API route', { path });
+      }
+      this.cancelPendingVisit(path);
+      return;
+    }
 
     if (this.pendingVisitTimer) {
       clearTimeout(this.pendingVisitTimer);
@@ -708,8 +736,30 @@ class FunnelClient {
     }
 
     const timestamp = Date.now();
+    const normalizedStep = step.trim();
+
+    if (normalizedStep === 'visit') {
+      const candidatePaths = [
+        payload.page?.path,
+        this.pageContext?.page?.path,
+        this.pendingVisitPath,
+      ].filter(Boolean);
+
+      const apiPath = candidatePaths.find((candidate) => isApiPath(candidate));
+      if (apiPath) {
+        if (this.debug) {
+          console.info('[Funnel] Dropped visit event targeting API route', {
+            path: apiPath,
+            payload,
+          });
+        }
+        this.cancelPendingVisit(apiPath);
+        return;
+      }
+    }
+
     const event = {
-      step: step.trim(),
+      step: normalizedStep,
       visitorId: this.visitorId,
       sessionId: this.sessionId,
       timestamp,
@@ -793,11 +843,11 @@ class FunnelClient {
     
     // Use eventId as primary dedupe key if no explicit dedupeKey provided
     if (!dedupeKey) {
-      if (step === 'visit' && event.page?.path) {
+      if (normalizedStep === 'visit' && event.page?.path) {
         dedupeKey = `visit:${event.page.path}`;
-      } else if (step === 'purchase' && event.order?.orderId) {
+      } else if (normalizedStep === 'purchase' && event.order?.orderId) {
         dedupeKey = `purchase:${event.order.orderId}`;
-      } else if (step === 'payment_initiated' && event.order?.orderId) {
+      } else if (normalizedStep === 'payment_initiated' && event.order?.orderId) {
         dedupeKey = `payment:${event.order.orderId}`;
       } else {
         // Use eventId as dedupe key for idempotency
@@ -808,7 +858,7 @@ class FunnelClient {
     if (this.debug) {
       try {
         console.info('[Funnel] queued event', {
-          step,
+          step: normalizedStep,
           eventId: event.eventId,
           eventHash: event.eventHash,
           dedupeKey,
@@ -821,7 +871,7 @@ class FunnelClient {
           queueSize: this.queue.length,
         });
       } catch (error) {
-        console.info('[Funnel] queued event', step);
+        console.info('[Funnel] queued event', normalizedStep);
       }
     }
 
@@ -829,7 +879,7 @@ class FunnelClient {
     if (dedupeKey && this.shouldSkipDueToDedupe(dedupeKey, event.sessionId, timestamp)) {
       if (this.debug) {
         console.info('[Funnel] Event skipped due to deduplication', {
-          step,
+          step: normalizedStep,
           dedupeKey,
           eventId: event.eventId,
         });
@@ -843,7 +893,7 @@ class FunnelClient {
 
     this.queue.push(event);
     if (dedupeKey) {
-      this.markDedupe(dedupeKey, event.sessionId, step, timestamp);
+      this.markDedupe(dedupeKey, event.sessionId, normalizedStep, timestamp);
     }
 
     if (event.step === 'visit') {

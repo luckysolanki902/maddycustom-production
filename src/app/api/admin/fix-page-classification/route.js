@@ -3,48 +3,77 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import FunnelEvent from '@/models/analytics/FunnelEvent';
 import FunnelSession from '@/models/analytics/FunnelSession';
 
-function classifyPath(path) {
+function normalizePath(path) {
   if (!path || typeof path !== 'string') {
-    return { pageCategory: 'other', pageName: 'other' };
+    return '/';
   }
 
-  const trimmedPath = path.trim();
-  const pathWithoutQuery = trimmedPath.split('?')[0]?.split('#')[0] ?? '';
-  const normalizedPath = pathWithoutQuery.length ? pathWithoutQuery : '/';
+  const trimmed = path.trim();
+  const withoutQuery = trimmed.split('?')[0]?.split('#')[0] ?? '';
+  let normalized = withoutQuery.length ? withoutQuery : '/';
 
-  // Home page
+  if (!normalized.startsWith('/')) {
+    normalized = `/${normalized}`;
+  }
+
+  // Collapse multiple slashes and remove trailing slash (except root)
+  normalized = normalized.replace(/\/{2,}/g, '/');
+  if (normalized.length > 1) {
+    normalized = normalized.replace(/\/+$/u, '');
+  }
+
+  const segments = normalized
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (!segments.length) {
+    return '/';
+  }
+
+  if (segments[0] === 'shop') {
+    return normalized.length ? normalized : '/';
+  }
+
+  // If the path looks like a catalog/product path (≥4 segments) but is missing /shop, prefix it
+  if (segments.length >= 4) {
+    return `/shop/${segments.join('/')}`;
+  }
+
+  return normalized.length ? normalized : '/';
+}
+
+function classifyPath(path) {
+  const normalizedPath = normalizePath(path);
+
   if (normalizedPath === '/' || normalizedPath === '') {
-    return { pageCategory: 'home', pageName: 'home' };
+    return { normalizedPath: '/', pageCategory: 'home', pageName: 'home' };
   }
 
-  // Split path and filter empty segments
   const segments = normalizedPath
     .split('/')
     .map((segment) => segment.trim())
     .filter(Boolean);
 
   if (!segments.length) {
-    return { pageCategory: 'home', pageName: 'home' };
+    return { normalizedPath: '/', pageCategory: 'home', pageName: 'home' };
   }
 
-  // Not a shop path
   if (segments[0] !== 'shop') {
-    return { pageCategory: 'other', pageName: 'other' };
+    return { normalizedPath, pageCategory: 'other', pageName: 'other' };
   }
 
-  // Count segments after 'shop'
   const segmentsAfterShop = segments.length - 1;
 
   if (segmentsAfterShop === 4) {
-    return { pageCategory: 'product-list-page', pageName: 'product-list-page' };
+    return { normalizedPath, pageCategory: 'product-list-page', pageName: 'product-list-page' };
   }
 
   if (segmentsAfterShop === 5) {
-    return { pageCategory: 'product-id-page', pageName: 'product-id-page' };
+    return { normalizedPath, pageCategory: 'product-id-page', pageName: 'product-id-page' };
   }
 
-  // Anything else defaults to other
-  return { pageCategory: 'other', pageName: 'other' };
+  return { normalizedPath, pageCategory: 'other', pageName: 'other' };
 }
 
 export async function GET(request) {
@@ -71,27 +100,26 @@ export async function GET(request) {
         const pagePath = event.page?.path;
         const pageSlug = event.page?.slug;
         const currentCategory = event.page?.pageCategory;
-        const correctClassification = classifyPath(pagePath);
-        
+        const { normalizedPath, pageCategory, pageName } = classifyPath(pagePath);
+
         // Log EVERY event with its classification
-        console.log(`[${eventIndex}/${allEvents.length}] EVENT | Path: "${pagePath}" | Slug: "${pageSlug || 'N/A'}" | Current: "${currentCategory || 'MISSING'}" | Classified: "${correctClassification.pageCategory}"`);
-        
-        // Update if pageCategory doesn't exist or is incorrect
-        if (!currentCategory || currentCategory !== correctClassification.pageCategory) {
-          console.log(`  ↳ UPDATING: ${currentCategory || 'MISSING'} → ${correctClassification.pageCategory}`);
-          
-          await FunnelEvent.findByIdAndUpdate(
-            event._id,
-            {
-              $set: {
-                'page.pageCategory': correctClassification.pageCategory,
-                'page.name': correctClassification.pageName
-              }
-            }
-          );
+        console.log(`[${eventIndex}/${allEvents.length}] EVENT | Path: "${pagePath}" | Normalized: "${normalizedPath}" | Slug: "${pageSlug || 'N/A'}" | Current: "${currentCategory || 'MISSING'}" | Classified: "${pageCategory}"`);
+
+        const updateFields = {};
+        if (!currentCategory || currentCategory !== pageCategory) {
+          updateFields['page.pageCategory'] = pageCategory;
+          updateFields['page.name'] = pageName;
+        }
+        if (normalizedPath && normalizedPath !== pagePath) {
+          updateFields['page.path'] = normalizedPath;
+        }
+
+        if (Object.keys(updateFields).length > 0) {
+          console.log(`  ↳ UPDATING: ${JSON.stringify(updateFields)}`);
+          await FunnelEvent.findByIdAndUpdate(event._id, { $set: updateFields });
           stats.events.updated++;
         } else {
-          console.log(`  ↳ SKIPPED (already correct)`);
+          console.log('  ↳ SKIPPED (already correct)');
         }
       } catch (error) {
         console.error(`Error updating event ${event._id}:`, error);
@@ -112,27 +140,26 @@ export async function GET(request) {
         const landingPath = session.landingPage?.path;
         const landingSlug = session.landingPage?.slug;
         const currentCategory = session.landingPage?.pageCategory;
-        const correctClassification = classifyPath(landingPath);
-        
+        const { normalizedPath, pageCategory, pageName } = classifyPath(landingPath);
+
         // Log EVERY session with its classification
-        console.log(`[${sessionIndex}/${allSessions.length}] SESSION | Path: "${landingPath}" | Slug: "${landingSlug || 'N/A'}" | Current: "${currentCategory || 'MISSING'}" | Classified: "${correctClassification.pageCategory}"`);
-        
-        // Update if landingPage.pageCategory doesn't exist or is incorrect
-        if (!currentCategory || currentCategory !== correctClassification.pageCategory) {
-          console.log(`  ↳ UPDATING: ${currentCategory || 'MISSING'} → ${correctClassification.pageCategory}`);
-          
-          await FunnelSession.findByIdAndUpdate(
-            session._id,
-            {
-              $set: {
-                'landingPage.pageCategory': correctClassification.pageCategory,
-                'landingPage.name': correctClassification.pageName
-              }
-            }
-          );
+        console.log(`[${sessionIndex}/${allSessions.length}] SESSION | Path: "${landingPath}" | Normalized: "${normalizedPath}" | Slug: "${landingSlug || 'N/A'}" | Current: "${currentCategory || 'MISSING'}" | Classified: "${pageCategory}"`);
+
+        const updateFields = {};
+        if (!currentCategory || currentCategory !== pageCategory) {
+          updateFields['landingPage.pageCategory'] = pageCategory;
+          updateFields['landingPage.name'] = pageName;
+        }
+        if (normalizedPath && normalizedPath !== landingPath) {
+          updateFields['landingPage.path'] = normalizedPath;
+        }
+
+        if (Object.keys(updateFields).length > 0) {
+          console.log(`  ↳ UPDATING: ${JSON.stringify(updateFields)}`);
+          await FunnelSession.findByIdAndUpdate(session._id, { $set: updateFields });
           stats.sessions.updated++;
         } else {
-          console.log(`  ↳ SKIPPED (already correct)`);
+          console.log('  ↳ SKIPPED (already correct)');
         }
       } catch (error) {
         console.error(`Error updating session ${session._id}:`, error);
