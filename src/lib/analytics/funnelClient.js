@@ -107,6 +107,20 @@ const DEBUG_PARAM = 'debugFunnel';
 const DEDUPE_TTL_MS = SESSION_TTL_MS;
 const MAX_FLUSH_RETRIES = 3;
 
+const CRITICAL_STEPS = new Set([
+  'visit',
+  'add_to_cart',
+  'apply_offer',
+  'view_cart_drawer',
+  'open_order_form',
+  'address_tab_open',
+  'contact_info',
+  'initiate_checkout',
+  'payment_initiated',
+  'purchase',
+  'session_return',
+]);
+
 function pruneEmpty(value) {
   if (value === null || value === undefined) return undefined;
 
@@ -899,9 +913,13 @@ class FunnelClient {
     if (event.step === 'visit') {
       this.lastTrackedPath = event.page?.path || page?.path || this.pendingVisitPath || null;
     }
-    
+
+    const isCriticalStep = CRITICAL_STEPS.has(normalizedStep);
+
     if (this.queue.length >= MAX_BATCH_SIZE) {
       this.flush('batch');
+    } else if (isCriticalStep) {
+      this.flushForStep(normalizedStep);
     } else {
       this.scheduleFlush();
     }
@@ -913,6 +931,47 @@ class FunnelClient {
       this.flushTimer = null;
       this.flush('timer');
     }, delay);
+  }
+
+  flushForStep(step) {
+    if (!CRITICAL_STEPS.has(step) || this.queue.length === 0) {
+      return;
+    }
+
+    const reason = `critical:${step}`;
+    const delay = step === 'visit' ? 250 : 120;
+
+    if (this.sending) {
+      this.forceFlushSoon(reason, delay);
+      return;
+    }
+
+    if (step === 'visit') {
+      this.forceFlushSoon(reason, delay);
+      return;
+    }
+
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+
+    this.flush(reason);
+  }
+
+  forceFlushSoon(reason = 'critical', delay = 120) {
+    if (typeof window === 'undefined') return;
+    if (this.queue.length === 0) return;
+
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+
+    this.flushTimer = window.setTimeout(() => {
+      this.flushTimer = null;
+      this.flush(reason);
+    }, Math.max(0, delay));
   }
 
   async flush(reason = 'manual') {
