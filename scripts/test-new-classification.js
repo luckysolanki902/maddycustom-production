@@ -12,6 +12,9 @@ const testCases = [
   { path: '/shop/a/b/c/d/e', expected: 'product-id-page' },
   { path: '/shop/a/b/c/d?sort=asc', expected: 'product-list-page' },
   { path: '/shop/a/b/c/d/e?variant=blue', expected: 'product-id-page' },
+  { path: '/wraps/car-wraps/window-pillar-wraps/win-wraps', expected: 'product-list-page' },
+  { path: '/wraps/car-wraps/window-pillar-wraps/win-wraps/bunny', expected: 'product-id-page' },
+  { path: 'wraps/car-wraps/window-pillar-wraps/win-wraps/bunny', expected: 'product-id-page' },
 ];
 
 function classifyPath(path) {
@@ -21,7 +24,16 @@ function classifyPath(path) {
 
   const trimmed = path.trim();
   const withoutQuery = trimmed.split('?')[0]?.split('#')[0] ?? '';
-  const normalized = withoutQuery.length ? withoutQuery : '/';
+  let normalized = withoutQuery.length ? withoutQuery : '/';
+
+  if (!normalized.startsWith('/')) {
+    normalized = `/${normalized}`;
+  }
+
+  normalized = normalized.replace(/\/+/g, '/');
+  if (normalized.length > 1) {
+    normalized = normalized.replace(/\/+$/u, '');
+  }
 
   if (normalized === '/' || normalized === '') {
     return 'home';
@@ -31,6 +43,10 @@ function classifyPath(path) {
 
   if (!segments.length) {
     return 'home';
+  }
+
+  if (segments[0] !== 'shop' && segments.length >= 4) {
+    segments.unshift('shop');
   }
 
   if (segments[0] !== 'shop') {

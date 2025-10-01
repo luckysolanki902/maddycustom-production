@@ -56,6 +56,7 @@ import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
 import reverseGeocodeClient from '@/lib/utils/reverseGeocodeClient';
 import funnelClient from '@/lib/analytics/funnelClient';
+import { buildPurchaseEventPayload } from '@/lib/analytics/purchaseEventPayload';
 
 const sanitizeFloorValue = (value) => {
   if (value === undefined || value === null) return '';
@@ -858,9 +859,17 @@ const OrderForm = ({
     setIsLoading(true);
     setIsPaymentProcessing(true);
 
-    const cartSnapshot = computeCartSnapshot();
-    const numericTotal = Number(totalCost);
-    const orderValue = Number.isFinite(numericTotal) ? numericTotal : undefined;
+  const cartSnapshot = computeCartSnapshot();
+  const numericTotal = Number(totalCost);
+  const orderValue = Number.isFinite(numericTotal) ? numericTotal : undefined;
+  const totalForPurchase = Number.isFinite(numericTotal) ? numericTotal : 0;
+    const analyticsItems = cartItems.map((item) => ({
+      productId: item.productId || item._id,
+      name: item.productDetails?.name,
+      quantity: item.quantity,
+      price: item.priceAtPurchase || item.productDetails?.price,
+      sku: item.productDetails?.selectedOption?.sku || item.productDetails?.sku,
+    }));
     const addressCompleteness = {
       hasLine1: Boolean(data.addressLine1),
       hasCity: Boolean(data.city),
@@ -887,8 +896,6 @@ const OrderForm = ({
     } catch (err) {
       console.warn('Funnel initiate_checkout track failed:', err);
     }
-
-    const startTime = performance.now();
 
     try {
       const initialValidationPromises = [];
@@ -1165,21 +1172,32 @@ const OrderForm = ({
       }
 
       try {
-        funnelClient.track('purchase', {
-          dedupeKey: `purchase:${createdOrderId}`,
-          cart: cartSnapshot,
-          order: {
-            orderId: createdOrderId,
-            value: orderValue,
-            currency: orderValue !== undefined ? 'INR' : undefined,
-            coupon: normalizedCouponCode,
-          },
+        const amountPaidOnlineValue = Number.isFinite(amountDueOnline) && amountDueOnline > 0 ? amountDueOnline : 0;
+        const amountDueCodValue = Math.max(totalForPurchase - amountPaidOnlineValue, 0);
+
+        const purchasePayload = buildPurchaseEventPayload({
+          orderId: createdOrderId,
+          totalValue: orderValue ?? totalForPurchase,
+          currency: 'INR',
+          couponCode: normalizedCouponCode,
+          cartSummary: cartSnapshot,
+          items: analyticsItems,
+          paymentMode: paymentModeName,
+          paymentStatus: amountDueOnline > 0 ? 'online_partial' : 'cod',
+          amountDueOnline,
+          amountPaidOnline: amountPaidOnlineValue,
+          amountDueCod: amountDueCodValue,
+          totalDiscount: discountAmountFinal || 0,
           metadata: {
-            paymentMode: paymentModeName,
-            amountDueOnline,
-            paymentStatus: amountDueOnline > 0 ? 'online_partial' : 'cod',
+            source: 'order_form_submit',
+            isSplitOrder: Boolean(orderCreationResponse?.data?.isSplitOrder),
           },
         });
+
+        if (purchasePayload) {
+          funnelClient.track('purchase', purchasePayload);
+          void funnelClient.flush('purchase');
+        }
       } catch (err) {
         console.warn('Funnel purchase track failed:', err);
       }
