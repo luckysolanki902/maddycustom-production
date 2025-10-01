@@ -17,13 +17,14 @@ import {
 } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import { Close, ArrowForward, LocalOffer, AutoAwesome } from "@mui/icons-material";
-import { closeRecommendationDrawer, resetRecommendationCooldown } from "@/store/slices/uiSlice";
+import { closeRecommendationDrawer, resetRecommendationCooldown, openCartDrawer } from "@/store/slices/uiSlice";
 import { setHasSeenVariantPopup, setPageSlug } from "@/store/slices/variantPreferenceSlice";
 import AddToCartButton from "@/components/utils/AddToCartButton";
 import { Dialog, DialogContent, Divider } from "@mui/material";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import usePageType from "@/hooks/usePageType";
+import funnelClient from "@/lib/analytics/funnelClient";
 
 // Product Card Component with Coupon Information
 const ProductCardWithCoupon = ({ product, categoryVariants }) => {
@@ -343,6 +344,7 @@ const ProductCardWithCoupon = ({ product, categoryVariants }) => {
 const RecommendationDrawer = () => {
   const dispatch = useDispatch();
   const { isRecommendationDrawerOpen, recommendationProduct } = useSelector(state => state.ui);
+  const cartItems = useSelector(state => state.cart.items);
   const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -390,8 +392,12 @@ const RecommendationDrawer = () => {
   };
 
   const handleViewCart = () => {
+    // Close recommendation drawer
     handleClose();
-    window.location.href = "/viewcart";
+    
+    // Track view_cart_drawer event (will be tracked automatically by CartDrawer)
+    // Open cart drawer from bottom
+    dispatch(openCartDrawer({ source: 'bottom' }));
   };
 
   const calculateDrawerHeight = () => {

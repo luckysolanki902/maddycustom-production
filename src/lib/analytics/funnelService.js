@@ -354,13 +354,60 @@ async function persistEvent(event, sessionDoc, timestamp) {
   if (utm) payload.utm = utm;
 
   try {
+    // Check for existing event with same eventId (stronger idempotency check)
+    if (payload.eventId) {
+      const existingEvent = await FunnelEvent.findOne({
+        sessionId: payload.sessionId,
+        step: payload.step,
+        eventId: payload.eventId,
+      }).select('_id').lean();
+      
+      if (existingEvent) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.info('[Funnel] Duplicate detected by eventId lookup', {
+            eventId: payload.eventId,
+            step: payload.step,
+            sessionId: payload.sessionId,
+          });
+        }
+        return { ok: false, code: 'duplicate', reason: 'Duplicate eventId detected' };
+      }
+    }
+    
+    // Additional check for critical events by content hash
+    if (payload.eventHash && ['purchase', 'payment_initiated'].includes(payload.step)) {
+      const existingByHash = await FunnelEvent.findOne({
+        sessionId: payload.sessionId,
+        step: payload.step,
+        eventHash: payload.eventHash,
+      }).select('_id').lean();
+      
+      if (existingByHash) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.info('[Funnel] Duplicate detected by eventHash lookup', {
+            eventHash: payload.eventHash,
+            step: payload.step,
+            sessionId: payload.sessionId,
+          });
+        }
+        return { ok: false, code: 'duplicate', reason: 'Duplicate eventHash detected' };
+      }
+    }
+    
     const doc = new FunnelEvent(payload);
     await doc.save();
     return { ok: true };
   } catch (error) {
     if (error?.code === 11000) {
-      // Duplicate event, ignore silently but report as deduplicated
-      return { ok: false, code: 'duplicate', message: 'Duplicate event skipped' };
+      // Duplicate event caught by unique index
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('[Funnel] Duplicate caught by unique index', {
+          eventId: payload.eventId,
+          step: payload.step,
+          error: error.message,
+        });
+      }
+      return { ok: false, code: 'duplicate', reason: 'Duplicate event skipped by index' };
     }
     throw error;
   }
@@ -396,6 +443,19 @@ export async function saveFunnelEvents(rawEvents = []) {
       };
 
       const sessionDoc = await upsertSession(enrichedEvent, timestamp);
+      
+      if (!sessionDoc || !sessionDoc._id) {
+        outcome.errors.push({
+          event: rawEvent,
+          reason: 'Failed to create or retrieve session',
+        });
+        console.error('[Funnel] Session upsert failed', {
+          visitorId: enrichedEvent.visitorId,
+          sessionId: enrichedEvent.sessionId,
+        });
+        continue;
+      }
+      
       const result = await persistEvent(enrichedEvent, sessionDoc, timestamp);
 
       if (result.ok) {
@@ -418,6 +478,16 @@ export async function saveFunnelEvents(rawEvents = []) {
             eventId: parsed.eventId,
           });
         }
+      } else {
+        outcome.errors.push({
+          event: rawEvent,
+          reason: result.reason || 'Unknown persistence error',
+        });
+        console.error('[Funnel] Event persistence failed', {
+          step,
+          code: result.code,
+          reason: result.reason,
+        });
       }
     } catch (error) {
       console.error('[Funnel] Failed to persist event', error);
