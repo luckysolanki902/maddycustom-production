@@ -18,7 +18,7 @@ const FullPageLoader = () => {
       timeoutRef.current = setTimeout(() => {
         console.warn('⚠️ Full page loading timeout - auto-completing');
         dispatch(completeNavigation());
-      }, 10000);
+      }, 20000);
     } else {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);

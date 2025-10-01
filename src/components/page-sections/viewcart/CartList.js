@@ -14,11 +14,24 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import PaymentIcon from '@mui/icons-material/Payment';
 import { updateQuantity } from '@/store/slices/cartSlice';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 const CartItem = ({ item, onRemove, readonly = false }) => {
   const dispatch = useDispatch();
+  const router = useRouter();
   const { productDetails, quantity } = item;
   const { name, price, MRP } = productDetails;
+  const rawSlug = productDetails?.slug?.current
+    || productDetails?.pageSlug
+    || productDetails?.productListPageSlug
+    || productDetails?.slug
+    || productDetails?.handle
+    || productDetails?.seo?.slug
+    || null;
+
+  const productHref = rawSlug
+    ? (rawSlug.startsWith('/') || rawSlug.startsWith('http') ? rawSlug : `/shop/${rawSlug}`)
+    : null;
   
   // Format category name for display
   const formatCategoryName = () => {
@@ -64,6 +77,11 @@ const CartItem = ({ item, onRemove, readonly = false }) => {
     }
   };
 
+  const handleNavigate = () => {
+    if (!productHref) return;
+    router.push(productHref);
+  };
+
   return (
     <motion.div 
       className={`${styles.cartItem} ${readonly ? styles.oosItem : ''}`}
@@ -71,6 +89,17 @@ const CartItem = ({ item, onRemove, readonly = false }) => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       layout
+      role={productHref ? 'button' : undefined}
+      tabIndex={productHref ? 0 : undefined}
+      onClick={handleNavigate}
+      onKeyDown={(e) => {
+        if (!productHref) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleNavigate();
+        }
+      }}
+      style={{ cursor: productHref ? 'pointer' : 'default' }}
     >
       <div className={styles.productImage}>
         <Image
@@ -102,7 +131,12 @@ const CartItem = ({ item, onRemove, readonly = false }) => {
           
           <button 
             className={styles.removeBtn} 
-            onClick={() => onRemove(productDetails._id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onRemove) {
+                onRemove(productDetails._id);
+              }
+            }}
             type="button"
             title={readonly ? 'Remove from cart' : 'Remove from cart'}
           >
@@ -121,7 +155,10 @@ const CartItem = ({ item, onRemove, readonly = false }) => {
           <div className={styles.quantityControls}>
             <button 
               className={`${styles.quantityBtn} ${(quantity <= 1 || readonly) ? styles.disabled : ''}`}
-              onClick={() => !readonly && handleUpdateQuantity(quantity - 1)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!readonly) handleUpdateQuantity(quantity - 1);
+              }}
               disabled={quantity <= 1 || readonly}
               type="button"
             >
@@ -132,7 +169,10 @@ const CartItem = ({ item, onRemove, readonly = false }) => {
             
             <button 
               className={`${styles.quantityBtn} ${readonly ? styles.disabled : ''}`}
-              onClick={() => !readonly && handleUpdateQuantity(quantity + 1)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!readonly) handleUpdateQuantity(quantity + 1);
+              }}
               type="button"
               disabled={readonly}
             >

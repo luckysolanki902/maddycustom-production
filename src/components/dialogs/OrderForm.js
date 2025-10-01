@@ -56,6 +56,69 @@ import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
 import reverseGeocodeClient from '@/lib/utils/reverseGeocodeClient';
 
+const sanitizeFloorValue = (value) => {
+  if (value === undefined || value === null) return '';
+  return String(value).trim();
+};
+
+const extractFloorFromAddressLine1 = (line1) => {
+  if (!line1 || typeof line1 !== 'string') return { base: line1 || '', floor: '' };
+  let base = line1;
+  let floor = '';
+  const patterns = [
+    { regex: /\b(?:floor|flr|fl)\s*[-:]?\s*(\d{1,2})(?:\s*(?:st|nd|rd|th))?\b/i, group: 1 },
+    { regex: /\b(\d{1,2})(?:\s*(?:st|nd|rd|th))?\s*(?:floor|flr|fl)\b/i, group: 1 },
+  ];
+
+  for (const { regex, group } of patterns) {
+    const match = base.match(regex);
+    if (match) {
+      floor = match[group] || '';
+      base = base.replace(regex, '');
+      break;
+    }
+  }
+
+  base = base
+    .replace(/\s{2,}/g, ' ')
+    .replace(/,\s*,/g, ',')
+    .replace(/(^[\s,]+|[\s,]+$)/g, '')
+    .replace(/,\s*$/, '')
+    .trim();
+
+  return { base, floor };
+};
+
+const mapAddressForStore = (incomingAddress) => {
+  if (!incomingAddress || typeof incomingAddress !== 'object') return {};
+
+  const cloned = { ...incomingAddress };
+  const structured = cloned.structured || {};
+  const { base, floor: extractedFloor } = extractFloorFromAddressLine1(cloned.addressLine1 || '');
+  const candidateFloor = cloned.floor ?? structured.floor ?? extractedFloor;
+  const normalizedFloor = sanitizeFloorValue(candidateFloor);
+
+  const result = {
+    ...cloned,
+    addressLine1: base || '',
+    addressLine2: cloned.addressLine2 || '',
+    city: cloned.city || '',
+    state: cloned.state || '',
+    pincode: cloned.pincode || '',
+    country: cloned.country || 'India',
+    floor: normalizedFloor,
+  };
+
+  if (cloned.structured || normalizedFloor) {
+    result.structured = {
+      ...structured,
+      floor: normalizedFloor || structured.floor,
+    };
+  }
+
+  return result;
+};
+
 const OrderForm = ({
   open,
   onClose,
@@ -133,7 +196,9 @@ const OrderForm = ({
     addressLine2: addressDetails.addressLine2 || '',
     // Structured address fields
     areaLocality: dvStructArea,
-    floorInput: (dvStructFloor !== undefined ? String(dvStructFloor) : ''),
+    floorInput: (dvStructFloor !== undefined
+      ? String(dvStructFloor)
+      : (addressDetails.floor ? String(addressDetails.floor) : '')),
     landmark: dvStructLandmark,
     // directions removed; addressType removed per request
     city: addressDetails.city || '',
@@ -147,7 +212,7 @@ const OrderForm = ({
   }), [userDetails.name, userDetails.phoneNumber, userDetails.email,
   addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
   addressDetails.state, addressDetails.pincode, addressDetails.country,
-    aggregatedExtraFields, dvStructArea, dvStructLandmark, dvStructFloor]);
+    addressDetails.floor, aggregatedExtraFields, dvStructArea, dvStructLandmark, dvStructFloor]);
 
   // Geolocation capture
   const [geo, setGeo] = useState({ lat: null, lng: null });
@@ -253,11 +318,18 @@ const OrderForm = ({
       setValue('name', userDetails.name || '');
       setValue('phoneNumber', userDetails.phoneNumber || '');
       setValue('email', userDetails.email || '');
-      setValue('addressLine1', addressDetails.addressLine1 || '');
+      const { base: parsedLine1, floor: floorFromLine1 } = extractFloorFromAddressLine1(addressDetails.addressLine1 || '');
+      setValue('addressLine1', parsedLine1 || '');
       // Do not reset areaLocality/floor/landmark here to avoid wiping user input mid-typing
       // If areaLocality is empty but we have addressLine2 from redux, initialize it once
       if (!getValues('areaLocality') && addressDetails.addressLine2) {
         setValue('areaLocality', addressDetails.addressLine2);
+      }
+      const storedFloor = addressDetails.floor ? String(addressDetails.floor) : '';
+      const existingFloor = getValues('floorInput');
+      const derivedFloor = storedFloor || (floorFromLine1 ? String(floorFromLine1) : '');
+      if (!existingFloor && derivedFloor) {
+        setValue('floorInput', derivedFloor);
       }
       setValue('city', addressDetails.city || '');
       setValue('state', addressDetails.state || '');
@@ -271,7 +343,7 @@ const OrderForm = ({
     }
   }, [open, userDetails.name, userDetails.phoneNumber, userDetails.email,
     addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
-    addressDetails.state, addressDetails.pincode, addressDetails.country, validatePincode, setValue, getValues]);
+    addressDetails.state, addressDetails.pincode, addressDetails.country, addressDetails.floor, validatePincode, setValue, getValues]);
 
   // Handle Prefilled Address (guard against overwriting existing redux address)
   useEffect(() => {
@@ -287,7 +359,7 @@ const OrderForm = ({
       );
 
       if (isReduxAddressEmpty) {
-        dispatch(setAddressDetails(prefilledAddress));
+        dispatch(setAddressDetails(mapAddressForStore(prefilledAddress)));
 
         // Using shared extractFloorFromAddressLine1 helper
         // hydrate form values only if the corresponding fields are empty
@@ -628,14 +700,7 @@ const OrderForm = ({
             Object.entries(mapped).forEach(([key, value]) => setValue(key, value || ''));
 
             // Keep redux addressDetails to legacy fields so other pages remain unaffected
-            dispatch(setAddressDetails({
-              addressLine1: latestAddress.addressLine1 || '',
-              addressLine2: latestAddress.addressLine2 || '',
-              city: latestAddress.city || '',
-              state: latestAddress.state || '',
-              pincode: latestAddress.pincode || '',
-              country: latestAddress.country || 'India',
-            }));
+            dispatch(setAddressDetails(mapAddressForStore(latestAddress)));
 
             // Pre-validate pincode
             if (latestAddress.pincode && latestAddress.pincode.length === 6) {
@@ -752,7 +817,7 @@ const OrderForm = ({
         .then(response => {
           if (response.data.message === 'Address added successfully.' ||
             response.data.message === 'Using existing address.') {
-            dispatch(setAddressDetails(response.data.latestAddress));
+            dispatch(setAddressDetails(mapAddressForStore(response.data.latestAddress)));
           }
           return response.data;
         }).catch(error => {
@@ -1052,62 +1117,102 @@ const OrderForm = ({
   }), []);
 
   // Custom styled text field component with memoization to prevent rerenders
-  const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, onBlur: onBlurProp, type = "text", maxWidth, InputProps }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: field.name === 'name' ? 0.1 : field.name === 'email' ? 0.2 : field.name === 'phoneNumber' ? 0.3 : 0.1 * parseInt(field.name.replace(/\D/g, '') || '0') }}
-    >
-      <TextField
-        variant="outlined"
-        size="small"
-        {...field}
-        label={label}
-        fullWidth
-        type={type}
-        error={!!error}
-        helperText={helperText}
-        disabled={disabled}
-        onChange={onChange}
-        onFocus={() => isMobile && setIsInputFocused(true)}
-        onBlur={(e) => {
-          if (onBlurProp) onBlurProp(e);
-          if (isMobile) setIsInputFocused(false);
-        }}
-        InputLabelProps={{
-          style: {
-            fontFamily: 'Jost, sans-serif',
-            fontSize: '0.85rem',
-          },
-        }}
-        InputProps={{
-          style: {
-            fontFamily: 'Jost, sans-serif',
-            fontSize: '0.95rem',
-          },
-          ...InputProps
-        }}
-        sx={{
-          marginBottom: '0.8rem',
-          maxWidth: maxWidth,
-          '& .MuiOutlinedInput-root': {
-            borderRadius: '8px',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-            '&:hover': {
-              boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
+  const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, onBlur: onBlurProp, type = "text", maxWidth, InputProps }) => {
+    const baseInputTypography = {
+      fontFamily: 'Jost, sans-serif',
+      fontSize: '0.9rem',
+      fontWeight: 400,
+      letterSpacing: '0.01em'
+    };
+
+    const mergedInputProps = {
+      ...(InputProps || {}),
+      style: {
+        ...baseInputTypography,
+        ...(InputProps?.style || {}),
+      },
+      inputProps: {
+        ...(InputProps?.inputProps || {}),
+        spellCheck: false,
+        autoCorrect: 'off',
+        autoCapitalize: 'none',
+        autoComplete: 'off',
+        style: {
+          ...baseInputTypography,
+          ...(InputProps?.inputProps?.style || {}),
+        },
+      },
+    };
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: field.name === 'name' ? 0.1 : field.name === 'email' ? 0.2 : field.name === 'phoneNumber' ? 0.3 : 0.1 * parseInt(field.name.replace(/\D/g, '') || '0') }}
+      >
+        <TextField
+          variant="outlined"
+          size="small"
+          {...field}
+          label={label}
+          fullWidth
+          type={type}
+          error={!!error}
+          helperText={helperText}
+          disabled={disabled}
+          onChange={onChange}
+          onFocus={() => isMobile && setIsInputFocused(true)}
+          onBlur={(e) => {
+            if (onBlurProp) onBlurProp(e);
+            if (isMobile) setIsInputFocused(false);
+          }}
+          InputLabelProps={{
+            style: {
+              fontFamily: 'Jost, sans-serif',
+              fontSize: '0.82rem',
+              fontWeight: 400,
+              letterSpacing: '0.02em'
             },
-            '&.Mui-focused': {
-              transform: 'translateY(-2px)',
-              boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
+          }}
+          InputProps={mergedInputProps}
+          inputProps={{
+            spellCheck: false,
+            autoCorrect: 'off',
+            autoCapitalize: 'none',
+            autoComplete: 'off',
+            style: baseInputTypography,
+          }}
+          FormHelperTextProps={{
+            sx: {
+              fontFamily: 'Jost, sans-serif',
+              fontSize: '0.72rem',
+              fontWeight: 400,
+              letterSpacing: '0.01em',
+              mt: '4px'
             }
-          },
-          '& .MuiInputLabel-shrink': {
-            transform: 'translate(14px, -12px) scale(0.75)',
-          }
-        }}
-      />
-    </motion.div>
-  ), [isMobile]);
+          }}
+          sx={{
+            marginBottom: '0.8rem',
+            maxWidth: maxWidth,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '8px',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              '&:hover': {
+                boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
+              },
+              '&.Mui-focused': {
+                transform: 'translateY(-2px)',
+                boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
+              }
+            },
+            '& .MuiInputLabel-shrink': {
+              transform: 'translate(14px, -12px) scale(0.75)',
+            }
+          }}
+        />
+      </motion.div>
+    );
+  }, [isMobile]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -1569,7 +1674,7 @@ const OrderForm = ({
                                   if ((addr?.houseNumber || addr?.road) && !getValues('addressLine1')) {
                                     const part = [addr.houseNumber, addr.road].filter(Boolean).join(', ');
                                     setValue('addressLine1', part);
-                                    dispatch(setAddressDetails({ addressLine1: part }));
+                                    dispatch(setAddressDetails({ addressLine1: part, floor: '' }));
                                   }
                                   if (addr?.poi && !getValues('landmark')) {
                                     setValue('landmark', addr.poi);
@@ -1693,16 +1798,35 @@ const OrderForm = ({
                                       InputLabelProps={{
                                         style: {
                                           fontFamily: 'Jost, sans-serif',
-                                          fontSize: '0.85rem',
+                                          fontSize: '0.82rem',
+                                          fontWeight: 400,
+                                          letterSpacing: '0.02em'
                                         },
                                       }}
                                       InputProps={{
                                         ...params.InputProps,
                                         style: {
                                           fontFamily: 'Jost, sans-serif',
-                                          fontSize: '0.95rem',
+                                          fontSize: '0.9rem',
+                                          fontWeight: 400,
+                                          letterSpacing: '0.01em',
                                           textTransform: 'capitalize'
                                         },
+                                      }}
+                                      inputProps={{
+                                        ...params.inputProps,
+                                        spellCheck: false,
+                                        autoCorrect: 'off',
+                                        autoCapitalize: 'none',
+                                        autoComplete: 'off',
+                                        style: {
+                                          fontFamily: 'Jost, sans-serif',
+                                          fontSize: '0.9rem',
+                                          fontWeight: 400,
+                                          letterSpacing: '0.01em',
+                                          textTransform: 'capitalize',
+                                          ...(params.inputProps?.style || {}),
+                                        }
                                       }}
                                     />
                                   )}
@@ -1740,57 +1864,74 @@ const OrderForm = ({
                           />
                         </Grid>
                       </Grid>
-                      <Controller
-                        name="addressLine1"
-                        control={control}
-                        rules={{ required: 'Address is required' }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Flat/House no/Building name"
-                            error={errors.addressLine1}
-                            helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                            }}
-                            onBlur={(e) => {
-                              const base = e.target.value;
-                              const floor = getValues('floorInput');
-                              const composed = [base, formatFloorForAddress(floor)].filter(Boolean).join(', ');
-                              dispatch(setAddressDetails({ addressLine1: composed }));
-                            }}
-                            InputProps={{ style: { textTransform: 'capitalize' } }}
-                          />
-                        )}
-                      />
-
-                      {/* Floor (optional) */}
-                      <Controller
-                        name="floorInput"
-                        control={control}
-                        rules={{ required: false }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Floor (optional)"
-                            error={errors.floorInput}
-                            helperText={errors.floorInput ? errors.floorInput.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              const base = getValues('addressLine1');
-                              const floor = e.target.value;
-                              const composed = [base, formatFloorForAddress(floor)].filter(Boolean).join(', ');
-                              // Keep legacy redux addressLine1 composed for compatibility
-                              dispatch(setAddressDetails({ addressLine1: composed }));
-                            }}
-                          />
-                        )}
-                      />
-
-                      {/* Area / Locality and Landmark */}
                       <Grid container spacing={1.5} sx={{ width: '100%' }}>
+                        <Grid item xs={12}>
+                          <Controller
+                            name="addressLine1"
+                            control={control}
+                            rules={{ required: 'Address is required' }}
+                            render={({ field }) => (
+                              <StyledTextField
+                                field={field}
+                                label="Flat/House no/Building name"
+                                error={errors.addressLine1}
+                                helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
+                                disabled={isLoading || isPaymentProcessing}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                }}
+                                onBlur={(e) => {
+                                  const rawValue = e.target.value || '';
+                                  const { base, floor: extractedFloor } = extractFloorFromAddressLine1(rawValue);
+                                  const sanitizedBase = base.trim();
+                                  const currentFloor = sanitizeFloorValue(getValues('floorInput'));
+                                  const derivedFloor = currentFloor || sanitizeFloorValue(extractedFloor);
+
+                                  if (sanitizedBase !== rawValue.trim()) {
+                                    setValue('addressLine1', sanitizedBase);
+                                  }
+
+                                  if (!currentFloor && derivedFloor) {
+                                    setValue('floorInput', derivedFloor);
+                                  }
+
+                                  dispatch(setAddressDetails({
+                                    addressLine1: sanitizedBase,
+                                    floor: derivedFloor,
+                                  }));
+                                }}
+                                InputProps={{ style: { textTransform: 'capitalize' } }}
+                              />
+                            )}
+                          />
+                        </Grid>
+
+                        {/* Not rendering for now may be used in future: Floor (optional) */}
+                        {/* <Grid item xs={12}>
+                          <Controller
+                            name="floorInput"
+                            control={control}
+                            rules={{ required: false }}
+                            render={({ field }) => (
+                              <StyledTextField
+                                field={field}
+                                label="Floor (optional)"
+                                error={errors.floorInput}
+                                helperText={errors.floorInput ? errors.floorInput.message : ''}
+                                disabled={isLoading || isPaymentProcessing}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  const sanitizedFloor = sanitizeFloorValue(e.target.value);
+                                  dispatch(setAddressDetails({
+                                    floor: sanitizedFloor,
+                                  }));
+                                }}
+                              />
+                            )}
+                          />
+                        </Grid> */}
+
+                        {/* Area / Locality and Landmark */}
                         <Grid item xs={12}>
                           <Controller
                             name="areaLocality"
