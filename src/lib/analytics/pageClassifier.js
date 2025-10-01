@@ -11,30 +11,34 @@ function normalizePath(pathname = '/') {
   if (typeof pathname !== 'string' || pathname.length === 0) {
     return '/';
   }
+
   const trimmed = pathname.trim();
-  if (!trimmed.startsWith('/')) {
-    return `/${trimmed}`;
+  const withoutQuery = trimmed.split('?')[0]?.split('#')[0] ?? '';
+  let normalized = withoutQuery.length ? withoutQuery : '/';
+
+  if (!normalized.startsWith('/')) {
+    normalized = `/${normalized}`;
   }
-  if (trimmed.length > 1 && trimmed.endsWith('/')) {
-    return trimmed.replace(/\/+$/u, '');
+
+  if (normalized.length > 1) {
+    normalized = normalized.replace(/\/+$/u, '');
   }
-  return trimmed;
+
+  return normalized.length ? normalized : '/';
 }
 
 function classifyShopPath(segments) {
-  // Count total segments (including 'shop')
-  const totalSegments = segments.length;
-  
-  // /shop/wraps/car-wraps/fuel-cap-wraps → 4 parts = product-list-page
-  // /shop/wraps/car-wraps/fuel-cap-wraps/rectangle-petrol → 5 parts = product-id-page
-  
-  if (totalSegments === 4) {
+  // Count segments AFTER 'shop'
+  const segmentsAfterShop = segments.length - 1;
+
+  if (segmentsAfterShop === 4) {
     return PAGE_CATEGORY.PRODUCT_LIST;
-  } else if (totalSegments === 5) {
+  }
+
+  if (segmentsAfterShop === 5) {
     return PAGE_CATEGORY.PRODUCT_DETAIL;
   }
-  
-  // Anything else (1, 2, 3, or 6+ segments) = other
+
   return PAGE_CATEGORY.OTHER;
 }
 
