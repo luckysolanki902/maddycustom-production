@@ -13,6 +13,7 @@ const initialState = {
     state: '',
     pincode: '',
     country: 'India',
+    floor: '',
   },
   userExists: false,
   prefilledAddress: null,
