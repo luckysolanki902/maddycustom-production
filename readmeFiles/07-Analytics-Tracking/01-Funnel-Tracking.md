@@ -10,6 +10,7 @@ This document captures the end-to-end funnel tracking stack that now ships with 
 > - `FUNNEL_TRACKING_QUICK_GUIDE.md` - Developer quick reference
 > - `IDEMPOTENCY_IMPLEMENTATION_SUMMARY.md` - Implementation summary
 > - `TRACKING_FLOW_DIAGRAM.md` - Visual flow diagram
+> - `funnel_tracking_update.md` - Latest model + enum deltas (this update)
 
 ---
 
@@ -22,6 +23,7 @@ This document captures the end-to-end funnel tracking stack that now ships with 
   - **Smart Dedupe Cache**: In-memory cache with intelligent time windows (5 seconds for critical events like purchase/payment, 30 minutes for others).
   - **localStorage Backup**: Events survive page refresh/close with automatic restoration.
   - **Retry Logic**: 3 attempts with exponential backoff before backing up to localStorage.
+  - **Auto Visit Coverage**: Built-in page classifier now tracks `visit` for every navigation (home, product-list, product-id, and other pages) while waiting ~200ms so page components can enrich metadata before dispatch.
   - New helpers `identifyUser()` and `getIdentifiers()` let UI flows tag funnel sessions with user/contact info when it becomes available.
   - Debug mode can be toggled with the `?debugFunnel` query param (or automatically in non-production builds) to log queued/flush activity to the console.
 - **Bridge Component**: `components/analytics/FunnelClientBridge.js`
@@ -86,19 +88,47 @@ For detailed documentation, see `IDEMPOTENCY_AND_DEDUPLICATION.md`.
 
 | Model | Purpose | Key Fields |
 | --- | --- | --- |
-| `FunnelSession` | Represents a visitor-session pair. | `visitorId`, `sessionId`, `userId`, `utm`, `device`, `geo`, `landingPage`, `flags`, `firstActivityAt`, `lastActivityAt`, `metadata.contact` (`phoneNumber`, `email`, `name`), `metadata.tags`, `metadata.lastLinkedAt`, `revisits` |
-| `FunnelEvent` | Immutable events tied to a session. | `session` (ref), `visitorId`, `sessionId`, `userId`, `step`, `timestamp`, **`eventId`** (deterministic unique ID), **`eventHash`** (content-based hash), optional `page`, `product`, `cart`, `order`, `utm`, and a flexible `metadata` Mixed type receiving contact snapshots, offer info, etc. |
+| `FunnelSession` | Represents a visitor-session pair. | `visitorId`, `sessionId`, `userId`, `utm`, `device`, `geo`, `landingPage` (**path**, **name**, **pageCategory**, category, slug, title), `flags`, `firstActivityAt`, `lastActivityAt`, `metadata.contact` (`phoneNumber`, `email`, `name`, `localUserId`), `metadata.tags`, `metadata.lastLinkedAt`, `revisits` |
+| `FunnelEvent` | Immutable events tied to a session. | `session` (ref), `visitorId`, `sessionId`, `userId`, `step`, `timestamp`, **`eventId`** (deterministic unique ID), **`eventHash`** (content-based hash), optional `page` (**path**, **name**, **pageCategory**, slug, title), `product`, `cart`, `order`, `utm`, and a flexible `metadata` Mixed type receiving contact snapshots (`metadata.user.localUserId`, phone, email), offer info, etc. |
 
 **Indexes for Performance & Deduplication**:
 - `(visitorId, sessionId)` - Fast session lookups
 - `(step, timestamp)` - Chronological event queries
 - `(sessionId, step, eventId)` - **Unique index** (primary deduplication)
 - `(sessionId, step, eventHash)` - **Partial index** for critical events (purchase, payment_initiated, initiate_checkout)
+- `('landingPage.pageCategory', lastActivityAt)` - Landing page segmentation
+- `('page.pageCategory', timestamp)` - Event-level page classification pivots
 - `(metadata.contact.phoneNumber)` - Contact-driven queries
 - `(utm.source, utm.medium)` - UTM analysis
 - `(device.platform)` - Device segmentation
 
 `attachUserToFunnel()` updates both collections once a user authenticates or provides contact details, ensuring future analytics can pivot by user ID/phone/email.
+
+---
+
+## Page Classification Enum
+
+Every navigation now maps to one of four canonical page categories, shared by the client classifier, session metadata, and server validation (`PAGE_CATEGORY_VALUES` in `src/lib/analytics/pageClassifier.js`):
+
+| Value | Description | Captured In |
+| --- | --- | --- |
+| `home` | Root landing page (`/`) | `FunnelSession.landingPage.pageCategory`, `FunnelEvent.page.pageCategory`, `visit` metadata |
+| `product-list-page` | Category/variant listings under `/shop/...` with ≤1 slug after `shop` | Same as above |
+| `product-id-page` | SKU detail pages under `/shop/...` with ≥2 slugs | Same as above + includes product snapshot |
+| `other` | All remaining routes (about, terms, viewcart, user flows, etc.) | Same as above |
+
+The classifier runs inside `funnelClient` for auto `visit` events and inside `funnelService` (via Zod) to enforce that only the enum values above are persisted.
+
+---
+
+## Local Identity Fallback (`localUserId`)
+
+To correlate multi-session browsers that never share contact info:
+
+- `orderForm.userDetails.localUserId` is generated via UUID on first session and stored in redux-persist.
+- `funnelClient.identifyUser()` forwards `localUserId` into event metadata (`metadata.user.localUserId`) and session metadata (`metadata.contact.localUserId`).
+- When a real `userId` arrives, the placeholder is cleared automatically to avoid ambiguity.
+- Use this field to identify repeat visitors who abandon before checkout.
 
 ---
 
@@ -108,7 +138,7 @@ Current normalized `step` values (as enforced by `STEP_MAP` and `STEP_ENUM`):
 
 | Step | Trigger Source | Payload Highlights | Auto-tracked |
 | --- | --- | --- | --- |
-| `visit` | Auto on first page load for a session, via layout bridge | Page path/title, UTM, device info | ✅ |
+| `visit` | Auto on first page load + every navigation via classifier | Page path/title, UTM, device info, `page.pageCategory` (`home`/`product-list-page`/`product-id-page`/`other`) | ✅ |
 | `view_product` | Product detail pages, view effects | Product ID, price, category | ✅ |
 | `add_to_cart` | Product cards, PDP add-to-cart buttons | Product details, cart snapshot | ✅ |
 | `apply_offer` | **New:** fires when a coupon/offer is applied (manual or auto) in cart | Coupon code, discount amount/type, source (`manual`/`auto`), offer ID, cart totals | ✅ |
@@ -225,6 +255,7 @@ Use the steps above to power staged conversion views. Suggested workflow for a *
 ### **Pre-Deployment Checklist**
 - [ ] Review the QA Checklist (below) to ensure all tracking events are firing correctly
 - [ ] Verify idempotency layer is active: check for `eventId` and `eventHash` in payloads
+- [ ] Confirm auto visit classification: ensure `page.pageCategory` is present (`home`, `product-list-page`, `product-id-page`, `other`)
 - [ ] Test localStorage backup: check Application > Local Storage > `maddy_funnel_backup`
 - [ ] Verify indexes exist on FunnelEvent: `eventId` (unique), `sessionId_step_eventHash` (partial)
 - [ ] Confirm event catalog matches `STEP_ENUM` in funnelClient.js
@@ -406,6 +437,7 @@ test('Complete funnel tracking', async () => {
 - **A/B Testing Integration**: Link funnel sessions to experiment variants for performance comparison.
 - **Machine Learning**: Use event sequences to predict purchase likelihood and optimize retargeting.
 - **Cross-device Tracking**: Enhance visitor fingerprinting to track users across multiple devices.
+- **Historical Backfill Scripts**: Run `/api/admin/backfill-page-classification` periodically (include an `x-backfill-token` header if `BACKFILL_ADMIN_TOKEN` is configured) until legacy records all carry the new classification fields.
 
 ---
 
