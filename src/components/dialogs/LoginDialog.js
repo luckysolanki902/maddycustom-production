@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation';
 import CloseIcon from '@mui/icons-material/Close';
 import Image from 'next/image';
 import axios from 'axios';
+import funnelClient from '@/lib/analytics/funnelClient';
 
 const LoginDialog = () => {
   const dispatch = useDispatch();
@@ -43,18 +44,40 @@ const LoginDialog = () => {
   // Handle form submission
   const onSubmit = async (data) => {
     try {
+      const phone = (data.phoneNumber || '').trim();
+      const { visitorId: funnelVisitorId, sessionId: funnelSessionId } = funnelClient.getIdentifiers();
+
+      funnelClient.identifyUser({ phoneNumber: phone });
+
+      try {
+        funnelClient.track('contact_info', {
+          metadata: {
+            form: 'login_dialog',
+          },
+        });
+      } catch (err) {
+        console.warn('Funnel track failed (login dialog):', err);
+      }
+
       const response = await axios.post('/api/user/create', {
-        phoneNumber: data.phoneNumber,
+        phoneNumber: phone,
         source: 'login-popup',
+        funnelVisitorId,
+        funnelSessionId,
       });
 
       if (response.data.message === 'User already exists' || response.data.message === 'User exists and name updated') {
         dispatch(setUserExists(true));
-        dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.userId }));
+        dispatch(setUserDetails({ phoneNumber: phone, userId: response.data.userId }));
         showSnackbar('Welcome to MaddyCustom!.', 'success');
       } else if (response.data.message === 'User created successfully') {
-        dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.user.userId }));
+        dispatch(setUserDetails({ phoneNumber: phone, userId: response.data.user.userId }));
         showSnackbar('Welcome to MaddyCustom!.', 'success');
+      }
+
+      const resolvedUserId = response.data.userId || response.data.user?.userId;
+      if (resolvedUserId) {
+        funnelClient.identifyUser({ userId: resolvedUserId, phoneNumber: phone });
       }
       reset();
       handleClose(); // Use handleClose to ensure consistent behavior

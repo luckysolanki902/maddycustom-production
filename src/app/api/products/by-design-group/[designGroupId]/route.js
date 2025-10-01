@@ -9,7 +9,7 @@ export async function GET(request, { params }) {
   try {
     await connectToDatabase();
     
-    const { designGroupId } = params;
+    const { designGroupId } = await params;
     
     if (!designGroupId) {
       return Response.json(

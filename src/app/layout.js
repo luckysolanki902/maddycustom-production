@@ -10,6 +10,7 @@ import TopLoadingBar from '@/components/utils/TopLoadingBar';
 import AnalyticsHead from '@/components/layouts/AnalyticsHead';
 import { GoogleTagManagerNoScript } from '@/components/analytics/GoogleTagManager';
 import UTMCapture from '@/components/analytics/UTMCapture';
+import FunnelClientBridge from '@/components/analytics/FunnelClientBridge';
 // import UTMLogger from '@/components/analytics/UTMLogger';
 
 // Google Fonts
@@ -85,6 +86,7 @@ export default function RootLayout({ children }) {
           <ScrollProvider>
             <NavigationListener />
             <UTMCapture />
+            <FunnelClientBridge />
             <CouponTimerBanner/>
             {/* <UTMLogger /> */}
             <TopLoadingBar />

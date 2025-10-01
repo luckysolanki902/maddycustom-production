@@ -15,6 +15,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import Image from 'next/image';
 import axios from 'axios';
 import { keyframes } from '@mui/system';
+import funnelClient from '@/lib/analytics/funnelClient';
 
 // Minimal animations
 const slideUp = keyframes`
@@ -155,25 +156,47 @@ const SubscribeDialog = () => {
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
+      const phone = (data.phoneNumber || '').trim();
+      const { visitorId: funnelVisitorId, sessionId: funnelSessionId } = funnelClient.getIdentifiers();
+
+      funnelClient.identifyUser({ phoneNumber: phone });
+
+      try {
+        funnelClient.track('contact_info', {
+          metadata: {
+            form: 'subscribe_dialog',
+          },
+        });
+      } catch (err) {
+        console.warn('Funnel track failed (subscribe dialog):', err);
+      }
+
       const response = await axios.post('/api/user/create', {
-        phoneNumber: data.phoneNumber,
+        phoneNumber: phone,
         source: 'subscribe-popup',
+        funnelVisitorId,
+        funnelSessionId,
       });
 
       if (response.data.message === 'User already exists' || response.data.message === 'User exists and name updated') {
         dispatch(setUserExists(true));
-        dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.userId }));
+        dispatch(setUserDetails({ phoneNumber: phone, userId: response.data.userId }));
         dispatch(markSubscribeDialogSuccess()); // Mark as successful subscription - will persist in Redux
         showSnackbar('🎉 You\'re all set! Get ready for exclusive deals!', 'success');
       } else if (response.data.message === 'User created successfully') {
-        dispatch(setUserDetails({ phoneNumber: data.phoneNumber, userId: response.data.user.userId }));
+        dispatch(setUserDetails({ phoneNumber: phone, userId: response.data.user.userId }));
         dispatch(markSubscribeDialogSuccess()); // Mark as successful subscription - will persist in Redux
         showSnackbar('🎉 Welcome to the VIP club! Exclusive deals coming your way!', 'success');
+      }
+
+      const resolvedUserId = response.data.userId || response.data.user?.userId;
+      if (resolvedUserId) {
+        funnelClient.identifyUser({ userId: resolvedUserId, phoneNumber: phone });
       }
       
       // Fire Lead event for newsletter/phone subscription
       try {
-        await lead({ phoneNumber: data.phoneNumber }, {
+        await lead({ phoneNumber: phone }, {
           content_name: 'Subscribe Dialog',
           content_category: 'subscription',
           lead_type: 'subscribe_popup'

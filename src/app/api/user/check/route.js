@@ -3,11 +3,12 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import User from '@/models/User';
+import { attachUserToFunnel } from '@/lib/analytics/funnelService';
 
 export async function PATCH(request) {
   try {
     // Parse the JSON body
-    const { phoneNumber, name, email } = await request.json();
+    const { phoneNumber, name, email, funnelVisitorId, funnelSessionId } = await request.json();
 
     // Validate phoneNumber
     if (!phoneNumber) {
@@ -35,6 +36,19 @@ export async function PATCH(request) {
     ).lean();
 
     if (!user) {
+      if (funnelVisitorId) {
+        try {
+          await attachUserToFunnel({
+            visitorId: funnelVisitorId,
+            sessionId: funnelSessionId,
+            phoneNumber,
+            email,
+            name,
+          });
+        } catch (err) {
+          console.error('Funnel linkage failed (user check - missing user):', err);
+        }
+      }
       // User does not exist
       return NextResponse.json({ exists: false }, { status: 200 });
     }
@@ -58,6 +72,21 @@ export async function PATCH(request) {
     // Use updateOne for better performance if an update is needed
     if (needsUpdate) {
       await User.updateOne({ phoneNumber }, { $set: updateFields });
+    }
+
+    if (funnelVisitorId) {
+      try {
+        await attachUserToFunnel({
+          visitorId: funnelVisitorId,
+          sessionId: funnelSessionId,
+          userId: user._id,
+          phoneNumber,
+          email,
+          name: user.name || name,
+        });
+      } catch (err) {
+        console.error('Funnel linkage failed (user check - existing user):', err);
+      }
     }
 
     // Get latest address efficiently
