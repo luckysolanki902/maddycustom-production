@@ -65,6 +65,8 @@ const FunnelSessionSchema = new mongoose.Schema(
     referrer: { type: String, trim: true },
     landingPage: {
       path: { type: String, trim: true },
+      name: { type: String, trim: true },
+      pageCategory: { type: String, trim: true },
       category: { type: String, trim: true },
       slug: { type: String, trim: true },
       title: { type: String, trim: true },
@@ -92,6 +94,7 @@ const FunnelSessionSchema = new mongoose.Schema(
 FunnelSessionSchema.index({ visitorId: 1, sessionId: 1 }, { unique: true });
 FunnelSessionSchema.index({ 'utm.campaign': 1, lastActivityAt: -1 });
 FunnelSessionSchema.index({ 'device.platform': 1, lastActivityAt: -1 });
+FunnelSessionSchema.index({ 'landingPage.pageCategory': 1, lastActivityAt: -1 });
 FunnelSessionSchema.index({ 'metadata.contact.phoneNumber': 1, lastActivityAt: -1 });
 
 module.exports =

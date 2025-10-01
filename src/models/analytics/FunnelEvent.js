@@ -4,6 +4,7 @@ const PageSchema = new mongoose.Schema(
   {
     path: { type: String, trim: true },
     name: { type: String, trim: true },
+    pageCategory: { type: String, trim: true },
     category: { type: String, trim: true },
     slug: { type: String, trim: true },
     title: { type: String, trim: true },
@@ -112,6 +113,7 @@ const FunnelEventSchema = new mongoose.Schema(
 
 FunnelEventSchema.index({ step: 1, timestamp: -1 });
 FunnelEventSchema.index({ 'page.category': 1, timestamp: -1 });
+FunnelEventSchema.index({ 'page.pageCategory': 1, timestamp: -1 });
 FunnelEventSchema.index({ 'product.id': 1, timestamp: -1 });
 FunnelEventSchema.index({ sessionId: 1, step: 1, timestamp: -1 });
 FunnelEventSchema.index(

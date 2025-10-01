@@ -44,7 +44,7 @@ const rootReducer = combineReducers({
 });
 
 const persistConfig = {
-  key: 'root_v8', // bump version after adding notification persistence
+  key: 'root_v9', // bump version after adding localUserId persistence
   storage,
   // Persist notification state for phone and subscription tracking
   whitelist: [
