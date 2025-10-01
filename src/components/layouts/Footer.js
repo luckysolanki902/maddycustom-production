@@ -19,6 +19,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { usePathname, useRouter } from "next/navigation";
+import funnelClient from '@/lib/analytics/funnelClient';
 
 // Define the links in one place
 const categories = [
@@ -69,9 +70,26 @@ const Footer = () => {
     setLoading(true);
     setSubscriptionMessage("");
     try {
+      const phone = phoneNumber.trim();
+      const { visitorId: funnelVisitorId, sessionId: funnelSessionId } = funnelClient.getIdentifiers();
+
+      funnelClient.identifyUser({ phoneNumber: phone });
+
+      try {
+        funnelClient.track('contact_info', {
+          metadata: {
+            form: 'footer_subscribe',
+          },
+        });
+      } catch (err) {
+        console.warn('Funnel track failed (footer subscribe):', err);
+      }
+
       const response = await axios.post("/api/user/create", {
-        phoneNumber,
+        phoneNumber: phone,
         source: "footer-subscribe",
+        funnelVisitorId,
+        funnelSessionId,
       });
 
       if (
@@ -84,7 +102,7 @@ const Footer = () => {
         setSubscriptionMessage("Thank you for subscribing!");
         setPhoneNumber("");
         try {
-          await lead({ phoneNumber }, {
+          await lead({ phoneNumber: phone }, {
             content_name: 'Footer Subscribe',
             content_category: 'subscription',
             lead_type: 'footer_subscribe'
@@ -93,6 +111,11 @@ const Footer = () => {
         } catch {}
       } else {
         setSubscriptionMessage("Subscription failed. Please try again.");
+      }
+
+      const resolvedUserId = response.data.userId || response.data.user?.userId;
+      if (resolvedUserId) {
+        funnelClient.identifyUser({ userId: resolvedUserId, phoneNumber: phone });
       }
     } catch (error) {
       console.error("Subscription error:", error.message);

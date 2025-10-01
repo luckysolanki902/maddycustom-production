@@ -55,6 +55,7 @@ import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
 import reverseGeocodeClient from '@/lib/utils/reverseGeocodeClient';
+import funnelClient from '@/lib/analytics/funnelClient';
 
 const OrderForm = ({
   open,
@@ -581,6 +582,33 @@ const OrderForm = ({
     // Immediately move to the next tab for better UX
     setTabIndex(1);
 
+    const { visitorId: funnelVisitorId, sessionId: funnelSessionId } = funnelClient.getIdentifiers();
+    funnelClient.identifyUser({
+      name: data.name,
+      phoneNumber: phoneToUse,
+      email: data.email,
+    });
+
+    const cartItemCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    const cartValueNumber = Number(totalCost);
+    const cartValue = Number.isFinite(cartValueNumber) ? cartValueNumber : undefined;
+
+    try {
+      funnelClient.track('contact_info', {
+        cart: {
+          items: cartItemCount || undefined,
+          value: cartValue,
+          currency: 'INR',
+        },
+        metadata: {
+          form: 'order_form_contact',
+          hasEmail: Boolean(data.email),
+        },
+      });
+    } catch (err) {
+      console.warn('Funnel contact_info track failed:', err);
+    }
+
     // Fire custom event: Contact info provided (name/phone/email)
     try {
       const contents = cartItems.map((item) => ({
@@ -604,11 +632,19 @@ const OrderForm = ({
       phoneNumber: phoneToUse,
       name: data.name,
       email: data.email,
+      funnelVisitorId,
+      funnelSessionId,
     })
       .then(response => {
         if (response.data.exists) {
           const latestAddress = response.data.latestAddress;
           dispatch(setUserDetails({ userId: response.data.userId }));
+          funnelClient.identifyUser({
+            userId: response.data.userId,
+            phoneNumber: phoneToUse,
+            email: data.email,
+            name: data.name,
+          });
 
           if (latestAddress) {
             // Map legacy fields and populate structured UI fields if available
@@ -649,9 +685,17 @@ const OrderForm = ({
             phoneNumber: phoneToUse,
             email: data.email,
             source: 'order-form',
+            funnelVisitorId,
+            funnelSessionId,
           })
             .then(createResponse => {
               dispatch(setUserDetails({ userId: createResponse.data.userId || createResponse.data.user?.userId }));
+              funnelClient.identifyUser({
+                userId: createResponse.data.userId || createResponse.data.user?.userId,
+                phoneNumber: phoneToUse,
+                email: data.email,
+                name: data.name,
+              });
               return createResponse;
             });
         }

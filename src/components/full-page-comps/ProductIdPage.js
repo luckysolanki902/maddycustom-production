@@ -9,6 +9,7 @@ import OrderSpecifications from "../page-sections/product-id-page/OrderSpecifica
 import PriceAndChat from "../page-sections/product-id-page/PriceAndChat";
 import HappyCustomersClient from "../showcase/sliders/HappyCustomerClient";
 import { viewContent } from "@/lib/metadata/facebookPixels";
+import funnelClient from "@/lib/analytics/funnelClient";
 import ContactUs from "../layouts/ContactUs";
 import AddToCartButtonWithOrder from "../utils/AddToCartButtonWithOrder";
 import ImageGallery from "../page-sections/product-id-page/ImageGallery";
@@ -47,6 +48,7 @@ export default function ProductIdPage({
 }) {
   // Use the product prop directly since we're using page refresh approach
   const product = initialProduct;
+  const utmDetails = useSelector(state => state.utm?.utmDetails);
   // -- Color map for color options --
   const colorMap = {
     red: "#ff0066",
@@ -81,6 +83,7 @@ export default function ProductIdPage({
   const userDetails = useSelector(state => state.orderForm.userDetails);
   const { email, phoneNumber } = userDetails || {};
   const hasTracked = useRef(false);
+  const hasTrackedVisit = useRef(false);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const pathname = usePathname();
   const router = useRouter();
@@ -92,6 +95,46 @@ export default function ProductIdPage({
   const [selectedWrapFinish, setSelectedWrapFinish] = useState("Matte");
   const [showVariantDialog, setShowVariantDialog] = useState(false);
   const [variantCheckLoading, setVariantCheckLoading] = useState(false);
+
+  useEffect(() => {
+    hasTrackedVisit.current = false;
+  }, [product?._id, pathname]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (hasTrackedVisit.current) return;
+
+    const pagePath = window.location.pathname || pathname;
+    const page = {
+      path: pagePath,
+      name: 'product-id-page',
+      category: category?.name || product?.category?.name || product?.category,
+      slug: pagePath.replace(/^\//, ''),
+      title: product?.title || product?.name,
+    };
+
+    const metadata = {
+      pageType: 'product-id-page',
+      productId: product?._id,
+      categoryId: category?._id,
+      variantId: variant?._id,
+    };
+
+    funnelClient.setPageContext({ page, metadata });
+    funnelClient.track('visit', {
+      page,
+      metadata,
+      product: {
+        id: product?._id,
+        name: product?.name || product?.title,
+        price: product?.price,
+        category: category?.name || product?.category,
+      },
+      utm: utmDetails,
+    });
+
+    hasTrackedVisit.current = true;
+  }, [category?._id, category?.name, pathname, product?._id, product?.name, product?.price, product?.title, product?.category, variant?._id, utmDetails]);
 
   const insertionDetails = {
     component: "productDetails-AddToCart",
@@ -287,9 +330,36 @@ export default function ProductIdPage({
         const { gaViewItem } = require('@/lib/metadata/googleAds');
         gaViewItem({ value: product.price, items });
       } catch {}
+      try {
+        const pagePath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+        funnelClient.track('view_product', {
+          page: {
+            path: pagePath,
+            name: 'product-id-page',
+            category: category?.name || product.category?.name || product.category,
+            slug: pagePath?.replace(/^\//, ''),
+            title: product?.title || product?.name,
+          },
+          product: {
+            id: product?._id,
+            name: product?.name || product?.title,
+            price: product?.price,
+            brand: product?.brand,
+            category: product?.category?.name || product?.category,
+            variantId: product?.selectedOption?._id || variant?._id,
+          },
+          metadata: {
+            pageType: 'product-id-page',
+            variantId: variant?._id,
+          },
+          utm: utmDetails,
+        });
+      } catch (error) {
+        console.error('[Funnel] view_product tracking failed', error);
+      }
       hasTracked.current = true;
     }
-  }, [product, email, phoneNumber]);
+  }, [product, email, phoneNumber, category?.name, pathname, utmDetails, variant?._id]);
 
   // --- FETCH SOLD COUNT (Optional) ---
   useEffect(() => {
