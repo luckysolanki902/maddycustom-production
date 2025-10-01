@@ -121,6 +121,16 @@ FunnelEventSchema.index(
     partialFilterExpression: { eventId: { $type: 'string' } },
   }
 );
+// Additional index for eventHash-based deduplication
+FunnelEventSchema.index(
+  { sessionId: 1, step: 1, eventHash: 1 },
+  {
+    partialFilterExpression: { 
+      eventHash: { $type: 'string' },
+      step: { $in: ['purchase', 'payment_initiated', 'initiate_checkout'] }
+    },
+  }
+);
 
 module.exports =
   mongoose.models.FunnelEvent || mongoose.model('FunnelEvent', FunnelEventSchema);

@@ -2,19 +2,109 @@
 
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * Generate a deterministic event ID based on event characteristics
+ * This ensures idempotency - same event generates same ID
+ */
+function generateEventId(step, visitorId, sessionId, timestamp, payload = {}) {
+  try {
+    // Round timestamp to nearest second for deduplication window
+    const roundedTimestamp = Math.floor(timestamp / 1000) * 1000;
+    
+    // Build deterministic string based on event characteristics
+    const parts = [step, visitorId, sessionId, roundedTimestamp];
+    
+    // Add identifying data based on event type
+    if (payload.product?.id) {
+      parts.push('p', payload.product.id);
+      if (payload.product.quantity) {
+        parts.push('q', payload.product.quantity);
+      }
+    }
+    
+    if (payload.order?.orderId) {
+      parts.push('o', payload.order.orderId);
+    }
+    
+    if (payload.page?.path) {
+      parts.push('pg', payload.page.path);
+    }
+    
+    if (payload.metadata?.couponCode) {
+      parts.push('c', payload.metadata.couponCode);
+    }
+    
+    // Create hash-like string
+    const eventString = parts.join(':');
+    
+    // Simple hash function for deterministic ID
+    let hash = 0;
+    for (let i = 0; i < eventString.length; i++) {
+      const char = eventString.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    // Convert to positive hex string
+    const hashHex = Math.abs(hash).toString(16).padStart(8, '0');
+    
+    // Return format: step_timestamp_hash
+    return `${step}_${roundedTimestamp}_${hashHex}`;
+  } catch (error) {
+    console.warn('[Funnel] Failed to generate deterministic eventId', error);
+    // Fallback to UUID
+    return uuidv4();
+  }
+}
+
+/**
+ * Generate event hash for additional deduplication
+ */
+function generateEventHash(event) {
+  try {
+    const hashData = {
+      step: event.step,
+      visitorId: event.visitorId,
+      sessionId: event.sessionId,
+      productId: event.product?.id,
+      orderId: event.order?.orderId,
+      pagePath: event.page?.path,
+      cartItems: event.cart?.items,
+      cartValue: event.cart?.value,
+    };
+    
+    const hashString = JSON.stringify(hashData);
+    
+    let hash = 0;
+    for (let i = 0; i < hashString.length; i++) {
+      const char = hashString.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    
+    return Math.abs(hash).toString(36);
+  } catch (error) {
+    console.warn('[Funnel] Failed to generate eventHash', error);
+    return null;
+  }
+}
+
 const STORAGE_KEYS = {
   VISITOR: 'maddy_funnel_vid',
   SESSION: 'maddy_funnel_sid',
   SESSION_EXP: 'maddy_funnel_sid_exp',
+  BACKUP_QUEUE: 'maddy_funnel_backup_queue',
 };
 
 const API_ENDPOINT = '/api/analytics/track-funnel';
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes inactivity window
 const MAX_BATCH_SIZE = 10;
 const FLUSH_INTERVAL_MS = 4000;
-const MAX_QUEUE_SIZE = 120;
+const MAX_QUEUE_SIZE = 150; // Increased from 120
+const MAX_BACKUP_QUEUE_SIZE = 50; // Max events to store in localStorage
 const DEBUG_PARAM = 'debugFunnel';
 const DEDUPE_TTL_MS = SESSION_TTL_MS;
+const MAX_FLUSH_RETRIES = 3;
 
 function pruneEmpty(value) {
   if (value === null || value === undefined) return undefined;
@@ -80,6 +170,8 @@ class FunnelClient {
     this.userContext = {};
     this.debug = false;
     this.dedupeCache = new Map();
+    this.flushRetries = 0;
+    this.droppedEvents = 0;
   }
 
   init(additionalMeta = {}) {
@@ -97,6 +189,9 @@ class FunnelClient {
       this.sessionId = uuidv4();
     }
 
+    // Restore any backed up events from previous session
+    this.restoreBackupQueue();
+
     this.sessionMeta = {
       ...this.buildDeviceSnapshot(),
       referrer: document.referrer || undefined,
@@ -113,11 +208,25 @@ class FunnelClient {
       }
     });
 
-    window.addEventListener('beforeunload', () => this.flush('beforeunload'));
-    window.addEventListener('pagehide', () => this.flush('pagehide'));
+    window.addEventListener('beforeunload', () => {
+      this.backupQueue();
+      this.flush('beforeunload');
+    });
+    
+    window.addEventListener('pagehide', () => {
+      this.backupQueue();
+      this.flush('pagehide');
+    });
 
     this.refreshDebugFlag();
     this.initialized = true;
+    
+    if (this.debug) {
+      console.info('[Funnel] Client initialized', {
+        visitorId: this.visitorId,
+        sessionId: this.sessionId,
+      });
+    }
   }
 
   buildDeviceSnapshot() {
@@ -211,6 +320,73 @@ class FunnelClient {
     }
   }
 
+  backupQueue() {
+    if (!this.storage || this.queue.length === 0) return;
+    
+    try {
+      // Only backup important events (not visit events to avoid noise)
+      const importantEvents = this.queue.filter(event => 
+        event.step !== 'visit' && event.step !== 'session_return'
+      ).slice(0, MAX_BACKUP_QUEUE_SIZE);
+      
+      if (importantEvents.length > 0) {
+        this.storage.setItem(
+          STORAGE_KEYS.BACKUP_QUEUE,
+          JSON.stringify(importantEvents)
+        );
+        if (this.debug) {
+          console.info('[Funnel] Backed up queue', {
+            count: importantEvents.length,
+          });
+        }
+      }
+    } catch (error) {
+      console.warn('[Funnel] Failed to backup queue', error);
+    }
+  }
+
+  restoreBackupQueue() {
+    if (!this.storage) return;
+    
+    try {
+      const backup = this.storage.getItem(STORAGE_KEYS.BACKUP_QUEUE);
+      if (backup) {
+        const events = JSON.parse(backup);
+        if (Array.isArray(events) && events.length > 0) {
+          // Update session ID for restored events
+          const restoredEvents = events.map(event => ({
+            ...event,
+            sessionId: this.sessionId,
+            metadata: {
+              ...(event.metadata || {}),
+              restored: true,
+            },
+          }));
+          
+          this.queue = restoredEvents;
+          this.storage.removeItem(STORAGE_KEYS.BACKUP_QUEUE);
+          
+          if (this.debug) {
+            console.info('[Funnel] Restored backup queue', {
+              count: restoredEvents.length,
+            });
+          }
+          
+          // Schedule immediate flush
+          this.scheduleFlush(1000);
+        }
+      }
+    } catch (error) {
+      console.warn('[Funnel] Failed to restore backup queue', error);
+      // Clear corrupted backup
+      try {
+        this.storage.removeItem(STORAGE_KEYS.BACKUP_QUEUE);
+      } catch (e) {
+        // Ignore
+      }
+    }
+  }
+
   shouldSkipDueToDedupe(key, sessionId, now = Date.now()) {
     if (!key) return false;
     const entry = this.dedupeCache.get(key);
@@ -223,10 +399,15 @@ class FunnelClient {
       return false;
     }
 
-    if (now - entry.timestamp <= DEDUPE_TTL_MS) {
+    // Reduce dedupe window for critical events (5 seconds instead of 30 minutes)
+    const criticalSteps = ['add_to_cart', 'apply_offer', 'initiate_checkout', 'payment_initiated', 'purchase'];
+    const dedupeWindow = criticalSteps.includes(entry.step) ? 5000 : DEDUPE_TTL_MS;
+
+    if (now - entry.timestamp <= dedupeWindow) {
       if (this.debug) {
         console.info('[Funnel] dedupe skipped event', {
           key,
+          step: entry.step,
           sessionId,
           ageMs: now - entry.timestamp,
         });
@@ -238,9 +419,9 @@ class FunnelClient {
     return false;
   }
 
-  markDedupe(key, sessionId, now = Date.now()) {
+  markDedupe(key, sessionId, step, now = Date.now()) {
     if (!key) return;
-    this.dedupeCache.set(key, { sessionId, timestamp: now });
+    this.dedupeCache.set(key, { sessionId, step, timestamp: now });
     if (this.dedupeCache.size > 200) {
       this.pruneDedupeCache(now);
     }
@@ -351,15 +532,36 @@ class FunnelClient {
       console.warn('[Funnel] Skipping event due to missing identifiers', { step, payload });
       return;
     }
+    
+    // Validate step
+    if (!step || typeof step !== 'string' || step.trim().length === 0) {
+      console.warn('[Funnel] Skipping event due to invalid step', { step, payload });
+      return;
+    }
 
     if (this.queue.length >= MAX_QUEUE_SIZE) {
-      // Drop the oldest event to keep memory bounded
-      this.queue.shift();
+      // Drop the oldest non-critical event to keep memory bounded
+      const nonCriticalIndex = this.queue.findIndex(
+        e => !['purchase', 'payment_initiated', 'initiate_checkout'].includes(e.step)
+      );
+      if (nonCriticalIndex !== -1) {
+        this.queue.splice(nonCriticalIndex, 1);
+        this.droppedEvents++;
+      } else {
+        this.queue.shift();
+        this.droppedEvents++;
+      }
+      
+      if (this.debug) {
+        console.warn('[Funnel] Queue overflow, dropped event', {
+          totalDropped: this.droppedEvents,
+        });
+      }
     }
 
     const timestamp = Date.now();
     const event = {
-      step,
+      step: step.trim(),
       visitorId: this.visitorId,
       sessionId: this.sessionId,
       timestamp,
@@ -370,9 +572,20 @@ class FunnelClient {
       event.userId = activeUserId;
     }
 
+    // Generate deterministic eventId if not provided
     if (payload.eventId) {
       event.eventId = payload.eventId;
+    } else {
+      event.eventId = generateEventId(
+        event.step,
+        this.visitorId,
+        this.sessionId,
+        timestamp,
+        payload
+      );
     }
+    
+    // Generate eventHash for additional deduplication
     if (payload.eventHash) {
       event.eventHash = payload.eventHash;
     }
@@ -422,35 +635,63 @@ class FunnelClient {
     if (session) {
       event.session = session;
     }
+    
+    // Generate eventHash after all data is populated
+    if (!event.eventHash) {
+      event.eventHash = generateEventHash(event);
+    }
+    
+    // Use eventId as primary dedupe key if no explicit dedupeKey provided
+    if (!dedupeKey) {
+      if (step === 'visit' && event.page?.path) {
+        dedupeKey = `visit:${event.page.path}`;
+      } else if (step === 'purchase' && event.order?.orderId) {
+        dedupeKey = `purchase:${event.order.orderId}`;
+      } else if (step === 'payment_initiated' && event.order?.orderId) {
+        dedupeKey = `payment:${event.order.orderId}`;
+      } else {
+        // Use eventId as dedupe key for idempotency
+        dedupeKey = event.eventId;
+      }
+    }
 
     if (this.debug) {
       try {
         console.info('[Funnel] queued event', {
           step,
+          eventId: event.eventId,
+          eventHash: event.eventHash,
+          dedupeKey,
           page: event.page?.path,
           product: event.product?.id,
           cartItems: event.cart?.items,
           cartValue: event.cart?.value,
           orderId: event.order?.orderId,
           metadata: event.metadata,
+          queueSize: this.queue.length,
         });
       } catch (error) {
         console.info('[Funnel] queued event', step);
       }
     }
 
-    if (!dedupeKey && step === 'visit') {
-      dedupeKey = `visit:${event.page?.path || 'unknown'}`;
-    }
-
+    // Check dedupe before queueing
     if (dedupeKey && this.shouldSkipDueToDedupe(dedupeKey, event.sessionId, timestamp)) {
+      if (this.debug) {
+        console.info('[Funnel] Event skipped due to deduplication', {
+          step,
+          dedupeKey,
+          eventId: event.eventId,
+        });
+      }
       return;
     }
 
     this.queue.push(event);
     if (dedupeKey) {
-      this.markDedupe(dedupeKey, event.sessionId, timestamp);
+      this.markDedupe(dedupeKey, event.sessionId, step, timestamp);
     }
+    
     if (this.queue.length >= MAX_BATCH_SIZE) {
       this.flush('batch');
     } else {
@@ -495,6 +736,7 @@ class FunnelClient {
           reason,
           count: batch.length,
           steps: batch.map((event) => event.step),
+          retry: this.flushRetries,
         });
       } catch (error) {
         console.info('[Funnel] flush debug failed', error);
@@ -513,9 +755,10 @@ class FunnelClient {
 
     const payload = JSON.stringify({ events: batch });
     let success = false;
+    let errorDetails = null;
 
     try {
-      if (navigator.sendBeacon) {
+      if (navigator.sendBeacon && reason !== 'manual') {
         const blob = new Blob([payload], { type: 'application/json' });
         success = navigator.sendBeacon(API_ENDPOINT, blob);
       }
@@ -529,27 +772,76 @@ class FunnelClient {
           body: payload,
           keepalive: true,
         });
-        success = response.ok;
+        
+        if (response.ok) {
+          success = true;
+          const result = await response.json().catch(() => ({}));
+          
+          if (result.errors && result.errors.length > 0 && this.debug) {
+            console.warn('[Funnel] Server reported errors', {
+              errors: result.errors,
+              accepted: result.accepted,
+              duplicates: result.duplicates,
+            });
+          }
+        } else {
+          errorDetails = `HTTP ${response.status}: ${response.statusText}`;
+        }
       }
     } catch (error) {
+      errorDetails = error?.message || 'Network error';
       console.error('[Funnel] Flush failed', reason, error);
       success = false;
     }
 
     if (!success) {
-      // Requeue the events at the front so they are retried later
-      this.queue = batch.concat(this.queue);
-      this.sending = false;
-      this.scheduleFlush(FLUSH_INTERVAL_MS * 2);
-      return;
-    }
-
-    if (this.debug) {
-      console.info('[Funnel] flush success', {
-        reason,
-        count: batch.length,
-        steps: batch.map((event) => event.step),
-      });
+      this.flushRetries++;
+      
+      // Requeue if we haven't exceeded max retries
+      if (this.flushRetries < MAX_FLUSH_RETRIES) {
+        // Requeue at the front
+        this.queue = batch.concat(this.queue);
+        this.sending = false;
+        
+        // Exponential backoff
+        const retryDelay = FLUSH_INTERVAL_MS * Math.pow(2, this.flushRetries);
+        
+        if (this.debug) {
+          console.warn('[Funnel] Retrying flush', {
+            attempt: this.flushRetries,
+            maxRetries: MAX_FLUSH_RETRIES,
+            retryDelay,
+            error: errorDetails,
+          });
+        }
+        
+        this.scheduleFlush(retryDelay);
+        return;
+      } else {
+        // Exceeded max retries, backup to localStorage
+        if (this.debug) {
+          console.error('[Funnel] Max retries exceeded, backing up events', {
+            count: batch.length,
+            error: errorDetails,
+          });
+        }
+        
+        this.queue = batch.concat(this.queue);
+        this.backupQueue();
+        this.queue = [];
+        this.flushRetries = 0;
+      }
+    } else {
+      // Success - reset retry counter
+      this.flushRetries = 0;
+      
+      if (this.debug) {
+        console.info('[Funnel] flush success', {
+          reason,
+          count: batch.length,
+          steps: batch.map((event) => event.step),
+        });
+      }
     }
 
     this.sending = false;

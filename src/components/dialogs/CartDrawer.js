@@ -1,17 +1,52 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Drawer, Box } from '@mui/material';
 import { closeCartDrawer } from '@/store/slices/uiSlice';
 import ViewCart from '@/components/full-page-comps/ViewCart';
 import { useSpring, animated } from '@react-spring/web';
 import useHistoryState from '@/hooks/useHistoryState';
+import funnelClient from '@/lib/analytics/funnelClient';
 
 const CartDrawer = () => {
   const dispatch = useDispatch();
   const isCartDrawerOpen = useSelector((state) => state.ui.isCartDrawerOpen);
   const drawerSource = useSelector((state) => state.ui.cartDrawerSource);
+  const cartItems = useSelector((state) => state.cart.items);
+  const trackedRef = useRef(false);
+  
+  // Track view_cart_drawer event when drawer opens
+  useEffect(() => {
+    if (isCartDrawerOpen && !trackedRef.current) {
+      trackedRef.current = true;
+      
+      try {
+        const cartQuantity = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+        const cartValue = cartItems.reduce((sum, item) => {
+          const price = item.price || item.productDetails?.price || 0;
+          const qty = item.quantity || 0;
+          return sum + (price * qty);
+        }, 0);
+        
+        funnelClient.track('view_cart_drawer', {
+          cart: {
+            items: cartQuantity || undefined,
+            value: cartValue || undefined,
+            currency: 'INR',
+          },
+          metadata: {
+            source: drawerSource || 'unknown',
+          },
+        });
+      } catch (error) {
+        console.error('[Funnel] view_cart_drawer tracking failed:', error);
+      }
+    } else if (!isCartDrawerOpen) {
+      // Reset tracking flag when drawer closes
+      trackedRef.current = false;
+    }
+  }, [isCartDrawerOpen, cartItems, drawerSource]);
   
   // Add history state management with lower priority than coupon dialog
   const handleClose = () => dispatch(closeCartDrawer());
