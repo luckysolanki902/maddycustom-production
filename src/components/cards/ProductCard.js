@@ -13,9 +13,7 @@ function getDisplayImage(product) {
 
   // 1) Check the product's own images
   if (product.images && product.images.length > 0) {
-    // Check inventory: consider out of stock if availableQuantity is 0 or undefined/null
-    const inventoryAvailable = product.inventoryData?.availableQuantity;
-    outOfStock = outOfStock || inventoryAvailable === 0 || inventoryAvailable === undefined || inventoryAvailable === null;
+    outOfStock = outOfStock || product.inventoryData?.availableQuantity === 0;
     return { imageUrl: product.images[0], outOfStock };
   }
 
@@ -23,9 +21,7 @@ function getDisplayImage(product) {
   if (product.options && product.options.length > 0) {
     for (const option of product.options) {
       if (option.images && option.images.length > 0) {
-        // Check option inventory
-        const optionInventoryAvailable = option.inventoryData?.availableQuantity;
-        outOfStock = outOfStock || optionInventoryAvailable === 0 || optionInventoryAvailable === undefined || optionInventoryAvailable === null;
+        outOfStock = outOfStock || option.inventoryData?.availableQuantity === 0;
         return { imageUrl: option.images[0], outOfStock };
       }
     }
@@ -62,17 +58,6 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
 
   // Determine which image to display
   const { imageUrl, outOfStock } = getDisplayImage(product);
-
-  // Debug log for out of stock detection (remove after testing)
-  if (process.env.NODE_ENV === 'development' && outOfStock) {
-    console.log('Out of stock product detected:', {
-      name: product.name,
-      variantAvailable: product?.variantDetails?.available,
-      categoryAvailable: product?.category?.available,
-      inventoryQuantity: product.inventoryData?.availableQuantity,
-      outOfStock
-    });
-  }
 
   // Auto-detect if images are square by checking the actual dimensions
   // This is a more robust approach than relying on listLayout
