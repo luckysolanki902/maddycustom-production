@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 
 /**
  * Custom hook to classify the current page type based on URL and cart drawer state.
- * Returns one of: 'viewcart', 'homepage', 'products-list-page', 'product-id-page', 'others'.
+ * Returns one of: 'viewcart', 'homepage', 'product-list-page', 'product-id-page', 'others'.
  */
 export default function usePageType() {
   const pathname = usePathname();
@@ -17,11 +17,9 @@ export default function usePageType() {
   if (cleanPath === "/") return "homepage";
 
   if (cleanPath.startsWith("/shop")) {
-    // Count slugs after /shop
     const slugs = cleanPath.replace(/^\/shop\/?/, "").split("/").filter(Boolean);
-    if (slugs.length === 4) return "products-list-page";
-    if (slugs.length === 5) return "product-id-page";
-    return "others";
+    if (slugs.length <= 1) return "product-list-page";
+    return "product-id-page";
   }
 
   return "others";

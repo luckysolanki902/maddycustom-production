@@ -5,6 +5,7 @@ const initialState = {
     name: '',
     phoneNumber: '',
     userId: '',
+    localUserId: '',
   },
   addressDetails: {
     addressLine1: '',
@@ -41,6 +42,10 @@ const orderFormSlice = createSlice({
   reducers: {
     // -------------------------------------------------- generic data
     setUserDetails: (s, a) => { s.userDetails = { ...s.userDetails, ...a.payload }; },
+    setLocalUserId: (s, a) => {
+      const value = a.payload || '';
+      s.userDetails.localUserId = value;
+    },
     setAddressDetails: (s, a) => { s.addressDetails = { ...s.addressDetails, ...a.payload }; },
     setUserExists: (s, a) => { s.userExists = a.payload; },
     setPrefilledAddress: (s, a) => { s.prefilledAddress = a.payload; },
@@ -91,6 +96,7 @@ const orderFormSlice = createSlice({
 
 export const {
   setUserDetails,
+  setLocalUserId,
   setAddressDetails,
   setUserExists,
   setPrefilledAddress,

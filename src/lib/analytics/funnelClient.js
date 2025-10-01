@@ -1,6 +1,7 @@
 'use client';
 
 import { v4 as uuidv4 } from 'uuid';
+import classifyPage from './pageClassifier';
 
 /**
  * Generate a deterministic event ID based on event characteristics
@@ -172,6 +173,10 @@ class FunnelClient {
     this.dedupeCache = new Map();
     this.flushRetries = 0;
     this.droppedEvents = 0;
+    this.pendingVisitTimer = null;
+    this.pendingVisitPath = null;
+    this.pendingVisitMetadata = null;
+    this.lastTrackedPath = null;
   }
 
   init(additionalMeta = {}) {
@@ -192,12 +197,17 @@ class FunnelClient {
     // Restore any backed up events from previous session
     this.restoreBackupQueue();
 
+    const landingPath = window.location.pathname || '/';
+    const landingClassification = classifyPage(landingPath);
+
     this.sessionMeta = {
       ...this.buildDeviceSnapshot(),
       referrer: document.referrer || undefined,
       landingPage: {
-        path: window.location.pathname,
+        path: landingPath,
         title: document.title,
+        name: landingClassification.pageName,
+        pageCategory: landingClassification.pageCategory,
       },
       ...additionalMeta,
     };
@@ -272,6 +282,10 @@ class FunnelClient {
       return sid;
     }
     return null;
+  }
+
+  resetPageContext() {
+    this.pageContext = {};
   }
 
   ensureSession() {
@@ -446,18 +460,62 @@ class FunnelClient {
   }
 
   setPageContext(context = {}) {
-    this.pageContext = {
-      ...this.pageContext,
-      ...context,
-      page: {
+    if (!context || typeof context !== 'object') {
+      return;
+    }
+
+    if (!this.pageContext || typeof this.pageContext !== 'object') {
+      this.pageContext = {};
+    }
+
+    if (context.page) {
+      this.pageContext.page = {
         ...(this.pageContext.page || {}),
-        ...(context.page || {}),
-      },
-      metadata: {
+        ...context.page,
+      };
+    }
+
+    if (context.metadata) {
+      this.pageContext.metadata = {
         ...(this.pageContext.metadata || {}),
-        ...(context.metadata || {}),
-      },
-    };
+        ...context.metadata,
+      };
+    }
+
+    if (context.product) {
+      this.pageContext.product = {
+        ...(this.pageContext.product || {}),
+        ...context.product,
+      };
+    }
+
+    if (context.cart) {
+      this.pageContext.cart = {
+        ...(this.pageContext.cart || {}),
+        ...context.cart,
+      };
+    }
+
+    if (context.order) {
+      this.pageContext.order = {
+        ...(this.pageContext.order || {}),
+        ...context.order,
+      };
+    }
+
+    if (context.session) {
+      this.pageContext.session = {
+        ...(this.pageContext.session || {}),
+        ...context.session,
+      };
+    }
+
+    const managedKeys = new Set(['page', 'metadata', 'product', 'cart', 'order', 'session']);
+    Object.keys(context).forEach((key) => {
+      if (!managedKeys.has(key)) {
+        this.pageContext[key] = context[key];
+      }
+    });
   }
 
   identifyUser(user = {}) {
@@ -466,27 +524,59 @@ class FunnelClient {
       this.init();
     }
 
-    const cleaned = {};
-    if (user.userId && typeof user.userId === 'string') {
-      cleaned.userId = user.userId;
+    const updatedContext = { ...this.userContext };
+
+    if (typeof user.userId === 'string' && user.userId.trim().length > 0) {
+      updatedContext.userId = user.userId.trim();
     }
-    if (user.phoneNumber && typeof user.phoneNumber === 'string') {
-      cleaned.phoneNumber = user.phoneNumber.trim();
+    if (typeof user.phoneNumber === 'string' && user.phoneNumber.trim().length > 0) {
+      updatedContext.phoneNumber = user.phoneNumber.trim();
     }
-    if (user.email && typeof user.email === 'string') {
-      cleaned.email = user.email.trim();
+    if (typeof user.email === 'string' && user.email.trim().length > 0) {
+      updatedContext.email = user.email.trim();
     }
-    if (user.name && typeof user.name === 'string') {
-      cleaned.name = user.name.trim();
+    if (typeof user.name === 'string' && user.name.trim().length > 0) {
+      updatedContext.name = user.name.trim();
     }
 
-    this.userContext = {
-      ...this.userContext,
-      ...cleaned,
-    };
+    if (typeof user.localUserId === 'string' && user.localUserId.trim().length > 0) {
+      updatedContext.localUserId = user.localUserId.trim();
+    } else if (user.localUserId === null) {
+      delete updatedContext.localUserId;
+    }
 
-    if (cleaned.userId) {
-      this.updateSession({ userId: cleaned.userId });
+    this.userContext = updatedContext;
+
+    if (updatedContext.userId) {
+      this.updateSession({ userId: updatedContext.userId });
+    }
+
+    if (updatedContext.localUserId && !updatedContext.userId) {
+      const contactMeta = {
+        ...(this.sessionMeta?.metadata?.contact || {}),
+        localUserId: updatedContext.localUserId,
+      };
+      this.sessionMeta = {
+        ...this.sessionMeta,
+        metadata: {
+          ...(this.sessionMeta?.metadata || {}),
+          contact: contactMeta,
+        },
+      };
+    } else if (!updatedContext.localUserId && this.sessionMeta?.metadata?.contact?.localUserId) {
+      const { metadata = {} } = this.sessionMeta;
+      const contact = { ...(metadata.contact || {}) };
+      delete contact.localUserId;
+      const nextMetadata = { ...metadata };
+      if (Object.keys(contact).length === 0) {
+        delete nextMetadata.contact;
+      } else {
+        nextMetadata.contact = contact;
+      }
+      this.sessionMeta = {
+        ...this.sessionMeta,
+        metadata: nextMetadata,
+      };
     }
   }
 
@@ -504,13 +594,71 @@ class FunnelClient {
     };
   }
 
-  onRouteChange(pathname) {
+  onRouteChange(pathname, options = {}) {
     if (!pathname || typeof window === 'undefined') return;
+
+    const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
+    const classification = classifyPage(normalizedPath);
     const page = {
-      path: pathname,
+      path: normalizedPath,
       title: document.title,
+      name: classification.pageName,
+      pageCategory: classification.pageCategory,
+      slug: normalizedPath === '/' ? '' : normalizedPath.replace(/^\//u, ''),
     };
+
+    const metadata = {
+      pageCategory: classification.pageCategory,
+      pageName: classification.pageName,
+      ...(options.metadata || {}),
+    };
+
+    this.resetPageContext();
     this.setPageContext({ page });
+    this.setPageContext({ metadata });
+
+    this.scheduleVisitTrack({
+      path: normalizedPath,
+      metadata,
+      source: options.source,
+      delay: options.delay,
+    });
+  }
+
+  scheduleVisitTrack({ path, metadata = {}, source = 'auto', delay = 220 } = {}) {
+    if (typeof window === 'undefined') return;
+
+    if (this.pendingVisitTimer) {
+      clearTimeout(this.pendingVisitTimer);
+      this.pendingVisitTimer = null;
+    }
+
+    this.pendingVisitPath = path;
+    this.pendingVisitMetadata = { ...metadata };
+
+    const effectiveDelay = typeof delay === 'number' && Number.isFinite(delay) ? delay : 220;
+
+    this.pendingVisitTimer = window.setTimeout(() => {
+      this.pendingVisitTimer = null;
+      const baseMetadata = {
+        visitSource: source,
+        ...(this.pendingVisitMetadata || {}),
+      };
+      this.pendingVisitPath = null;
+      this.pendingVisitMetadata = null;
+      this.track('visit', {
+        metadata: baseMetadata,
+      });
+    }, effectiveDelay);
+  }
+
+  cancelPendingVisit(path) {
+    if (this.pendingVisitTimer && (!path || path === this.pendingVisitPath)) {
+      clearTimeout(this.pendingVisitTimer);
+      this.pendingVisitTimer = null;
+      this.pendingVisitPath = null;
+      this.pendingVisitMetadata = null;
+    }
   }
 
   track(step, payload = {}) {
@@ -590,23 +738,25 @@ class FunnelClient {
       event.eventHash = payload.eventHash;
     }
 
-    const page = pruneEmpty(payload.page || this.pageContext.page);
+    const pageContext = this.pageContext || {};
+
+    const page = pruneEmpty(payload.page || pageContext.page);
     if (page) event.page = page;
 
-    const product = pruneEmpty(payload.product);
+    const product = pruneEmpty(payload.product || pageContext.product);
     if (product) event.product = product;
 
-    const cart = pruneEmpty(payload.cart);
+    const cart = pruneEmpty(payload.cart || pageContext.cart);
     if (cart) event.cart = cart;
 
-    const order = pruneEmpty(payload.order);
+    const order = pruneEmpty(payload.order || pageContext.order);
     if (order) event.order = order;
 
     const utm = pruneEmpty(payload.utm || this.sessionMeta.utm);
     if (utm) event.utm = utm;
 
     let metadata = {
-      ...(this.pageContext.metadata || {}),
+      ...(pageContext.metadata || {}),
       ...(payload.metadata || {}),
     };
 
@@ -687,9 +837,17 @@ class FunnelClient {
       return;
     }
 
+    if (event.step === 'visit') {
+      this.cancelPendingVisit(event.page?.path || this.pendingVisitPath);
+    }
+
     this.queue.push(event);
     if (dedupeKey) {
       this.markDedupe(dedupeKey, event.sessionId, step, timestamp);
+    }
+
+    if (event.step === 'visit') {
+      this.lastTrackedPath = event.page?.path || page?.path || this.pendingVisitPath || null;
     }
     
     if (this.queue.length >= MAX_BATCH_SIZE) {

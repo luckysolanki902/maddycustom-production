@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { z } from 'zod';
 import FunnelSession from '@/models/analytics/FunnelSession';
 import FunnelEvent from '@/models/analytics/FunnelEvent';
+import { PAGE_CATEGORY_VALUES } from './pageClassifier';
 
 const STEP_MAP = {
   visit: 'visit',
@@ -63,6 +64,7 @@ const PageSchema = z
   .object({
     path: z.string().trim().optional(),
     name: z.string().trim().optional(),
+  pageCategory: z.enum(PAGE_CATEGORY_VALUES).optional(),
     category: z.string().trim().optional(),
     slug: z.string().trim().optional(),
     title: z.string().trim().optional(),

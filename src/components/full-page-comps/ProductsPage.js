@@ -145,25 +145,25 @@ export default function ProductsPage({
     const pagePath = window.location.pathname || `/shop/${slugKey}`;
     const page = {
       path: pagePath,
-      name: 'products-list-page',
+      name: 'product-list-page',
+      pageCategory: 'product-list-page',
       category: category?.name || undefined,
       slug: slugKey,
       title: document?.title || variant?.title || category?.name,
     };
 
     const metadata = {
-      pageType: 'products-list-page',
+      pageType: 'product-list-page',
+      pageCategory: 'product-list-page',
       variantId: variant?._id,
       variantCode: variant?.variantCode,
       categoryId: category?._id,
       isNewLaunch: !!isNewLaunchFromAPI,
     };
 
-    funnelClient.setPageContext({ page, metadata });
-    funnelClient.track('visit', {
+    funnelClient.setPageContext({
       page,
       metadata,
-      utm: utmDetails,
     });
 
     trackedPageRef.current = slugKey;

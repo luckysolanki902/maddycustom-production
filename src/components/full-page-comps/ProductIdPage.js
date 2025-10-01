@@ -108,6 +108,7 @@ export default function ProductIdPage({
     const page = {
       path: pagePath,
       name: 'product-id-page',
+      pageCategory: 'product-id-page',
       category: category?.name || product?.category?.name || product?.category,
       slug: pagePath.replace(/^\//, ''),
       title: product?.title || product?.name,
@@ -115,13 +116,13 @@ export default function ProductIdPage({
 
     const metadata = {
       pageType: 'product-id-page',
+      pageCategory: 'product-id-page',
       productId: product?._id,
       categoryId: category?._id,
       variantId: variant?._id,
     };
 
-    funnelClient.setPageContext({ page, metadata });
-    funnelClient.track('visit', {
+    funnelClient.setPageContext({
       page,
       metadata,
       product: {
@@ -130,7 +131,6 @@ export default function ProductIdPage({
         price: product?.price,
         category: category?.name || product?.category,
       },
-      utm: utmDetails,
     });
 
     hasTrackedVisit.current = true;

@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import axios from 'axios';
 import funnelClient from '@/lib/analytics/funnelClient';
-import { setUserDetails } from '@/store/slices/orderFormSlice';
+import { v4 as uuidv4 } from 'uuid';
+import { setUserDetails, setLocalUserId } from '@/store/slices/orderFormSlice';
 
 const selectUtmDetails = (state) => state?.utm?.utmDetails;
 const selectUtmHistory = (state) => state?.utm?.utmHistory;
@@ -29,13 +30,19 @@ export default function FunnelClientBridge() {
   const userDetails = useSelector(selectUserDetails);
   const dispatch = useDispatch();
   const linkingRef = useRef({ phone: null, inFlight: false });
+  const initialLoadRef = useRef(true);
 
   useEffect(() => {
     funnelClient.init();
   }, []);
 
   useEffect(() => {
-    funnelClient.onRouteChange(pathname);
+    if (!pathname) return;
+    const source = initialLoadRef.current ? 'landing' : 'navigation';
+    funnelClient.onRouteChange(pathname, { source });
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false;
+    }
   }, [pathname]);
 
   useEffect(() => {
@@ -48,11 +55,28 @@ export default function FunnelClientBridge() {
 
   useEffect(() => {
     if (!userDetails) return;
+    const hasRealUserId = Boolean(userDetails.userId && userDetails.userId.trim().length > 0);
+    const hasLocalUserId = Boolean(userDetails.localUserId && userDetails.localUserId.trim().length > 0);
+
+    if (!hasRealUserId && !hasLocalUserId) {
+      dispatch(setLocalUserId(uuidv4()));
+    }
+  }, [dispatch, userDetails]);
+
+  useEffect(() => {
+    if (!userDetails) return;
     const identity = {};
     if (userDetails.userId) identity.userId = userDetails.userId;
     if (userDetails.phoneNumber) identity.phoneNumber = userDetails.phoneNumber;
     if (userDetails.email) identity.email = userDetails.email;
     if (userDetails.name) identity.name = userDetails.name;
+    if (!userDetails.userId && userDetails.localUserId) {
+      identity.localUserId = userDetails.localUserId;
+    }
+    if (userDetails.userId && userDetails.localUserId) {
+      identity.localUserId = null;
+      dispatch(setLocalUserId(''));
+    }
 
     if (Object.keys(identity).length === 0) return;
 
@@ -61,7 +85,7 @@ export default function FunnelClientBridge() {
     if (identity.userId) {
       funnelClient.updateSession({ userId: identity.userId });
     }
-  }, [userDetails]);
+  }, [dispatch, userDetails]);
 
   useEffect(() => {
     if (!userDetails) return;
