@@ -22,19 +22,20 @@ function normalizePath(pathname = '/') {
 }
 
 function classifyShopPath(segments) {
-  // segments[0] is 'shop', so check segments after 'shop'
-  const segmentsAfterShop = segments.length - 1;
+  // Count total segments (including 'shop')
+  const totalSegments = segments.length;
   
-  // /shop → product-list-page (0 segments after shop)
-  // /shop/wraps → product-list-page (1 segment after shop)
-  // /shop/wraps/car-wraps → product-list-page (2 segments after shop)
-  // /shop/wraps/car-wraps/fuel-cap-wraps → product-list-page (3 segments after shop)
-  // /shop/wraps/car-wraps/fuel-cap-wraps/rectangle-petrol → product-id-page (4 segments after shop)
+  // /shop/wraps/car-wraps/fuel-cap-wraps → 4 parts = product-list-page
+  // /shop/wraps/car-wraps/fuel-cap-wraps/rectangle-petrol → 5 parts = product-id-page
   
-  if (segmentsAfterShop <= 3) {
+  if (totalSegments === 4) {
     return PAGE_CATEGORY.PRODUCT_LIST;
+  } else if (totalSegments === 5) {
+    return PAGE_CATEGORY.PRODUCT_DETAIL;
   }
-  return PAGE_CATEGORY.PRODUCT_DETAIL;
+  
+  // Anything else (1, 2, 3, or 6+ segments) = other
+  return PAGE_CATEGORY.OTHER;
 }
 
 export function classifyPage(pathname = '/') {
