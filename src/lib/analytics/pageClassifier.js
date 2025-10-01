@@ -22,10 +22,16 @@ function normalizePath(pathname = '/') {
 }
 
 function classifyShopPath(segments) {
-  if (segments.length <= 1) {
-    return PAGE_CATEGORY.PRODUCT_LIST;
-  }
-  if (segments.length === 2) {
+  // segments[0] is 'shop', so check segments after 'shop'
+  const segmentsAfterShop = segments.length - 1;
+  
+  // /shop → product-list-page (0 segments after shop)
+  // /shop/wraps → product-list-page (1 segment after shop)
+  // /shop/wraps/car-wraps → product-list-page (2 segments after shop)
+  // /shop/wraps/car-wraps/fuel-cap-wraps → product-list-page (3 segments after shop)
+  // /shop/wraps/car-wraps/fuel-cap-wraps/rectangle-petrol → product-id-page (4 segments after shop)
+  
+  if (segmentsAfterShop <= 3) {
     return PAGE_CATEGORY.PRODUCT_LIST;
   }
   return PAGE_CATEGORY.PRODUCT_DETAIL;
