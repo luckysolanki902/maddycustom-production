@@ -272,7 +272,15 @@ export async function POST(request) {
     }
     
     // Validate eventName
-    const validEvents = ['Purchase', 'AddToCart', 'ViewContent', 'InitiateCheckout', 'PageView'];
+    const validEvents = [
+      'Purchase',
+      'AddToCart',
+      'ViewContent',
+      'InitiateCheckout',
+      'PageView',
+      'ContactInfoProvided',
+      'PaymentInitiated',
+    ];
     if (!validEvents.includes(eventName)) {
       console.error('Invalid event type received:', eventName);
       return NextResponse.json(

@@ -55,6 +55,7 @@ import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
 import reverseGeocodeClient from '@/lib/utils/reverseGeocodeClient';
+import funnelClient from '@/lib/analytics/funnelClient';
 
 const sanitizeFloorValue = (value) => {
   if (value === undefined || value === null) return '';
@@ -153,9 +154,32 @@ const OrderForm = ({
 
   // Local Tab Index State - memoize to prevent rerenders
   const [tabIndex, setTabIndex] = useState(0);
+  const formOpenTrackedRef = useRef(false);
+  const addressTabTrackedRef = useRef(false);
 
   // Simple mobile focus detection
   const [isInputFocused, setIsInputFocused] = useState(false);
+
+  const paymentModeName = paymentModeConfig?.name || undefined;
+  const normalizedCouponCode = useMemo(() => {
+    if (typeof couponCode !== 'string') return undefined;
+    const trimmed = couponCode.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }, [couponCode]);
+
+  const computeCartSnapshot = useCallback(() => {
+    const itemsTotal = cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const snapshot = {};
+    if (itemsTotal > 0) {
+      snapshot.items = itemsTotal;
+    }
+    const numericTotal = Number(totalCost);
+    if (Number.isFinite(numericTotal)) {
+      snapshot.value = numericTotal;
+      snapshot.currency = 'INR';
+    }
+    return snapshot;
+  }, [cartItems, totalCost]);
 
   // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -248,6 +272,37 @@ const OrderForm = ({
     setSnackbarOpen(true);
   }, []);
 
+  useEffect(() => {
+    if (!open) {
+      formOpenTrackedRef.current = false;
+      addressTabTrackedRef.current = false;
+      return;
+    }
+
+    if (!formOpenTrackedRef.current) {
+      formOpenTrackedRef.current = true;
+      const cartSnapshot = computeCartSnapshot();
+    const { sessionId } = funnelClient.getIdentifiers();
+    const sessionToken = sessionId || 'unknown-session';
+    const path = typeof window !== 'undefined' ? window.location.pathname : 'order-form';
+    const dedupeKey = `open_order_form:${sessionToken}:${path}`;
+      try {
+        funnelClient.track('open_order_form', {
+          dedupeKey,
+          cart: cartSnapshot,
+          metadata: {
+            source: 'order_form_dialog',
+            entry: 'checkout_flow',
+            paymentMode: paymentModeName,
+            hasPrefilledContact: Boolean(userDetails?.phoneNumber),
+          },
+        });
+      } catch (err) {
+        console.warn('Funnel open_order_form track failed:', err);
+      }
+    }
+  }, [open, computeCartSnapshot, paymentModeName, userDetails]);
+
   // Enhanced pincode validation with proactive serviceability check
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const validatePincode = useCallback(
@@ -303,6 +358,37 @@ const OrderForm = ({
 
   // Prevent multiple form submissions
   const [purchaseInitiated, setPurchaseInitiated] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (tabIndex === 0) {
+      addressTabTrackedRef.current = false;
+      return;
+    }
+
+    if (tabIndex === 1 && !addressTabTrackedRef.current) {
+      addressTabTrackedRef.current = true;
+      const cartSnapshot = computeCartSnapshot();
+  const { sessionId } = funnelClient.getIdentifiers();
+  const sessionToken = sessionId || 'unknown-session';
+  const path = typeof window !== 'undefined' ? window.location.pathname : 'order-form';
+  const dedupeKey = `address_tab_open:${sessionToken}:${path}`;
+      try {
+        funnelClient.track('address_tab_open', {
+          dedupeKey,
+          cart: cartSnapshot,
+          metadata: {
+            form: 'order_form',
+            transition: 'contact_to_address',
+            prefilledAddress: Boolean(prefilledAddress || addressDetails?.addressLine1 || addressDetails?.city),
+          },
+        });
+      } catch (err) {
+        console.warn('Funnel address_tab_open track failed:', err);
+      }
+    }
+  }, [open, tabIndex, computeCartSnapshot, prefilledAddress, addressDetails]);
 
   // Reset tabIndex when dialog opens
   useEffect(() => {
@@ -653,6 +739,28 @@ const OrderForm = ({
     // Immediately move to the next tab for better UX
     setTabIndex(1);
 
+    const { visitorId: funnelVisitorId, sessionId: funnelSessionId } = funnelClient.getIdentifiers();
+    funnelClient.identifyUser({
+      name: data.name,
+      phoneNumber: phoneToUse,
+      email: data.email,
+    });
+
+    const cartSnapshot = computeCartSnapshot();
+
+    try {
+      funnelClient.track('contact_info', {
+        cart: cartSnapshot,
+        metadata: {
+          form: 'order_form_contact',
+          hasEmail: Boolean(data.email),
+          transition: 'contact_submit',
+        },
+      });
+    } catch (err) {
+      console.warn('Funnel contact_info track failed:', err);
+    }
+
     // Fire custom event: Contact info provided (name/phone/email)
     try {
       const contents = cartItems.map((item) => ({
@@ -676,11 +784,19 @@ const OrderForm = ({
       phoneNumber: phoneToUse,
       name: data.name,
       email: data.email,
+      funnelVisitorId,
+      funnelSessionId,
     })
       .then(response => {
         if (response.data.exists) {
           const latestAddress = response.data.latestAddress;
           dispatch(setUserDetails({ userId: response.data.userId }));
+          funnelClient.identifyUser({
+            userId: response.data.userId,
+            phoneNumber: phoneToUse,
+            email: data.email,
+            name: data.name,
+          });
 
           if (latestAddress) {
             // Map legacy fields and populate structured UI fields if available
@@ -714,9 +830,17 @@ const OrderForm = ({
             phoneNumber: phoneToUse,
             email: data.email,
             source: 'order-form',
+            funnelVisitorId,
+            funnelSessionId,
           })
             .then(createResponse => {
               dispatch(setUserDetails({ userId: createResponse.data.userId || createResponse.data.user?.userId }));
+              funnelClient.identifyUser({
+                userId: createResponse.data.userId || createResponse.data.user?.userId,
+                phoneNumber: phoneToUse,
+                email: data.email,
+                name: data.name,
+              });
               return createResponse;
             });
         }
@@ -725,7 +849,7 @@ const OrderForm = ({
       .catch(error => {
         console.error('Error in background user check/create:', error);
       });
-  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode, cartItems, totalCost, couponCode]);
+  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode, cartItems, totalCost, couponCode, computeCartSnapshot]);
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
@@ -733,6 +857,36 @@ const OrderForm = ({
     setPurchaseInitiated(true);
     setIsLoading(true);
     setIsPaymentProcessing(true);
+
+    const cartSnapshot = computeCartSnapshot();
+    const numericTotal = Number(totalCost);
+    const orderValue = Number.isFinite(numericTotal) ? numericTotal : undefined;
+    const addressCompleteness = {
+      hasLine1: Boolean(data.addressLine1),
+      hasCity: Boolean(data.city),
+      hasState: Boolean(data.state),
+      hasPincode: Boolean(data.pincode),
+    };
+
+    try {
+      funnelClient.track('initiate_checkout', {
+        cart: cartSnapshot,
+        order: {
+          value: orderValue,
+          currency: orderValue !== undefined ? 'INR' : undefined,
+          coupon: normalizedCouponCode,
+        },
+        metadata: {
+          form: 'order_form_address',
+          paymentMode: paymentModeName,
+          couponApplied: Boolean(normalizedCouponCode),
+          addressCompleteness,
+          geoCaptured: Boolean(geo?.lat && geo?.lng),
+        },
+      });
+    } catch (err) {
+      console.warn('Funnel initiate_checkout track failed:', err);
+    }
 
     const startTime = performance.now();
 
@@ -929,6 +1083,27 @@ const OrderForm = ({
       dispatch(setLastOrderId(createdOrderId));
 
       if (razorpayOrder && amountDueOnline > 0) {
+        try {
+          funnelClient.track('payment_initiated', {
+            dedupeKey: `payment_initiated:${createdOrderId}`,
+            cart: cartSnapshot,
+            order: {
+              orderId: createdOrderId,
+              value: orderValue,
+              currency: orderValue !== undefined ? 'INR' : undefined,
+              coupon: normalizedCouponCode,
+            },
+            metadata: {
+              paymentMode: paymentModeName,
+              amountDueOnline,
+              razorpayOrderId: razorpayOrder?.id,
+              requiresGateway: true,
+            },
+          });
+        } catch (err) {
+          console.warn('Funnel payment_initiated track failed:', err);
+        }
+
         // Fire custom PaymentInitiated just before opening gateway
         try {
           const contents = cartItems.map((item) => ({
@@ -987,6 +1162,26 @@ const OrderForm = ({
       } else {
         console.warn('Unexpected payment state:', { razorpayOrder, amountDueOnline });
         showSnackbar('Order placed. Awaiting payment confirmation.', 'info');
+      }
+
+      try {
+        funnelClient.track('purchase', {
+          dedupeKey: `purchase:${createdOrderId}`,
+          cart: cartSnapshot,
+          order: {
+            orderId: createdOrderId,
+            value: orderValue,
+            currency: orderValue !== undefined ? 'INR' : undefined,
+            coupon: normalizedCouponCode,
+          },
+          metadata: {
+            paymentMode: paymentModeName,
+            amountDueOnline,
+            paymentStatus: amountDueOnline > 0 ? 'online_partial' : 'cod',
+          },
+        });
+      } catch (err) {
+        console.warn('Funnel purchase track failed:', err);
       }
 
       // Facebook Pixel Purchase Event - Always send FULL customer total amount
@@ -1063,7 +1258,8 @@ const OrderForm = ({
   }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
     totalCost, deliveryCost, utmDetails, cartItems, paymentModeConfig,
     discountAmountFinal, couponsDetails, isPincodeValid, reset, handleFullClose, router,
-    serviceabilityCache, geo, formatFloorForAddress]); // Maintained dependencies
+    serviceabilityCache, geo, formatFloorForAddress, computeCartSnapshot, paymentModeName,
+    normalizedCouponCode]); // Maintained dependencies
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {

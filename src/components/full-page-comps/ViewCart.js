@@ -30,6 +30,7 @@ import ApplyCoupon from '../dialogs/ApplyCoupon';
 import OrderForm from '../dialogs/OrderForm';
 import { initiateCheckout } from '@/lib/metadata/facebookPixels';
 import { gaBeginCheckout } from '@/lib/metadata/googleAds';
+import funnelClient from '@/lib/analytics/funnelClient';
 import MinimumCartDialog from '../dialogs/MinimumCartDialog';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
 import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
@@ -306,6 +307,26 @@ export default function ViewCart({ isDrawer = false }) {
       snack('Offer conditions are not met.', 'warning'); 
       return;
     }
+
+    try {
+      const cartQuantity = availableItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      funnelClient.track('apply_offer', {
+        cart: {
+          items: cartQuantity || undefined,
+          value: subTot || undefined,
+          currency: 'INR',
+        },
+        metadata: {
+          couponCode: code,
+          discountType: type,
+          discountAmount: amount,
+          source: fromAuto ? 'auto' : 'manual',
+          offerId: offer?._id,
+        },
+      });
+    } catch (err) {
+      console.error('Funnel apply_offer track failed:', err);
+    }
     
     setCouponState({ couponApplied: true, couponName: code, couponDiscount: amount, discountType: type, offer });
     dispatch(setCouponApplied({ couponCode: code, discountAmount: amount, discountType: type, offer }));
@@ -319,7 +340,7 @@ export default function ViewCart({ isDrawer = false }) {
     if (fromAuto) {
       lastAutoRef.current = { code, type };
     }
-  }, [subTot, isFirstOrder, dispatch, snack]);const removeCoupon = useCallback((showMsg = true) => {
+  }, [availableItems, subTot, isFirstOrder, dispatch, snack]);const removeCoupon = useCallback((showMsg = true) => {
     setCouponState({ couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null });
     dispatch(setCouponApplied({ couponCode: '', discountAmount: 0, discountType: '', offer: null }));
       // Reset both flags to allow auto-apply

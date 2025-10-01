@@ -22,6 +22,7 @@ import {
 import { openCartDrawer, openRecommendationDrawer } from '../../store/slices/uiSlice';
 import { addToCart as trackAddToCart } from '@/lib/metadata/facebookPixels';
 import { gaAddToCart } from '@/lib/metadata/googleAds';
+import funnelClient from '@/lib/analytics/funnelClient';
 import { selectIsSubscribedToNotification } from "../../store/slices/notificationSlice";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -29,12 +30,48 @@ import { useMediaQuery } from '@mui/material';
 import NotifyMeDialog from '../dialogs/NotifyMeDialog';
 
 export default function AddToCartButton({ product, isBlackButton = false, isLarge = false, insertionDetails: insertionDetailsProp = {} }) {
-  const insertionDetails = insertionDetailsProp || {};
+  const insertionDetails = { ...insertionDetailsProp };
   const isSmallDevice = useMediaQuery('(max-width: 1000px)');
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
+  const utmDetails = useSelector((state) => state.utm?.utmDetails);
   const cartItem = cartItems.find((item) => item.productId === product._id);
   const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+  const defaultPageType = insertionDetails.pageType || 'product-id-page';
+  const componentName = insertionDetails.component || 'AddToCartButtonWithOrder';
+
+  const getCartSnapshot = (quantityDelta = 0, valueDelta = 0) => {
+    try {
+      const totals = cartItems.reduce(
+        (acc, item) => {
+          const price = item.price ?? item.productDetails?.price ?? 0;
+          const qty = item.quantity || 0;
+          acc.items += qty;
+          acc.value += price * qty;
+          return acc;
+        },
+        { items: 0, value: 0 }
+      );
+      return {
+        items: totals.items + quantityDelta,
+        value: Math.max(0, totals.value + valueDelta),
+        currency: 'INR',
+      };
+    } catch (error) {
+      console.error('[Funnel] cart snapshot failed', error);
+      return undefined;
+    }
+  };
+
+  const buildProductPayload = (quantity = 1) => ({
+    id: product._id,
+    name: product.name,
+    price: product.price,
+    quantity,
+    variantId: product.selectedOption?._id,
+    brand: product.brand,
+    category: product.category?.name || product.category,
+  });
 
   // Check if user is already subscribed to notifications for this product
   const isSubscribedToNotification = useSelector(selectIsSubscribedToNotification(product, product.selectedOption));
@@ -171,6 +208,22 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     } catch (error) {
       console.error('AddToCart tracking failed:', error);
     }
+    try {
+      const price = Number(product.price) || 0;
+      funnelClient.track('add_to_cart', {
+        product: buildProductPayload(1),
+        cart: getCartSnapshot(1, price),
+        metadata: {
+          pageType: defaultPageType,
+          component: componentName,
+          action: 'add',
+          source: insertionDetails.source,
+        },
+        utm: utmDetails,
+      });
+    } catch (error) {
+      console.error('[Funnel] add_to_cart event failed', error);
+    }
   };
 
   const handleIncrement = async (e) => {
@@ -200,6 +253,22 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     } catch (error) {
       console.error('AddToCart tracking failed:', error);
     }
+    try {
+      const price = Number(product.price) || 0;
+      funnelClient.track('add_to_cart', {
+        product: buildProductPayload(1),
+        cart: getCartSnapshot(1, price),
+        metadata: {
+          pageType: defaultPageType,
+          component: componentName,
+          action: 'increment',
+          source: insertionDetails.source,
+        },
+        utm: utmDetails,
+      });
+    } catch (error) {
+      console.error('[Funnel] add_to_cart increment event failed', error);
+    }
   };
 
   const handleDecrement = (e) => {
@@ -223,6 +292,34 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
       dispatch(addItem({ productId: product._id, productDetails: product, insertionDetails: insertionDetailsForOrderNow }));
     }
     dispatch(openCartDrawer());
+    try {
+      if (!cartItem) {
+        const price = Number(product.price) || 0;
+        funnelClient.track('add_to_cart', {
+          product: buildProductPayload(1),
+          cart: getCartSnapshot(1, price),
+          metadata: {
+            pageType: defaultPageType,
+            component: componentName,
+            action: 'order_now_add',
+            source: insertionDetails.source,
+          },
+          utm: utmDetails,
+        });
+      }
+      funnelClient.track('view_cart_drawer', {
+        cart: getCartSnapshot(cartItem ? 0 : 1, cartItem ? 0 : Number(product.price) || 0),
+        metadata: {
+          pageType: defaultPageType,
+          component: componentName,
+          trigger: cartItem ? 'go_to_cart' : 'order_now',
+          source: insertionDetails.source,
+        },
+        utm: utmDetails,
+      });
+    } catch (error) {
+      console.error('[Funnel] view_cart_drawer event failed', error);
+    }
   };
 
   const handleNotifyMe = (e) => {
