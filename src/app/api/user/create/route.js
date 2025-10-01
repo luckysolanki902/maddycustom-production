@@ -3,11 +3,12 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import User from '@/models/User';
+import { attachUserToFunnel } from '@/lib/analytics/funnelService';
 
 export async function POST(request) {
   try {
     // Parse the JSON body
-    const { name, phoneNumber, email ,source} = await request.json();
+  const { name, phoneNumber, email, source, funnelVisitorId, funnelSessionId } = await request.json();
 
     // Validate input
     if (!phoneNumber) {
@@ -24,28 +25,39 @@ export async function POST(request) {
     // Check if the user already exists
     const existingUser = await User.findOne({ phoneNumber });
 
-    if (existingUser) {
-      if (name && (!existingUser.name || existingUser.name === '') ) {
-        // Update the user's name if it only contains the phone number but not the name
-        existingUser.name = name;
-        await existingUser.save();
+      if (existingUser) {
+        let message = 'User already exists';
+
+        if (name && (!existingUser.name || existingUser.name === '')) {
+          // Update the user's name if it only contains the phone number but not the name
+          existingUser.name = name;
+          await existingUser.save();
+          message = 'User exists and name updated';
+        }
+
+        if (funnelVisitorId) {
+          try {
+            await attachUserToFunnel({
+              visitorId: funnelVisitorId,
+              sessionId: funnelSessionId,
+              userId: existingUser._id,
+              phoneNumber,
+              email,
+              name: name || existingUser.name,
+            });
+          } catch (err) {
+            console.error('Funnel linkage failed (existing user):', err);
+          }
+        }
+
         return NextResponse.json(
           {
-            message: 'User exists and name updated',
-            userId: existingUser._id,
-          },
-          { status: 200 }
-        );
-      } else {
-        return NextResponse.json(
-          {
-            message: 'User already exists',
+            message,
             userId: existingUser._id, // Return existing user ID
           },
           { status: 200 }
         );
       }
-    }
 
     // Create a new user
     const newUser = new User({
@@ -58,6 +70,21 @@ export async function POST(request) {
     });
 
     await newUser.save();
+
+    if (funnelVisitorId) {
+      try {
+        await attachUserToFunnel({
+          visitorId: funnelVisitorId,
+          sessionId: funnelSessionId,
+          userId: newUser._id,
+          phoneNumber,
+          email,
+          name,
+        });
+      } catch (err) {
+        console.error('Funnel linkage failed (new user):', err);
+      }
+    }
     // Return success response
     return NextResponse.json(
       {

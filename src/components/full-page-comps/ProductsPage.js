@@ -9,12 +9,13 @@ import React, {
   useCallback,
   useMemo,
   memo,
+  useRef,
 } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useMediaQuery, Pagination } from '@mui/material';
 import { useSpring, animated } from 'react-spring';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 import styles from './styles/products.module.css';
 import wrapperStyles from '../cards/styles/productswrapper.module.css';
@@ -32,6 +33,7 @@ import TopBoughtProducts from '@/components/showcase/products/TopBoughtProducts'
 import IsolatedTopBoughtProducts from '@/components/showcase/products/IsolatedTopBoughtProducts';
 import { showTopStrip, hideTopStrip } from '@/store/slices/uiSlice';
 import { HIDE_PRODUCT_VIDEOS } from '@/lib/constants/featureToggles';
+import funnelClient from '@/lib/analytics/funnelClient';
 
 /* ------------------------------------------------------------------ */
 /* Smooth "Top-Bought" fade-in/slide-up wrapper                        */
@@ -105,6 +107,10 @@ export default function ProductsPage({
   /* ------------------------ state ------------------------ */
   const SHOW_TOP_BOUGHT = category.specificCategoryCode !== 'tw'; // Controls visibility of TopBought section and product distribution
   const dispatch = useDispatch();
+  const utmDetails = useSelector(state => state.utm?.utmDetails);
+
+  const slugKey = useMemo(() => (Array.isArray(slug) ? slug.join('/') : slug) || '', [slug]);
+  const trackedPageRef = useRef('');
 
   const [tagFilter, setTagFilter] = useState(null);
   const [sortBy, setSortBy] = useState('default');
@@ -126,6 +132,42 @@ export default function ProductsPage({
     () => variant?.variantCode,
     [variant?.variantCode]
   );
+
+  useEffect(() => {
+    trackedPageRef.current = '';
+  }, [slugKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!slugKey) return;
+    if (trackedPageRef.current === slugKey) return;
+
+    const pagePath = window.location.pathname || `/shop/${slugKey}`;
+    const page = {
+      path: pagePath,
+      name: 'products-list-page',
+      category: category?.name || undefined,
+      slug: slugKey,
+      title: document?.title || variant?.title || category?.name,
+    };
+
+    const metadata = {
+      pageType: 'products-list-page',
+      variantId: variant?._id,
+      variantCode: variant?.variantCode,
+      categoryId: category?._id,
+      isNewLaunch: !!isNewLaunchFromAPI,
+    };
+
+    funnelClient.setPageContext({ page, metadata });
+    funnelClient.track('visit', {
+      page,
+      metadata,
+      utm: utmDetails,
+    });
+
+    trackedPageRef.current = slugKey;
+  }, [slugKey, category?._id, category?.name, variant?._id, variant?.variantCode, variant?.title, isNewLaunchFromAPI, utmDetails]);
 
   /* ------------------------ effects ------------------------ */
   // useEffect(() => {
