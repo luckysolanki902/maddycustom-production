@@ -7,14 +7,15 @@ This document captures the end-to-end funnel tracking stack that now ships with 
 ## Architecture at a Glance
 
 - **Client Orchestrator**: `src/lib/analytics/funnelClient.js`
-  - Manages visitor/session IDs, batching, sendBeacon fallback, and page context.
+  - Manages visitor/session IDs, batching, sendBeacon fallback, page context, and now includes an in-memory dedupe cache so duplicate events (e.g., React StrictMode double-mounts) are dropped per session.
   - New helpers `identifyUser()` and `getIdentifiers()` let UI flows tag funnel sessions with user/contact info when it becomes available.
+  - Debug mode can be toggled with the `?debugFunnel` query param (or automatically in non-production builds) to log queued/flush activity to the console.
 - **Bridge Component**: `components/analytics/FunnelClientBridge.js`
   - Hydrates the client with UTM + Redux state, keeps metadata in sync while users navigate.
 - **API Ingestion Route**: `app/api/analytics/track-funnel/route.js`
   - Validates payloads (Zod), connects to Mongo, and delegates to the funnel service.
 - **Service Layer**: `src/lib/analytics/funnelService.js`
-  - Normalizes steps, upserts `FunnelSession`, persists `FunnelEvent`, dedupes repeats, and exposes `attachUserToFunnel()` for retroactive linkage.
+  - Normalizes steps, upserts `FunnelSession`, persists `FunnelEvent`, applies server-side validation, and exposes `attachUserToFunnel()` for retroactive linkage.
 - **Persistence Models**: `src/models/analytics/FunnelSession.js` & `FunnelEvent.js`
   - Schemas outlined below, including new `metadata.contact` fields on sessions and events.
 
@@ -49,15 +50,21 @@ Current normalized `step` values (as enforced by `STEP_MAP` and `STEP_ENUM`):
 | `add_to_cart` | Product cards, PDP add-to-cart buttons | Product details, cart snapshot |
 | `view_cart_drawer` | Cart drawer open | Cart size/value |
 | `open_order_form` | Checkout/order form launched | Cart + payment context |
-| `address_tab_open` | Address tab activated in order form | address metadata |
-| `contact_info` | **Newly wired:** order form contact submission | Contact presence flags, cart totals |
+| `address_tab_open` | Address tab activated in order form | Address metadata |
+| `contact_info` | Order form contact submission | Contact presence flags, cart totals |
 | `initiate_checkout` | Checkout initiated (analytics parity with Meta/GA) | Cart contents |
-| `payment_initiated` | Payment attempt started | Payment mode |
-| `purchase` | Order completion (TODO hook) | Order ID, value |
+| `payment_initiated` | Payment attempt started | Payment mode & gateway info |
+| `purchase` | Order completion | Order ID, value, payment status |
 | `session_return` | Returning session ping | Flags.increment |
 
 ### Adding More Steps
 Extend `STEP_MAP`, `STEP_ENUM`, and the `enum` array in `FunnelEvent` to introduce new milestones. The client orchestrator will accept anything in `STEP_ENUM` and auto-normalize synonyms defined in `STEP_MAP`.
+
+### Idempotency & Deduplication
+
+- The client orchestrator now keeps a session-scoped dedupe cache. It automatically drops repeated `visit` events for the same path within a session, preventing double-counting during hydration or StrictMode remounts.
+- Any producer can pass a custom `dedupeKey` when calling `funnelClient.track(step, payload)` to enforce idempotency. Keys should be deterministic per logical event (e.g., `purchase:${orderId}`) and will be skipped if already seen for the active session.
+- Server-side validation still guards against malformed payloads; however, duplicate payloads are best suppressed client-side using `dedupeKey` to avoid unnecessary writes.
 
 ---
 
@@ -150,18 +157,44 @@ Use the steps above to power staged conversion views. Suggested workflow for a *
 ## Operational Playbook
 
 - **Linking Funnel to Users**: Both `/api/user/check` and `/api/user/create` now accept `funnelVisitorId` and `funnelSessionId` and call `attachUserToFunnel()`. That populates session + event records with `userId` and contact metadata immediately after the user shares details.
-- **Order Form Tracking**: When contact info is submitted, the form triggers a `contact_info` funnel event and refreshes the client identity. Continue this pattern for address, payment, and purchase steps.
+- **Order Form Tracking**: When contact info is submitted, the form triggers a `contact_info` funnel event and refreshes the client identity. Address, payment, and purchase steps now emit their respective events with deterministic `dedupeKey`s tied to session/order identifiers.
 - **Applying Offers**: `ViewCart` emits an `apply_offer` event whenever coupons are applied (manual or auto). Metadata captures the code, discount, source, and cart value, allowing offer-performance analytics downstream.
 - **UTM & Device Glue**: The bridge keeps `utm`, referrer, device, and geo snapshots aligned between session metadata and each event. When overriding `utm`, send `session: { utm: { override: true, ... } }` with the event.
+- **Debug Mode**: Append `?debugFunnel` to any page URL (or run in non-production) to enable verbose console logs (`[Funnel] queued event`, `[Funnel] flushing events`, etc.). Use this during QA to verify dedupe and batching behavior.
+
+---
+
+## QA & Verification Checklist
+
+1. **Run the inspection script after any funnel walkthrough**:
+
+  ```powershell
+  node scripts/inspect-funnel-events.mjs
+  ```
+
+  - Lists the five most recent sessions (masking contact info) and prints the chronological event timeline for the latest session.
+  - Highlights which canonical steps were observed and which are missing, helping QA confirm complete coverage (e.g., `visit → add_to_cart → open_order_form → contact_info → address_tab_open → initiate_checkout → payment_initiated → purchase`).
+
+2. **Check for unexpected duplicates**:
+  - With `debugFunnel` enabled, ensure only a single `[Funnel] queued event` appears for each intended action. If duplicates show up, add or adjust the `dedupeKey` used when tracking that step.
+
+3. **Validate payload integrity**:
+  - Watch server logs for `[Funnel] API received events` and `[Funnel] API persisted events` lines. Any validation failure (status 200 with `success: false`) will surface as console errors in development.
+
+4. **Confirm contact linkage**:
+  - After providing a phone or email, re-run the inspection script and confirm the session summary shows masked contact info (`hasContact: true`).
+
+5. **Exercise optional steps periodically**:
+  - Not every QA pass covers `view_product`, `apply_offer`, or `view_cart_drawer`. Schedule dedicated runs for those flows to prevent regressions in analytics downstream.
 
 ---
 
 ## Future Enhancements
 
-- **Purchase Hook**: Wire the order confirmation flow to emit a `purchase` event with `orderId`, `value`, and `coupon` fields so conversion ratios close the loop.
-- **Address Tab & Payment Steps**: Emit `address_tab_open` and `payment_initiated` from the order form once those UI interactions are live.
+- **Cart Drawer & Offer Coverage**: Ensure QA flows regularly hit `view_cart_drawer` and `apply_offer` so dashboards always have fresh data; add automated smoke tests if feasible.
 - **Admin UI**: Build a Next.js dashboard that consumes the aggregations above, providing charts for stage counts, conversion funnels, and abandoned-cart queues.
 - **Alerting**: Schedule a CRON job (e.g., Vercel Cron + serverless function) that queries abandoned carts and pings the CX team when threshold breaches occur.
+- **Data Warehouse Sync**: Consider exporting funnel events to a warehouse (BigQuery/Snowflake) for long-term retention and advanced modeling once the production volume increases.
 
 ---
 

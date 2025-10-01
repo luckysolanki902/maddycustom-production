@@ -43,6 +43,15 @@ export async function POST(request) {
     events.length = MAX_EVENTS_PER_REQUEST;
   }
 
+  if (process.env.NODE_ENV !== 'production') {
+    const steps = events.map((event) => event.step);
+    console.info('[Funnel] API received events', {
+      count: steps.length,
+      steps,
+      sample: steps.slice(0, 5),
+    });
+  }
+
   try {
     await connectToDatabase();
   } catch (error) {
@@ -57,6 +66,17 @@ export async function POST(request) {
   }
 
   const outcome = await saveFunnelEvents(events);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('[Funnel] API persisted events', {
+      accepted: outcome.accepted,
+      duplicates: outcome.duplicates,
+      errors: outcome.errors.length,
+    });
+    if (outcome.errors.length > 0) {
+      console.info('[Funnel] API persistence errors sample', outcome.errors.slice(0, 2));
+    }
+  }
 
   return NextResponse.json(
     {

@@ -13,6 +13,8 @@ const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes inactivity window
 const MAX_BATCH_SIZE = 10;
 const FLUSH_INTERVAL_MS = 4000;
 const MAX_QUEUE_SIZE = 120;
+const DEBUG_PARAM = 'debugFunnel';
+const DEDUPE_TTL_MS = SESSION_TTL_MS;
 
 function pruneEmpty(value) {
   if (value === null || value === undefined) return undefined;
@@ -76,6 +78,8 @@ class FunnelClient {
     this.pageContext = {};
     this.lastActivity = 0;
     this.userContext = {};
+    this.debug = false;
+    this.dedupeCache = new Map();
   }
 
   init(additionalMeta = {}) {
@@ -112,6 +116,7 @@ class FunnelClient {
     window.addEventListener('beforeunload', () => this.flush('beforeunload'));
     window.addEventListener('pagehide', () => this.flush('pagehide'));
 
+    this.refreshDebugFlag();
     this.initialized = true;
   }
 
@@ -162,6 +167,7 @@ class FunnelClient {
 
   ensureSession() {
     const now = Date.now();
+    const previousSession = this.sessionId;
     if (!this.sessionId || now - this.lastActivity > SESSION_TTL_MS) {
       this.sessionId = uuidv4();
     }
@@ -172,6 +178,71 @@ class FunnelClient {
       this.storage?.setItem(STORAGE_KEYS.SESSION_EXP, expiresAt);
     } catch (error) {
       console.warn('[Funnel] Failed to persist session', error);
+    }
+
+    if (previousSession && previousSession !== this.sessionId) {
+      this.dedupeCache.clear();
+    }
+  }
+
+  computeDebugFlag() {
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (typeof window === 'undefined') {
+      return isDev;
+    }
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return isDev || params.has(DEBUG_PARAM);
+    } catch (error) {
+      console.warn('[Funnel] Debug flag evaluation failed', error);
+      return isDev;
+    }
+  }
+
+  refreshDebugFlag() {
+    this.debug = this.computeDebugFlag();
+  }
+
+  pruneDedupeCache(now = Date.now()) {
+    for (const [key, entry] of this.dedupeCache.entries()) {
+      if (!entry || now - entry.timestamp > DEDUPE_TTL_MS) {
+        this.dedupeCache.delete(key);
+      }
+    }
+  }
+
+  shouldSkipDueToDedupe(key, sessionId, now = Date.now()) {
+    if (!key) return false;
+    const entry = this.dedupeCache.get(key);
+    if (!entry) return false;
+
+    if (entry.sessionId !== sessionId) {
+      if (now - entry.timestamp > DEDUPE_TTL_MS) {
+        this.dedupeCache.delete(key);
+      }
+      return false;
+    }
+
+    if (now - entry.timestamp <= DEDUPE_TTL_MS) {
+      if (this.debug) {
+        console.info('[Funnel] dedupe skipped event', {
+          key,
+          sessionId,
+          ageMs: now - entry.timestamp,
+        });
+      }
+      return true;
+    }
+
+    this.dedupeCache.delete(key);
+    return false;
+  }
+
+  markDedupe(key, sessionId, now = Date.now()) {
+    if (!key) return;
+    this.dedupeCache.set(key, { sessionId, timestamp: now });
+    if (this.dedupeCache.size > 200) {
+      this.pruneDedupeCache(now);
     }
   }
 
@@ -267,6 +338,8 @@ class FunnelClient {
       this.init();
     }
 
+    this.refreshDebugFlag();
+
     this.ensureSession();
     if (!this.visitorId) {
       this.visitorId = uuidv4();
@@ -319,10 +392,17 @@ class FunnelClient {
     const utm = pruneEmpty(payload.utm || this.sessionMeta.utm);
     if (utm) event.utm = utm;
 
-    const metadata = {
+    let metadata = {
       ...(this.pageContext.metadata || {}),
       ...(payload.metadata || {}),
     };
+
+    let dedupeKey = payload.dedupeKey;
+    if (!dedupeKey && metadata && Object.prototype.hasOwnProperty.call(metadata, 'dedupeKey')) {
+      dedupeKey = metadata.dedupeKey;
+      metadata = { ...metadata };
+      delete metadata.dedupeKey;
+    }
 
     if (Object.keys(this.userContext).length > 0) {
       metadata.user = {
@@ -343,7 +423,34 @@ class FunnelClient {
       event.session = session;
     }
 
+    if (this.debug) {
+      try {
+        console.info('[Funnel] queued event', {
+          step,
+          page: event.page?.path,
+          product: event.product?.id,
+          cartItems: event.cart?.items,
+          cartValue: event.cart?.value,
+          orderId: event.order?.orderId,
+          metadata: event.metadata,
+        });
+      } catch (error) {
+        console.info('[Funnel] queued event', step);
+      }
+    }
+
+    if (!dedupeKey && step === 'visit') {
+      dedupeKey = `visit:${event.page?.path || 'unknown'}`;
+    }
+
+    if (dedupeKey && this.shouldSkipDueToDedupe(dedupeKey, event.sessionId, timestamp)) {
+      return;
+    }
+
     this.queue.push(event);
+    if (dedupeKey) {
+      this.markDedupe(dedupeKey, event.sessionId, timestamp);
+    }
     if (this.queue.length >= MAX_BATCH_SIZE) {
       this.flush('batch');
     } else {
@@ -382,7 +489,17 @@ class FunnelClient {
       return;
     }
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (this.debug) {
+      try {
+        console.info('[Funnel] flushing events', {
+          reason,
+          count: batch.length,
+          steps: batch.map((event) => event.step),
+        });
+      } catch (error) {
+        console.info('[Funnel] flush debug failed', error);
+      }
+    } else if (process.env.NODE_ENV !== 'production') {
       try {
         console.debug('[Funnel] Flushing events', {
           reason,
@@ -425,6 +542,14 @@ class FunnelClient {
       this.sending = false;
       this.scheduleFlush(FLUSH_INTERVAL_MS * 2);
       return;
+    }
+
+    if (this.debug) {
+      console.info('[Funnel] flush success', {
+        reason,
+        count: batch.length,
+        steps: batch.map((event) => event.step),
+      });
     }
 
     this.sending = false;
