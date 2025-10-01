@@ -400,8 +400,24 @@ export async function saveFunnelEvents(rawEvents = []) {
 
       if (result.ok) {
         outcome.accepted += 1;
+        if (process.env.NODE_ENV !== 'production') {
+          console.info('[Funnel] Stored event', {
+            step,
+            visitorId: parsed.visitorId,
+            sessionId: parsed.sessionId,
+            timestamp: timestamp.toISOString(),
+          });
+        }
       } else if (result.code === 'duplicate') {
         outcome.duplicates += 1;
+        if (process.env.NODE_ENV !== 'production') {
+          console.info('[Funnel] Duplicate event skipped', {
+            step,
+            visitorId: parsed.visitorId,
+            sessionId: parsed.sessionId,
+            eventId: parsed.eventId,
+          });
+        }
       }
     } catch (error) {
       console.error('[Funnel] Failed to persist event', error);
