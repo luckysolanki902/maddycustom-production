@@ -33,8 +33,10 @@ export async function GET(request) {
     await connectToDatabase();
 
     const { searchParams } = new URL(request.url);
-    const page = searchParams.get('page');
-    const componentName = searchParams.get('componentName');
+  const page = searchParams.get('page');
+  const componentName = searchParams.get('componentName');
+  const idsParam = searchParams.get('ids'); // comma-separated Mongo _id list
+  const limitParam = searchParams.get('limit');
     // Build query object
     let query = { isActive: true };
     
@@ -46,10 +48,24 @@ export async function GET(request) {
       query.componentName = componentName;
     }
 
-    // Fetch display assets based on query
-    const assets = await DisplayAsset.find(query)
-      .sort({ position: 1, createdAt: 1 })
-      .lean();
+    // If specific ids requested, override query to those ids (still respecting isActive unless explicitly disabled later)
+    let idsFilter = null;
+    if (idsParam) {
+      const ids = idsParam.split(',').map(s => s.trim()).filter(Boolean);
+      if (ids.length) {
+        idsFilter = ids;
+      }
+    }
+
+    let mongoQuery = DisplayAsset.find(idsFilter ? { _id: { $in: idsFilter }, ...query } : query)
+      .sort({ position: 1, createdAt: 1 });
+
+    if (limitParam) {
+      const l = parseInt(limitParam, 10);
+      if (!isNaN(l) && l > 0) mongoQuery = mongoQuery.limit(l);
+    }
+
+    const assets = await mongoQuery.lean();
 
 
     if (!assets || assets.length === 0) {

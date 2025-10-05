@@ -2,7 +2,8 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useDispatch } from 'react-redux';
 import styles from './styles/cartlist.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,8 +14,11 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import PaymentIcon from '@mui/icons-material/Payment';
 import { updateQuantity } from '@/store/slices/cartSlice';
+// Lazy load add-ons slider to avoid impacting cart TTI
+const FuelCapWrapAddOns = dynamic(() => import('../viewcart/FuelCapWrapAddOns'), { ssr: false, loading: () => null });
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+
 
 const CartItem = ({ item, onRemove, readonly = false }) => {
   const dispatch = useDispatch();
@@ -222,6 +226,27 @@ export const ProductSpecifications = () => {
 };
 
 export default function CartList({ cartItems, onRemove, readonly = false, sectionTitle = null, sectionNote = null, showSpecs = false }) {
+  const showFuelCapAddOns = !readonly; // further conditions can be added (e.g., only if cart not empty)
+
+  // One-time similarity snapshot for FuelCapWrapAddOns prioritization
+  const [similarityContext, setSimilarityContext] = useState(null);
+  const capturedRef = useRef(false);
+  useEffect(() => {
+    if (capturedRef.current) return; // only once until component unmounts
+    if (!cartItems || !cartItems.length) return;
+    const designGroupIds = [...new Set(cartItems.map(ci => ci.productDetails?.designGroupId).filter(Boolean))];
+    // Tokenize product names (lowercase, alphanumeric word segments) and keep top distinct tokens
+    const nameTokensSet = new Set();
+    cartItems.forEach(ci => {
+      const nm = (ci.productDetails?.name || '').toLowerCase();
+      nm.split(/[^a-z0-9]+/).filter(Boolean).forEach(tok => {
+        if (tok.length >= 3) nameTokensSet.add(tok);
+      });
+    });
+    const nameTokens = Array.from(nameTokensSet).slice(0, 10);
+    setSimilarityContext({ designGroupIds, nameTokens });
+    capturedRef.current = true;
+  }, [cartItems]);
   return (
     <div className={styles.cartList}>
       {sectionTitle && (
@@ -240,6 +265,13 @@ export default function CartList({ cartItems, onRemove, readonly = false, sectio
           />
         ))}
       </AnimatePresence>
+
+      {/* Inject Fuel Cap Wrap Add‑Ons slider at the end of the cart list for visibility */}
+      {showFuelCapAddOns && (
+        <div style={{ marginTop: '0.25rem', paddingTop: '0.75rem', borderTop: '1px solid #f1f1f1' }}>
+          <FuelCapWrapAddOns similarityContext={similarityContext} />
+        </div>
+      )}
       
       {/* Add the specifications section only when explicitly requested */}
       {showSpecs && cartItems.length > 0 && !readonly && <ProductSpecifications />}
