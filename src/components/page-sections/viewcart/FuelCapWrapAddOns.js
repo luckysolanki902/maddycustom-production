@@ -300,9 +300,7 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FRC', pageSize
         </Box>
       </Box>
 
-      {error && (
-        <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'orange' }}>Add‑ons endpoint issue: {error}</Typography>
-      )}
+
 
       <Box sx={{ mt: 1, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
         {!mappingConfirmed && (
