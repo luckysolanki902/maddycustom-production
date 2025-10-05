@@ -78,7 +78,8 @@ export default function AddToCartButton({
   showOnlyChooseVariants = false,
   disableRecommendationTrigger = false,
   flexResponsiveness = false,
-  disableNotifyMe = false // New prop to disable notify functionality for POD items
+  disableNotifyMe = false, // New prop to disable notify functionality for POD items
+  fuelAddonStyle = false // custom condensed styling for FuelCapWrapAddOns
 }) {
   // Use custom hook to classify pageType if not provided
   const pageType = usePageType();
@@ -498,9 +499,8 @@ export default function AddToCartButton({
     isBlackButton ? styles.blackButton : "",
     isLarge ? styles.largeButton : "",
     smaller ? styles.smaller : "",
-  ]
-    .join(" ")
-    .trim();
+    fuelAddonStyle ? styles.fuelAddonButton : ""
+  ].join(" ").trim();
 
   if (showOnlyChooseVariants && isLoadingVariants) return null;
 
@@ -629,9 +629,8 @@ export default function AddToCartButton({
     styles.addToCart,
     isBlackButton ? styles.blackButton : "",
     isLarge ? styles.largeButton : "",
-  ]
-    .join(" ")
-    .trim();
+    fuelAddonStyle ? styles.fuelAddonButton : ""
+  ].join(" ").trim();
 
   if (showOnlyChooseVariants && (!enableVariantSelection || !hasVariants)) return null;
 

@@ -2,7 +2,9 @@
 
 import { createSlice } from '@reduxjs/toolkit';
 
-const initialState = {};
+const initialState = {
+  // structure: [specificCategoryId]: { preferredVariantId, variantCode, pageSlug, hasSeenVariantPopup }
+};
 
 const variantPreferenceSlice = createSlice({
   name: 'variantPreference',
@@ -15,6 +17,14 @@ const variantPreferenceSlice = createSlice({
       }
       // Ensure the pageSlug starts with "/shop"
       state[categoryId].pageSlug = pageSlug.startsWith('/shop') ? pageSlug : `/shop${pageSlug}`;
+    },
+    setPreferredVariant: (state, action) => {
+      const { categoryId, variantId, variantCode } = action.payload;
+      if (!state[categoryId]) {
+        state[categoryId] = { pageSlug: '', hasSeenVariantPopup: false };
+      }
+      state[categoryId].preferredVariantId = variantId;
+      if (variantCode) state[categoryId].variantCode = variantCode;
     },
     setHasSeenVariantPopup: (state, action) => {
       const { categoryId, hasSeen } = action.payload;
@@ -39,6 +49,6 @@ const variantPreferenceSlice = createSlice({
   },
 });
 
-export const { setPageSlug, setHasSeenVariantPopup, setPreference } = variantPreferenceSlice.actions;
+export const { setPageSlug, setHasSeenVariantPopup, setPreference, setPreferredVariant } = variantPreferenceSlice.actions;
 
 export default variantPreferenceSlice.reducer;

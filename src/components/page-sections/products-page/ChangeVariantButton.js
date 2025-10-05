@@ -1,4 +1,4 @@
-"use client";
+// "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
@@ -18,8 +18,9 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   setHasSeenVariantPopup,
   setPageSlug,
+  setPreferredVariant,
 } from "@/store/slices/variantPreferenceSlice";
-import { Category } from "@mui/icons-material";
+import { startNavigation, completeNavigation } from '@/store/slices/navigationSlice';
 
 /**
  * Flexible variant selector usable in normal shop and B2B context.
@@ -62,6 +63,23 @@ export default function ChangeVariantButton({
     (state) => state.variantPreference[category._id]
   );
   const hasSeenVariantPopup = categoryPreferences?.hasSeenVariantPopup || false;
+  const savedPageSlug = categoryPreferences?.pageSlug;
+
+  // Fast auto-redirect if we have a saved preference for this category that differs from current path
+  useEffect(() => {
+    if (!category || !savedPageSlug) return;
+    // If current pathname already matches saved slug, do nothing
+    if (pathname === savedPageSlug) return;
+    // Avoid loops: ensure slug starts with /shop
+    if (!savedPageSlug.startsWith('/shop')) return;
+    // Trigger full page loader & redirect ASAP
+    dispatch(startNavigation({ url: savedPageSlug }));
+    router.replace(savedPageSlug);
+    // We'll optimistically complete after a short delay if app router doesn't
+    const t = setTimeout(() => dispatch(completeNavigation()), 4000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedPageSlug]);
 
   useEffect(() => {
     // Check if this category uses letter-mapping
@@ -116,7 +134,16 @@ export default function ChangeVariantButton({
 
   const handleVariantClick = (slug) => {
     const target = buildTarget(slug);
+    const variantObj = variants.find(v => v.pageSlug === slug);
+    if (variantObj) {
+      dispatch(setPreferredVariant({ 
+        categoryId: category._id, 
+        variantId: variantObj.id, 
+        variantCode: variantObj.variantCode 
+      }));
+    }
     dispatch(setPageSlug({ categoryId: category._id, pageSlug: target }));
+    dispatch(startNavigation({ url: target }));
     router.push(target);
     setShowPopup(false);
   };
@@ -147,7 +174,7 @@ export default function ChangeVariantButton({
 
     // Find the variant with the corresponding variant code (finalCode)
     const matchedVariant = variants.find(
-      (variant) => variant.variantCode.toLowerCase() === finalCode.toLowerCase()
+      (variant) => variant.variantCode?.toLowerCase() === finalCode.toLowerCase()
     );
 
     if (!matchedVariant) {
@@ -157,7 +184,14 @@ export default function ChangeVariantButton({
 
     // Construct the final route using the matched variant's pageSlug
   const finalSlug = buildTarget(matchedVariant.pageSlug);
+  // Persist preference (id + code + slug)
+  dispatch(setPreferredVariant({ 
+    categoryId: category._id, 
+    variantId: matchedVariant.id, 
+    variantCode: matchedVariant.variantCode 
+  }));
   dispatch(setPageSlug({ categoryId: category._id, pageSlug: finalSlug }));
+  dispatch(startNavigation({ url: finalSlug }));
   router.push(finalSlug);
     setShowPopup(false);
   };

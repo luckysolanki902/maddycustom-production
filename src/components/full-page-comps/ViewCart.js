@@ -33,7 +33,8 @@ import { gaBeginCheckout } from '@/lib/metadata/googleAds';
 import funnelClient from '@/lib/analytics/funnelClient';
 import MinimumCartDialog from '../dialogs/MinimumCartDialog';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
-import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts';
+// import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts'; // replaced by targeted add-ons & photos slider
+import CustomerPhotosSlider from '../page-sections/homepage/CustomerPhotosSlider';
 import {
   calculateTotalQuantity,
   calculateTotalCostBeforeDiscount,
@@ -686,8 +687,7 @@ export default function ViewCart({ isDrawer = false }) {
   };
 
   /* ---------- memo for suggestions (unchanged) ---------------------- */
-  const topSub = useMemo(() => [...new Set(cartItems.map(i => i.productDetails.subCategory))], [cartItems]);
-  const topIds = useMemo(() => cartItems.map(i => i.productDetails._id).join(','), [cartItems]);
+  // Removed topSub/topIds (TopBoughtProducts deprecated here)
   
   // Create cart design IDs for product suggestions
   const cartDesignIds = useMemo(() => {
@@ -700,6 +700,22 @@ export default function ViewCart({ isDrawer = false }) {
   const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 ? 99 : 0);
 
   /* -------------------  JSX (UI with fixes)  ------------------------- */
+  const [customerPhotoAssets, setCustomerPhotoAssets] = useState([]);
+  useEffect(() => {
+    // Fetch only once when cart view mounts
+    (async () => {
+      try {
+        const res = await fetch('/api/display-assets?componentName=customer-photos-section');
+        if (!res.ok) return;
+        const data = await res.json();
+        const assets = (data.assets || []).filter(a => a?.media?.desktop || a?.media?.mobile);
+        setCustomerPhotoAssets(assets.slice(0, 20));
+      } catch (e) {
+        console.warn('Customer photos load failed', e.message);
+      }
+    })();
+  }, []);
+
   return (
     <div
       className={styles.container}
@@ -983,18 +999,16 @@ export default function ViewCart({ isDrawer = false }) {
                 onChange={e => setSelectedPM(paymentModes.find(m => m.name === e.target.value))}
                 totalAmount={totalPay}
               />
+              {/* Customer Photos slider placed directly after Payment Modes within scroll context */}
+              {customerPhotoAssets.length > 0 && (
+                <div style={{ marginTop: '1.75rem' }}>
+                  <h3 style={{ margin: '0 0 .85rem', fontSize: 16, fontWeight: 600 }}>See How Others Personalized</h3>
+                  <CustomerPhotosSlider assets={customerPhotoAssets} />
+                </div>
+              )}
             </section>
 
-            {/* Recommended Products */}
-            <section className={styles.recommendedSection}>
-              <h2 className={styles.recommendedTitle}>You might also like</h2>
-              <TopBoughtProducts
-                subCategories={topSub}
-                currentProductId={topIds}
-                pageType="viewcart"
-                hideHeading={true}
-              />
-            </section>
+            {/* Social Proof removed from here; moved to page end for stronger close */}
           </motion.div>
         ) : (
           <motion.div
@@ -1018,12 +1032,7 @@ export default function ViewCart({ isDrawer = false }) {
                 Continue Shopping
               </motion.button>
             </div>
-            <div className={styles.recommendedForYou}>
-              <h3 className={styles.recommendedTitle}>Recommended For You</h3>
-              <TopBoughtProducts
-                hideHeading={true}
-                pageType="viewcart" />
-            </div>
+            <div className={styles.recommendedForYou}></div>
           </motion.div>
         )}
       </div>
@@ -1044,8 +1053,8 @@ export default function ViewCart({ isDrawer = false }) {
             isRevalidatingCoupons={preparing}
             discount={disc}
           />
-        </motion.div>)
-      }
+        </motion.div>
+      )}
 
       <ApplyCoupon
         open={dlgCoupon}
