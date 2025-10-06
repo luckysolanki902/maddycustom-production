@@ -365,13 +365,6 @@ async function persistEvent(event, sessionDoc, timestamp) {
       }).select('_id').lean();
       
       if (existingEvent) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.info('[Funnel] Duplicate detected by eventId lookup', {
-            eventId: payload.eventId,
-            step: payload.step,
-            sessionId: payload.sessionId,
-          });
-        }
         return { ok: false, code: 'duplicate', reason: 'Duplicate eventId detected' };
       }
     }
@@ -385,13 +378,6 @@ async function persistEvent(event, sessionDoc, timestamp) {
       }).select('_id').lean();
       
       if (existingByHash) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.info('[Funnel] Duplicate detected by eventHash lookup', {
-            eventHash: payload.eventHash,
-            step: payload.step,
-            sessionId: payload.sessionId,
-          });
-        }
         return { ok: false, code: 'duplicate', reason: 'Duplicate eventHash detected' };
       }
     }
@@ -401,14 +387,6 @@ async function persistEvent(event, sessionDoc, timestamp) {
     return { ok: true };
   } catch (error) {
     if (error?.code === 11000) {
-      // Duplicate event caught by unique index
-      if (process.env.NODE_ENV !== 'production') {
-        console.info('[Funnel] Duplicate caught by unique index', {
-          eventId: payload.eventId,
-          step: payload.step,
-          error: error.message,
-        });
-      }
       return { ok: false, code: 'duplicate', reason: 'Duplicate event skipped by index' };
     }
     throw error;
@@ -462,24 +440,9 @@ export async function saveFunnelEvents(rawEvents = []) {
 
       if (result.ok) {
         outcome.accepted += 1;
-        if (process.env.NODE_ENV !== 'production') {
-          console.info('[Funnel] Stored event', {
-            step,
-            visitorId: parsed.visitorId,
-            sessionId: parsed.sessionId,
-            timestamp: timestamp.toISOString(),
-          });
-        }
+
       } else if (result.code === 'duplicate') {
         outcome.duplicates += 1;
-        if (process.env.NODE_ENV !== 'production') {
-          console.info('[Funnel] Duplicate event skipped', {
-            step,
-            visitorId: parsed.visitorId,
-            sessionId: parsed.sessionId,
-            eventId: parsed.eventId,
-          });
-        }
       } else {
         outcome.errors.push({
           event: rawEvent,
