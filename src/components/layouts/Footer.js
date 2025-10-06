@@ -352,7 +352,7 @@ const Footer = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link href="">
+                  <Link href="https://www.google.com/maps/place/Maddy+Custom/@26.8033211,80.8977335,15z/data=!3m1!4b1!4m6!3m5!1s0x399bfd95dee6ba27:0xbc08f60a46635e84!8m2!3d26.8010803!4d80.9116381!16s%2Fg%2F11jz2q73s6?entry=ttu&g_ep=EgoyMDI1MTAwMS4wIKXMDSoASAFQAw%3D%3D">
                     <LocationOnIcon
                       sx={{
                         color: "white",
