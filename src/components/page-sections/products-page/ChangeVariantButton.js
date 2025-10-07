@@ -72,6 +72,15 @@ export default function ChangeVariantButton({
     if (pathname === savedPageSlug) return;
     // Avoid loops: ensure slug starts with /shop
     if (!savedPageSlug.startsWith('/shop')) return;
+    // --- NEW: Skip auto-redirect when we're on a PRODUCT DETAIL page (deeper path) ---
+    // Depth-based skip for product pages (logs removed)
+    try {
+      const currentParts = pathname.split('/').filter(Boolean);
+      const savedParts = savedPageSlug.split('/').filter(Boolean);
+      const isDeeperThanSaved = currentParts.length > savedParts.length;
+      if (isDeeperThanSaved) return; // Skip redirect on product detail page
+    } catch {}
+    // (Auto redirect log removed)
     // Trigger full page loader & redirect ASAP
     dispatch(startNavigation({ url: savedPageSlug }));
     router.replace(savedPageSlug);
@@ -135,6 +144,7 @@ export default function ChangeVariantButton({
   const handleVariantClick = (slug) => {
     const target = buildTarget(slug);
     const variantObj = variants.find(v => v.pageSlug === slug);
+    // (Variant click log removed)
     if (variantObj) {
       dispatch(setPreferredVariant({ 
         categoryId: category._id, 
