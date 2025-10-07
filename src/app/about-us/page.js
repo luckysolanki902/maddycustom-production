@@ -5,6 +5,8 @@ import { Box, Container, Typography, Button } from '@mui/material';
 import { motion } from 'framer-motion';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import YouTubeIcon from '@mui/icons-material/YouTube';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import FacebookIcon from '@mui/icons-material/Facebook';
 import TopBoughtProducts from '@/components/showcase/products/TopBoughtProducts';
 import styles from './about.module.css';
 
@@ -252,6 +254,36 @@ const AboutPage = () => {
                 <span className={styles.socialLabel}>YouTube</span>
                 <span className={styles.socialHandle}>@maddycustom</span>
                 <span className={styles.socialDesc}>Installs • Showcases • Guides</span>
+              </div>
+            </motion.a>
+            <motion.a
+              variants={scaleIn}
+              href="https://chat.whatsapp.com/JWNobG6xRj12apxysk0P7g"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${styles.socialMinimal} ${styles.whatsappMinimal}`}
+              aria-label="Join our WhatsApp Community"
+            >
+              <div className={styles.socialIconShell}><WhatsAppIcon fontSize="inherit" /></div>
+              <div className={styles.socialTextBlock}>
+                <span className={styles.socialLabel}>WhatsApp Community</span>
+                <span className={styles.socialHandle}>Live Chat</span>
+                <span className={styles.socialDesc}>Builds • Stories • Ride Photos</span>
+              </div>
+            </motion.a>
+            <motion.a
+              variants={scaleIn}
+              href="https://www.facebook.com/p/Maddycustom-61555047164387/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${styles.socialMinimal} ${styles.facebookMinimal}`}
+              aria-label="Follow us on Facebook"
+            >
+              <div className={styles.socialIconShell}><FacebookIcon fontSize="inherit" /></div>
+              <div className={styles.socialTextBlock}>
+                <span className={styles.socialLabel}>Facebook</span>
+                <span className={styles.socialHandle}>/MaddyCustom</span>
+                <span className={styles.socialDesc}>Posts • Community • Announcements</span>
               </div>
             </motion.a>
           </div>
