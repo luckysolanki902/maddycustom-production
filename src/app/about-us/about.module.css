@@ -751,7 +751,8 @@
 .socialGrid {
 	display: grid;
 	gap: 2.2rem;
-	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	/* Enforce maximum of 2 cards per row */
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	align-items: stretch;
 }
 
@@ -809,6 +810,15 @@
 
 .youtubeMinimal .socialIconShell {
 	background: linear-gradient(135deg, #ff0000, #cc0000);
+}
+
+/* Newly added social minimal variants */
+.whatsappMinimal .socialIconShell {
+	background: linear-gradient(135deg, #25D366, #128C7E);
+}
+
+.facebookMinimal .socialIconShell {
+	background: linear-gradient(135deg, #1877F2, #145DB2);
 }
 
 .socialTextBlock {
@@ -879,6 +889,11 @@
 
 	.socialMinimal {
 		padding: 1.3rem 1.4rem;
+	}
+
+	/* Single column social cards on narrow screens */
+	.socialGrid {
+		grid-template-columns: 1fr;
 	}
 
 	.socialIconShell {
