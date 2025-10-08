@@ -244,8 +244,6 @@ export default function ViewCart({ isDrawer = false }) {
   // Minimum purchase amount configuration
   const minPurchaseAmt = 549; // Minimum order amount in INR
 
-
-
   /* ---------- cart totals ------------------------------------------- */
   const qty = calculateTotalQuantity(cartItems);
   // Split available vs unavailable once and reuse everywhere
