@@ -34,6 +34,15 @@ export default function SupportChatLauncher() {
     return () => clearTimeout(t);
   }, []);
 
+  // Listen for custom event to open chat dialog
+  useEffect(() => {
+    const handleOpenChat = () => {
+      setOpen(true);
+    };
+    window.addEventListener('mc-open-chat-dialog', handleOpenChat);
+    return () => window.removeEventListener('mc-open-chat-dialog', handleOpenChat);
+  }, []);
+
   // auto close if hidden state triggers
   useEffect(() => {
     if (hidden && open) setOpen(false);

@@ -325,12 +325,13 @@ Functions:
   returns: { title: string, items: Array<{ title, image, link }>, hint: string }
 
 Decision policy:
-- If the user is generically browsing (e.g., "show me products", "show me all products", "browse products", "everything", "all items"), choose browse_categories.
-- Choose search_products when the user specifies a concrete product concept, keywords, or category (e.g., "window pillar wrap", "perfume under 500", "most ordered pillar wraps"). When the user mentions a domain like bike/car/interior/exterior:
-  - If they ALSO mention a specific structure/category (e.g., pillar/tank/roof/bonnet/window), set categoryTitle accordingly (e.g., "window pillar wrap").
-  - If they ONLY mention the domain without a specific category (e.g., "show me something for my red car"), DO NOT set categoryTitle. Instead set args.keywords with the domain (e.g., ["car"]) and set diversifyCategories=true with limit=10 so results are a diverse mix across different specific categories (pillar, roof, bonnet, etc.).
-- Choose get_order_status only if the user asks to track an order or provides a valid order id.
-- Keep args minimal and relevant; do not invent values. Never exceed limit 10.
+- If the user is generically browsing (e.g., "show me products", "show me all products", "browse products", "everything", "all items"), choose browse_categories. 
+- Choose search_products when the user specifies a concrete product concept, keywords, or category (e.g., "window pillar wrap", "perfume under 500", "most ordered pillar wraps"). When the user mentions a domain like bike/car/interior/exterior: 
+  - If they ALSO mention a specific structure/category (e.g., pillar/tank/roof/bonnet/window), set categoryTitle accordingly (e.g., "window pillar wrap"). 
+  - If they ONLY mention the domain without a specific category (e.g., "show me something for my red car"), DO NOT set categoryTitle. Instead set args.keywords with the domain (e.g., ["car"]) and set diversifyCategories=true with limit=10 so results are a diverse mix across different specific categories (pillar, roof, bonnet, etc.). 
+- Choose get_order_status only if the user asks to track an order or provides a valid order id. 
+- Keep args minimal and relevant; do not invent values. Never exceed limit 10. 
+- If user says something like window pillar wrap material or finish or something like that don't call a tool; answer directly about material; don't blindly call search_products for every message just because there is a keyword.
 
 Examples:
 1) User: "show me all products" → { "action": "call_tool", "tool": "browse_categories", "args": {}, "reason": "Generic browse" }
@@ -339,8 +340,8 @@ Examples:
 4) User: "track 64abc...ef" → { "action": "call_tool", "tool": "get_order_status", "args": { "orderId": "64abc...ef" }, "reason": "Order tracking" }
 5) User: "show something for bike" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "bike wrap", "keywords": ["bike"], "limit": 6 }, "reason": "User mentioned bike; choose closest category from list" }
 6) User: "show something for car interiors" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "car interiors", "keywords": ["car","interior"], "limit": 6 }, "reason": "User mentioned car interiors" }
-7) User: "car roof" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "roof wrap", "limit": 6 }, "reason": "Roof wraps for car" }
-8) User: "show me something for my red car" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["car","red"], "diversifyCategories": true, "limit": 10 }, "reason": "Generic car domain with color; diversify across categories" }
+7) User: "car roof" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "roof wrap", "limit": 6 }, "reason": "Roof wraps for car" } 
+8) User: "show me something for my red car" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["car","red"], "diversifyCategories": true, "limit": 10 }, "reason": "Generic car domain with color; diversify across categories" } 
 
 Decision JSON schema:
 { "action": "call_tool" | "direct_answer", "tool"?: "search_products"|"get_order_status"|"browse_categories", "args"?: object, "reason": string }

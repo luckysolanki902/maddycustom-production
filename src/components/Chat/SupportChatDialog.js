@@ -197,7 +197,7 @@ export default function SupportChatDialog({ open, onClose }) {
 						return (
 							<motion.div key={m.id || uuidv4()} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 14 }}>
 								<div style={m.role === 'user' ? userBubbleStyle : botBubbleStyle}>
-									<div style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'anywhere' }}>{formatText(m.text)}</div>
+									<div style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'anywhere' }}>{formatText(m.text, m.role === "user")}</div>
 									<div style={timeStyle}>{new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
 								</div>
 							</motion.div>
@@ -305,21 +305,47 @@ const inputBar = { padding: '14px 16px 16px', borderTop: '1px solid rgba(45,45,4
 const retryBtnStyle = { background: '#2d2d2d', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 14, cursor: 'pointer', fontSize: 12, fontWeight: 600 };
 const iconBtnStyle = { background: 'rgba(45,45,45,0.06)', border: '1px solid rgba(45,45,45,0.15)', color: '#2d2d2d', width: 34, height: 34, borderRadius: 12, cursor: 'pointer', fontSize: 18, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' };
 // Lightweight regex-based formatter for IDs, URLs, and status keywords
-function formatText(txt) {
+function formatText(txt, isUser = false) {
 	if (!txt) return '';
 	// Create copy buttons for objectIds and phone numbers; build markup manually and attach click handlers
 	// Basic list/paragraph formatting: convert lines starting with •/-/* into list items; numbers into ordered items
 	// We'll do a lightweight transform while preserving links and tokens handled below
-	let html = txt
-		.replace(/\b([a-f0-9]{24})\b/gi, '<span class="mc-copyable" data-copy="$1" style="font-family: ui-monospace, monospace; background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 8px;">$1 <button class="mc-copy-btn" data-copy="$1" style="margin-left:6px; font-size:10px; padding:2px 6px; border:1px solid rgba(45,45,45,0.2); border-radius:6px; background:#fff; cursor:pointer;">Copy<\/button><\/span>')
-		.replace(/\b(delivered|shipped|in transit|out for delivery|cancelled|returned|rto)\b/gi, '<strong style="color:#2d2d2d; background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 6px; text-transform: capitalize;">$1</strong>')
-		.replace(/(https?:\/\/[^\s]+)/gi, '<a href="$1" target="_blank" rel="noopener" style="color:#2d2d2d; text-decoration: underline; word-break: break-all; overflow-wrap: anywhere;">$1<\/a>')
-		// ISO dates YYYY-MM-DD or YYYY/MM/DD
-		.replace(/\b(\d{4}[-\/]\d{2}[-\/]\d{2})\b/g, '<span style="background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 6px;">$1<\/span>')
-		// Common Indian format DD/MM/YYYY or DD-MM-YYYY
-		.replace(/\b(\d{2}[\/-]\d{2}[\/-]\d{4})\b/g, '<span style="background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 6px;">$1<\/span>')
-		// Indian phone numbers: 10 digits (optionally prefixed by +91 or 0); keep simple/for display
-		.replace(/\b(?:\+91[-\s]?)?([6-9]\d{9})\b/g, '<span class="mc-copyable" data-copy="$1" style="background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 6px;">$1 <button class="mc-copy-btn" data-copy="$1" style="margin-left:6px; font-size:10px; padding:2px 6px; border:1px solid rgba(45,45,45,0.2); border-radius:6px; background:#fff; cursor:pointer;">Copy<\/button><\/span>');
+	let html = txt;
+
+  // Helper to safely avoid adding copy buttons inside links
+  const wrapCopyable = (match, value) =>
+    match.includes("href=")
+      ? match
+      : `<span class="mc-copyable" data-copy="${value}" style="font-family: ui-monospace, monospace; background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 8px;">${value} <button class="mc-copy-btn" data-copy="${value}" style="margin-left:6px; font-size:10px; padding:2px 6px; border:1px solid rgba(45,45,45,0.2); border-radius:6px; background:#fff; cursor:pointer;">Copy</button></span>`;
+
+  html = html
+    .replace(/\b([a-f0-9]{24})\b/gi, (m, v) => wrapCopyable(m, v))
+    .replace(
+      /(https?:\/\/[^\s<]+)/gi,
+      '<a href="$1" target="_blank" rel="noopener" style="color:inherit; text-decoration: underline; word-break: break-all; overflow-wrap: anywhere;">$1</a>'
+    )
+    // ISO dates YYYY-MM-DD or YYYY/MM/DD
+    .replace(
+      /\b(\d{4}[-\/]\d{2}[-\/]\d{2})\b/g,
+      '<span style="background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 6px;">$1</span>'
+    )
+    // Common Indian format DD/MM/YYYY or DD-MM-YYYY
+    .replace(
+      /\b(\d{2}[\/-]\d{2}[\/-]\d{4})\b/g,
+      '<span style="background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 6px;">$1</span>'
+    )
+    // Indian phone numbers (10 digits, optionally prefixed by +91 or 0)
+    .replace(/\b(?:\+91[-\s]?)?([6-9]\d{9})\b/g, (m, v) => wrapCopyable(m, v));
+
+  // Highlight keywords only if not user
+  if (!isUser) {
+    html = html.replace(
+      /\b(delivered|shipped|in transit|out for delivery|cancelled|returned|rto)\b/gi,
+      '<strong style="color:#2d2d2d; padding: 2px 6px; border-radius: 6px; text-transform: capitalize;">$1</strong>'
+    );
+  }
+
+
 	// Convert bullet points
 	if (/^(?:\s*[•\-*]\s+.+)$/m.test(txt)) {
 		html = html.replace(/^(\s*[•\-*]\s+.+)$/gm, '<li>$1<\/li>')
