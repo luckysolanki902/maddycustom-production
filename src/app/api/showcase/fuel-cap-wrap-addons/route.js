@@ -13,6 +13,8 @@ import Product from '@/models/Product';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import connectToDatabase from '@/lib/db';
 
+export const revalidate = 600; // cache for 10 minutes (ISR)
+
 export async function GET(req) {
 	const url = new URL(req.url);
 	const variantCodeRaw = (url.searchParams.get('variantCode') || '').trim();
@@ -94,7 +96,7 @@ export async function GET(req) {
 			}
 		}
 
-		const aggregation = [
+				const aggregation = [
 			{ $match: baseMatch },
 			// Add similarity score only if context present
 			{ $addFields: {
@@ -103,7 +105,28 @@ export async function GET(req) {
 			{ $sort: { similarityScore: -1, price: 1, createdAt: -1 } },
 			{ $skip: (page - 1) * pageSize },
 			{ $limit: pageSize },
-			{ $project: { _id: 1, name: 1, price: 1, images: 1, pageSlug: 1, specificCategoryVariant: 1 } }
+						// Lookup options and sort by inventory availability (highest first)
+						{
+							$lookup: {
+								from: 'options',
+								let: { productId: '$_id' },
+								pipeline: [
+									{ $match: { $expr: { $eq: ['$product', '$$productId'] } } },
+									{
+										$lookup: {
+											from: 'inventories',
+											localField: 'inventoryData',
+											foreignField: '_id',
+											as: 'inventoryData'
+										}
+									},
+									{ $unwind: { path: '$inventoryData', preserveNullAndEmptyArrays: true } },
+									{ $sort: { 'inventoryData.availableQuantity': -1 } }
+								],
+								as: 'options'
+							}
+						},
+						{ $project: { _id: 1, name: 1, price: 1, MRP: 1, images: 1, pageSlug: 1, specificCategoryVariant: 1, category: 1, subCategory: 1, options: 1 } }
 		];
 
 		const products = await Product.aggregate(aggregation).exec();

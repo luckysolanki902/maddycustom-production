@@ -28,10 +28,13 @@ import PaymentModes from '../page-sections/viewcart/PaymentModes';
 import Footer from '../page-sections/viewcart/Footer';
 import ApplyCoupon from '../dialogs/ApplyCoupon';
 import OrderForm from '../dialogs/OrderForm';
+import { initiateCheckout } from '@/lib/metadata/facebookPixels';
+import { gaBeginCheckout } from '@/lib/metadata/googleAds';
+import funnelClient from '@/lib/analytics/funnelClient';
 import MinimumCartDialog from '../dialogs/MinimumCartDialog';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
-import CustomerPhotosSlider from '@/components/page-sections/homepage/CustomerPhotosSlider';
-import { fetchDisplayAssets } from '@/lib/utils/fetchutils';
+// import { TopBoughtProducts } from '../showcase/products/TopBoughtProducts'; // replaced by targeted add-ons & photos slider
+import CustomerPhotosSlider from '../page-sections/homepage/CustomerPhotosSlider';
 import {
   calculateTotalQuantity,
   calculateTotalCostBeforeDiscount,
@@ -53,7 +56,6 @@ import CouponTimerBanner from '../showcase/banners/CouponTimerBanner';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Box, Divider } from '@mui/material';
 import BlackButton from '../utils/BlackButton';
 import useHistoryState from '@/hooks/useHistoryState';
-import useCheckoutPrefetch from '@/hooks/useCheckoutPrefetch';
 
 /* ---------------- helper ------------------------------------------------ */
 const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
@@ -89,7 +91,6 @@ const flattenCart = cartItems => cartItems.map(i => ({
 /* ======================================================================= */
 export default function ViewCart({ isDrawer = false }) {
   const dispatch = useDispatch();
-  const { startPrefetch, status: prefetchStatus } = useCheckoutPrefetch();
 
   /* ---------- redux and state (unchanged) ---------------------------- */
   const cartItems = useSelector(s => s.cart.items);
@@ -169,30 +170,10 @@ export default function ViewCart({ isDrawer = false }) {
   const [oosData, setOosData] = useState({ excludedKeys: [], itemsInfo: {}, includedCount: 0, restockedKeys: [], couponInvalidated: false, couponName: '' });
   const [verifyingInventory, setVerifyingInventory] = useState(false);
   const [preparing, setPreparing] = useState(false);
-  const [checkoutClicked, setCheckoutClicked] = useState(false);
-  const [checkoutAwaitingReady, setCheckoutAwaitingReady] = useState(false);
-  const lastCartSignatureRef = useRef('');
 
   const [lockedCoupon, setLockedCoupon] = useState(null);
   const [lockedShort, setLockedShort] = useState(0);
   const [nowCoupon, setNowCoupon] = useState(null);
-
-  // Begin background prepare as soon as cart is visible/has items; reset awaiting state on cart change
-  useEffect(() => {
-    if (cartItems && cartItems.length > 0) {
-      startPrefetch();
-    }
-    // simple signature: productId:optionId=x;qty=y
-    try {
-      const sig = JSON.stringify(cartItems.map(i => ({ id: i.productDetails?._id || i.productId, opt: i.productDetails?.selectedOption?._id || null, q: i.quantity })));
-      if (sig !== lastCartSignatureRef.current) {
-        lastCartSignatureRef.current = sig;
-        // any cart mutation cancels a previously awaiting auto-open
-        setCheckoutAwaitingReady(false);
-        setCheckoutClicked(false);
-      }
-    } catch {}
-  }, [cartItems, startPrefetch]);
 
   // Add state for timer countdown
   const [timeRemaining, setTimeRemaining] = useState({
@@ -265,7 +246,9 @@ export default function ViewCart({ isDrawer = false }) {
   const [revalidatingCoupons, setRevalidatingCoupons] = useState(false);
 
   // Minimum purchase amount configuration
-  const minPurchaseAmt = 549; // Minimum order amount in INR
+  const minPurchaseAmt = 349; // Minimum order amount in INR
+
+
 
   /* ---------- cart totals ------------------------------------------- */
   const qty = calculateTotalQuantity(cartItems);
@@ -325,6 +308,26 @@ export default function ViewCart({ isDrawer = false }) {
       snack('Offer conditions are not met.', 'warning'); 
       return;
     }
+
+    try {
+      const cartQuantity = availableItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      funnelClient.track('apply_offer', {
+        cart: {
+          items: cartQuantity || undefined,
+          value: subTot || undefined,
+          currency: 'INR',
+        },
+        metadata: {
+          couponCode: code,
+          discountType: type,
+          discountAmount: amount,
+          source: fromAuto ? 'auto' : 'manual',
+          offerId: offer?._id,
+        },
+      });
+    } catch (err) {
+      console.error('Funnel apply_offer track failed:', err);
+    }
     
     setCouponState({ couponApplied: true, couponName: code, couponDiscount: amount, discountType: type, offer });
     dispatch(setCouponApplied({ couponCode: code, discountAmount: amount, discountType: type, offer }));
@@ -338,7 +341,7 @@ export default function ViewCart({ isDrawer = false }) {
     if (fromAuto) {
       lastAutoRef.current = { code, type };
     }
-  }, [subTot, isFirstOrder, dispatch, snack]);const removeCoupon = useCallback((showMsg = true) => {
+  }, [availableItems, subTot, isFirstOrder, dispatch, snack]);const removeCoupon = useCallback((showMsg = true) => {
     setCouponState({ couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null });
     dispatch(setCouponApplied({ couponCode: '', discountAmount: 0, discountType: '', offer: null }));
       // Reset both flags to allow auto-apply
@@ -431,10 +434,6 @@ export default function ViewCart({ isDrawer = false }) {
   const prevCartRef = useRef(null);
   const cartChanged = useRef(false);
   const forceAutoApply = useRef(false);  const manualRemovalRef = useRef(false);
-  // Prevent spamming /apply: single-flight + cooldown
-  const autoApplyInFlightRef = useRef(false);
-  const lastAutoApplyAtRef = useRef(0);
-  const AUTO_APPLY_COOLDOWN_MS = 1500;
 
   useEffect(() => {
     const currentCartKey = JSON.stringify(cartItems.map(item => ({ id: item.productId, qty: item.quantity })));
@@ -473,12 +472,6 @@ export default function ViewCart({ isDrawer = false }) {
       (!blocked && !manualCoupon && !couponState.couponApplied);
     
     if (shouldCheckAutoApply) {
-      // Skip if a request is already in-flight
-      if (autoApplyInFlightRef.current) return;
-      // Skip if we just tried moments ago
-      if (Date.now() - lastAutoApplyAtRef.current < AUTO_APPLY_COOLDOWN_MS) return;
-      autoApplyInFlightRef.current = true;
-      lastAutoApplyAtRef.current = Date.now();
       cartChanged.current = false;
       forceAutoApply.current = false;
         (async () => {
@@ -516,8 +509,6 @@ export default function ViewCart({ isDrawer = false }) {
           }
         } catch (e) {
           console.error('Auto‑apply error:', e);
-        } finally {
-          autoApplyInFlightRef.current = false;
         }
       })();
     }
@@ -554,157 +545,177 @@ export default function ViewCart({ isDrawer = false }) {
     } catch {
       if (!silent) snack('Could not verify coupon.', 'error');
       return false;
-    }
-  }, [couponState.couponApplied, couponState.couponName, couponState.couponDiscount, 
-        subTot, isFirstOrder, availableItems, removeCoupon, couponRedux, dispatch, snack]);
-
-    // Debounced revalidation to avoid bursts
-    const revalidateDebouncedRef = useRef(null);
-
-  useEffect(() => { 
+    }  }, [couponState.couponApplied, couponState.couponName, couponState.couponDiscount, 
+      subTot, isFirstOrder, availableItems, removeCoupon, couponRedux, dispatch, snack]);  /* run on cart changes */  useEffect(() => { 
     const revalidate = async () => {
       if (couponState.couponApplied) {
         const isValid = await revalidateCoupon(true);
+        
         if (!isValid && !manualRemovalRef.current) {
           forceAutoApply.current = true;
         }
       }
     };
-    if (revalidateDebouncedRef.current) {
-      clearTimeout(revalidateDebouncedRef.current);
-    }
-    revalidateDebouncedRef.current = setTimeout(revalidate, 400);
-    return () => {
-      if (revalidateDebouncedRef.current) {
-        clearTimeout(revalidateDebouncedRef.current);
-      }
-    };
+    
+    revalidate();
   }, [availableItems, subTot, revalidateCoupon, couponState.couponApplied, couponState.couponName]);
 
-  /* ---------- validate before checkout (fast path with background prefetch) ------------------ */
-  const handleCheckout = () => {
-    setCheckoutClicked(true);
-    // Block until background prepare is complete
-    if (prefetchStatus !== 'ready') {
-      // set flag to auto-open once ready
-      setCheckoutAwaitingReady(true);
-      return;
-    }
-    // Enforce minimum purchase amount
+  /* ---------- validate before checkout (updated with min purchase check) ------------------ */
+  const handleCheckout = async () => {
+    // Check if total amount meets minimum purchase requirement
     if (totalPay < minPurchaseAmt) {
       setDlgMinimumCart(true);
       return;
     }
 
-    // Use prefetch-backed inventoryGate; do not block UI here.
-    const excludedKeys = inventoryGate?.excludedKeys || [];
-    const itemsInfo = inventoryGate?.itemsInfo || {};
+    // Run pre-checks with a fresh inventory verification, and block UI with a single Preparing state
+    try {
+      setVerifyingInventory(true);
+      setPreparing(true);
 
-    if (excludedKeys.length > 0) {
-      // Compute included count for CTA text
-      const includedCount = cartItems.filter(i => {
+      const cartSignature = JSON.stringify(
+        cartItems.map(i => ({
+          id: i.productDetails?._id || i.productId,
+          qty: i.quantity,
+          opt: i.productDetails?.selectedOption?._id || null
+        }))
+      );
+      const prevExcluded = inventoryGate?.excludedKeys || [];
+
+      // Always perform a fresh verify (no cache) — primary network call
+      const verifyRes = await axios.post(`/api/checkout/inventory/verify`, {
+        items: cartItems.map(i => ({
+          productId: i.productDetails?._id || i.productId,
+          optionId: i.productDetails?.selectedOption?._id || null,
+          quantity: i.quantity,
+        })),
+        reserve: false,
+      });
+
+      if (!verifyRes.data?.ok) throw new Error(verifyRes.data?.message || 'Inventory check failed');
+
+      const excludedKeys = verifyRes.data.excludedKeys || [];
+      const itemsInfo = verifyRes.data.itemsInfo || {};
+
+      // Update gate immediately (sync) so UI reflects most recent state; no TTL
+      dispatch(setInventoryGate({ excludedKeys, itemsInfo, expiresAt: null, cartSignature }));
+
+      // Derive availableNow with latest exclusions
+      const availableNow = cartItems.filter(i => {
         const key = `${i.productDetails?._id || i.productId}${i.productDetails?.selectedOption?._id ? ':' + i.productDetails.selectedOption._id : ''}`;
         return !excludedKeys.includes(key);
-      }).reduce((sum, i) => sum + i.quantity, 0);
-
-      setOosData({
-        excludedKeys,
-        itemsInfo,
-        includedCount,
-        restockedKeys: [],
-        couponInvalidated: false,
-        couponName: couponState.couponName,
       });
-      setDlgOOS(true);
-      return;
-    }
 
-    // Open the order form
-    setDlgOrder(true);
-  };
+      // Compute these locally while coupon re-check runs in parallel
+      const restockedKeys = prevExcluded.filter(k => !excludedKeys.includes(k));
+      const includedCount = availableNow.reduce((sum, i) => sum + i.quantity, 0);
+      const subtotalNow = availableNow.reduce((sum, i) => sum + (i.price ?? i.productDetails.price) * i.quantity, 0);
 
-  // Auto-open once prefetch becomes ready after user clicked
-  useEffect(() => {
-    if (checkoutAwaitingReady && prefetchStatus === 'ready') {
-      // Re-run the handleCheckout path but now it will pass the ready check
-      setCheckoutAwaitingReady(false);
-      // enforce min amount and OOS gate as in handleCheckout
-      if (totalPay < minPurchaseAmt) {
-        setDlgMinimumCart(true);
-        return;
+      // Prepare analytics contents (based on latest availableNow)
+      const contents = availableNow.map(item => ({
+        productId: item.productDetails?._id || item.productId,
+        quantity: item.quantity,
+        price: item.price ?? item.productDetails.price,
+        brand: item.productDetails?.brand,
+        category: item.productDetails?.category?.name || item.productDetails?.category,
+        name: item.productDetails?.name,
+      }));
+
+      // If coupon applied, revalidate concurrently while we compute other things
+      const couponCheckPromise = couponState.couponApplied
+        ? fetch('/api/checkout/coupons/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code: couponState.couponName,
+              totalCost: subtotalNow,
+              isFirstOrder,
+              cartItems: flattenCart(availableNow),
+            }),
+          })
+        : Promise.resolve(null);
+
+      // Await coupon validation result before deciding any dialogs
+      let couponInvalidated = false;
+      try {
+        const res = await couponCheckPromise;
+        if (res) {
+          const data = await res.json();
+          if (!res.ok || !data.valid || data.discountValue <= 0) {
+            couponInvalidated = true;
+          }
+        }
+      } catch {
+        // Do not block flow on coupon check failures
       }
-      const excludedKeys = inventoryGate?.excludedKeys || [];
-      const itemsInfo = inventoryGate?.itemsInfo || {};
-      if (excludedKeys.length > 0) {
-        const includedCount = cartItems.filter(i => {
-          const key = `${i.productDetails?._id || i.productId}${i.productDetails?.selectedOption?._id ? ':' + i.productDetails.selectedOption._id : ''}`;
-          return !excludedKeys.includes(key);
-        }).reduce((sum, i) => sum + i.quantity, 0);
 
+      // If any restocks OR any exclusions, show dialog (force review) — only after all checks
+      if (restockedKeys.length > 0 || excludedKeys.length > 0) {
         setOosData({
           excludedKeys,
           itemsInfo,
           includedCount,
-          restockedKeys: [],
-          couponInvalidated: false,
+          restockedKeys,
+          couponInvalidated,
           couponName: couponState.couponName,
         });
         setDlgOOS(true);
         return;
       }
+
+      // No changes and all available => fire InitiateCheckout (Meta) and begin_checkout (GA4) and open order form
+      try {
+        initiateCheckout({
+          eventID: `chk_${Date.now()}`,
+          totalValue: totalPay,
+          contents,
+          contentName: contents.map(c => c.name).filter(Boolean).join(', '),
+          contentCategory: 'checkout',
+          numItems: contents.length,
+        }).catch(() => {});
+        gaBeginCheckout({ value: totalPay, items: contents });
+      } catch {}
+
       setDlgOrder(true);
+    } catch (e) {
+      console.error('Inventory verify error', e);
+      snack('Could not verify inventory. Please try again.', 'error');
+    } finally {
+      setVerifyingInventory(false);
+      setPreparing(false);
     }
-  }, [checkoutAwaitingReady, prefetchStatus, totalPay, minPurchaseAmt, inventoryGate?.excludedKeys, inventoryGate?.itemsInfo, cartItems, couponState.couponName]);
+  };
 
   /* ---------- memo for suggestions (unchanged) ---------------------- */
-  // Fetch display assets for Customer Photos slider once (via dedicated API; with client cache + fallbacks)
-  const [customerPhotoAssets, setCustomerPhotoAssets] = useState([]);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const cacheKey = 'mc:customerPhotos:viewcart';
-        const cacheTtl = 60 * 60 * 1000; // 1h
-        try {
-          const raw = localStorage.getItem(cacheKey);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed?.ts && Date.now() - parsed.ts < cacheTtl && Array.isArray(parsed.assets) && parsed.assets.length > 0) {
-              setCustomerPhotoAssets(parsed.assets);
-              return;
-            }
-          }
-        } catch {}
-
-        const tryFetch = async (pageName) => {
-          const params = new URLSearchParams({ limit: '20' });
-          if (pageName) params.set('page', pageName);
-          const resp = await fetch(`/api/display-assets/customer-photos?${params.toString()}`);
-          if (!resp.ok) return [];
-          const data = await resp.json();
-          return Array.isArray(data.assets) ? data.assets : [];
-        };
-
-        // Fallback order: viewcart -> homepage -> no page
-        let assets = await tryFetch('viewcart');
-        if (!assets.length) assets = await tryFetch('homepage');
-        if (!assets.length) assets = await tryFetch(null);
-
-        if (!cancelled) setCustomerPhotoAssets(assets);
-        // Cache only non-empty results for 1h; avoid caching empty to allow future updates
-        if (assets.length > 0) {
-          try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), assets })); } catch {}
-        }
-      } catch (e) {
-        if (!cancelled) setCustomerPhotoAssets([]);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  // Removed topSub/topIds (TopBoughtProducts deprecated here)
+  
+  // Create cart design IDs for product suggestions
+  const cartDesignIds = useMemo(() => {
+    const designIds = cartItems
+      .map(item => item.productDetails?.designGroupId)
+      .filter(Boolean);
+    return [...new Set(designIds)];
+  }, [cartItems]);
 
   const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 ? 99 : 0);
 
   /* -------------------  JSX (UI with fixes)  ------------------------- */
+  const [customerPhotoAssets, setCustomerPhotoAssets] = useState([]);
+  useEffect(() => {
+    // Fetch only once when cart view mounts
+    (async () => {
+      try {
+        const res = await fetch('/api/display-assets?componentName=customer-photos-section');
+        if (!res.ok) return;
+        const data = await res.json();
+        const assets = (data.assets || []).filter(a => a?.media?.desktop || a?.media?.mobile);
+        setCustomerPhotoAssets(assets.slice(0, 20));
+      } catch (e) {
+        console.warn('Customer photos load failed', e.message);
+      }
+    })();
+  }, []);
+
   return (
     <div
       className={styles.container}
@@ -988,15 +999,16 @@ export default function ViewCart({ isDrawer = false }) {
                 onChange={e => setSelectedPM(paymentModes.find(m => m.name === e.target.value))}
                 totalAmount={totalPay}
               />
+              {/* Customer Photos slider placed directly after Payment Modes within scroll context */}
+              {customerPhotoAssets.length > 0 && (
+                <div style={{ marginTop: '1.75rem' }}>
+                  <h3 style={{ margin: '0 0 .85rem', fontSize: 16, fontWeight: 600 }}>See How Others Personalized</h3>
+                  <CustomerPhotosSlider assets={customerPhotoAssets} />
+                </div>
+              )}
             </section>
 
-            {/* Recommended Products */}
-            {customerPhotoAssets.length > 0 && (
-              <section className={styles.recommendedSection}>
-                <h2 className={styles.recommendedTitle}>How others personalized</h2>
-                <CustomerPhotosSlider assets={customerPhotoAssets} />
-              </section>
-            )}
+            {/* Social Proof removed from here; moved to page end for stronger close */}
           </motion.div>
         ) : (
           <motion.div
@@ -1038,13 +1050,11 @@ export default function ViewCart({ isDrawer = false }) {
             onCheckout={handleCheckout}
             onlinePercentage={selectedPM?.configuration?.onlinePercentage || 0}
             codPercentage={selectedPM?.configuration?.codPercentage || 0}
-            // Keep disabled until ready; only show spinner after user clicked
-            isRevalidatingCoupons={prefetchStatus !== 'ready'}
-            showPreparingUi={checkoutClicked && prefetchStatus !== 'ready'}
+            isRevalidatingCoupons={preparing}
             discount={disc}
           />
-        </motion.div>)
-      }
+        </motion.div>
+      )}
 
       <ApplyCoupon
         open={dlgCoupon}
@@ -1170,7 +1180,30 @@ export default function ViewCart({ isDrawer = false }) {
             <BlackButton
               onClick={() => {
                 setDlgOOS(false);
-                // open OrderForm after dialog unmount to avoid focus/transition glitches
+                // Fire InitiateCheckout for remaining available items, then open OrderForm after dialog unmount
+                try {
+                  const excludedSet = new Set(oosData.excludedKeys || []);
+                  const remaining = cartItems.filter(i => {
+                    const key = `${i.productDetails?._id || i.productId}${i.productDetails?.selectedOption?._id ? ':' + i.productDetails.selectedOption._id : ''}`;
+                    return !excludedSet.has(key);
+                  }).map((item) => ({
+                    productId: item.productDetails?._id || item.productId,
+                    quantity: item.quantity,
+                    price: item.price ?? item.productDetails.price,
+                    brand: item.productDetails?.brand,
+                    category: item.productDetails?.category?.name || item.productDetails?.category,
+                    name: item.productDetails?.name
+                  }));
+                  initiateCheckout({
+                    eventID: `chk_${Date.now()}`,
+                    totalValue: remaining.reduce((s, i) => s + (i.price || 0) * (i.quantity || 0), 0),
+                    contents: remaining,
+                    contentName: remaining.map(c => c.name).filter(Boolean).join(', '),
+                    contentCategory: 'checkout',
+                    numItems: remaining.length,
+                  }).catch(() => {});
+                  try { gaBeginCheckout({ value: remaining.reduce((s, i) => s + (i.price || 0) * (i.quantity || 0), 0), items: remaining }); } catch {}
+                } catch {}
                 setTimeout(() => setDlgOrder(true), 80);
               }}
               disabled={oosData.includedCount <= 0}

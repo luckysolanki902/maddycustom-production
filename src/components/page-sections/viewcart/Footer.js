@@ -6,9 +6,8 @@ import { motion } from 'framer-motion';
 import { CircularProgress } from '@mui/material';
 import styles from './styles/footer.module.css';
 
-const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = false, discount = 0, onlinePercentage, codPercentage }) => {
+const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = false, discount = 0, onlinePercentage, codPercentage, showPreparingUi = false }) => {
   const handleCheckout = () => {
-    if (isRevalidatingCoupons) return;
     onCheckout();
   };
 
@@ -113,12 +112,11 @@ const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = 
       <motion.button
         className={`${styles.checkoutButton} ${styles.shineEffect}`}
         onClick={handleCheckout}
-        disabled={isRevalidatingCoupons}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         transition={{ type: "spring", stiffness: 400, damping: 8 }}
       >
-        {isRevalidatingCoupons ? (
+        {showPreparingUi && isRevalidatingCoupons ? (
           <div className={styles.loadingContainer}>
             <CircularProgress size={20} color="inherit" />
             <span>Preparing...</span>

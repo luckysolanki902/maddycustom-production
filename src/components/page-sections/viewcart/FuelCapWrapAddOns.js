@@ -1,7 +1,7 @@
 'use client';
 /**
  * FuelCapWrapAddOns (frontend-only initial version)
- * Provides a fast, paginated, cached list of low-cost add-ons for a base variant code (default 'FRC').
+ * Provides a fast, paginated, cached list of low-cost add-ons for a base variant code (default 'FCP').
  * First add-to-cart is intercepted to ensure letter-mapping confirmation.
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -34,7 +34,7 @@ function useIntersection(callback) {
   return ref;
 }
 
-export default function FuelCapWrapAddOns({ initialVariantCode = 'FRC', pageSize = PAGE_SIZE, similarityContext = null }) {
+export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize = PAGE_SIZE, similarityContext = null }) {
   const dispatch = useDispatch();
   const pref = useSelector(s => s.variantPreference?.[FUEL_CAP_SPEC_CAT_ID]);
   const [availableVariants, setAvailableVariants] = useState([]); // {_id, variantCode}
@@ -114,11 +114,14 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FRC', pageSize
         setAvailableVariants(data.variants || []);
         if (data?.specificCategory?.code) setBaseCode(String(data.specificCategory.code).toUpperCase());
         if (data?.specificCategory?.useLetterMapping) setMappingGroups(data.specificCategory.letterMappingGroups || []);
+        // Respect incoming initialVariantCode, but ensure it exists in available variants; else fallback to first
         if (!pref?.preferredVariantId && (data.variants || []).length > 0) {
-          const first = data.variants[0];
-            setVariantCode(first.variantCode);
-            dispatch(setPreferredVariant({ categoryId: FUEL_CAP_SPEC_CAT_ID, variantId: first._id, variantCode: first.variantCode }));
-            setMappingConfirmed(true);
+          const normalizedInit = String(initialVariantCode || '').toUpperCase();
+          const matchInit = (data.variants || []).find(v => String(v.variantCode).toUpperCase() === normalizedInit);
+          const chosen = matchInit || data.variants[0];
+          setVariantCode(chosen.variantCode);
+          dispatch(setPreferredVariant({ categoryId: FUEL_CAP_SPEC_CAT_ID, variantId: chosen._id, variantCode: chosen.variantCode }));
+          setMappingConfirmed(true);
         }
       } catch (e) { console.warn('Variant meta load failed', e.message); }
     })();
@@ -212,17 +215,47 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FRC', pageSize
   // Map variant code letters back to readable labels using mappingGroups (assumes order)
   const readableVariant = (() => {
     if (!mappingGroups.length || !variantCode) return variantCode;
-    const letters = variantCode.replace(baseCode, '').split('');
-    const parts = [];
-    for (let i = 0; i < mappingGroups.length; i++) {
-      const letter = letters[i];
-      const group = mappingGroups[i];
-      if (!group) continue;
-      const opt = group.mappings.find(m => m.letterCode === letter);
-      if (opt) parts.push(opt.name);
+    try {
+      const code = String(variantCode).toUpperCase();
+      const base = String(baseCode || '').toUpperCase();
+      const suffix = code.startsWith(base) ? code.slice(base.length) : code;
+      const letters = suffix.split('');
+      const parts = [];
+      // Ensure mapping order is predictable: usually [shape, fuel]
+      for (let i = 0; i < mappingGroups.length; i++) {
+        const group = mappingGroups[i];
+        const letter = letters[i] || '';
+        if (!group || !Array.isArray(group.mappings)) continue;
+        const opt = group.mappings.find(m => String(m.letterCode).toUpperCase() === letter);
+        if (opt?.name) parts.push(opt.name);
+      }
+      return parts.length ? parts.join(' • ') : variantCode;
+    } catch {
+      return variantCode;
     }
-    return parts.length ? parts.join(' • ') : variantCode;
   })();
+
+  // Prefetch page 1 as soon as cart has items so users never see skeletons
+  const cartQty = useSelector(s => (s.cart?.items || []).reduce((n, it) => n + (it.quantity || 0), 0));
+  useEffect(() => {
+    if (cartQty > 0) {
+      // Try to hydrate from session cache first; otherwise fetch immediately
+      try {
+        const raw = sessionStorage.getItem(sessionCacheKey(variantCode));
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.pages && parsed.pages[1]) {
+            cache.set(variantCode, { pages: parsed.pages, total: parsed.total });
+            setPages(parsed.pages);
+            setHasMore(parsed.total == null ? true : Object.values(parsed.pages).flat().length < (parsed.total || 0));
+            return;
+          }
+        }
+      } catch {}
+      // Silent prefetch of first page
+      fetchPage(1, { prefetch: true });
+    }
+  }, [cartQty, variantCode, fetchPage]);
 
   return (
   <Box sx={{ mt: 4, position: 'relative' }}>
@@ -277,7 +310,19 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FRC', pageSize
                 <Typography variant="caption" sx={{ fontWeight: 600 }}>₹{p.price}</Typography>
                 <Box sx={{ mt: 'auto' }}>
                   {mappingConfirmed ? (
-                    <AddToCartButton product={p} isBlackButton smaller fuelAddonStyle insertionDetails={{ component: 'FuelCapWrapAddOns', source: 'cart_addons', pageType: 'viewcart' }} hideRecommendationPopup disableRecommendationTrigger disableNotifyMe />
+                    <AddToCartButton 
+                      product={{
+                        ...p,
+                        selectedOption: Array.isArray(p.options) && p.options.length > 0 ? p.options[0] : null,
+                      }} 
+                      isBlackButton 
+                      smaller 
+                      fuelAddonStyle 
+                      insertionDetails={{ component: 'FuelCapWrapAddOns', source: 'cart_addons', pageType: 'viewcart' }} 
+                      hideRecommendationPopup 
+                      disableRecommendationTrigger 
+                      disableNotifyMe 
+                    />
                   ) : (
                     <Button variant="contained" size="small" onClick={openMapping} sx={{ textTransform: 'none', background: '#000', fontSize: '.65rem', borderRadius: '0.65rem', '&:hover': { background: '#222' } }}>Add</Button>
                   )}
