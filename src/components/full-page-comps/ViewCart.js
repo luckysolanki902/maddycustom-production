@@ -265,7 +265,7 @@ export default function ViewCart({ isDrawer = false }) {
   const [revalidatingCoupons, setRevalidatingCoupons] = useState(false);
 
   // Minimum purchase amount configuration
-  const minPurchaseAmt = 549; // Minimum order amount in INR
+  const minPurchaseAmt = 349; // Minimum order amount in INR
 
   /* ---------- cart totals ------------------------------------------- */
   const qty = calculateTotalQuantity(cartItems);
