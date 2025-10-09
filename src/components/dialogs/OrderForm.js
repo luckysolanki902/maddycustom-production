@@ -40,8 +40,7 @@ import CustomSnackbar from '../notifications/CustomSnackbar';
 import { getPaymentButtonText } from '../../lib/utils/orderFormUtils';
 import { ThemeProvider } from '@mui/material';
 import theme from '@/styles/theme';
-import { initiateCheckout, purchase, contactInfoProvided, paymentInitiated } from '@/lib/metadata/facebookPixels';
-import { gaAddBillingInfo, gaAddPaymentInfo, gaPurchase } from '@/lib/metadata/googleAds';
+import { initiateCheckout, purchase } from '@/lib/metadata/facebookPixels';
 import { v4 as uuidv4 } from 'uuid';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -55,71 +54,7 @@ import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
 import reverseGeocodeClient from '@/lib/utils/reverseGeocodeClient';
-import funnelClient from '@/lib/analytics/funnelClient';
-import { buildPurchaseEventPayload } from '@/lib/analytics/purchaseEventPayload';
-
-const sanitizeFloorValue = (value) => {
-  if (value === undefined || value === null) return '';
-  return String(value).trim();
-};
-
-const extractFloorFromAddressLine1 = (line1) => {
-  if (!line1 || typeof line1 !== 'string') return { base: line1 || '', floor: '' };
-  let base = line1;
-  let floor = '';
-  const patterns = [
-    { regex: /\b(?:floor|flr|fl)\s*[-:]?\s*(\d{1,2})(?:\s*(?:st|nd|rd|th))?\b/i, group: 1 },
-    { regex: /\b(\d{1,2})(?:\s*(?:st|nd|rd|th))?\s*(?:floor|flr|fl)\b/i, group: 1 },
-  ];
-
-  for (const { regex, group } of patterns) {
-    const match = base.match(regex);
-    if (match) {
-      floor = match[group] || '';
-      base = base.replace(regex, '');
-      break;
-    }
-  }
-
-  base = base
-    .replace(/\s{2,}/g, ' ')
-    .replace(/,\s*,/g, ',')
-    .replace(/(^[\s,]+|[\s,]+$)/g, '')
-    .replace(/,\s*$/, '')
-    .trim();
-
-  return { base, floor };
-};
-
-const mapAddressForStore = (incomingAddress) => {
-  if (!incomingAddress || typeof incomingAddress !== 'object') return {};
-
-  const cloned = { ...incomingAddress };
-  const structured = cloned.structured || {};
-  const { base, floor: extractedFloor } = extractFloorFromAddressLine1(cloned.addressLine1 || '');
-  const candidateFloor = cloned.floor ?? structured.floor ?? extractedFloor;
-  const normalizedFloor = sanitizeFloorValue(candidateFloor);
-
-  const result = {
-    ...cloned,
-    addressLine1: base || '',
-    addressLine2: cloned.addressLine2 || '',
-    city: cloned.city || '',
-    state: cloned.state || '',
-    pincode: cloned.pincode || '',
-    country: cloned.country || 'India',
-    floor: normalizedFloor,
-  };
-
-  if (cloned.structured || normalizedFloor) {
-    result.structured = {
-      ...structured,
-      floor: normalizedFloor || structured.floor,
-    };
-  }
-
-  return result;
-};
+import useCheckoutPrefetch from '@/hooks/useCheckoutPrefetch';
 
 const OrderForm = ({
   open,
@@ -140,6 +75,7 @@ const OrderForm = ({
   const utmDetails = useSelector((state) => state.utm);
   const { userDetails, addressDetails, userExists, prefilledAddress } = orderForm;
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { startPrefetch, status: prefetchStatus } = useCheckoutPrefetch();
 
   // Performance optimization - serviceability cache
   const serviceabilityCache = useRef({});
@@ -155,32 +91,9 @@ const OrderForm = ({
 
   // Local Tab Index State - memoize to prevent rerenders
   const [tabIndex, setTabIndex] = useState(0);
-  const formOpenTrackedRef = useRef(false);
-  const addressTabTrackedRef = useRef(false);
 
   // Simple mobile focus detection
   const [isInputFocused, setIsInputFocused] = useState(false);
-
-  const paymentModeName = paymentModeConfig?.name || undefined;
-  const normalizedCouponCode = useMemo(() => {
-    if (typeof couponCode !== 'string') return undefined;
-    const trimmed = couponCode.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  }, [couponCode]);
-
-  const computeCartSnapshot = useCallback(() => {
-    const itemsTotal = cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
-    const snapshot = {};
-    if (itemsTotal > 0) {
-      snapshot.items = itemsTotal;
-    }
-    const numericTotal = Number(totalCost);
-    if (Number.isFinite(numericTotal)) {
-      snapshot.value = numericTotal;
-      snapshot.currency = 'INR';
-    }
-    return snapshot;
-  }, [cartItems, totalCost]);
 
   // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -221,9 +134,7 @@ const OrderForm = ({
     addressLine2: addressDetails.addressLine2 || '',
     // Structured address fields
     areaLocality: dvStructArea,
-    floorInput: (dvStructFloor !== undefined
-      ? String(dvStructFloor)
-      : (addressDetails.floor ? String(addressDetails.floor) : '')),
+    floorInput: (dvStructFloor !== undefined ? String(dvStructFloor) : ''),
     landmark: dvStructLandmark,
     // directions removed; addressType removed per request
     city: addressDetails.city || '',
@@ -237,7 +148,7 @@ const OrderForm = ({
   }), [userDetails.name, userDetails.phoneNumber, userDetails.email,
   addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
   addressDetails.state, addressDetails.pincode, addressDetails.country,
-    addressDetails.floor, aggregatedExtraFields, dvStructArea, dvStructLandmark, dvStructFloor]);
+    aggregatedExtraFields, dvStructArea, dvStructLandmark, dvStructFloor]);
 
   // Geolocation capture
   const [geo, setGeo] = useState({ lat: null, lng: null });
@@ -252,6 +163,14 @@ const OrderForm = ({
       dispatch(setExtraFields(initialExtraFieldValues));
     }
   }, [open, aggregatedExtraFields, dispatch]);
+
+  // Ensure checkout prefetch is running as soon as the form opens (defensive, in case cart screen didn't trigger it)
+  useEffect(() => {
+    if (open && cartItems?.length > 0) {
+      const code = couponCode || orderForm?.couponApplied?.couponCode || '';
+      startPrefetch({ coupon: code });
+    }
+  }, [open, cartItems, couponCode, orderForm?.couponApplied?.couponCode, startPrefetch]);
 
   const {
     control,
@@ -272,37 +191,6 @@ const OrderForm = ({
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
   }, []);
-
-  useEffect(() => {
-    if (!open) {
-      formOpenTrackedRef.current = false;
-      addressTabTrackedRef.current = false;
-      return;
-    }
-
-    if (!formOpenTrackedRef.current) {
-      formOpenTrackedRef.current = true;
-      const cartSnapshot = computeCartSnapshot();
-    const { sessionId } = funnelClient.getIdentifiers();
-    const sessionToken = sessionId || 'unknown-session';
-    const path = typeof window !== 'undefined' ? window.location.pathname : 'order-form';
-    const dedupeKey = `open_order_form:${sessionToken}:${path}`;
-      try {
-        funnelClient.track('open_order_form', {
-          dedupeKey,
-          cart: cartSnapshot,
-          metadata: {
-            source: 'order_form_dialog',
-            entry: 'checkout_flow',
-            paymentMode: paymentModeName,
-            hasPrefilledContact: Boolean(userDetails?.phoneNumber),
-          },
-        });
-      } catch (err) {
-        console.warn('Funnel open_order_form track failed:', err);
-      }
-    }
-  }, [open, computeCartSnapshot, paymentModeName, userDetails]);
 
   // Enhanced pincode validation with proactive serviceability check
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -360,37 +248,6 @@ const OrderForm = ({
   // Prevent multiple form submissions
   const [purchaseInitiated, setPurchaseInitiated] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-
-    if (tabIndex === 0) {
-      addressTabTrackedRef.current = false;
-      return;
-    }
-
-    if (tabIndex === 1 && !addressTabTrackedRef.current) {
-      addressTabTrackedRef.current = true;
-      const cartSnapshot = computeCartSnapshot();
-  const { sessionId } = funnelClient.getIdentifiers();
-  const sessionToken = sessionId || 'unknown-session';
-  const path = typeof window !== 'undefined' ? window.location.pathname : 'order-form';
-  const dedupeKey = `address_tab_open:${sessionToken}:${path}`;
-      try {
-        funnelClient.track('address_tab_open', {
-          dedupeKey,
-          cart: cartSnapshot,
-          metadata: {
-            form: 'order_form',
-            transition: 'contact_to_address',
-            prefilledAddress: Boolean(prefilledAddress || addressDetails?.addressLine1 || addressDetails?.city),
-          },
-        });
-      } catch (err) {
-        console.warn('Funnel address_tab_open track failed:', err);
-      }
-    }
-  }, [open, tabIndex, computeCartSnapshot, prefilledAddress, addressDetails]);
-
   // Reset tabIndex when dialog opens
   useEffect(() => {
     if (open) {
@@ -405,18 +262,11 @@ const OrderForm = ({
       setValue('name', userDetails.name || '');
       setValue('phoneNumber', userDetails.phoneNumber || '');
       setValue('email', userDetails.email || '');
-      const { base: parsedLine1, floor: floorFromLine1 } = extractFloorFromAddressLine1(addressDetails.addressLine1 || '');
-      setValue('addressLine1', parsedLine1 || '');
+      setValue('addressLine1', addressDetails.addressLine1 || '');
       // Do not reset areaLocality/floor/landmark here to avoid wiping user input mid-typing
       // If areaLocality is empty but we have addressLine2 from redux, initialize it once
       if (!getValues('areaLocality') && addressDetails.addressLine2) {
         setValue('areaLocality', addressDetails.addressLine2);
-      }
-      const storedFloor = addressDetails.floor ? String(addressDetails.floor) : '';
-      const existingFloor = getValues('floorInput');
-      const derivedFloor = storedFloor || (floorFromLine1 ? String(floorFromLine1) : '');
-      if (!existingFloor && derivedFloor) {
-        setValue('floorInput', derivedFloor);
       }
       setValue('city', addressDetails.city || '');
       setValue('state', addressDetails.state || '');
@@ -430,7 +280,7 @@ const OrderForm = ({
     }
   }, [open, userDetails.name, userDetails.phoneNumber, userDetails.email,
     addressDetails.addressLine1, addressDetails.addressLine2, addressDetails.city,
-    addressDetails.state, addressDetails.pincode, addressDetails.country, addressDetails.floor, validatePincode, setValue, getValues]);
+    addressDetails.state, addressDetails.pincode, addressDetails.country, validatePincode, setValue, getValues]);
 
   // Handle Prefilled Address (guard against overwriting existing redux address)
   useEffect(() => {
@@ -446,7 +296,7 @@ const OrderForm = ({
       );
 
       if (isReduxAddressEmpty) {
-        dispatch(setAddressDetails(mapAddressForStore(prefilledAddress)));
+        dispatch(setAddressDetails(prefilledAddress));
 
         // Using shared extractFloorFromAddressLine1 helper
         // hydrate form values only if the corresponding fields are empty
@@ -702,9 +552,13 @@ const OrderForm = ({
     dispatch(closeAllDialogs());
   }, [onClose, dispatch]);
 
-  // Pre-validate coupon in background as soon as form opens
+  // Pre-validate coupon in background as soon as form opens (skip if same signature validated recently)
+  const lastCouponValidateKeyRef = useRef('');
   useEffect(() => {
     if (open && couponCode && subTotal > 0) {
+      const key = `${couponCode}|${subTotal}|${items.map(i=>`${i.productId}:${i.quantity}`).join(',')}`;
+      if (lastCouponValidateKeyRef.current === key) return;
+      lastCouponValidateKeyRef.current = key;
       // Start coupon validation in background
       pendingOperationsRef.current.couponValidation = axios.post('/api/checkout/coupons/apply', {
         code: couponCode,
@@ -740,64 +594,16 @@ const OrderForm = ({
     // Immediately move to the next tab for better UX
     setTabIndex(1);
 
-    const { visitorId: funnelVisitorId, sessionId: funnelSessionId } = funnelClient.getIdentifiers();
-    funnelClient.identifyUser({
-      name: data.name,
-      phoneNumber: phoneToUse,
-      email: data.email,
-    });
-
-    const cartSnapshot = computeCartSnapshot();
-
-    try {
-      funnelClient.track('contact_info', {
-        cart: cartSnapshot,
-        metadata: {
-          form: 'order_form_contact',
-          hasEmail: Boolean(data.email),
-          transition: 'contact_submit',
-        },
-      });
-    } catch (err) {
-      console.warn('Funnel contact_info track failed:', err);
-    }
-
-    // Fire custom event: Contact info provided (name/phone/email)
-    try {
-      const contents = cartItems.map((item) => ({
-        productId: item.productId || item._id,
-        quantity: item.quantity,
-        price: item.price ?? item.productDetails.price,
-        brand: item.productDetails?.brand,
-        category: item.productDetails?.category?.name || item.productDetails?.category,
-        name: item.productDetails?.name
-      }));
-      await contactInfoProvided(
-        { firstName: data.name, email: data.email, phoneNumber: phoneToUse },
-        { totalValue: totalCost, contents, numItems: contents.length, contentName: contents.map(c => c.name).filter(Boolean).join(', ') }
-      );
-      // GA4: add_billing_info mirrors this step
-      try { gaAddBillingInfo({ value: totalCost, items: contents, coupon: (typeof couponCode === 'string' && couponCode) ? couponCode : undefined }); } catch {}
-    } catch (_) {}
-
     // Perform user check in background without blocking UI
     pendingOperationsRef.current.userCheck = axios.patch('/api/user/check', {
       phoneNumber: phoneToUse,
       name: data.name,
       email: data.email,
-      funnelVisitorId,
-      funnelSessionId,
     })
       .then(response => {
         if (response.data.exists) {
           const latestAddress = response.data.latestAddress;
           dispatch(setUserDetails({ userId: response.data.userId }));
-          funnelClient.identifyUser({
-            userId: response.data.userId,
-            phoneNumber: phoneToUse,
-            email: data.email,
-            name: data.name,
-          });
 
           if (latestAddress) {
             // Map legacy fields and populate structured UI fields if available
@@ -817,7 +623,14 @@ const OrderForm = ({
             Object.entries(mapped).forEach(([key, value]) => setValue(key, value || ''));
 
             // Keep redux addressDetails to legacy fields so other pages remain unaffected
-            dispatch(setAddressDetails(mapAddressForStore(latestAddress)));
+            dispatch(setAddressDetails({
+              addressLine1: latestAddress.addressLine1 || '',
+              addressLine2: latestAddress.addressLine2 || '',
+              city: latestAddress.city || '',
+              state: latestAddress.state || '',
+              pincode: latestAddress.pincode || '',
+              country: latestAddress.country || 'India',
+            }));
 
             // Pre-validate pincode
             if (latestAddress.pincode && latestAddress.pincode.length === 6) {
@@ -831,17 +644,9 @@ const OrderForm = ({
             phoneNumber: phoneToUse,
             email: data.email,
             source: 'order-form',
-            funnelVisitorId,
-            funnelSessionId,
           })
             .then(createResponse => {
               dispatch(setUserDetails({ userId: createResponse.data.userId || createResponse.data.user?.userId }));
-              funnelClient.identifyUser({
-                userId: createResponse.data.userId || createResponse.data.user?.userId,
-                phoneNumber: phoneToUse,
-                email: data.email,
-                name: data.name,
-              });
               return createResponse;
             });
         }
@@ -850,7 +655,7 @@ const OrderForm = ({
       .catch(error => {
         console.error('Error in background user check/create:', error);
       });
-  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode, cartItems, totalCost, couponCode, computeCartSnapshot]);
+  }, [formatPhoneNumber, dispatch, setValue, showSnackbar, validatePincode]);
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
@@ -859,43 +664,7 @@ const OrderForm = ({
     setIsLoading(true);
     setIsPaymentProcessing(true);
 
-  const cartSnapshot = computeCartSnapshot();
-  const numericTotal = Number(totalCost);
-  const orderValue = Number.isFinite(numericTotal) ? numericTotal : undefined;
-  const totalForPurchase = Number.isFinite(numericTotal) ? numericTotal : 0;
-    const analyticsItems = cartItems.map((item) => ({
-      productId: item.productId || item._id,
-      name: item.productDetails?.name,
-      quantity: item.quantity,
-      price: item.priceAtPurchase || item.productDetails?.price,
-      sku: item.productDetails?.selectedOption?.sku || item.productDetails?.sku,
-    }));
-    const addressCompleteness = {
-      hasLine1: Boolean(data.addressLine1),
-      hasCity: Boolean(data.city),
-      hasState: Boolean(data.state),
-      hasPincode: Boolean(data.pincode),
-    };
-
-    try {
-      funnelClient.track('initiate_checkout', {
-        cart: cartSnapshot,
-        order: {
-          value: orderValue,
-          currency: orderValue !== undefined ? 'INR' : undefined,
-          coupon: normalizedCouponCode,
-        },
-        metadata: {
-          form: 'order_form_address',
-          paymentMode: paymentModeName,
-          couponApplied: Boolean(normalizedCouponCode),
-          addressCompleteness,
-          geoCaptured: Boolean(geo?.lat && geo?.lng),
-        },
-      });
-    } catch (err) {
-      console.warn('Funnel initiate_checkout track failed:', err);
-    }
+    const startTime = performance.now();
 
     try {
       const initialValidationPromises = [];
@@ -914,24 +683,7 @@ const OrderForm = ({
         initialValidationPromises.push(serviceabilityPromise);
       }
 
-      let couponPromise;
-      if (couponCode && !pendingOperationsRef.current.couponValidation) {
-        couponPromise = axios.post('/api/checkout/coupons/apply', {
-          code: couponCode,
-          totalCost: subTotal,
-          isFirstOrder: false,
-          cartItems: items,
-        }).then(response => {
-          const couponValidation = response.data;
-          if (!couponValidation.valid) {
-            throw new Error('Your offer is no longer valid. Please update your cart.');
-          }
-          return couponValidation;
-        });
-        initialValidationPromises.push(couponPromise);
-      } else if (pendingOperationsRef.current.couponValidation) {
-        initialValidationPromises.push(pendingOperationsRef.current.couponValidation);
-      }
+      // Skip coupon validation while form is open
 
       if (pendingOperationsRef.current.userCheck) {
         initialValidationPromises.push(pendingOperationsRef.current.userCheck);
@@ -978,7 +730,7 @@ const OrderForm = ({
         .then(response => {
           if (response.data.message === 'Address added successfully.' ||
             response.data.message === 'Using existing address.') {
-            dispatch(setAddressDetails(mapAddressForStore(response.data.latestAddress)));
+            dispatch(setAddressDetails(response.data.latestAddress));
           }
           return response.data;
         }).catch(error => {
@@ -992,38 +744,7 @@ const OrderForm = ({
         });
       }
 
-      // Fresh inventory verification (no cache) just before placing order to avoid overselling
-      try {
-        const verifyPayload = {
-          items: cartItems.map(i => ({
-            productId: i.productId,
-            optionId: i.productDetails?.selectedOption?._id || null,
-            quantity: i.quantity,
-          })),
-          reserve: false,
-        };
-        const verifyRes = await axios.post(`/api/checkout/inventory/verify?_ts=${Date.now()}`,
-          verifyPayload,
-          { headers: { 'Cache-Control': 'no-store, no-cache' } }
-        );
-        if (!verifyRes.data?.ok) {
-          throw new Error(verifyRes.data?.message || 'Inventory verification failed.');
-        }
-        if (Array.isArray(verifyRes.data.excludedKeys) && verifyRes.data.excludedKeys.length > 0) {
-          const cartSignature = JSON.stringify(cartItems.map(i => ({ id: i.productId, qty: i.quantity, opt: i.productDetails?.selectedOption?._id || null })));
-          const { excludedKeys, itemsInfo, expiresAt } = verifyRes.data;
-          dispatch(setInventoryGate({ excludedKeys, itemsInfo, expiresAt: expiresAt || Date.now() + 15 * 60 * 1000, cartSignature }));
-          showSnackbar('Some items just went out of stock. We updated your cart. Please review.', 'warning');
-          setIsLoading(false);
-          setIsPaymentProcessing(false);
-          setPurchaseInitiated(false);
-          handleFullClose();
-          return; // Stop placing the order
-        }
-      } catch (invErr) {
-        console.error('Fresh inventory verification failed:', invErr);
-        throw invErr;
-      }
+      // Per requirement: do not run any fresh verification while the OrderForm is open.
 
       // Financial data is now sent directly
       const finalOrderPayload = {
@@ -1090,65 +811,26 @@ const OrderForm = ({
       dispatch(setLastOrderId(createdOrderId));
 
       if (razorpayOrder && amountDueOnline > 0) {
-        try {
-          funnelClient.track('payment_initiated', {
-            dedupeKey: `payment_initiated:${createdOrderId}`,
-            cart: cartSnapshot,
-            order: {
-              orderId: createdOrderId,
-              value: orderValue,
-              currency: orderValue !== undefined ? 'INR' : undefined,
-              coupon: normalizedCouponCode,
-            },
-            metadata: {
-              paymentMode: paymentModeName,
-              amountDueOnline,
-              razorpayOrderId: razorpayOrder?.id,
-              requiresGateway: true,
-            },
-          });
-        } catch (err) {
-          console.warn('Funnel payment_initiated track failed:', err);
-        }
-
-        // Fire custom PaymentInitiated just before opening gateway
-        try {
-          const contents = cartItems.map((item) => ({
-            productId: item.productId || item._id,
-            quantity: item.quantity,
-            price: item.priceAtPurchase || item.productDetails.price,
-            brand: item.productDetails?.brand,
-            category: item.productDetails?.category?.name || item.productDetails?.category,
-            name: item.productDetails?.name
-          }));
-          await paymentInitiated({
-            value: totalCost,
-            amount_due_online: amountDueOnline,
-            payment_mode: paymentModeConfig?.name,
-            payment_mode_id: paymentModeConfig?._id,
-            is_split_payment: !!(paymentModeConfig?.configuration?.onlinePercentage > 0 && paymentModeConfig?.configuration?.onlinePercentage < 100),
-            contents,
-            numItems: contents.length,
-            contentName: contents.map(c => c.name).filter(Boolean).join(', '),
-            orderId: createdOrderId,
-          }, {
+        initiateCheckout(
+          {
+            eventID: uuidv4(),
+            totalValue: totalCost,
+            contents: cartItems.map((item) => ({
+              productId: item.productId || item._id,
+              quantity: item.quantity,
+              price: item.priceAtPurchase,
+            })),
+            contentName: cartItems.map((item) => item.productDetails.name).join(', '),
+            contentCategory: cartItems.map((item) => item.productDetails.category),
+            numItems: cartItems.length,
+          },
+          {
             email: orderForm.userDetails.email || '',
             phoneNumber: orderForm.userDetails.phoneNumber,
-          });
-        } catch (_) {}
-
-        // GA4: add_payment_info at gateway open/initiation
-        try {
-          const gaContents = cartItems.map((item) => ({
-            productId: item.productId || item._id,
-            quantity: item.quantity,
-            price: item.priceAtPurchase || item.productDetails.price,
-            brand: item.productDetails?.brand,
-            category: item.productDetails?.category?.name || item.productDetails?.category,
-            name: item.productDetails?.name
-          }));
-          gaAddPaymentInfo({ value: amountDueOnline || totalCost, items: gaContents, payment_type: paymentModeConfig?.name || 'online', coupon: (typeof couponCode === 'string' && couponCode) ? couponCode : undefined });
-        } catch {}
+          }
+        ).catch(error => {
+          console.error('FB pixel tracking error (non-critical):', error);
+        });
 
         const paymentResult = await makePayment({
           customerName: orderForm.userDetails.name || '',
@@ -1169,37 +851,6 @@ const OrderForm = ({
       } else {
         console.warn('Unexpected payment state:', { razorpayOrder, amountDueOnline });
         showSnackbar('Order placed. Awaiting payment confirmation.', 'info');
-      }
-
-      try {
-        const amountPaidOnlineValue = Number.isFinite(amountDueOnline) && amountDueOnline > 0 ? amountDueOnline : 0;
-        const amountDueCodValue = Math.max(totalForPurchase - amountPaidOnlineValue, 0);
-
-        const purchasePayload = buildPurchaseEventPayload({
-          orderId: createdOrderId,
-          totalValue: orderValue ?? totalForPurchase,
-          currency: 'INR',
-          couponCode: normalizedCouponCode,
-          cartSummary: cartSnapshot,
-          items: analyticsItems,
-          paymentMode: paymentModeName,
-          paymentStatus: amountDueOnline > 0 ? 'online_partial' : 'cod',
-          amountDueOnline,
-          amountPaidOnline: amountPaidOnlineValue,
-          amountDueCod: amountDueCodValue,
-          totalDiscount: discountAmountFinal || 0,
-          metadata: {
-            source: 'order_form_submit',
-            isSplitOrder: Boolean(orderCreationResponse?.data?.isSplitOrder),
-          },
-        });
-
-        if (purchasePayload) {
-          funnelClient.track('purchase', purchasePayload);
-          void funnelClient.flush('purchase');
-        }
-      } catch (err) {
-        console.warn('Funnel purchase track failed:', err);
       }
 
       // Facebook Pixel Purchase Event - Always send FULL customer total amount
@@ -1226,25 +877,6 @@ const OrderForm = ({
         ).catch(error => {
           console.error('FB pixel purchase event error (non-critical):', error);
         });
-        // GA4: purchase event (full customer total)
-        try {
-          gaPurchase({
-            transaction_id: createdOrderId,
-            value: totalCost,
-            items: cartItems.map((item) => ({
-              product: item.productId,
-              name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-                ? item.productDetails.category?.name.slice(0, -1)
-                : item.productDetails.category?.name
-                }`,
-              quantity: item.quantity,
-              priceAtPurchase: item.priceAtPurchase,
-            })),
-            shipping: deliveryCost || 0,
-            tax: 0,
-            coupon: (typeof couponCode === 'string' && couponCode) ? couponCode : undefined,
-          });
-        } catch {}
       }
 
       pendingOperationsRef.current = {
@@ -1273,11 +905,10 @@ const OrderForm = ({
       setIsPaymentProcessing(false);
       setPurchaseInitiated(false);
     }
-  }, [purchaseInitiated, couponCode, subTotal, items, orderForm, dispatch, showSnackbar,
+  }, [purchaseInitiated, orderForm, dispatch, showSnackbar,
     totalCost, deliveryCost, utmDetails, cartItems, paymentModeConfig,
     discountAmountFinal, couponsDetails, isPincodeValid, reset, handleFullClose, router,
-    serviceabilityCache, geo, formatFloorForAddress, computeCartSnapshot, paymentModeName,
-    normalizedCouponCode]); // Maintained dependencies
+    serviceabilityCache, geo, formatFloorForAddress]);
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
@@ -1331,102 +962,63 @@ const OrderForm = ({
   }), []);
 
   // Custom styled text field component with memoization to prevent rerenders
-  const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, onBlur: onBlurProp, type = "text", maxWidth, InputProps }) => {
-    const baseInputTypography = {
-      fontFamily: 'Jost, sans-serif',
-      fontSize: '0.9rem',
-      fontWeight: 400,
-      letterSpacing: '0.01em'
-    };
-
-    const mergedInputProps = {
-      ...(InputProps || {}),
-      style: {
-        ...baseInputTypography,
-        ...(InputProps?.style || {}),
-      },
-      inputProps: {
-        ...(InputProps?.inputProps || {}),
-        spellCheck: false,
-        autoCorrect: 'off',
-        autoCapitalize: 'none',
-        autoComplete: 'off',
-        style: {
-          ...baseInputTypography,
-          ...(InputProps?.inputProps?.style || {}),
-        },
-      },
-    };
-
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: field.name === 'name' ? 0.1 : field.name === 'email' ? 0.2 : field.name === 'phoneNumber' ? 0.3 : 0.1 * parseInt(field.name.replace(/\D/g, '') || '0') }}
-      >
-        <TextField
-          variant="outlined"
-          size="small"
-          {...field}
-          label={label}
-          fullWidth
-          type={type}
-          error={!!error}
-          helperText={helperText}
-          disabled={disabled}
-          onChange={onChange}
-          onFocus={() => isMobile && setIsInputFocused(true)}
-          onBlur={(e) => {
-            if (onBlurProp) onBlurProp(e);
-            if (isMobile) setIsInputFocused(false);
-          }}
-          InputLabelProps={{
-            style: {
-              fontFamily: 'Jost, sans-serif',
-              fontSize: '0.82rem',
-              fontWeight: 400,
-              letterSpacing: '0.02em'
+  const StyledTextField = useCallback(({ field, label, error, helperText, disabled, onChange, onBlur: onBlurProp, type = "text", maxWidth, InputProps }) => (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: field.name === 'name' ? 0.1 : field.name === 'email' ? 0.2 : field.name === 'phoneNumber' ? 0.3 : 0.1 * parseInt(field.name.replace(/\D/g, '') || '0') }}
+    >
+      <TextField
+        variant="outlined"
+        size="small"
+        {...field}
+        label={label}
+        fullWidth
+        type={type}
+        error={!!error}
+        helperText={helperText}
+        disabled={disabled}
+        onChange={onChange}
+        onFocus={() => isMobile && setIsInputFocused(true)}
+        onBlur={(e) => {
+          if (onBlurProp) onBlurProp(e);
+          if (isMobile) setIsInputFocused(false);
+        }}
+        InputLabelProps={{
+          style: {
+            fontFamily: 'Jost, sans-serif',
+            fontSize: '0.85rem',
+          },
+        }}
+        InputProps={{
+          style: {
+            fontFamily: 'Jost, sans-serif',
+            fontSize: '0.95rem',
+          },
+          ...InputProps
+        }}
+        sx={{
+          marginBottom: '0.8rem',
+          maxWidth: maxWidth,
+          '& .MuiOutlinedInput-root': {
+            borderRadius: '8px',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            '&:hover': {
+              boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
             },
-          }}
-          InputProps={mergedInputProps}
-          inputProps={{
-            spellCheck: false,
-            autoCorrect: 'off',
-            autoCapitalize: 'none',
-            autoComplete: 'off',
-            style: baseInputTypography,
-          }}
-          FormHelperTextProps={{
-            sx: {
-              fontFamily: 'Jost, sans-serif',
-              fontSize: '0.72rem',
-              fontWeight: 400,
-              letterSpacing: '0.01em',
-              mt: '4px'
+            '&.Mui-focused': {
+              transform: 'translateY(-2px)',
+              boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
             }
-          }}
-          sx={{
-            marginBottom: '0.8rem',
-            maxWidth: maxWidth,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '8px',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
-              },
-              '&.Mui-focused': {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
-              }
-            },
-            '& .MuiInputLabel-shrink': {
-              transform: 'translate(14px, -12px) scale(0.75)',
-            }
-          }}
-        />
-      </motion.div>
-    );
-  }, [isMobile]);
+          },
+          '& .MuiInputLabel-shrink': {
+            transform: 'translate(14px, -12px) scale(0.75)',
+          }
+        }}
+      />
+    </motion.div>
+  ), [isMobile]);
+
 
   return (
     <ThemeProvider theme={theme}>
@@ -1888,7 +1480,7 @@ const OrderForm = ({
                                   if ((addr?.houseNumber || addr?.road) && !getValues('addressLine1')) {
                                     const part = [addr.houseNumber, addr.road].filter(Boolean).join(', ');
                                     setValue('addressLine1', part);
-                                    dispatch(setAddressDetails({ addressLine1: part, floor: '' }));
+                                    dispatch(setAddressDetails({ addressLine1: part }));
                                   }
                                   if (addr?.poi && !getValues('landmark')) {
                                     setValue('landmark', addr.poi);
@@ -2012,35 +1604,16 @@ const OrderForm = ({
                                       InputLabelProps={{
                                         style: {
                                           fontFamily: 'Jost, sans-serif',
-                                          fontSize: '0.82rem',
-                                          fontWeight: 400,
-                                          letterSpacing: '0.02em'
+                                          fontSize: '0.85rem',
                                         },
                                       }}
                                       InputProps={{
                                         ...params.InputProps,
                                         style: {
                                           fontFamily: 'Jost, sans-serif',
-                                          fontSize: '0.9rem',
-                                          fontWeight: 400,
-                                          letterSpacing: '0.01em',
+                                          fontSize: '0.95rem',
                                           textTransform: 'capitalize'
                                         },
-                                      }}
-                                      inputProps={{
-                                        ...params.inputProps,
-                                        spellCheck: false,
-                                        autoCorrect: 'off',
-                                        autoCapitalize: 'none',
-                                        autoComplete: 'off',
-                                        style: {
-                                          fontFamily: 'Jost, sans-serif',
-                                          fontSize: '0.9rem',
-                                          fontWeight: 400,
-                                          letterSpacing: '0.01em',
-                                          textTransform: 'capitalize',
-                                          ...(params.inputProps?.style || {}),
-                                        }
                                       }}
                                     />
                                   )}
@@ -2078,74 +1651,57 @@ const OrderForm = ({
                           />
                         </Grid>
                       </Grid>
+                      <Controller
+                        name="addressLine1"
+                        control={control}
+                        rules={{ required: 'Address is required' }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="Flat/House no/Building name"
+                            error={errors.addressLine1}
+                            helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => {
+                              field.onChange(e);
+                            }}
+                            onBlur={(e) => {
+                              const base = e.target.value;
+                              const floor = getValues('floorInput');
+                              const composed = [base, formatFloorForAddress(floor)].filter(Boolean).join(', ');
+                              dispatch(setAddressDetails({ addressLine1: composed }));
+                            }}
+                            InputProps={{ style: { textTransform: 'capitalize' } }}
+                          />
+                        )}
+                      />
+
+                      {/* Floor (optional) - not required for now */}
+                      {/* <Controller
+                        name="floorInput"
+                        control={control}
+                        rules={{ required: false }}
+                        render={({ field }) => (
+                          <StyledTextField
+                            field={field}
+                            label="Floor (optional)"
+                            error={errors.floorInput}
+                            helperText={errors.floorInput ? errors.floorInput.message : ''}
+                            disabled={isLoading || isPaymentProcessing}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              const base = getValues('addressLine1');
+                              const floor = e.target.value;
+                              const composed = [base, formatFloorForAddress(floor)].filter(Boolean).join(', ');
+                              // Keep legacy redux addressLine1 composed for compatibility
+                              dispatch(setAddressDetails({ addressLine1: composed }));
+                            }}
+                          />
+                        )}
+                      /> */}
+
+                      {/* Area / Locality and Landmark */}
                       <Grid container spacing={1.5} sx={{ width: '100%' }}>
-                        <Grid item xs={12}>
-                          <Controller
-                            name="addressLine1"
-                            control={control}
-                            rules={{ required: 'Address is required' }}
-                            render={({ field }) => (
-                              <StyledTextField
-                                field={field}
-                                label="Flat/House no/Building name"
-                                error={errors.addressLine1}
-                                helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
-                                disabled={isLoading || isPaymentProcessing}
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                }}
-                                onBlur={(e) => {
-                                  const rawValue = e.target.value || '';
-                                  const { base, floor: extractedFloor } = extractFloorFromAddressLine1(rawValue);
-                                  const sanitizedBase = base.trim();
-                                  const currentFloor = sanitizeFloorValue(getValues('floorInput'));
-                                  const derivedFloor = currentFloor || sanitizeFloorValue(extractedFloor);
-
-                                  if (sanitizedBase !== rawValue.trim()) {
-                                    setValue('addressLine1', sanitizedBase);
-                                  }
-
-                                  if (!currentFloor && derivedFloor) {
-                                    setValue('floorInput', derivedFloor);
-                                  }
-
-                                  dispatch(setAddressDetails({
-                                    addressLine1: sanitizedBase,
-                                    floor: derivedFloor,
-                                  }));
-                                }}
-                                InputProps={{ style: { textTransform: 'capitalize' } }}
-                              />
-                            )}
-                          />
-                        </Grid>
-
-                        {/* Not rendering for now may be used in future: Floor (optional) */}
-                        {/* <Grid item xs={12}>
-                          <Controller
-                            name="floorInput"
-                            control={control}
-                            rules={{ required: false }}
-                            render={({ field }) => (
-                              <StyledTextField
-                                field={field}
-                                label="Floor (optional)"
-                                error={errors.floorInput}
-                                helperText={errors.floorInput ? errors.floorInput.message : ''}
-                                disabled={isLoading || isPaymentProcessing}
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  const sanitizedFloor = sanitizeFloorValue(e.target.value);
-                                  dispatch(setAddressDetails({
-                                    floor: sanitizedFloor,
-                                  }));
-                                }}
-                              />
-                            )}
-                          />
-                        </Grid> */}
-
-                        {/* Area / Locality and Landmark */}
                         <Grid item xs={12}>
                           <Controller
                             name="areaLocality"
@@ -2332,11 +1888,15 @@ const OrderForm = ({
                     whileTap={{ scale: 0.98 }}
                   >
                     <BlackButton
-                      type="submit" // Changed from onClick
+                      type="submit"
                       extraClass="lg"
-                      isLoading={isLoading} // This isLoading is general; consider specific state if needed for UX
+                      isLoading={isLoading}
                       buttonText="Next"
-                      disabled={isPaymentProcessing || isLoading}
+                      disabled={
+                        isPaymentProcessing ||
+                        isLoading ||
+                        !(prefetchStatus === 'ready' || prefetchStatus === 'partial')
+                      }
                       sx={{
                         borderRadius: '50px',
                         px: 3,
@@ -2390,6 +1950,7 @@ const OrderForm = ({
                 },
                 '@media (max-height: 550px)': {
                   display: 'none', // Hide on very short viewports
+               
                 },
               },
             }}
