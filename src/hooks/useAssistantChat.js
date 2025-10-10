@@ -29,6 +29,8 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 	const [userChats, setUserChats] = useState([]);
 	const lastUserMessageRef = useRef(null);
 	const lastSearchContinuationRef = useRef(null); // { page, limit, filters, hint }
+	const activeControllersRef = useRef(new Set());
+	const [handoffPrompt, setHandoffPrompt] = useState(null); // { type, url, phone }
 	const assistantContext = useSelector(s => s.assistantContext);
 	const dispatch = useDispatch();
 
@@ -158,6 +160,42 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 		return null;
 	}, []);
 
+	const beginPendingRequest = useCallback((controller) => {
+		if (controller) {
+			activeControllersRef.current.add(controller);
+		}
+		setPendingAssistant(true);
+	}, []);
+
+	const endPendingRequest = useCallback((controller) => {
+		if (controller) {
+			activeControllersRef.current.delete(controller);
+		}
+		if (activeControllersRef.current.size === 0) {
+			setPendingAssistant(false);
+		}
+	}, []);
+
+	const acceptHandoff = useCallback(() => {
+		if (!handoffPrompt?.url) {
+			setHandoffPrompt(null);
+			return;
+		}
+		try {
+			window.open(handoffPrompt.url, '_blank', 'noopener,noreferrer');
+		} catch (_) {
+			// ignore window.open failures
+		}
+		const ack = `Opening WhatsApp support now. If the tab doesn't load, you can reach us at ${handoffPrompt.phone || '+91 8112673988'}.`;
+		setMessages(prev => [...prev, { id: 'handoff-yes-' + Date.now(), role: 'assistant', text: ack, created_at: new Date().toISOString() }]);
+		setHandoffPrompt(null);
+	}, [handoffPrompt, setMessages]);
+
+	const declineHandoff = useCallback(() => {
+		setMessages(prev => [...prev, { id: 'handoff-no-' + Date.now(), role: 'assistant', text: 'No worries—I’m here if you need anything else.', created_at: new Date().toISOString() }]);
+		setHandoffPrompt(null);
+	}, [setMessages]);
+
 	// Fetch existing thread/history on mount/userId change
 	useEffect(() => {
 		let cancelled = false;
@@ -185,12 +223,14 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 		const invokeProductSearch = useCallback(async (params) => {
 			// Opportunistically trigger category cache (don't await)
 			ensureCategoriesCached();
-			setPendingAssistant(true);
+			const controller = new AbortController();
+			beginPendingRequest(controller);
 			try {
 				const resp = await fetch(API_BASE, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ userId, action: 'tool:search_products', toolInvocation: params })
+					body: JSON.stringify({ userId, action: 'tool:search_products', toolInvocation: params }),
+					signal: controller.signal
 				});
 				if (!resp.ok) throw new Error('Tool call failed');
 				const data = await resp.json();
@@ -237,22 +277,43 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 					const assistantMsg = { id: 'assist-' + Date.now(), role: 'assistant', text: data.reply, created_at: new Date().toISOString() };
 					setMessages(prev => [...prev, assistantMsg]);
 				}
+				if (data.handoff) {
+					setHandoffPrompt(data.handoff);
+					setNeedsResolutionCheck(false);
+					setClassification({ type: 'query', needsResolutionCheck: false, category: 'customer_support', subcategory: 'human_handoff' });
+				}
 				// Update classification flags
-				if (data.classification) {
+				if (data.handoff) {
+					setNeedsResolutionCheck(false);
+					setClassification({ type: 'query', needsResolutionCheck: false, category: 'customer_support', subcategory: 'human_handoff' });
+				} else if (data.classification) {
 					setClassification(data.classification);
-					const shouldAsk = !!(data.classification.needsResolutionCheck || data.classification.type === 'query');
+					const shouldAsk = Boolean(data.classification.needsResolutionCheck && data.classification.subcategory !== 'human_handoff');
 					setNeedsResolutionCheck(shouldAsk);
 				}
 			} catch (e) {
+				if (e?.name === 'AbortError') return;
 				setError(e.message);
 			} finally {
-				setPendingAssistant(false);
+				endPendingRequest(controller);
 			}
-		}, [userId, ensureCategoriesCached]);
+		}, [userId, ensureCategoriesCached, beginPendingRequest, endPendingRequest]);
 
 		const sendMessage = useCallback(async (text) => {
 			const content = text?.trim();
 			if (!content) return;
+			if (handoffPrompt) {
+				if (/^(yes|ya|yep|sure|ok)$/i.test(content)) {
+					acceptHandoff();
+					return;
+				}
+				if (/^(no|nope|not now)$/i.test(content)) {
+					declineHandoff();
+					return;
+				}
+				setHandoffPrompt(null);
+			}
+			setNeedsResolutionCheck(false);
 
 			// Intents: order -> generic browse -> product search/pagination
 			const orderIntent = detectOrderStatusIntent(content);
@@ -261,12 +322,14 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 				setMessages(prev => [...prev, userMsg]);
 				setUserChats(prev => [...prev, content]);
 				lastUserMessageRef.current = content;
-				setPendingAssistant(true);
+				const controller = new AbortController();
+				beginPendingRequest(controller);
 				try {
 					const resp = await fetch(API_BASE, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ userId, action: 'tool:get_order_status', toolInvocation: orderIntent.params })
+						body: JSON.stringify({ userId, action: 'tool:get_order_status', toolInvocation: orderIntent.params }),
+						signal: controller.signal
 					});
 					if (!resp.ok) throw new Error('Tool call failed');
 					const data = await resp.json();
@@ -289,13 +352,14 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 					setMessages(prev => [...prev, statusMsg]);
 					if (data.classification) {
 						setClassification(data.classification);
-						const shouldAsk = !!(data.classification.needsResolutionCheck || data.classification.type === 'query');
+						const shouldAsk = Boolean(data.classification.needsResolutionCheck && data.classification.subcategory !== 'human_handoff');
 						setNeedsResolutionCheck(shouldAsk);
 					}
 				} catch (e) {
+					if (e?.name === 'AbortError') return;
 					setError(e.message);
 				} finally {
-					setPendingAssistant(false);
+					endPendingRequest(controller);
 				}
 				return;
 			}
@@ -367,13 +431,15 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 			setMessages(prev => [...prev, userMsg]);
 			setUserChats(prev => [...prev, content]);
 			lastUserMessageRef.current = content;
-			setPendingAssistant(true);
+			const controller = new AbortController();
+			beginPendingRequest(controller);
 			setError(null);
 			try {
 				const resp = await fetch(API_BASE, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ userId, message: content })
+					body: JSON.stringify({ userId, message: content }),
+					signal: controller.signal
 				});
 				if (!resp.ok) throw new Error('Send failed');
 				const data = await resp.json();
@@ -402,20 +468,26 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 					};
 					setMessages(prev => [...prev, assistantMsg]);
 				}
+				if (data.handoff) {
+					setHandoffPrompt(data.handoff);
+					setNeedsResolutionCheck(false);
+					setClassification({ type: 'query', needsResolutionCheck: false, category: 'customer_support', subcategory: 'human_handoff' });
+				}
 				// Update classification flags on any path
-				if (data.classification) {
+				if (!data.handoff && data.classification) {
 					setClassification(data.classification);
-					const shouldAsk = !!(data.classification.needsResolutionCheck || data.classification.type === 'query');
+					const shouldAsk = Boolean(data.classification.needsResolutionCheck && data.classification.subcategory !== 'human_handoff');
 					setNeedsResolutionCheck(shouldAsk);
 				}
 				if (data.threadId) setThreadId(data.threadId);
 			} catch (e) {
+				if (e?.name === 'AbortError') return;
 				setMessages(prev => prev.map(m => m.id === userMsg.id ? { ...m, meta: { error: true } } : m));
 				setError(e.message);
 			} finally {
-				setPendingAssistant(false);
+				endPendingRequest(controller);
 			}
-		}, [userId, invokeProductSearch, detectProductSearchIntent, detectOrderStatusIntent, detectGenericBrowseIntent, ensureCategoriesCached]);
+		}, [userId, invokeProductSearch, detectProductSearchIntent, detectOrderStatusIntent, detectGenericBrowseIntent, ensureCategoriesCached, beginPendingRequest, endPendingRequest, handoffPrompt, acceptHandoff, declineHandoff]);
 
 	const retryLast = useCallback(() => {
 		if (lastUserMessageRef.current) {
@@ -434,6 +506,12 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 		setAwaitingPhone(false);
 		setPendingPhone('');
 		setUserChats([]);
+		activeControllersRef.current.forEach(ctrl => {
+			try { ctrl.abort(); } catch (_) {}
+		});
+		activeControllersRef.current.clear();
+		setPendingAssistant(false);
+		setHandoffPrompt(null);
 		// Fire-and-forget network call with timeout so we always end resetting
 		(async () => {
 			const controller = new AbortController();
@@ -508,7 +586,7 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 		messages,
 		loadingHistory,
 		pendingAssistant,
-            isResetting,
+		isResetting,
 		error,
 		sendMessage,
 		retryLast,
@@ -521,6 +599,9 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 		awaitingPhone,
 		pendingPhone,
 		setPendingPhone,
-		submitPhone
+		submitPhone,
+		handoffPrompt,
+		acceptHandoff,
+		declineHandoff
 	};
 }

@@ -57,19 +57,15 @@ export async function getOrderStatus({ orderId }) {
   await connectToDb(); // ensure DB ready in case track route touches DB
 
   try {
-    console.log('[temp-debug] getOrderStatus fetching', orderId);
     const base = process.env.NEXT_PUBLIC_BASE_URL || '';
     const url = `${base}/api/order/track?orderId=${encodeURIComponent(safeId)}`;
     const res = await fetch(url, { cache: 'no-store' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      console.log('[temp-debug] getOrderStatus non-OK', res.status, data?.message);
       return { ok: false, error: data?.message || 'Failed to fetch order status.' };
     }
     const details = data.trackingData || data || {};
-    console.log('[temp-debug] getOrderStatus trackingData keys', Object.keys(details));
     const snap = deriveSnapshot(details);
-    console.log('[temp-debug] getOrderStatus snapshot', { status: snap.status, trackUrl: !!snap.trackUrl, steps: Array.isArray(snap.trackingSteps) ? snap.trackingSteps.length : 0 });
 
     // Minimal, PII-safe payload
     return {
@@ -91,7 +87,6 @@ export async function getOrderStatus({ orderId }) {
       summaryText: `${snap.status || 'Status unavailable'}${snap.expectedDelivery ? `, ETA ${snap.expectedDelivery}` : ''}${snap.trackUrl ? ` — Track: ${snap.trackUrl}` : ''}`.trim(),
     };
   } catch (e) {
-    console.log('[temp-debug] getOrderStatus error', e?.message);
     return { ok: false, error: 'Network error while fetching order status.' };
   }
 }

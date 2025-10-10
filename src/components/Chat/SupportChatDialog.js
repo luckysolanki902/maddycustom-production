@@ -56,7 +56,48 @@ export default function SupportChatDialog({ open, onClose }) {
 	const { isCartDrawerOpen, isSidebarOpen, isSearchDialogOpen } = useSelector(s => s.ui);
 	const hidden = isCartDrawerOpen || isSidebarOpen || isSearchDialogOpen;
 
-	const { messages, loading, loadingHistory, pendingAssistant, isResetting, retryLast, sendMessage, resetChat, invokeProductSearch, needsResolutionCheck, submitResolution, awaitingPhone, pendingPhone, setPendingPhone, submitPhone } = useChatSession() || {};
+	const {
+		messages,
+		loading,
+		loadingHistory,
+		pendingAssistant,
+		isResetting,
+		retryLast,
+		sendMessage,
+		resetChat,
+		invokeProductSearch,
+		needsResolutionCheck,
+		submitResolution,
+		awaitingPhone,
+		pendingPhone,
+		setPendingPhone,
+		submitPhone,
+		handoffPrompt,
+		acceptHandoff,
+		declineHandoff
+	} = useChatSession() || {};
+
+	const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
+	useEffect(() => {
+		const handleResize = () => setIsMobile(window.innerWidth < 768);
+		handleResize();
+		window.addEventListener('resize', handleResize);
+		return () => window.removeEventListener('resize', handleResize);
+	}, []);
+
+	const dialogStyle = useMemo(() => {
+		if (isMobile) {
+			return {
+				...rootStyle,
+				width: 'min(420px, calc(100vw - 24px))',
+				left: 'calc(50% - min(210px, (100vw - 24px) / 2))',
+				right: 'auto',
+				bottom: 16,
+				height: 'min(760px, 94vh)'
+			};
+		}
+		return rootStyle;
+	}, [isMobile]);
 
 	const [input, setInput] = useState('');
 	const [showTemplates, setShowTemplates] = useState(true);
@@ -133,7 +174,7 @@ export default function SupportChatDialog({ open, onClose }) {
 				animate={{ opacity: 1, scale: 1, y: 0 }}
 				exit={{ opacity: 0, scale: 0.92, y: 10 }}
 				transition={{ type: 'spring', stiffness: 220, damping: 22 }}
-				style={{ ...rootStyle, position: 'fixed' }}
+				style={dialogStyle}
 			>
 				<div style={headerStyle}>
 					<div style={avatar}>MD</div>
@@ -215,7 +256,7 @@ export default function SupportChatDialog({ open, onClose }) {
 						</div>
 					)}
 					{/* Resolution check prompt */}
-					{needsResolutionCheck && (
+					{!isMobile && needsResolutionCheck && (
 						<div style={{ display: 'flex', justifyContent: 'flex-start', margin: '8px 0 0' }}>
 							<div style={botBubbleStyle}>
 								<div style={{ fontWeight: 600, marginBottom: 6 }}>Did this resolve your query?</div>
@@ -238,6 +279,19 @@ export default function SupportChatDialog({ open, onClose }) {
 							</div>
 						</div>
 					)}
+								{/* WhatsApp handoff */}
+								{handoffPrompt && (
+									<div style={{ display: 'flex', justifyContent: 'flex-start', margin: '8px 0 0' }}>
+										<div style={botBubbleStyle}>
+											<div style={{ fontWeight: 600, marginBottom: 6 }}>Want to continue on WhatsApp?</div>
+											<div style={{ fontSize: 12, marginBottom: 10, color: 'rgba(45,45,45,0.7)' }}>We can connect you instantly with our human support at {handoffPrompt.phone || '+91 8112673988'}.</div>
+											<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+												<button onClick={acceptHandoff} style={handoffPrimaryBtnStyle}>Yes, open WhatsApp</button>
+												<button onClick={declineHandoff} style={handoffSecondaryBtnStyle}>No, stay here</button>
+											</div>
+										</div>
+									</div>
+								)}
 				</div>
 				<div style={inputBar}>
 					<div style={{ display: 'flex', gap: 10 }}>
@@ -304,6 +358,8 @@ const timeStyle = { fontSize: 10, opacity: 0.55, marginTop: 6, textAlign: 'right
 const textAreaStyle = { flex: 1, resize: 'none', border: '1px solid rgba(45,45,45,0.18)', borderRadius: 18, padding: '12px 14px', outline: 'none', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.4, background: '#fff', color: '#2d2d2d', fontWeight: 500, boxShadow: '0 4px 14px -4px rgba(0,0,0,0.06)' };
 const sendBtnStyle = { background: '#2d2d2d', color: '#fff', border: 'none', borderRadius: 18, padding: '0 22px', cursor: 'pointer', fontWeight: 600, fontSize: 14, letterSpacing: 0.3, boxShadow: '0 6px 20px -6px rgba(0,0,0,0.4)' };
 const templateBtnStyle = { background: '#ffffff', border: '1px solid rgba(45,45,45,0.15)', padding: '8px 12px', borderRadius: 14, fontSize: 12, cursor: 'pointer', fontWeight: 500, color: '#2d2d2d', boxShadow: '0 4px 10px rgba(0,0,0,0.04)' };
+const handoffPrimaryBtnStyle = { ...templateBtnStyle, background: '#25d366', color: '#fff', border: 'none', boxShadow: '0 6px 14px rgba(37,211,102,0.25)', fontWeight: 600 };
+const handoffSecondaryBtnStyle = { ...templateBtnStyle, background: '#ffffff', color: '#2d2d2d' };
 const inputBar = { padding: '14px 16px 16px', borderTop: '1px solid rgba(45,45,45,0.08)', background: '#fff' };
 const retryBtnStyle = { background: '#2d2d2d', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 14, cursor: 'pointer', fontSize: 12, fontWeight: 600 };
 const iconBtnStyle = { background: 'rgba(45,45,45,0.06)', border: '1px solid rgba(45,45,45,0.15)', color: '#2d2d2d', width: 34, height: 34, borderRadius: 12, cursor: 'pointer', fontSize: 18, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' };

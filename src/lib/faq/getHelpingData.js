@@ -353,7 +353,6 @@ export async function getHelpingData() {
     // 1) Always try OS temp file (works on most hosts)
     const tmpFile = path.join(os.tmpdir(), 'maddy_helping_data.txt');
     await fs.appendFile(tmpFile, entry, { encoding: 'utf8' });
-    console.log('[temp-debug] helping data appended to temp file:', tmpFile, 'source=', src);
 
     // 2) In non-production, also save a project-local copy for convenience
     if (process.env.NODE_ENV !== 'production') {
@@ -362,14 +361,11 @@ export async function getHelpingData() {
       try {
         await fs.mkdir(localDir, { recursive: true });
         await fs.appendFile(localFile, entry, { encoding: 'utf8' });
-        console.log('[temp-debug] helping data appended to project file:', localFile, 'source=', src);
       } catch (e2) {
-        console.log('[temp-debug] failed to write project copy of helping data:', e2?.message || e2);
       }
     }
   } catch (e) {
     // ignore fs errors in serverless or read-only environments
-    console.log('[temp-debug] failed to write temp helping data file:', e?.message || e);
   }
 
   // Update/refresh cache timestamp (helps extend TTL on access) only when enabled
