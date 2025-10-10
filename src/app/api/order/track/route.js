@@ -5,25 +5,65 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const orderId = searchParams.get('orderId');
-  if (!orderId) {
-    return NextResponse.json({ message: 'Order ID is required' }, { status: 400 });
+  const orderIdParam = searchParams.get('orderId');
+  const phoneParam = searchParams.get('phone');
+  const phoneDigits = phoneParam ? phoneParam.replace(/\D/g, '') : '';
+
+  if (!orderIdParam && !phoneDigits) {
+    return NextResponse.json({ message: 'Order ID or phone number is required' }, { status: 400 });
+  }
+
+  if (phoneDigits && phoneDigits.length < 10) {
+    return NextResponse.json({ message: 'Phone number must have at least 10 digits' }, { status: 400 });
   }
 
   try {
     await connectToDatabase();
 
+    let lookupMode = null;
+    let lookupValue = null;
+
     // Fetch order and linked orders
-    const order = await Order.findById(orderId)
-      .populate({
-        path: 'linkedOrderIds',
-        model: 'Order',
-        select: 'deliveryStatus shiprocketOrderId createdAt items address couponApplied couponName couponDiscount'
-      });
+    let order = null;
+    if (orderIdParam) {
+      order = await Order.findById(orderIdParam)
+        .populate({
+          path: 'linkedOrderIds',
+          model: 'Order',
+          select: 'deliveryStatus shiprocketOrderId createdAt items address couponApplied couponName couponDiscount'
+        });
+      if (order) {
+        lookupMode = 'orderId';
+        lookupValue = orderIdParam;
+      }
+    }
+
+    if (!order && phoneDigits) {
+      order = await Order.findOne({
+        'address.receiverPhoneNumber': phoneDigits,
+        isTestingOrder: { $ne: true }
+      })
+        .sort({ createdAt: -1 })
+        .populate({
+          path: 'linkedOrderIds',
+          model: 'Order',
+          select: 'deliveryStatus shiprocketOrderId createdAt items address couponApplied couponName couponDiscount'
+        });
+      if (order) {
+        lookupMode = 'phone';
+        lookupValue = phoneDigits;
+      }
+    }
 
     if (!order) {
-      return NextResponse.json({ message: 'Order not found. Please check your Order ID and try again.' }, { status: 404 });
+      const notFoundMessage = orderIdParam
+        ? 'Order not found. Please check your Order ID and try again.'
+        : 'Order not found for that phone number. Please verify the digits and try again.';
+      return NextResponse.json({ message: notFoundMessage }, { status: 404 });
     }
+
+    const orderId = order._id?.toString();
+    const lookup = lookupMode ? { mode: lookupMode, value: lookupValue } : null;
 
     // Helper to format address
     const formatAddress = (o) => {
@@ -72,6 +112,7 @@ export async function GET(request) {
               : "Your order is still being processed. We'll update the tracking once it ships!",
           trackingData: {
             orderId,
+            lookup,
             name: order.address?.receiverName || 'Customer',
             address: formatAddress(order),
             phoneNumber: order.address?.receiverPhoneNumber || null,
@@ -158,6 +199,7 @@ export async function GET(request) {
           : { applied: false },
         items: buildOrderItems(order),
         mainTrackUrl,
+        lookup,
       };
 
       return NextResponse.json(
@@ -180,6 +222,7 @@ export async function GET(request) {
 
       const enhancedTrackingData = {
         orderId,
+        lookup,
         trackUrl,
         mainTrackUrl: trackUrl,
         status: currentStatus || undefined,
@@ -215,6 +258,7 @@ export async function GET(request) {
         message: 'Your order will be shipped soon! Check back for tracking updates.',
         trackingData: {
           orderId,
+          lookup,
           name: order.address?.receiverName || 'Customer',
           address: formatAddress(order),
           phoneNumber: order.address?.receiverPhoneNumber || null,
