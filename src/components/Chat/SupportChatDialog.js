@@ -8,6 +8,7 @@ import ProductGalleryMessage from './ProductGalleryMessage';
 import OrderStatusMessage from './OrderStatusMessage';
 import CategoryGridMessage from './CategoryGridMessage';
 import { v4 as uuidv4 } from 'uuid';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
 const LoadingPulse = () => (
 	<div style={{ display: 'flex', gap: 6, padding: '6px 4px' }}>
@@ -140,7 +141,9 @@ export default function SupportChatDialog({ open, onClose }) {
 						<div style={titleStyle}>MaddyCustom Support</div>
 						<div style={subtitleStyle}>{isResetting ? 'Starting a new chat…' : (loadingHistory ? 'Loading conversation…' : 'Ask anything about your order, wraps & accessories')}</div>
 					</div>
-					<button onClick={handleNewChatClick} title="New chat" style={{ ...iconBtnStyle, opacity: isResetting ? 0.5 : 1, pointerEvents: isResetting ? 'none' : 'auto' }}>{isResetting ? '…' : '↺'}</button>
+					<button onClick={handleNewChatClick} title="Clear chat" style={{ ...iconBtnStyle, opacity: isResetting ? 0.5 : 1, pointerEvents: isResetting ? 'none' : 'auto' }}>
+						<DeleteOutlineIcon sx={{ fontSize: 18 }} />
+					</button>
 					<button onClick={onClose} title="Close" style={iconBtnStyle}>×</button>
 				</div>
 				{/* Thin animated loading bar under header while resetting */}
@@ -316,7 +319,7 @@ function formatText(txt, isUser = false) {
   const wrapCopyable = (match, value) =>
     match.includes("href=")
       ? match
-      : `<span class="mc-copyable" data-copy="${value}" style="font-family: ui-monospace, monospace; background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 8px;">${value} <button class="mc-copy-btn" data-copy="${value}" style="margin-left:6px; font-size:10px; padding:2px 6px; border:1px solid rgba(45,45,45,0.2); border-radius:6px; background:#fff; cursor:pointer;">Copy</button></span>`;
+      : `<span class="mc-copyable" data-copy="${value}" style="font-family: ui-monospace, monospace; background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 8px;">${value} <button class="mc-copy-btn" data-copy="${value}" style="margin-left:6px; font-size:10px; padding:2px 6px; border:1px solid rgba(45,45,45,0.2); border-radius:6px; background:#fff; cursor:pointer; color:rgba(45,45,45,0.75);">Copy</button></span>`;
 
   html = html
     .replace(/\b([a-f0-9]{24})\b/gi, (m, v) => wrapCopyable(m, v))
