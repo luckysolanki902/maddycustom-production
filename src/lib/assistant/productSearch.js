@@ -136,11 +136,9 @@ export async function searchProducts({
   pageContext,
   diversifyCategories,
 }) {
-  console.log('[temp-debug] searchProducts start', { query, maxPrice, minPrice, categoryTitle, keywords, page, limit, sortBy });
   await connectToDb();
   // If limit isn't explicitly provided, try to derive from query text
   const hints = parseQueryHints(query);
-  console.log('[temp-debug] searchProducts hints', hints);
   const appliedLimit = limit ?? hints.limit;
   const clampedLimit = clampLimit(appliedLimit);
   const skip = (Math.max(1, page) - 1) * clampedLimit;
@@ -158,7 +156,6 @@ export async function searchProducts({
   const wantsCar = /\bcar(s)?\b/.test(rawText) || explicitKeywords.includes('car');
   const wantsInterior = /\binterior(s)?\b/.test(rawText) || explicitKeywords.includes('interior');
   const wantsExterior = /\bexterior(s)?\b/.test(rawText) || explicitKeywords.includes('exterior');
-  console.log('[temp-debug] domain flags', { wantsCar, wantsBike, wantsInterior, wantsExterior });
 
   // Identify structural (category-like) tokens that we want to enforce strictly
   const STRUCTURAL_TOKENS = new Set(['wrap','wraps','pillar','tank','roof','bonnet','fragrance','perfume','scent','keychain','sticker','decal']);
@@ -187,7 +184,6 @@ export async function searchProducts({
     effectiveRequired = [allKeywords[0]];
   }
   const optionalWords = allKeywords.filter(w => !effectiveRequired.includes(w));
-  console.log('[temp-debug] keywords breakdown', { allKeywords, structural, theme, effectiveRequired, optionalWords });
 
   // Apply parsed price hints only if explicit values not given
   const priceFilter = {};
@@ -245,7 +241,6 @@ export async function searchProducts({
     });
     if (ors.length) andClauses.push({ $or: ors });
   }
-  console.log('[temp-debug] searchProducts filters', { effectiveRequired, optionalWords, priceFilter, categoryTitle, skip, clampedLimit });
 
   // Category context assistance: if categoryTitle provided use that to filter/bias result.
   let categoryTitleMatchedIds = [];
@@ -340,14 +335,12 @@ export async function searchProducts({
     const bikeCatIds = bikeCats.map(c => c._id);
     if (bikeCatIds.length) {
       andClauses.push({ $or: [ { specificCategory: { $nin: bikeCatIds } }, { specificCategory: { $exists: false } } ] });
-      console.log('[temp-debug] domain exclusion applied: excluded bike categories count', bikeCatIds.length);
     }
   } else if (wantsBike && !wantsCar) {
     const carCats = await SpecificCategory.find({ classificationTags: { $in: [/car/i] }, available: { $ne: false } }).select('_id').lean();
     const carCatIds = carCats.map(c => c._id);
     if (carCatIds.length) {
       andClauses.push({ $or: [ { specificCategory: { $nin: carCatIds } }, { specificCategory: { $exists: false } } ] });
-      console.log('[temp-debug] domain exclusion applied: excluded car categories count', carCatIds.length);
     }
   }
 
@@ -361,7 +354,6 @@ export async function searchProducts({
     .lean()
     .skip(skip)
     .limit(clampedLimit * overFetchFactor); // over-fetch to allow post filtering and diversification
-  console.log('[temp-debug] searchProducts raw candidates', raw.length, 'overFetchFactor=', overFetchFactor);
 
   const catIds = [...new Set(raw.filter(p => p.specificCategory).map(p => p.specificCategory))];
   const varIds = [...new Set(raw.filter(p => p.specificCategoryVariant).map(p => p.specificCategoryVariant))];
@@ -406,7 +398,6 @@ export async function searchProducts({
     }
     return true;
   });
-  console.log('[temp-debug] searchProducts filtered after availability/inventory', filtered.length);
 
   // Relaxed fallback: if inventory gating filtered everything but we have raw candidates,
   // try a pass without inventory quantity checks (some categories are made-to-order and may not use inventory records)
@@ -421,7 +412,6 @@ export async function searchProducts({
     if (relaxed.length) {
       usedRelaxedInventory = true;
       effectiveList = relaxed;
-      console.log('[temp-debug] searchProducts using RELAXED inventory fallback count=', relaxed.length);
     }
   }
 
@@ -437,7 +427,6 @@ export async function searchProducts({
       { $group: { _id: '$items.product', count: { $sum: { $ifNull: ['$items.quantity', 1] } } } },
     ]);
     ordersCountMap = Object.fromEntries(agg.map(a => [a._id.toString(), a.count]));
-    console.log('[temp-debug] searchProducts popularity aggregation size', agg.length);
   }
 
   // Scoring
@@ -496,7 +485,6 @@ export async function searchProducts({
       if (!byCat.has(key)) byCat.set(key, []);
       byCat.get(key).push(item);
     }
-    console.log('[temp-debug] diversification buckets=', byCat.size);
     // Sort each category bucket by score desc (already is), then round-robin sample
     const buckets = Array.from(byCat.values()).map(arr => arr.sort((a,b) => b.score - a.score));
     const diversified = [];
@@ -516,7 +504,6 @@ export async function searchProducts({
       }
       i++;
     }
-    console.log('[temp-debug] diversification selected count=', diversified.length);
     scored = diversified;
   }
 
@@ -563,7 +550,6 @@ export async function searchProducts({
     // Try a popularity-based relaxed fallback for queries that imply popularity
     const impliesPopularity = requestedSort === 'orders' || /popular|best|top|bestselling|selling|trending|hot/i.test(query || '');
     if (impliesPopularity) {
-      console.log('[temp-debug] searchProducts attempting popularity RELAXED fallback');
       // Build a relaxed candidate pool similar to initial ORs for keywords, but only ensure product available != false
       const orClauses = [];
       const wordsForFallback = effectiveRequired.length ? effectiveRequired : allKeywords;
@@ -583,7 +569,6 @@ export async function searchProducts({
         .select('title price MRP images pageSlug specificCategory specificCategoryVariant')
         .limit(clampedLimit * 6) // fetch a bit more to rank by orders
         .lean();
-      console.log('[temp-debug] popularity relaxed pool size', relaxedPool.length);
       if (relaxedPool.length) {
         // Enforce category/variant availability even in popularity relaxed mode
         const poolCatIds = [...new Set(relaxedPool.filter(p => p.specificCategory).map(p => p.specificCategory))];
@@ -599,10 +584,8 @@ export async function searchProducts({
           if (p.specificCategoryVariant && poolVarAvail[p.specificCategoryVariant.toString()] === false) return false;
           return true;
         });
-        console.log('[temp-debug] popularity relaxed pool after cat/var availability', availFilteredPool.length);
         if (!availFilteredPool.length) {
           // If all are filtered out by availability, fall through to category fallback
-          console.log('[temp-debug] popularity relaxed pool empty after availability gating');
           return {
             page: Math.max(1, page),
             limit: clampedLimit,
@@ -635,7 +618,6 @@ export async function searchProducts({
           return { title: p.title, price: p.price, mrp: p.MRP, discountPercent: discount, image: firstImage, slug };
         });
         if (productsFallback.length) {
-          console.log('[temp-debug] popularity RELAXED fallback success count', productsFallback.length);
           return {
             page: Math.max(1, page),
             limit: clampedLimit,
@@ -681,7 +663,6 @@ export async function searchProducts({
       hint: hasMore ? 'Say "show more" to see additional results.' : null,
     }
   };
-  console.log('[temp-debug] searchProducts final result', { count: result.products.length, hasMore: result.hasMore, page: result.page, limit: result.limit });
   return result;
 }
 

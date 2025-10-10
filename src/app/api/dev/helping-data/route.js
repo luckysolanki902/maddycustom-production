@@ -15,7 +15,6 @@ export async function GET(request) {
     }
     return NextResponse.json({ ok: true, length: (text || '').length, sample: (text || '').slice(0, 500) }, { status: 200 });
   } catch (e) {
-    console.log('[temp-debug] /api/dev/helping-data error:', e?.message || e);
     return NextResponse.json({ ok: false, error: 'failed to compose helping data' }, { status: 500 });
   }
 }

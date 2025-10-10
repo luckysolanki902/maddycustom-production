@@ -8,6 +8,42 @@ import ProductInfoTab from '@/models/ProductInfoTab';
 
 export const revalidate = 86400; // 1 day ISR
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=0, immutable',
+  'CDN-Cache-Control': 'public, max-age=86400, stale-while-revalidate=0',
+  'Vercel-CDN-Cache-Control': 'public, max-age=86400, stale-while-revalidate=0'
+};
+
+function getMemoryCache() {
+  if (!globalThis.__HELPING_DATA_CACHE) {
+    globalThis.__HELPING_DATA_CACHE = { payload: null, ts: 0, etag: null };
+  }
+  return globalThis.__HELPING_DATA_CACHE;
+}
+
+function setMemoryCache(payload, etag) {
+  const cache = getMemoryCache();
+  cache.payload = payload;
+  cache.ts = Date.now();
+  cache.etag = etag;
+}
+
+function getETag(value) {
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(value);
+    let hash = 0;
+    for (let i = 0; i < data.length; i += 1) {
+      hash = (hash << 5) - hash + data[i];
+      hash |= 0;
+    }
+    return `W/"${Math.abs(hash)}"`;
+  } catch (_) {
+    return null;
+  }
+}
+
 function formatModeName(mode) {
   const name = (mode?.name || '').toLowerCase();
   const online = mode?.configuration?.onlinePercentage ?? 0;
@@ -90,6 +126,17 @@ function normalizeShopLinkFromVariantSlug(pageSlug) {
 
 export async function GET(request) {
   try {
+    const cache = getMemoryCache();
+    if (cache.payload && Date.now() - cache.ts < ONE_DAY_MS) {
+      return NextResponse.json(cache.payload, {
+        headers: {
+          ...CACHE_HEADERS,
+          ...(cache.etag ? { ETag: cache.etag } : {}),
+          'X-Assistant-Helping-Data-Cache': 'HIT'
+        }
+      });
+    }
+
     let base = helpingData;
     let categoriesSection = '';
     let paymentModesSection = '';
@@ -259,10 +306,15 @@ export async function GET(request) {
     }
 
     const finalText = `${base}${categoriesSection}${paymentModesSection}`;
+    const payload = { helpingData: finalText };
+    const etag = getETag(finalText);
+    setMemoryCache(payload, etag);
 
-    return NextResponse.json({ helpingData: finalText }, {
+    return NextResponse.json(payload, {
       headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200'
+        ...CACHE_HEADERS,
+        ...(etag ? { ETag: etag } : {}),
+        'X-Assistant-Helping-Data-Cache': 'MISS'
       }
     });
   } catch (error) {
