@@ -350,7 +350,7 @@ export async function searchProducts({
   // Over-fetch more aggressively when diversifying to ensure we have enough categories to sample from
   const overFetchFactor = (diversifyCategories && !categoryTitle) ? 8 : 2;
   const raw = await Product.find(queryMatch)
-    .select('title price MRP images pageSlug specificCategory specificCategoryVariant productSource inventoryData searchKeywords mainTags available options')
+    .select('title price MRP images pageSlug specificCategory specificCategoryVariant productSource inventoryData searchKeywords mainTags available options designGroupId')
     .lean()
     .skip(skip)
     .limit(clampedLimit * overFetchFactor); // over-fetch to allow post filtering and diversification
@@ -478,9 +478,27 @@ export async function searchProducts({
   }
   // Diversification across categories when requested for generic domain-only queries
   if (diversifyCategories && !categoryTitle) {
+    const uniqueVariantPerCat = new Map();
+    const dedupedForDiversify = [];
+    for (const entry of scored) {
+      const catKey = entry.p.specificCategory ? String(entry.p.specificCategory) : 'uncategorized';
+      const baseKey = entry.p.designGroupId
+        ? `dg:${entry.p.designGroupId}`
+        : entry.p.pageSlug
+          ? `slug:${entry.p.pageSlug.split('-')[0]}`
+          : `title:${(entry.p.title || '').toLowerCase()}`;
+      if (!uniqueVariantPerCat.has(catKey)) uniqueVariantPerCat.set(catKey, new Set());
+      const seenSet = uniqueVariantPerCat.get(catKey);
+      if (seenSet.has(baseKey)) {
+        continue; // skip additional variants within this category bucket
+      }
+      seenSet.add(baseKey);
+      dedupedForDiversify.push(entry);
+    }
+
     // Group by specificCategory and pick top-per-category round-robin
     const byCat = new Map();
-    for (const item of scored) {
+    for (const item of dedupedForDiversify) {
       const key = item.p.specificCategory ? String(item.p.specificCategory) : 'uncategorized';
       if (!byCat.has(key)) byCat.set(key, []);
       byCat.get(key).push(item);
@@ -499,7 +517,6 @@ export async function searchProducts({
       // Remove empty buckets
       if (bucket.length === 0) {
         buckets.splice(idx, 1);
-        // Do not increment i this round to fill from next bucket at same index
         continue;
       }
       i++;

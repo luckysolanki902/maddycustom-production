@@ -2,7 +2,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-export default function ProductGalleryMessage({ products = [] }) {
+export default function ProductGalleryMessage({
+	products = [],
+	summary,
+	hasMore,
+	onShowMore,
+	pending
+}) {
   if (!products.length) {
     return (
       <div style={wrapperStyle}>No products found.</div>
@@ -11,6 +17,7 @@ export default function ProductGalleryMessage({ products = [] }) {
   return (
     <div style={wrapperStyle}>
       <div style={titleRow}>Suggested Products</div>
+      <div style={summaryStyle}>{"Here are the best picks for you! To make your choice easier, we've curated a list of products that match your preferences."}  </div>
       <div style={gridStyle}>
         {products.map(p => (
           <motion.a
@@ -36,6 +43,13 @@ export default function ProductGalleryMessage({ products = [] }) {
           </motion.a>
         ))}
       </div>
+      {hasMore && (
+        <div style={footerRow}>
+          <button onClick={onShowMore} disabled={pending} style={{ ...moreBtnStyle, opacity: pending ? 0.6 : 1 }}>
+            {pending ? 'Fetching…' : 'Show more ideas'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -49,6 +63,7 @@ const wrapperStyle = {
   maxWidth: '100%'
 };
 const titleRow = { fontSize: 13, fontWeight: 600, color: '#2d2d2d', marginBottom: 10 };
+const summaryStyle = { fontSize: 12, lineHeight: 1.6, color: 'rgba(45,45,45,0.78)', marginBottom: 14, fontWeight: 500 };
 const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 12, width: '100%' };
 const cardStyle = {
   textDecoration: 'none',
@@ -72,3 +87,15 @@ const prodTitle = { fontSize: 12, fontWeight: 600, color: '#2d2d2d', lineHeight:
 const priceRow = { display: 'flex', alignItems: 'center', gap: 6 };
 const finalPrice = { fontSize: 13, fontWeight: 700, color: '#2d2d2d' };
 const mrpStyle = { fontSize: 11, textDecoration: 'line-through', opacity: 0.6 };
+const footerRow = { marginTop: 16, display: 'flex', justifyContent: 'flex-start' };
+const moreBtnStyle = {
+  border: '1px solid rgba(45,45,45,0.2)',
+  background: '#fff',
+  color: '#2d2d2d',
+  padding: '8px 14px',
+  borderRadius: 14,
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: 'pointer',
+  boxShadow: '0 6px 18px -8px rgba(0,0,0,0.18)'
+};

@@ -1,16 +1,14 @@
-# Analysis: Current Assistant Chat Flow (as of 2025-09-29)
+# Analysis: Current Assistant Chat Flow (as of 2025-10-11)
 
 This document captures how the chat system currently behaves, where it works well, and where it breaks down for certain queries.
 
 ## What exists today
 
-- Dual-path handling in `src/app/api/assistant/chat/route.js`:
-  - Explicit tools path (server-side):
-    - `action === 'tool:search_products'` → sanitizes payload, calls `searchProducts(...)` or `categoryFirstSuggestions(...)` directly and returns structured JSON for the client.
-    - `action === 'tool:get_order_status'` → calls `getOrderStatus(...)` and returns structured JSON.
-  - Planner path (LLM pre-decision):
-    - For free-form user messages, a small “planner” model receives function docs and returns a strict JSON decision `{ action: call_tool|direct_answer, tool, args }`.
-    - If `call_tool`, the server executes the relevant tool and returns structured data; otherwise, it forwards messages to the OpenAI Assistant thread for a direct answer.
+- Single-path handling in `src/app/api/assistant/chat/route.js`:
+  - Every request is normalised into a planner prompt (client tool actions are just metadata) and evaluated by a lightweight planner unless strong search intent is detected.
+  - A `extractSearchHints(...)` helper now inspects the raw user message to detect colours, relations (“dad”), budgets (“300 rs”), and vehicle references. When those hints are strong enough the server forces a `search_products` plan even before the planner runs, guaranteeing tool execution for clearly shoppable queries.
+  - Planner-produced `classification` metadata is normalised and reused so we do not fire an extra classification completion per turn.
+  - Tool executions (`search_products`, `browse_categories`, `get_order_status`) log structured telemetry and persist chat history via `AssistantChatLog`.
 
 - Search implementation in `src/lib/assistant/productSearch.js`:
   - Keyword parsing with `extractKeywords(...)` that removes stopwords and generic terms.
@@ -19,6 +17,9 @@ This document captures how the chat system currently behaves, where it works wel
   - Category/variant availability gating; inventory gating based on `SpecificCategory.inventoryMode`.
   - Relaxed inventory fallback; popularity-based relaxed fallback; final `browse_categories` fallback.
   - Recent fix: Enforce category/variant availability also in the popularity-relaxed path; representative category picks respect variant availability and inventory stock.
+
+- Response composition:
+  - Tool replies no longer call a second OpenAI endpoint. Instead deterministic helpers craft concise summaries (e.g., “Pulled top 6 matches like … Using keywords …”). This shaved ~4–6s from tool latency in dev and keeps copy consistent.
 
 - UI behavior:
   - Client can handle tool results for `search_products`, `get_order_status`, and `browse_categories`.
@@ -39,13 +40,14 @@ This document captures how the chat system currently behaves, where it works wel
 
 ## Summary of pain points
 
-1. Split decision-making (explicit tools vs planner) → inconsistent outcomes.
-2. Server-side stopwords/keyword heuristics are brittle for diverse phrasing.
-3. Category browsing vs product search intent isn’t centrally decided by LLM for every request.
-4. Lack of a small, unified “response composer” to tailor a message along with tool results.
+1. Split decision-making (explicit tools vs planner) → **resolved** by collapsing into a single planner flow with pre-planner overrides.
+2. Server-side stopwords/keyword heuristics were brittle → mitigated by `extractSearchHints` that maps budgets/colours/domains directly into planner args.
+3. Category browsing vs product search intent now benefits from both planner judgement and hint-based overrides; remaining edge cases involve mixed queries (policy + product) that still require tuning.
+4. Lack of unified “response composer” → resolved with deterministic summaries, eliminating an extra model hop.
 
 ## Constraints and observations
 
 - We still need the structured tool responses for UI rendering (gallery, order card, category grid).
 - We prefer to keep the Assistant thread for long-form knowledge answers and the small planner for decisions.
-- We can keep `productSearch.js` and improve its inputs (from LLM) to reduce server-side guesswork.
+- `productSearch.js` remains the execution engine; we now focus on richer args to remove guesswork while keeping deterministic sanitisation in place.
+- Persisting chat logs requires the Mongoose model to be available under both default and named exports when bundled; defensive guards were added so Turbopack dev builds stop throwing on `.findOneAndUpdate`.

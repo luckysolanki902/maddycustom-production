@@ -10,45 +10,98 @@ import CategoryGridMessage from './CategoryGridMessage';
 import { v4 as uuidv4 } from 'uuid';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
-const LoadingPulse = () => (
-	<div style={{ display: 'flex', gap: 6, padding: '6px 4px' }}>
-		{[0, 0.15, 0.3].map(d => (
-			<motion.span
-				key={d}
-				animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
-				transition={{ repeat: Infinity, duration: 0.9, delay: d, ease: 'easeInOut' }}
-				style={{ width: 8, height: 8, background: '#2d2d2d', borderRadius: 8 }}
-			/>
-		))}
-	</div>
+const LoaderSpinner = ({ size = 18 }) => (
+	<motion.div
+		animate={{ rotate: 360 }}
+		transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }}
+		style={{ width: size, height: size, borderRadius: '50%', border: '2px solid rgba(45,45,45,0.2)', borderTopColor: '#2d2d2d' }}
+	/>
 );
 
-const ResetOverlay = ({ visible }) => {
+const LoaderGlow = () => (
+	<motion.span
+		animate={{ opacity: [0.35, 0.9, 0.35], scale: [1, 1.25, 1] }}
+		transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
+		style={{ width: 10, height: 10, borderRadius: '50%', background: 'rgba(45,45,45,0.6)', boxShadow: '0 0 12px rgba(45,45,45,0.35)' }}
+	/>
+);
+
+const ResetOverlay = ({ visible, phrase }) => {
 	if (!visible) return null;
 	return (
 		<motion.div
 			initial={{ opacity: 0 }}
 			animate={{ opacity: 1 }}
 			exit={{ opacity: 0 }}
-			style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3010 }}
+			style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3010 }}
 		>
-			<motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }} style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid rgba(45,45,45,0.16)', borderRadius: 20, padding: '18px 18px', boxShadow: '0 18px 48px -10px rgba(0,0,0,0.25)' }}>
-				<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-					<motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }} style={{ width: 18, height: 18, border: '2px solid rgba(45,45,45,0.35)', borderTopColor: '#2d2d2d', borderRadius: '50%' }} />
-					<div style={{ fontSize: 13, color: '#2d2d2d', fontWeight: 600 }}>Starting a new chat…</div>
-				</div>
-				<motion.div initial={{ width: '10%' }} animate={{ width: '100%' }} transition={{ repeat: Infinity, repeatType: 'mirror', duration: 1.6 }} style={{ height: 3, background: '#2d2d2d', marginTop: 10, borderRadius: 2 }} />
+			<motion.div
+				initial={{ scale: 0.92, opacity: 0 }}
+				animate={{ scale: 1, opacity: 1 }}
+				transition={{ type: 'spring', stiffness: 240, damping: 24 }}
+				style={{ background: 'rgba(255,255,255,0.96)', border: '1px solid rgba(45,45,45,0.16)', borderRadius: 20, padding: '18px 20px', boxShadow: '0 18px 48px -12px rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', gap: 14 }}
+			>
+				<LoaderSpinner size={20} />
+				<div style={{ fontSize: 13, color: '#2d2d2d', fontWeight: 600 }}>{phrase || 'Starting a fresh chat…'}</div>
 			</motion.div>
 		</motion.div>
 	);
 };
+
+const loadingPhrases = {
+	order: [
+		'Gathering the latest courier updates…',
+	],
+	products: [
+		'Picking products that match your vibes…',
+	],
+	categories: [
+		'Fetching all the categories…',
+	],
+	answer: [
+		'Working on it…',
+	],
+	default: [
+		'Working on it…',
+	],
+	reset: [
+		'Setting up a clean chat…',
+	]
+};
 const templateSets = {
-	home: ['Show me something for my red car', 'Show me something for my car roof', 'Do you ship across India?', 'Where is my order?', 'What products do you sell?'],
-	productList: ['Suggest some red designs', 'What material is used?', 'Show me anime-themed wraps'],
-	productDetail: ['What material is used?', 'How long does the product last?', 'How long does shipping take?'],
-	orderSuccess: ['Track my new order', 'Can I change the shipping address?', 'How long until delivery?', 'When will packaging start?'],
-	faq: ['Shipping time details', 'Wrap durability and care', 'See all product categories', 'Order tracking support'],
-	fallback: ['Where is my order?', 'Show me something for my car', 'Do you have something for my bike?', 'How long does shipping take?', 'Suggest a car freshener I can gift my dad']
+	home: [
+		'My car is red and my budget is 1000',
+		'Find some stylish wraps for my bike',
+		'Track my order with my order id',
+		'Suggest something for car interiors',
+		'Show anime-inspired pillar wraps'
+	],
+	productDetail: [
+		'Show me products of similar design',
+		'Pair a black accent with my blue car for 900?',
+		'Is there any return policy?',
+		'My car is red and my budget is 1000',
+		'Find some stylish wraps for my bike',
+		'Track my order with my order id',
+		'Suggest something for car interiors',
+		'Show anime-inspired pillar wraps'
+	],
+	orderSuccess: [
+		'Track my order using my order Id',
+		'How to install the wrap',
+		'My car is red and my budget is 1000',
+		'Find some stylish wraps for my bike',
+		'Track my order with my phone number',
+		'Suggest something for car interiors',
+		'Show anime-inspired pillar wraps'
+	],
+	fallback: [
+		'My car is red and my budget is 1000',
+		'Find some stylish wraps for my bike',
+		'Track my order with my phone number',
+		'Suggest something for car interiors',
+		'Show anime-inspired pillar wraps'
+	]
 };
 
 export default function SupportChatDialog({ open, onClose }) {
@@ -56,51 +109,12 @@ export default function SupportChatDialog({ open, onClose }) {
 	const { isCartDrawerOpen, isSidebarOpen, isSearchDialogOpen } = useSelector(s => s.ui);
 	const hidden = isCartDrawerOpen || isSidebarOpen || isSearchDialogOpen;
 
-	const {
-		messages,
-		loading,
-		loadingHistory,
-		pendingAssistant,
-		isResetting,
-		retryLast,
-		sendMessage,
-		resetChat,
-		invokeProductSearch,
-		needsResolutionCheck,
-		submitResolution,
-		awaitingPhone,
-		pendingPhone,
-		setPendingPhone,
-		submitPhone,
-		handoffPrompt,
-		acceptHandoff,
-		declineHandoff
-	} = useChatSession() || {};
-
-	const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
-	useEffect(() => {
-		const handleResize = () => setIsMobile(window.innerWidth < 768);
-		handleResize();
-		window.addEventListener('resize', handleResize);
-		return () => window.removeEventListener('resize', handleResize);
-	}, []);
-
-	const dialogStyle = useMemo(() => {
-		if (isMobile) {
-			return {
-				...rootStyle,
-				width: 'min(420px, calc(100vw - 24px))',
-				left: 'calc(50% - min(210px, (100vw - 24px) / 2))',
-				right: 'auto',
-				bottom: 16,
-				height: 'min(760px, 94vh)'
-			};
-		}
-		return rootStyle;
-	}, [isMobile]);
+	const { messages, loadingHistory, pendingAssistant, pendingDescriptor, isResetting, retryLast, sendMessage, resetChat, invokeProductSearch, needsResolutionCheck, submitResolution, awaitingPhone, pendingPhone, setPendingPhone, submitPhone } = useChatSession() || {};
 
 	const [input, setInput] = useState('');
 	const [showTemplates, setShowTemplates] = useState(true);
+	const [loaderPhrase, setLoaderPhrase] = useState('');
+	const [resetPhrase, setResetPhrase] = useState(loadingPhrases.reset[0]);
 	const routeType = useMemo(() => {
 		if (!pathname) return 'fallback';
 		if (pathname === '/') return 'home';
@@ -132,7 +146,35 @@ export default function SupportChatDialog({ open, onClose }) {
 		if (last?.type !== 'product_gallery') {
 			containerRef.current.scrollTop = containerRef.current.scrollHeight;
 		}
-	}, [messages, loading]);
+	}, [messages, pendingAssistant]);
+
+	useEffect(() => {
+		if (!pendingAssistant) {
+			setLoaderPhrase('');
+			return;
+		}
+		const key = pendingDescriptor && loadingPhrases[pendingDescriptor] ? pendingDescriptor : 'default';
+		const list = (loadingPhrases[key] && loadingPhrases[key].length) ? loadingPhrases[key] : loadingPhrases.default;
+		let idx = 0;
+		setLoaderPhrase(list[idx]);
+		const interval = setInterval(() => {
+			idx = (idx + 1) % list.length;
+			setLoaderPhrase(list[idx]);
+		}, 2600);
+		return () => clearInterval(interval);
+	}, [pendingAssistant, pendingDescriptor]);
+
+	useEffect(() => {
+		if (!isResetting) return;
+		const list = loadingPhrases.reset.length ? loadingPhrases.reset : loadingPhrases.default;
+		let idx = 0;
+		setResetPhrase(list[idx]);
+		const interval = setInterval(() => {
+			idx = (idx + 1) % list.length;
+			setResetPhrase(list[idx]);
+		}, 3000);
+		return () => clearInterval(interval);
+	}, [isResetting]);
 
 	const handleSend = useCallback(() => {
 		if (!input.trim()) return;
@@ -174,7 +216,7 @@ export default function SupportChatDialog({ open, onClose }) {
 				animate={{ opacity: 1, scale: 1, y: 0 }}
 				exit={{ opacity: 0, scale: 0.92, y: 10 }}
 				transition={{ type: 'spring', stiffness: 220, damping: 22 }}
-				style={dialogStyle}
+				style={{ ...rootStyle, position: 'fixed' }}
 			>
 				<div style={headerStyle}>
 					<div style={avatar}>MD</div>
@@ -217,6 +259,7 @@ export default function SupportChatDialog({ open, onClose }) {
 								<div key={m.id} style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 14 }}>
 									<ProductGalleryMessage
 										products={m.products}
+										summary={m.summary}
 										hasMore={m.hasMore}
 										pending={pendingAssistant}
 										onShowMore={() => invokeProductSearch({
@@ -238,10 +281,18 @@ export default function SupportChatDialog({ open, onClose }) {
 								</div>
 							);
 						}
+						const isSupportPending = m.meta?.supportRequestStatus === 'pending';
 						return (
 							<motion.div key={m.id || uuidv4()} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 14 }}>
 								<div style={m.role === 'user' ? userBubbleStyle : botBubbleStyle}>
-									<div style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'anywhere' }}>{formatText(m.text, m.role === "user")}</div>
+									{isSupportPending ? (
+										<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+											<LoaderSpinner size={16} />
+											<div style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'anywhere' }}>{formatText(m.text, false)}</div>
+										</div>
+									) : (
+										<div style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'anywhere' }}>{formatText(m.text, m.role === "user")}</div>
+									)}
 									<div style={timeStyle}>{new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
 								</div>
 							</motion.div>
@@ -250,13 +301,16 @@ export default function SupportChatDialog({ open, onClose }) {
 					{pendingAssistant && (
 						<div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 6 }}>
 							<div style={botBubbleStyle}>
-								<div style={{ fontSize: 12, color: 'rgba(45,45,45,0.65)', marginBottom: 6 }}>Thinking… fetching results</div>
-								<LoadingPulse />
+								<div style={{ fontSize: 12, color: 'rgba(45,45,45,0.65)', marginBottom: 10 }}>{loaderPhrase || 'Working on that for you…'}</div>
+								<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+									<LoaderSpinner size={16} />
+									<LoaderGlow />
+								</div>
 							</div>
 						</div>
 					)}
 					{/* Resolution check prompt */}
-					{!isMobile && needsResolutionCheck && (
+					{needsResolutionCheck && (
 						<div style={{ display: 'flex', justifyContent: 'flex-start', margin: '8px 0 0' }}>
 							<div style={botBubbleStyle}>
 								<div style={{ fontWeight: 600, marginBottom: 6 }}>Did this resolve your query?</div>
@@ -279,19 +333,6 @@ export default function SupportChatDialog({ open, onClose }) {
 							</div>
 						</div>
 					)}
-								{/* WhatsApp handoff */}
-								{handoffPrompt && (
-									<div style={{ display: 'flex', justifyContent: 'flex-start', margin: '8px 0 0' }}>
-										<div style={botBubbleStyle}>
-											<div style={{ fontWeight: 600, marginBottom: 6 }}>Want to continue on WhatsApp?</div>
-											<div style={{ fontSize: 12, marginBottom: 10, color: 'rgba(45,45,45,0.7)' }}>We can connect you instantly with our human support at {handoffPrompt.phone || '+91 8112673988'}.</div>
-											<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-												<button onClick={acceptHandoff} style={handoffPrimaryBtnStyle}>Yes, open WhatsApp</button>
-												<button onClick={declineHandoff} style={handoffSecondaryBtnStyle}>No, stay here</button>
-											</div>
-										</div>
-									</div>
-								)}
 				</div>
 				<div style={inputBar}>
 					<div style={{ display: 'flex', gap: 10 }}>
@@ -303,7 +344,7 @@ export default function SupportChatDialog({ open, onClose }) {
 							style={{ ...textAreaStyle, opacity: isResetting ? 0.6 : 1 }}
 							rows={1}
 						/>
-						<motion.button whileTap={{ scale: 0.94 }} disabled={!input.trim() || loading || pendingAssistant || isResetting} onClick={handleSend} style={{ ...sendBtnStyle, opacity: (!input.trim() || loading || pendingAssistant || isResetting) ? 0.6 : 1 }}>{(loading || pendingAssistant || isResetting) ? '...' : 'Send'}</motion.button>
+						<motion.button whileTap={{ scale: 0.94 }} disabled={!input.trim() || pendingAssistant || isResetting} onClick={handleSend} style={{ ...sendBtnStyle, opacity: (!input.trim() || pendingAssistant || isResetting) ? 0.6 : 1 }}>{(pendingAssistant || isResetting) ? '...' : 'Send'}</motion.button>
 					</div>
 					{messages.length > 0 && messages[messages.length - 1].meta?.error && (
 						<div style={{ marginTop: 10, textAlign: 'center' }}>
@@ -325,19 +366,16 @@ export default function SupportChatDialog({ open, onClose }) {
 								</div>
 							</>
 						) : (
-							<>
-								<div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 10 }}>
-									<motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }} style={{ width: 18, height: 18, border: '2px solid rgba(45,45,45,0.35)', borderTopColor: '#2d2d2d', borderRadius: '50%' }} />
-									<div style={{ fontSize: 13, color: '#2d2d2d', fontWeight: 600 }}>Starting a new chat…</div>
-								</div>
-								<motion.div initial={{ width: '10%' }} animate={{ width: '100%' }} transition={{ repeat: Infinity, repeatType: 'mirror', duration: 1.6 }} style={{ height: 3, background: '#2d2d2d', borderRadius: 2 }} />
-							</>
+							<div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', padding: '10px 0' }}>
+								<LoaderSpinner size={18} />
+								<div style={{ fontSize: 13, color: '#2d2d2d', fontWeight: 600 }}>{resetPhrase || 'Starting a new chat…'}</div>
+							</div>
 						)}
 					</motion.div>
 				</motion.div>
 			)}
 			{/* Full overlay while resetting, but hide it when confirm dialog is open (we morph that dialog instead) */}
-			<ResetOverlay visible={isResetting && !confirmOpen} />
+			<ResetOverlay visible={isResetting && !confirmOpen} phrase={resetPhrase} />
 		</AnimatePresence>
 	);
 }
@@ -358,8 +396,6 @@ const timeStyle = { fontSize: 10, opacity: 0.55, marginTop: 6, textAlign: 'right
 const textAreaStyle = { flex: 1, resize: 'none', border: '1px solid rgba(45,45,45,0.18)', borderRadius: 18, padding: '12px 14px', outline: 'none', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.4, background: '#fff', color: '#2d2d2d', fontWeight: 500, boxShadow: '0 4px 14px -4px rgba(0,0,0,0.06)' };
 const sendBtnStyle = { background: '#2d2d2d', color: '#fff', border: 'none', borderRadius: 18, padding: '0 22px', cursor: 'pointer', fontWeight: 600, fontSize: 14, letterSpacing: 0.3, boxShadow: '0 6px 20px -6px rgba(0,0,0,0.4)' };
 const templateBtnStyle = { background: '#ffffff', border: '1px solid rgba(45,45,45,0.15)', padding: '8px 12px', borderRadius: 14, fontSize: 12, cursor: 'pointer', fontWeight: 500, color: '#2d2d2d', boxShadow: '0 4px 10px rgba(0,0,0,0.04)' };
-const handoffPrimaryBtnStyle = { ...templateBtnStyle, background: '#25d366', color: '#fff', border: 'none', boxShadow: '0 6px 14px rgba(37,211,102,0.25)', fontWeight: 600 };
-const handoffSecondaryBtnStyle = { ...templateBtnStyle, background: '#ffffff', color: '#2d2d2d' };
 const inputBar = { padding: '14px 16px 16px', borderTop: '1px solid rgba(45,45,45,0.08)', background: '#fff' };
 const retryBtnStyle = { background: '#2d2d2d', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 14, cursor: 'pointer', fontSize: 12, fontWeight: 600 };
 const iconBtnStyle = { background: 'rgba(45,45,45,0.06)', border: '1px solid rgba(45,45,45,0.15)', color: '#2d2d2d', width: 34, height: 34, borderRadius: 12, cursor: 'pointer', fontSize: 18, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' };
@@ -371,38 +407,38 @@ function formatText(txt, isUser = false) {
 	// We'll do a lightweight transform while preserving links and tokens handled below
 	let html = txt;
 
-  // Helper to safely avoid adding copy buttons inside links
-  const wrapCopyable = (match, value) =>
-    match.includes("href=")
-      ? match
-      : `<span class="mc-copyable" data-copy="${value}" style="font-family: ui-monospace, monospace; background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 8px;">${value} <button class="mc-copy-btn" data-copy="${value}" style="margin-left:6px; font-size:10px; padding:2px 6px; border:1px solid rgba(45,45,45,0.2); border-radius:6px; background:#fff; cursor:pointer; color:rgba(45,45,45,0.75);">Copy</button></span>`;
+	// Helper to safely avoid adding copy buttons inside links
+	const wrapCopyable = (match, value) =>
+		match.includes("href=")
+			? match
+			: `<span class="mc-copyable" data-copy="${value}" style="font-family: ui-monospace, monospace; background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 8px;">${value} <button class="mc-copy-btn" data-copy="${value}" style="margin-left:6px; font-size:10px; padding:2px 6px; border:1px solid rgba(45,45,45,0.2); border-radius:6px; background:#fff; cursor:pointer; color:rgba(45,45,45,0.75);">Copy</button></span>`;
 
-  html = html
-    .replace(/\b([a-f0-9]{24})\b/gi, (m, v) => wrapCopyable(m, v))
-    .replace(
-      /(https?:\/\/[^\s<]+)/gi,
-      '<a href="$1" target="_blank" rel="noopener" style="color:inherit; text-decoration: underline; word-break: break-all; overflow-wrap: anywhere;">$1</a>'
-    )
-    // ISO dates YYYY-MM-DD or YYYY/MM/DD
-    .replace(
-      /\b(\d{4}[-\/]\d{2}[-\/]\d{2})\b/g,
-      '<span style="background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 6px;">$1</span>'
-    )
-    // Common Indian format DD/MM/YYYY or DD-MM-YYYY
-    .replace(
-      /\b(\d{2}[\/-]\d{2}[\/-]\d{4})\b/g,
-      '<span style="background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 6px;">$1</span>'
-    )
-    // Indian phone numbers (10 digits, optionally prefixed by +91 or 0)
-    .replace(/\b(?:\+91[-\s]?)?([6-9]\d{9})\b/g, (m, v) => wrapCopyable(m, v));
+	html = html
+		.replace(/\b([a-f0-9]{24})\b/gi, (m, v) => wrapCopyable(m, v))
+		.replace(
+			/(https?:\/\/[^\s<]+)/gi,
+			'<a href="$1" target="_blank" rel="noopener" style="color:inherit; text-decoration: underline; word-break: break-all; overflow-wrap: anywhere;">$1</a>'
+		)
+		// ISO dates YYYY-MM-DD or YYYY/MM/DD
+		.replace(
+			/\b(\d{4}[-\/]\d{2}[-\/]\d{2})\b/g,
+			'<span style="background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 6px;">$1</span>'
+		)
+		// Common Indian format DD/MM/YYYY or DD-MM-YYYY
+		.replace(
+			/\b(\d{2}[\/-]\d{2}[\/-]\d{4})\b/g,
+			'<span style="background: rgba(45,45,45,0.06); padding: 2px 6px; border-radius: 6px;">$1</span>'
+		)
+		// Indian phone numbers (10 digits, optionally prefixed by +91 or 0)
+		.replace(/\b(?:\+91[-\s]?)?([6-9]\d{9})\b/g, (m, v) => wrapCopyable(m, v));
 
-  // Highlight keywords only if not user
-  if (!isUser) {
-    html = html.replace(
-      /\b(delivered|shipped|in transit|out for delivery|cancelled|returned|rto)\b/gi,
-      '<strong style="color:#2d2d2d; padding: 2px 6px; border-radius: 6px; text-transform: capitalize;">$1</strong>'
-    );
-  }
+	// Highlight keywords only if not user
+	if (!isUser) {
+		html = html.replace(
+			/\b(delivered|shipped|in transit|out for delivery|cancelled|returned|rto)\b/gi,
+			'<strong style="color:#2d2d2d; padding: 2px 6px; border-radius: 6px; text-transform: capitalize;">$1</strong>'
+		);
+	}
 
 
 	// Convert bullet points

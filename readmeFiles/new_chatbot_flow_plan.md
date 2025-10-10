@@ -21,9 +21,9 @@ Goal: Remove server heuristics from the critical path and let the LLM orchestrat
    - If `call_tool`, run the selected tool with sanitized args.
    - If `direct_answer`, forward to Assistant thread for the answer.
 
-4) Response Composer (optional, short):
-   - For tool results, run a small completion to generate a brief, personalized sentence that references the user request and result (e.g., “Here are window pillar wraps. Want me to sort by most ordered?”).
-   - Keep under ~40–70 words; no markdown.
+4) Response Composer (deterministic, short):
+   - For tool results, we now generate concise summaries server-side (no secondary model call) that highlight the first few matches, mention applied filters (keywords, budgets), and invite the user to refine.
+   - Keeps copy under ~40–70 words; no markdown; improves latency by ~4–6s per tool turn.
 
 5) Return unified payload to client:
    - `{ tool: 'search_products'|'get_order_status'|'browse_categories'|null, data, reply, threadId }`
@@ -44,7 +44,8 @@ The planner is encouraged to:
 
 - Remove explicit client tool invocations; have client always POST `message`.
 - Keep the existing planner block but apply it to all requests (including the ones coming from the previous explicit tool branch).
-- Add Response Composer for tool results.
+- Layer a `extractSearchHints` pre-processor that forces `search_products` when the user clearly supplies product intent (vehicle domain, colour, budget, relationship like “dad”).
+- Add deterministic Response Composer for tool results.
 - Optionally keep the explicit tool routes for internal/testing, but mark them deprecated and pass them through the planner internally if used.
 
 ## Edge Cases
