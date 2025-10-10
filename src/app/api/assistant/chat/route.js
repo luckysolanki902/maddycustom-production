@@ -7,7 +7,6 @@ import { searchProducts, categoryFirstSuggestions } from '@/lib/assistant/produc
 import { getOrderStatus } from '@/lib/assistant/orderStatus';
 import { store } from '@/store';
 import { fetchDisplayAssets } from '@/lib/utils/fetchutils';
-import getHelpingData from '@/lib/faq/getHelpingData';
 
 // Tag marker for internal knowledge messages we do NOT expose to UI
 const INTERNAL_KNOWLEDGE_TAG = '__INTERNAL_KNOWLEDGE__';
@@ -217,9 +216,19 @@ export async function POST(request) {
     // Ensure assistant exists and its instructions include latest helping data
     const INSTRUCTIONS_TTL_MS = 30 * 60 * 1000; // refresh every 30 min at most
     let assistantId = global.__ASSISTANT_ID || null;
-    const composeInstructions = async () => (
-      `You are the official support assistant for MaddyCustom. Use the following domain knowledge about products, wraps, installation, shipping, durability, fragrance variants, JDM keychains, ordering & tracking. Never fabricate policies. If unsure, ask the user for clarification. ALWAYS be concise, friendly, respectful and avoid markdown formatting. Domain Knowledge:\n\n${await getHelpingData()}`
-    );
+    const composeInstructions = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/assistant/helping-data`, {
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error('helping-data fetch failed');
+        const { helpingData } = await res.json();
+        return `You are the official support assistant for MaddyCustom. Use the following domain knowledge about products, wraps, installation, shipping, durability, fragrance variants, JDM keychains, ordering & tracking. Never fabricate policies. If unsure, ask the user for clarification. ALWAYS be concise, friendly, respectful and avoid markdown formatting. Domain Knowledge:\n\n${helpingData}`;
+      } catch (error) {
+        console.error('Failed to fetch helping data:', error);
+        return `You are the official support assistant for MaddyCustom. Use your knowledge about products, wraps, installation, shipping, durability, fragrance variants, JDM keychains, ordering & tracking. Never fabricate policies. If unsure, ask the user for clarification. ALWAYS be concise, friendly, respectful and avoid markdown formatting.`;
+      }
+    };
     if (!assistantId) {
       console.log('[temp-debug] creating assistant instance');
       const a = await client.beta.assistants.create({
@@ -269,8 +278,17 @@ export async function POST(request) {
     // Inject hidden knowledge message ONLY once per new thread (not shown to UI)
     if (newThreadCreated) {
       console.log('[temp-debug] injecting hidden knowledge');
-  const dynamicHelping = await getHelpingData();
-  await client.beta.threads.messages.create(threadId, { role: 'assistant', content: `${INTERNAL_KNOWLEDGE_TAG}\n${dynamicHelping}` });
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/assistant/helping-data`, {
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const { helpingData } = await res.json();
+          await client.beta.threads.messages.create(threadId, { role: 'assistant', content: `${INTERNAL_KNOWLEDGE_TAG}\n${helpingData}` });
+        }
+      } catch (e) {
+        console.log('[temp-debug] helping data injection failed', e?.message);
+      }
       // Inject categories context as HIDDEN knowledge, not visible to the user
       try {
         const data = await fetchCategoriesInfoCached();
@@ -324,6 +342,10 @@ Functions:
   args: {} // no args needed
   returns: { title: string, items: Array<{ title, image, link }>, hint: string }
 
+- customer_support(args): Send info to customer support.
+  args: { phoneNumber: string }
+  returns: { ok: boolean, message: string }
+
 Decision policy:
 - If the user is generically browsing (e.g., "show me products", "show me all products", "browse products", "everything", "all items"), choose browse_categories. 
 - Choose search_products when the user specifies a concrete product concept, keywords, or category (e.g., "window pillar wrap", "perfume under 500", "most ordered pillar wraps"). When the user mentions a domain like bike/car/interior/exterior: 
@@ -335,13 +357,33 @@ Decision policy:
 
 Examples:
 1) User: "show me all products" → { "action": "call_tool", "tool": "browse_categories", "args": {}, "reason": "Generic browse" }
-2) User: "show me window pillar wraps" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "window pillar wrap", "keywords": ["pillar","wrap"], "limit": 6 }, "reason": "Specific category" }
-3) User: "most ordered pillar wraps under 600" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "pillar wrap", "maxPrice": 600, "sortBy": "orders", "limit": 10 }, "reason": "Popularity sort with budget" }
-4) User: "track 64abc...ef" → { "action": "call_tool", "tool": "get_order_status", "args": { "orderId": "64abc...ef" }, "reason": "Order tracking" }
-5) User: "show something for bike" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "bike wrap", "keywords": ["bike"], "limit": 6 }, "reason": "User mentioned bike; choose closest category from list" }
-6) User: "show something for car interiors" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "car interiors", "keywords": ["car","interior"], "limit": 6 }, "reason": "User mentioned car interiors" }
-7) User: "car roof" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "roof wrap", "limit": 6 }, "reason": "Roof wraps for car" } 
-8) User: "show me something for my red car" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["car","red"], "diversifyCategories": true, "limit": 10 }, "reason": "Generic car domain with color; diversify across categories" } 
+2) User: "What products do you sell?" → { "action": "call_tool", "tool": "browse_categories", "args": {}, "reason": "Generic browse" }
+3) User: "See all product categories" → { "action": "call_tool", "tool": "browse_categories", "args": {}, "reason": "Explicit category request" }
+4) User: "show me window pillar wraps" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "window pillar wrap", "keywords": ["pillar","wrap"], "limit": 6 }, "reason": "Specific category" }
+5) User: "most ordered pillar wraps under 600" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "pillar wrap", "maxPrice": 600, "sortBy": "orders", "limit": 10 }, "reason": "Popularity sort with budget" }
+6) User: "Suggest some red designs" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["red"], "limit": 6 }, "reason": "Color-based search" }
+7) User: "Show me anime-themed wraps" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["anime"], "limit": 6 }, "reason": "Theme-based search" }
+8) User: "track 64abc...ef" → { "action": "call_tool", "tool": "get_order_status", "args": { "orderId": "64abc...ef" }, "reason": "Order tracking" }
+9) User: "Where is my order?" → { "action": "direct_answer", "reason": "Ask for order ID" }
+10) User: "Track my new order" → { "action": "direct_answer", "reason": "Ask for order ID" }
+11) User: "show something for bike" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "bike wrap", "keywords": ["bike"], "limit": 6 }, "reason": "User mentioned bike; choose closest category from list" }
+12) User: "Do you have something for my bike?" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "bike wrap", "keywords": ["bike"], "limit": 6 }, "reason": "Bike-related query" }
+13) User: "Show me something for my car" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["car"], "diversifyCategories": true, "limit": 10 }, "reason": "Generic car domain; diversify across categories" }
+14) User: "show something for car interiors" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "car interiors", "keywords": ["car","interior"], "limit": 6 }, "reason": "User mentioned car interiors" }
+15) User: "car roof" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "roof wrap", "limit": 6 }, "reason": "Roof wraps for car" }
+16) User: "Show me something for my car roof" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "roof wrap", "keywords": ["car","roof"], "limit": 6 }, "reason": "Car roof specific" }
+17) User: "show me something for my red car" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["car","red"], "diversifyCategories": true, "limit": 10 }, "reason": "Generic car domain with color; diversify across categories" }
+18) User: "Suggest a car freshener I can gift my dad" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "car fragrance", "keywords": ["fragrance","freshener"], "limit": 6 }, "reason": "Car fragrance/freshener query" }
+19) User: "Do you ship across India?" → { "action": "direct_answer", "reason": "Shipping policy question" }
+20) User: "What material is used?" → { "action": "direct_answer", "reason": "Material question; answer from knowledge base" }
+21) User: "How long does the product last?" → { "action": "direct_answer", "reason": "Durability question" }
+22) User: "Wrap durability and care" → { "action": "direct_answer", "reason": "Care instructions question" }
+23) User: "How long does shipping take?" → { "action": "direct_answer", "reason": "Shipping time question" }
+24) User: "Shipping time details" → { "action": "direct_answer", "reason": "Shipping policy question" }
+25) User: "Can I change the shipping address?" → { "action": "direct_answer", "reason": "Order modification question" }
+26) User: "How long until delivery?" → { "action": "direct_answer", "reason": "Delivery time question" }
+27) User: "When will packaging start?" → { "action": "direct_answer", "reason": "Order processing question" }
+28) User: "Order tracking support" → { "action": "direct_answer", "reason": "Ask for order ID or phone for tracking" } 
 
 Decision JSON schema:
 { "action": "call_tool" | "direct_answer", "tool"?: "search_products"|"get_order_status"|"browse_categories", "args"?: object, "reason": string }
