@@ -46,8 +46,8 @@ export async function POST(request) {
       quantity: item.quantity,
     }));
 
-    // Get packaging dimensions and weight
-    const dimensionsAndWeight = await getDimensionsAndWeight(orderItems);
+  // Get packaging dimensions and weight with detailed debug info
+  const dimensionsAndWeight = await getDimensionsAndWeight(orderItems, { debug: true });
     // Create items array with product name
     const items = orderItems.map(item => ({
       name: item.product.title,
@@ -55,7 +55,7 @@ export async function POST(request) {
     }));
 
     return NextResponse.json(
-      { success: true, dimensionsAndWeight, items },
+      { success: true, dimensionsAndWeight, items, debug: dimensionsAndWeight.debug },
       { status: 200 }
     );
   } catch (error) {
