@@ -46,7 +46,7 @@ const rootReducer = combineReducers({
 });
 
 const persistConfig = {
-  key: 'root_v9', // bump version after adding localUserId persistence
+  key: 'root_v10', // removed redux for fuel cap wrap preference to make fcp default
   storage,
   // Persist notification state for phone and subscription tracking
   whitelist: [
