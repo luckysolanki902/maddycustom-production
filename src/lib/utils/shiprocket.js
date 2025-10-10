@@ -74,6 +74,9 @@ async function getPackagingDetailsForItem(item) {
 
   /* Resolve variant */
   let variantDoc = null;
+  const selectionTrace = [];
+  let selectionSource = null;
+  let selectionWarnings = [];
   if (productDoc?.specificCategoryVariant) {
     const variantId =
       typeof productDoc.specificCategoryVariant === 'object'
@@ -84,17 +87,56 @@ async function getPackagingDetailsForItem(item) {
       path: 'packagingDetails.boxId',
       model: 'PackagingBox'
     });
+    selectionTrace.push({ step: 'resolveVariant', variantId: variantId?.toString?.() });
   }
 
   /* Variant‑level packaging */
   if (variantDoc?.packagingDetails?.boxId) {
     const hasFreebie = variantDoc.freebies?.available === true;
+    selectionSource = 'variant';
+    const box = variantDoc.packagingDetails.boxId;
+
+    // Heuristic: infer expected tag from variant name by slugifying
+    const expectedTag = (variantDoc?.name || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '') // remove spaces and punctuation
+      .trim();
+    if (
+      expectedTag &&
+      Array.isArray(box.compatibleTags) &&
+      !box.compatibleTags.includes(expectedTag)
+    ) {
+      selectionWarnings.push(
+        `Box compatibleTags ${JSON.stringify(
+          box.compatibleTags
+        )} do not include inferred tag '${expectedTag}' from variant name.`
+      );
+    }
+
+    selectionTrace.push({
+      step: 'selectBox.variant',
+      reason: 'variant.packagingDetails.boxId present',
+      boxId: box?._id?.toString?.()
+    });
     return {
-      box: variantDoc.packagingDetails.boxId,
+      box,
       productWeight: variantDoc.packagingDetails.productWeight || 0,
       hasFreebie,
       freebieWeight: hasFreebie ? parseFloat(variantDoc.freebies.weight || 0) : 0,
-      itemName: variantDoc.name
+      itemName: variantDoc.name,
+      debugMeta: {
+        selectionSource,
+        selectionTrace,
+        selectionWarnings,
+        ids: {
+          productId: productDoc?._id?.toString?.(),
+          variantId: variantDoc?._id?.toString?.(),
+          specCategoryId:
+            typeof productDoc?.specificCategory === 'object'
+              ? productDoc.specificCategory?._id?.toString?.()
+              : productDoc?.specificCategory?.toString?.()
+        }
+      }
     };
   }
 
@@ -105,12 +147,32 @@ async function getPackagingDetailsForItem(item) {
         ? productDoc.packagingDetails.boxId
         : await PackagingBox.findById(productDoc.packagingDetails.boxId);
 
+    selectionSource = 'product';
+    selectionTrace.push({
+      step: 'selectBox.product',
+      reason: 'product.packagingDetails.boxId present',
+      boxId: box?._id?.toString?.()
+    });
+
     return {
       box,
       productWeight: productDoc.packagingDetails.productWeight || 0,
       hasFreebie: false,
       freebieWeight: 0,
-      itemName: productDoc.name
+      itemName: productDoc.name,
+      debugMeta: {
+        selectionSource,
+        selectionTrace,
+        selectionWarnings,
+        ids: {
+          productId: productDoc?._id?.toString?.(),
+          variantId: variantDoc?._id?.toString?.(),
+          specCategoryId:
+            typeof productDoc?.specificCategory === 'object'
+              ? productDoc.specificCategory?._id?.toString?.()
+              : productDoc?.specificCategory?.toString?.()
+        }
+      }
     };
   }
 
@@ -120,15 +182,20 @@ async function getPackagingDetailsForItem(item) {
 /* ───────────────────────────────────────────────────────────────────────────
  * 3. GREEDY PACKER FOR A SINGLE BOX TYPE
  * ───────────────────────────────────────────────────────────────────────── */
-function packItemsInSingleBoxType({ itemsForThisBox, boxDoc }) {
+function packItemsInSingleBoxType({ itemsForThisBox, boxDoc, debug = false }) {
   const { length, breadth, height } = boxDoc.dimensions;
   const { capacity, weight: boxWeight } = boxDoc;
 
+  const volumetricDivisor = 5000; // Common e-comm divisor (L*B*H)/5000 kg
+  const perBoxVolumetricKg = +((length * breadth * height) / volumetricDivisor).toFixed(3);
+
   const openBoxes = [];
   const createBox = () => ({
+    index: openBoxes.length + 1,
     leftoverCapacity: capacity,
     totalProductWeight: 0,
-    freebieWeights: []
+    freebieWeights: [],
+    itemsPlaced: [] // { itemName, placedQty, unitWeight, subtotalWeight }
   });
 
   let freebieAssigned = false;
@@ -146,6 +213,15 @@ function packItemsInSingleBoxType({ itemsForThisBox, boxDoc }) {
       const fit = Math.min(box.leftoverCapacity, remaining);
       box.leftoverCapacity -= fit;
       box.totalProductWeight += entry.productWeight * fit;
+
+      if (debug) {
+        box.itemsPlaced.push({
+          itemName: entry.itemName,
+          placedQty: fit,
+          unitWeight: entry.productWeight,
+          subtotalWeight: +(entry.productWeight * fit).toFixed(3)
+        });
+      }
 
       if (entry.hasFreebie && !freebieAssigned && entry.freebieWeight > 0) {
         box.freebieWeights.push(entry.freebieWeight);
@@ -165,17 +241,44 @@ function packItemsInSingleBoxType({ itemsForThisBox, boxDoc }) {
     (sum, b) => sum + b.freebieWeights.reduce((a, w) => a + w, 0),
     0
   );
+  const totalTareWeight = boxesUsed * boxWeight;
+  const totalVolumetricWeightKg = +(perBoxVolumetricKg * boxesUsed).toFixed(3);
+  const grossWeight = +(totalTareWeight + totalProductWeight + totalFreebieWeight).toFixed(3);
 
   return {
     singleBoxDimensions: { length, breadth, height },
     boxesUsed,
-    totalWeight: +(
-      boxesUsed * boxWeight +
-      totalProductWeight +
-      totalFreebieWeight
-    ).toFixed(3),
+    totalWeight: grossWeight,
     totalFreebieWeight,
-    boxName: boxDoc.name
+    boxName: boxDoc.name,
+    totals: {
+      tareWeight: +totalTareWeight.toFixed(3),
+      productWeight: +totalProductWeight.toFixed(3),
+      freebieWeight: +totalFreebieWeight.toFixed(3),
+      volumetricWeightKg: totalVolumetricWeightKg,
+      grossWeight
+    },
+    debug: debug
+      ? {
+          boxSpec: {
+            name: boxDoc.name,
+            capacity,
+            tareWeight: boxWeight,
+            dimensions: { length, breadth, height },
+            perBoxVolumetricKg
+          },
+          boxes: openBoxes.map(b => ({
+            index: b.index,
+            leftoverCapacityEnd: b.leftoverCapacity,
+            productWeight: +b.totalProductWeight.toFixed(3),
+            freebieWeight: +b.freebieWeights.reduce((a, w) => a + w, 0).toFixed(3),
+            tareWeight: boxWeight,
+            grossWeight: +(boxWeight + b.totalProductWeight + b.freebieWeights.reduce((a, w) => a + w, 0)).toFixed(3),
+            volumetricWeightKg: perBoxVolumetricKg,
+            itemsPlaced: b.itemsPlaced
+          }))
+        }
+      : undefined
   };
 }
 
@@ -184,9 +287,11 @@ function packItemsInSingleBoxType({ itemsForThisBox, boxDoc }) {
  * ───────────────────────────────────────────────────────────────────────── */
 const tagsIntersect = (a = [], b = []) => a.some(t => b.includes(t));
 
-export const getDimensionsAndWeight = async items => {
+export const getDimensionsAndWeight = async (items, options = {}) => {
+  const debugRequested = options.debug === true;
   /* Build initial groups in one pass */
   const rawGroups = {};
+  const packagingByItem = [];
 
   for (const item of items) {
     const pkg = await getPackagingDetailsForItem(item);
@@ -201,6 +306,29 @@ export const getDimensionsAndWeight = async items => {
       freebieWeight: pkg.freebieWeight,
       itemName: pkg.itemName
     });
+
+    if (debugRequested) {
+      packagingByItem.push({
+        itemName: pkg.itemName,
+        quantity: item.quantity,
+        productWeight: pkg.productWeight,
+        hasFreebie: pkg.hasFreebie,
+        freebieWeight: pkg.freebieWeight,
+        selectionSource: pkg.debugMeta?.selectionSource,
+        selectionTrace: pkg.debugMeta?.selectionTrace,
+        selectionWarnings: pkg.debugMeta?.selectionWarnings,
+        ids: pkg.debugMeta?.ids,
+        box: {
+          id: pkg.box._id?.toString?.() || null,
+          name: pkg.box.name,
+          capacity: pkg.box.capacity,
+          tareWeight: pkg.box.weight,
+          dimensions: pkg.box.dimensions,
+          priority: pkg.box.priority,
+          compatibleTags: pkg.box.compatibleTags
+        }
+      });
+    }
   }
 
   /* Sort by ascending priority (1 = highest) */
@@ -210,6 +338,7 @@ export const getDimensionsAndWeight = async items => {
 
   /* Merge compatible lower‑priority groups into higher‑priority ones */
   const mergedGroups = [];
+  const groupMergeDecisions = [];
   for (const grp of orderedGroups) {
     let mergedInto = null;
     for (const target of mergedGroups) {
@@ -221,8 +350,40 @@ export const getDimensionsAndWeight = async items => {
         break;
       }
     }
-    if (mergedInto) mergedInto.items.push(...grp.items);
-    else mergedGroups.push(grp);
+    if (mergedInto) {
+      mergedInto.items.push(...grp.items);
+      if (debugRequested) {
+        groupMergeDecisions.push({
+          action: 'merged',
+          source: {
+            boxId: grp.boxDoc._id?.toString?.(),
+            name: grp.boxDoc.name,
+            priority: grp.boxDoc.priority,
+            compatibleTags: grp.boxDoc.compatibleTags
+          },
+          target: {
+            boxId: mergedInto.boxDoc._id?.toString?.(),
+            name: mergedInto.boxDoc.name,
+            priority: mergedInto.boxDoc.priority,
+            compatibleTags: mergedInto.boxDoc.compatibleTags
+          },
+          reason: 'compatibleTags intersect and target priority <= source priority'
+        });
+      }
+    } else {
+      mergedGroups.push(grp);
+      if (debugRequested) {
+        groupMergeDecisions.push({
+          action: 'standalone',
+          group: {
+            boxId: grp.boxDoc._id?.toString?.(),
+            name: grp.boxDoc.name,
+            priority: grp.boxDoc.priority,
+            compatibleTags: grp.boxDoc.compatibleTags
+          }
+        });
+      }
+    }
   }
 
   /* Pack each final group */
@@ -232,15 +393,24 @@ export const getDimensionsAndWeight = async items => {
     totalHeight = 0,
     overallWeight = 0,
     overallFreebieWeight = 0,
-    overallBoxesUsed = 0;
+    overallBoxesUsed = 0,
+    overallTareWeight = 0,
+    overallProductWeight = 0,
+    overallVolumetricWeight = 0;
+
+  const packingDetailsByBoxId = {};
 
   for (const grp of mergedGroups) {
     const result = packItemsInSingleBoxType({
       itemsForThisBox: grp.items,
-      boxDoc: grp.boxDoc
+      boxDoc: grp.boxDoc,
+      debug: debugRequested
     });
 
     resultsPerBoxId[grp.boxDoc._id.toString()] = result;
+    if (debugRequested) {
+      packingDetailsByBoxId[grp.boxDoc._id.toString()] = result.debug;
+    }
 
     const { length, breadth, height } = result.singleBoxDimensions;
     maxLength = Math.max(maxLength, length);
@@ -250,9 +420,14 @@ export const getDimensionsAndWeight = async items => {
     overallWeight += result.totalWeight;
     overallFreebieWeight += result.totalFreebieWeight;
     overallBoxesUsed += result.boxesUsed;
+    if (result.totals) {
+      overallTareWeight += result.totals.tareWeight || 0;
+      overallProductWeight += result.totals.productWeight || 0;
+      overallVolumetricWeight += result.totals.volumetricWeightKg || 0;
+    }
   }
 
-  return {
+  const response = {
     success: true,
     perBoxId: resultsPerBoxId,
     length: maxLength,
@@ -260,6 +435,27 @@ export const getDimensionsAndWeight = async items => {
     height: totalHeight,
     weight: +overallWeight.toFixed(3),
     freebieWeight: +overallFreebieWeight.toFixed(3),
-    boxesUsed: overallBoxesUsed
+    boxesUsed: overallBoxesUsed,
+    totals: {
+      tareWeight: +overallTareWeight.toFixed(3),
+      productWeight: +overallProductWeight.toFixed(3),
+      freebieWeight: +overallFreebieWeight.toFixed(3),
+      volumetricWeightKg: +overallVolumetricWeight.toFixed(3),
+      grossWeight: +overallWeight.toFixed(3)
+    }
   };
+  if (debugRequested) {
+    response.debug = {
+      packagingByItem,
+      groupMergeDecisions,
+      packingDetailsByBoxId,
+      finalDimensionAggregation: {
+        length: maxLength,
+        breadth: maxBreadth,
+        height: totalHeight,
+        rule: 'max length/breadth across groups; height summed across boxes'
+      }
+    };
+  }
+  return response;
 };
