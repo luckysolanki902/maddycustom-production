@@ -5,7 +5,7 @@
  * First add-to-cart is intercepted to ensure letter-mapping confirmation.
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Box, Typography, Skeleton, Button, Card, CardContent, IconButton, Fade, Chip, Tooltip } from '@mui/material';
+import { Box, Typography, Button, Card, CardContent, IconButton, Fade, Chip, Tooltip } from '@mui/material';
 import AddToCartButton from '@/components/utils/AddToCartButton';
 import LetterMappingPopup from '@/components/dialogs/LetterMappingPopup';
 import funnelClient from '@/lib/analytics/funnelClient';
@@ -48,6 +48,7 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
   const [error, setError] = useState(null);
   const [showMapping, setShowMapping] = useState(false);
   const [mappingConfirmed, setMappingConfirmed] = useState(Boolean(pref?.preferredVariantId));
+  const [initialReady, setInitialReady] = useState(false);
   // once mapping confirmed we allow real AddToCartButtons
 
   const sliderRef = useRef(null);
@@ -65,6 +66,7 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
       setPages(prev => ({ ...prev, [targetPage]: cacheEntry.pages[targetPage] }));
       const total = cacheEntry.total;
       setHasMore(total == null || Object.values(cacheEntry.pages).flat().length < total);
+      if (targetPage === 1) setInitialReady(true);
       return;
     }
     try {
@@ -102,6 +104,7 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
       setHasMore(false);
     } finally {
       if (!prefetch) setLoading(false);
+      if (targetPage === 1) setInitialReady(true);
     }
   }, [variantCode, pageSize, loading, hasMore, similarityContext]);
 
@@ -129,7 +132,7 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
   }, []);
 
   useEffect(() => {
-    setPages({}); setPage(1); setHasMore(true);
+    setPages({}); setPage(1); setHasMore(true); setInitialReady(false);
     // Try sessionStorage first
     try {
       const raw = sessionStorage.getItem(sessionCacheKey(variantCode));
@@ -140,6 +143,7 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
           setPages(parsed.pages);
           const totalLoaded = Object.values(parsed.pages).flat().length;
           setHasMore(parsed.total == null ? true : totalLoaded < parsed.total);
+          setInitialReady(true);
           // Still silently prefetch next page if page 1 exists
           if (parsed.pages[1]) fetchPage(2, { prefetch: true });
           return; // skip fresh fetch
@@ -248,6 +252,7 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
             cache.set(variantCode, { pages: parsed.pages, total: parsed.total });
             setPages(parsed.pages);
             setHasMore(parsed.total == null ? true : Object.values(parsed.pages).flat().length < (parsed.total || 0));
+            setInitialReady(true);
             return;
           }
         }
@@ -256,6 +261,10 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
       fetchPage(1, { prefetch: true });
     }
   }, [cartQty, variantCode, fetchPage]);
+
+  if (!initialReady) {
+    return null;
+  }
 
   return (
   <Box sx={{ mt: 4, position: 'relative' }}>
@@ -329,11 +338,6 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
                 </Box>
               </CardContent>
             </Card>
-          ))}
-          {loading && flatProducts.length === 0 && Array.from({ length: pageSize }).map((_, idx) => (
-            <Box key={`sk-${idx}`} sx={{ flex: '0 0 180px', height: 240, borderRadius: '0.9rem', overflow: 'hidden', background: '#f1f1f1', position: 'relative' }}>
-              <Skeleton variant="rectangular" width="100%" height="100%" />
-            </Box>
           ))}
           {!loading && flatProducts.length === 0 && (
             <Box sx={{ flex: '0 0 80%', textAlign: 'center', py: 4 }}>

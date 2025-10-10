@@ -54,6 +54,7 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, 
 import BlackButton from '../utils/BlackButton';
 import useHistoryState from '@/hooks/useHistoryState';
 import useCheckoutPrefetch from '@/hooks/useCheckoutPrefetch';
+import funnelClient from '@/lib/analytics/funnelClient';
 
 /* ---------------- helper ------------------------------------------------ */
 const isOfferApplicable = (offer, totalCost, isFirstOrder = false) => {
@@ -315,7 +316,8 @@ export default function ViewCart({ isDrawer = false }) {
   const codAmount = isSplitPayment ? totalPay - onlineAmount : 0;
   const snack = useCallback((m, s = 'success') => setSnackbar({ open: true, message: m, severity: s }), []);
   const dispatchCoupon = p => dispatch(setCouponApplied({ ...p }));
-  /* ---------- coupon apply / remove --------------------------------- */  const applyCoupon = useCallback((code, amount, type, offer, fromAuto = false) => {
+  /* ---------- coupon apply / remove --------------------------------- */
+  const applyCoupon = useCallback((code, amount, type, offer, fromAuto = false) => {
     if (amount <= 0) { 
       snack('Offer conditions are not met.', 'warning'); 
       return; 
@@ -324,6 +326,26 @@ export default function ViewCart({ isDrawer = false }) {
     if (type !== 'bundle' && !isOfferApplicable(offer, subTot, isFirstOrder)) {
       snack('Offer conditions are not met.', 'warning'); 
       return;
+    }
+
+    try {
+      const cartQuantity = availableItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      funnelClient.track('apply_offer', {
+        cart: {
+          items: cartQuantity || undefined,
+          value: subTot || undefined,
+          currency: 'INR',
+        },
+        metadata: {
+          couponCode: code,
+          discountType: type,
+          discountAmount: amount,
+          source: fromAuto ? 'auto' : 'manual',
+          offerId: offer?._id,
+        },
+      });
+    } catch (err) {
+      console.error('Funnel apply_offer track failed:', err);
     }
     
     setCouponState({ couponApplied: true, couponName: code, couponDiscount: amount, discountType: type, offer });
@@ -338,22 +360,18 @@ export default function ViewCart({ isDrawer = false }) {
     if (fromAuto) {
       lastAutoRef.current = { code, type };
     }
-  }, [subTot, isFirstOrder, dispatch, snack]);const removeCoupon = useCallback((showMsg = true) => {
+  }, [availableItems, subTot, isFirstOrder, dispatch, snack]);
+
+  const removeCoupon = useCallback((showMsg = true) => {
     setCouponState({ couponApplied: false, couponName: '', couponDiscount: 0, discountType: '', offer: null });
     dispatch(setCouponApplied({ couponCode: '', discountAmount: 0, discountType: '', offer: null }));
-      // Reset both flags to allow auto-apply
+    // Reset both flags to allow auto-apply
     dispatch(resetAutoApplyDisabled());
     dispatch(setManualCoupon(null));
-    
 
     lastAutoRef.current = { code: '', type: '' };
-    
-
-    
-
     manualRemovalRef.current = true;
 
-    
     if (showMsg) snack('Coupon removed.', 'warning');
   }, [dispatch, snack]);
 
