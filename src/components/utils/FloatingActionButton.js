@@ -16,11 +16,22 @@ const FloatingActionBar = () => {
   const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
 
   const [firstItemAdded, setFirstItemAdded] = useState(false);
+  const [chatDialogOpen, setChatDialogOpen] = useState(false);
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
   useEffect(() => {
     if (totalQuantity > 0 && !firstItemAdded) setFirstItemAdded(true);
   }, [totalQuantity, firstItemAdded]);
+
+  // Hide FAB while chat dialog is open
+  useEffect(() => {
+    const onVis = (e) => {
+      const open = !!(e?.detail && e.detail.open);
+      setChatDialogOpen(open);
+    };
+    window.addEventListener('mc-chat-dialog-visibility', onVis);
+    return () => window.removeEventListener('mc-chat-dialog-visibility', onVis);
+  }, []);
 
   // Handle cart click - open from bottom
   const handleCartClick = (e) => {
@@ -42,7 +53,7 @@ const FloatingActionBar = () => {
   const isRecommendationDrawerOpen = useSelector((state) => state.ui.isRecommendationDrawerOpen);
   const isOrderTrackingPage = pathname === "/orders/track";
 
-  const showBar = !hideForProductPage && !isCartDrawerOpen && !isRecommendationDrawerOpen && totalQuantity > 0 && !isOrderTrackingPage;
+  const showBar = !hideForProductPage && !isCartDrawerOpen && !isRecommendationDrawerOpen && totalQuantity > 0 && !isOrderTrackingPage && !chatDialogOpen;
 
   // Faster, cleaner transitions
   const transitions = useTransition(showBar, {

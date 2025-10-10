@@ -26,6 +26,7 @@ import b2bSelectionReducer from './slices/b2bSelectionSlice';
 import b2bFormReducer from './slices/b2bFormSlice';
 import variantsReducer from './slices/variantsSlice'; // Import variants cache slice
 import notificationReducer from './slices/notificationSlice'; // Import notification slice
+import assistantContextReducer from './slices/assistantContextSlice';
 import checkoutPrefetchReducer from './slices/checkoutPrefetchSlice';
 
 const rootReducer = combineReducers({
@@ -43,6 +44,7 @@ const rootReducer = combineReducers({
   variants: variantsReducer, // Add variants cache reducer
   notification: notificationReducer, // Add notification reducer
   checkoutPrefetch: checkoutPrefetchReducer,
+  assistantContext: assistantContextReducer, // Non-persisted context for assistant
 });
 
 const persistConfig = {
@@ -61,6 +63,7 @@ const persistConfig = {
     'b2bForm',
     'notification',
     // Note: checkoutPrefetch is intentionally NOT persisted
+    // Do NOT persist assistantContext to avoid stale context across sessions
   ],
 };
 

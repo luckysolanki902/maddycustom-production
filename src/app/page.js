@@ -4,6 +4,7 @@ import NewArrival from '@/components/page-sections/homepage/NewArrival';
 import CategoryGrid from '@/components/page-sections/homepage/CategoryGrid';
 import styles from '@/styles/home.module.css';
 import CategorySearchBox from '@/components/utils/CategorySearchBox';
+import AnimatedSearchBox from '@/components/utils/AnimatedSearchBox';
 // import HappyCustomers from '@/components/showcase/sliders/HappyCustomers';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { fetchSearchCategories, fetchDisplayAssets, fetchOurUniqueProducts } from '@/lib/utils/fetchutils';
@@ -98,6 +99,8 @@ const HomePage = async () => {
         </div>
         <ProductCategorySlider position="belowHero" />
 
+        {/* Animated Search Box */}
+        <AnimatedSearchBox />
 
   {/* New Arrivals Section */}
   <NewArrival assets={safeDisplayAssets} />
