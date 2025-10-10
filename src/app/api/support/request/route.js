@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/middleware/connectToDb';
 import SupportRequest from '@/models/SupportRequest';
 import SupportUserChats from '@/models/SupportUserChats';

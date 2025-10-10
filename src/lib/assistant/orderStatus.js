@@ -8,6 +8,15 @@ function sanitizeOrderId(id) {
   return s;
 }
 
+function sanitizePhone(phone) {
+  if (phone == null) return null;
+  const digits = String(phone).replace(/\D/g, '');
+  if (digits.length >= 10) {
+    return digits.slice(-10);
+  }
+  return null;
+}
+
 function deriveSnapshot(details) {
   if (!details) return {};
   const orderWithTracking = Array.isArray(details.orders)
@@ -49,16 +58,23 @@ function deriveSnapshot(details) {
   };
 }
 
-export async function getOrderStatus({ orderId }) {
+export async function getOrderStatus({ orderId, phone }) {
   const safeId = sanitizeOrderId(orderId);
-  if (!safeId) {
-    return { ok: false, error: 'Invalid orderId. Please provide a valid 24-character ID.' };
+  const safePhone = sanitizePhone(phone);
+  if (!safeId && !safePhone) {
+    return { ok: false, error: 'Provide a valid order ID or a 10-digit phone number.' };
+  }
+  if (!safeId && phone && !safePhone) {
+    return { ok: false, error: 'Phone number must include at least 10 digits.' };
   }
   await connectToDb(); // ensure DB ready in case track route touches DB
 
   try {
     const base = process.env.NEXT_PUBLIC_BASE_URL || '';
-    const url = `${base}/api/order/track?orderId=${encodeURIComponent(safeId)}`;
+    const params = new URLSearchParams();
+    if (safeId) params.set('orderId', safeId);
+    if (safePhone) params.set('phone', safePhone);
+    const url = `${base}/api/order/track?${params.toString()}`;
     const res = await fetch(url, { cache: 'no-store' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -66,11 +82,14 @@ export async function getOrderStatus({ orderId }) {
     }
     const details = data.trackingData || data || {};
     const snap = deriveSnapshot(details);
+    const lookup = details.lookup || (safeId ? { mode: 'orderId', value: safeId } : safePhone ? { mode: 'phone', value: safePhone } : null);
+    const resolvedOrderId = details.orderId || snap.order?.orderId || safeId || null;
 
     // Minimal, PII-safe payload
     return {
       ok: true,
-      orderId: safeId,
+      orderId: resolvedOrderId,
+      lookup,
       status: snap.status || 'Unknown',
       expectedDelivery: snap.expectedDelivery || null,
       trackUrl: snap.trackUrl || null,

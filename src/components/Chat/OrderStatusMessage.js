@@ -21,7 +21,8 @@ export default function OrderStatusMessage({ orderId, status, eta, trackUrl, ste
         )}
       </div></div>
       {orderedAt && <div style={row}><div style={label}>Ordered At</div><div style={value}>{formatDateTime(orderedAt)}</div></div>}
-      <div style={row}><div style={label}>Status</div><div style={value}><span style={pill}>{normalizedStatus || '—'}</span></div></div>
+      <div style={row}><div style={label}>Status</div><div style={value}><span style={pill}>{normalizedStatus.toLowerCase() === 'unknown' ? 'Order has not shipped yet':
+       normalizedStatus || 'Order not found'}</span></div></div>
       {deliveryAddress && (
         <div style={{ ...row, alignItems: 'flex-start' }}>
           <div style={label}>Delivery Address</div>
