@@ -55,7 +55,27 @@ export async function POST(req) {
       return 'support';
     };
 
-    const doc = await SupportRequest.create({ userId, threadId, mobile, email, category, subcategory, issue: finalIssue, aiResponse, chatLogId, status: 'pending', resolvedBy: 'ai', department: departmentMap(category) });
+    const docData = {
+      threadId,
+      mobile,
+      email,
+      category,
+      subcategory,
+      issue: finalIssue,
+      aiResponse,
+      chatLogId,
+      status: "pending",
+      resolvedBy: "ai",
+      department: departmentMap(category),
+    };
+
+    // Only include userId if it's a valid MongoDB ObjectId
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+      docData.userId = userId;
+    }
+
+    const doc = await SupportRequest.create(docData);
+
     return NextResponse.json({ ok: true, id: doc._id, chatLogId });
   } catch (err) {
     console.error('Support request POST failed', err);
