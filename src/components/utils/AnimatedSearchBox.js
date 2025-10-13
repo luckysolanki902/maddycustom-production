@@ -5,12 +5,11 @@ import { Box, TextField, InputAdornment } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 const placeholderTexts = [
-  "Show me something for my red car",
-  "Where is my order?",
-  'Track my new order',
-  "What products do you sell?",
-  "Show me anime-themed wraps",
-  "How long does shipping take?",
+		'My car is red and my budget is 1000',
+		'Find some stylish wraps for my bike',
+		'Track my order with my order id',
+		'Suggest something for car interiors',
+		'Show anime-inspired pillar wraps'
 ];
 
 const AnimatedSearchBox = () => {

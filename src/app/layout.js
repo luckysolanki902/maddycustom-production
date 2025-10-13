@@ -68,6 +68,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${kronaOne.className} ${jost.className} ${montserrat.className}`}>
       <head>
+        <meta name="facebook-domain-verification" content="a6ebwo6vcn6vvdob84g9gfwmdo3joc" />
         <link rel="preconnect" href="https://www.youtube.com" />
         <AnalyticsHead />
 
