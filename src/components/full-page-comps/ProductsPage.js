@@ -35,6 +35,7 @@ import IsolatedTopBoughtProducts from '@/components/showcase/products/IsolatedTo
 import { showTopStrip, hideTopStrip } from '@/store/slices/uiSlice';
 import { HIDE_PRODUCT_VIDEOS } from '@/lib/constants/featureToggles';
 import funnelClient from '@/lib/analytics/funnelClient';
+import OfferBanner from '../showcase/banners/OfferBanner';
 
 /* ------------------------------------------------------------------ */
 /* Smooth "Top-Bought" fade-in/slide-up wrapper                        */
@@ -51,7 +52,7 @@ const AnimatedTopBought = memo(({ singleVariantCode }) => {
 
   const spring = useSpring({
     from: { opacity: 0, transform: 'translateY(24px)' },
-    to:   { opacity: isMounted ? 1 : 0, transform: isMounted ? 'translateY(0)' : 'translateY(24px)' },
+    to: { opacity: isMounted ? 1 : 0, transform: isMounted ? 'translateY(0)' : 'translateY(24px)' },
     config: { tension: 250, friction: 22 },
   });
 
@@ -69,8 +70,8 @@ const AnimatedTopBought = memo(({ singleVariantCode }) => {
 const StaticTopBought = memo(({ singleVariantCode, containerStyle = {} }) => {
   return (
     <div className={styles.topBoughtContainer} style={containerStyle}>
-      <TopBoughtProducts 
-        singleVariantCode={singleVariantCode} 
+      <TopBoughtProducts
+        singleVariantCode={singleVariantCode}
         pageType="products-list"
         key={`static-${singleVariantCode}`} // Stable key to prevent remounting
       />
@@ -83,8 +84,8 @@ const StaticTopBought = memo(({ singleVariantCode, containerStyle = {} }) => {
 const StableTopBought = memo(({ singleVariantCode, containerStyle = {} }) => {
   return (
     <div className={styles.topBoughtContainer} style={containerStyle}>
-      <IsolatedTopBoughtProducts 
-        singleVariantCode={singleVariantCode} 
+      <IsolatedTopBoughtProducts
+        singleVariantCode={singleVariantCode}
         pageType="products-list"
         hideHeading={false}
       />
@@ -128,7 +129,7 @@ export default function ProductsPage({
     () => recommendationMap[variant?.variantCode] || 'win',
     [variant?.variantCode]
   );
-  
+
   const stableVariantCode = useMemo(
     () => variant?.variantCode,
     [variant?.variantCode]
@@ -194,7 +195,7 @@ export default function ProductsPage({
   useEffect(() => {
     // Show TopStrip if category matches the specific ID
     if (category?._id === '67d95873451481014c7d0bb2') {
-      dispatch(showTopStrip({ 
+      dispatch(showTopStrip({
         categoryId: category._id,
         data: {
           images: {
@@ -264,10 +265,10 @@ export default function ProductsPage({
 
   /* ------------------------ helpers ------------------------ */
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-  const isSmallDevice  = useMediaQuery('(max-width: 600px)');
+  const isSmallDevice = useMediaQuery('(max-width: 600px)');
   const isMediumDevice = useMediaQuery('(max-width: 1024px)');
-  const isLargeDevice  = useMediaQuery('(min-width: 1200px)');
-  const showVideo      = currentPage === 1;
+  const isLargeDevice = useMediaQuery('(min-width: 1200px)');
+  const showVideo = currentPage === 1;
 
   // Enhanced scroll to top function with better reliability
   const enhancedScrollToTop = useCallback(() => {
@@ -285,7 +286,7 @@ export default function ProductsPage({
           // Fallback for older browsers
           window.scrollTo(0, 0);
         }
-        
+
         // Double-check that we're at the top after animation completes
         setTimeout(() => {
           if (window.pageYOffset > 0) {
@@ -310,48 +311,48 @@ export default function ProductsPage({
   }, [isSmallDevice, isMediumDevice, isLargeDevice, showLayout2]);
 
   // Determine if video should be shown and where
-  const shouldShowVideoInWrapper = useMemo(() => 
-    !HIDE_PRODUCT_VIDEOS && variant?.showCase?.[0]?.available && showVideo && !isSmallDevice, 
+  const shouldShowVideoInWrapper = useMemo(() =>
+    !HIDE_PRODUCT_VIDEOS && variant?.showCase?.[0]?.available && showVideo && !isSmallDevice,
     [variant?.showCase, showVideo, isSmallDevice]
   );
-  
-  const shouldShowVideoInPage = useMemo(() => 
-    !HIDE_PRODUCT_VIDEOS && variant?.showCase?.[0]?.available && showVideo && isSmallDevice, 
+
+  const shouldShowVideoInPage = useMemo(() =>
+    !HIDE_PRODUCT_VIDEOS && variant?.showCase?.[0]?.available && showVideo && isSmallDevice,
     [variant?.showCase, showVideo, isSmallDevice]
   );
 
   // Improved product distribution logic with complete row calculation
   const [firstHalf, secondHalf] = useMemo(() => {
     if (!SHOW_TOP_BOUGHT || currentPage !== 1) return [currentProducts, []];
-    
+
     const columnsPerRow = getColumnsPerRow();
     const videoOffset = shouldShowVideoInWrapper ? 1 : 0;
     const totalItems = currentProducts.length;
-    
+
     if (totalItems <= columnsPerRow - videoOffset) {
       // Not enough items to worry about distribution
       return [currentProducts, []];
     }
-    
+
     // Calculate how many complete rows we need for first half
     // We want to fill complete rows before TopBoughtProducts
     const itemsPerCompleteRow = columnsPerRow;
     const totalSlotsWithVideo = totalItems + videoOffset;
     const totalRows = Math.ceil(totalSlotsWithVideo / itemsPerCompleteRow);
-    
+
     // Aim for half the rows (rounded up) in first section
     const targetRows = Math.ceil(totalRows / 2);
     const targetItems = (targetRows * itemsPerCompleteRow) - videoOffset;
-    
+
     // Ensure we don't create tiny second halves - if less than a half row remains,
     // put everything in the first half
     if (totalItems - targetItems < Math.ceil(columnsPerRow / 2)) {
       return [currentProducts, []];
     }
-    
+
     // Make sure we don't exceed the total number of products
     const actualTargetItems = Math.min(targetItems, totalItems);
-    
+
     return [
       currentProducts.slice(0, actualTargetItems),
       currentProducts.slice(actualTargetItems)
@@ -402,13 +403,13 @@ export default function ProductsPage({
                         ? variant?.name.length > 15
                           ? '2.5rem'
                           : variant?.name.length > 20
-                          ? '2rem'
-                          : '3.5rem'
+                            ? '2rem'
+                            : '3.5rem'
                         : variant?.name.length > 15
-                        ? '1.8rem'
-                        : variant?.name.length > 20
-                        ? '1.5rem'
-                        : '2.2rem',
+                          ? '1.8rem'
+                          : variant?.name.length > 20
+                            ? '1.5rem'
+                            : '2.2rem',
                     }}
                   >
                     {variant?.name}
@@ -420,10 +421,10 @@ export default function ProductsPage({
                         {variant?.name === 'Slim Tank Wraps'
                           ? '6.8 cm wide'
                           : variant?.name === 'Medium Tank Wraps'
-                          ? '7 cm wide'
-                          : variant?.name === 'Wide Tank Wraps'
-                          ? '19.05 cm wide'
-                          : null}
+                            ? '7 cm wide'
+                            : variant?.name === 'Wide Tank Wraps'
+                              ? '19.05 cm wide'
+                              : null}
                       </button>
                     )}
                   </h1>
@@ -450,7 +451,7 @@ export default function ProductsPage({
                 </div>
               </div>
             </header>
-
+            <OfferBanner categoryMongoId={category?._id}/>
             {/* Video for small devices - only render here for mobile */}
             {!HIDE_PRODUCT_VIDEOS && shouldShowVideoInPage && (
               <div className={wrapperStyles.videoCard} aria-label="Product Video" style={{ backgroundColor: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0 1rem', marginBottom: '2rem', boxShadow: 'none' }}>
@@ -462,7 +463,7 @@ export default function ProductsPage({
                   frameBorder="0"
                   allow="autoplay; encrypted-media"
                   allowFullScreen
-                  style={{ pointerEvents: 'none', backgroundColor: 'white', borderRadius: '1rem'  }}
+                  style={{ pointerEvents: 'none', backgroundColor: 'white', borderRadius: '1rem' }}
                 />
                 {/* <h1>Maddy Custom</h1> */}
               </div>
@@ -549,7 +550,7 @@ export default function ProductsPage({
           {currentPage !== 1 && SHOW_TOP_BOUGHT && (
             <StableTopBought singleVariantCode={stableRecommendedKey} />
           )}
-          
+
           {/* Extra ribbon of TopBoughtProducts for 'win' variant */}
           {/* {stableVariantCode === 'win' && (
             <StableTopBought 
@@ -569,9 +570,9 @@ export default function ProductsPage({
 
       {/* WhatsApp Chat Button - Only show for new launch products */}
       {isNewLaunch && (
-        <Link 
-          href="https://wa.me/8112673988" 
-          target="_blank" 
+        <Link
+          href="https://wa.me/8112673988"
+          target="_blank"
           rel="noopener noreferrer"
           style={chatButtonStyles}
           onMouseEnter={(e) => {
