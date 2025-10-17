@@ -29,6 +29,7 @@ import Footer from '../page-sections/viewcart/Footer';
 import ApplyCoupon from '../dialogs/ApplyCoupon';
 import OrderForm from '../dialogs/OrderForm';
 import MinimumCartDialog from '../dialogs/MinimumCartDialog';
+import FuelCapWrapBonusDialog from '../dialogs/FuelCapWrapBonusDialog';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
 import CustomerPhotosSlider from '@/components/page-sections/homepage/CustomerPhotosSlider';
 import { fetchDisplayAssets } from '@/lib/utils/fetchutils';
@@ -86,6 +87,11 @@ const flattenCart = cartItems => cartItems.map(i => ({
   price: i.price ?? i.productDetails.price,
   specificCategory: i.specificCategory ?? i.productDetails.specificCategory,
 }));
+
+const FUEL_CAP_WRAP_CATEGORY_IDS = new Set([
+  '673aea6778c57ec01acae633',
+  '673aea6778c57ec01acae632',
+]);
 
 /* ======================================================================= */
 export default function ViewCart({ isDrawer = false }) {
@@ -167,6 +173,8 @@ export default function ViewCart({ isDrawer = false }) {
   const [dlgOrder, setDlgOrder] = useState(false);
   const [dlgMinimumCart, setDlgMinimumCart] = useState(false);
   const [dlgOOS, setDlgOOS] = useState(false);
+  const [showFuelCapBonus, setShowFuelCapBonus] = useState(false);
+  const [fuelCapBonusDismissed, setFuelCapBonusDismissed] = useState(false);
   const [oosData, setOosData] = useState({ excludedKeys: [], itemsInfo: {}, includedCount: 0, restockedKeys: [], couponInvalidated: false, couponName: '' });
   const [verifyingInventory, setVerifyingInventory] = useState(false);
   const [preparing, setPreparing] = useState(false);
@@ -294,6 +302,38 @@ export default function ViewCart({ isDrawer = false }) {
   const standardDeliveryCost = 100; // Standard delivery fee that is being waived
   const extraCharge = selectedPM?.extraCharge || 0;
   const totalPay = grand + deliveryCost + extraCharge;
+
+  const fuelCapWrapQuantity = useMemo(() => {
+    if (!cartItems || !cartItems.length) {
+      return 0;
+    }
+
+    return cartItems.reduce((sum, item) => {
+      const categoryId = item?.productDetails?.category?._id;
+      if (categoryId && FUEL_CAP_WRAP_CATEGORY_IDS.has(String(categoryId))) {
+        return sum + (item.quantity || 0);
+      }
+      return sum;
+    }, 0);
+  }, [cartItems]);
+
+  useEffect(() => {
+    if (fuelCapWrapQuantity >= 2) {
+      if (!fuelCapBonusDismissed) {
+        setShowFuelCapBonus(true);
+      }
+    } else {
+      setShowFuelCapBonus(false);
+      if (fuelCapBonusDismissed) {
+        setFuelCapBonusDismissed(false);
+      }
+    }
+  }, [fuelCapWrapQuantity, fuelCapBonusDismissed]);
+
+  const handleFuelCapBonusClose = useCallback(() => {
+    setShowFuelCapBonus(false);
+    setFuelCapBonusDismissed(true);
+  }, []);
 
   // Ensure browser back closes the OOS dialog instead of navigating away
   useHistoryState(dlgOOS, () => setDlgOOS(false), 'oosDialog', 9);
@@ -1064,6 +1104,10 @@ export default function ViewCart({ isDrawer = false }) {
         </motion.div>)
       }
 
+      <FuelCapWrapBonusDialog
+        open={showFuelCapBonus}
+        onClose={handleFuelCapBonusClose}
+      />
       <ApplyCoupon
         open={dlgCoupon}
         onClose={() => setDlgCoupon(false)}
