@@ -3,6 +3,8 @@ import ProductInfoTab from '@/models/ProductInfoTab';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 // import { ObjectId } from 'mongodb';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/productinfo?type=...&id=...
  *
@@ -11,7 +13,7 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 export async function GET(request) {
   try {
     // Extract query parameters
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get("type");
     const refId = searchParams.get("id");
 

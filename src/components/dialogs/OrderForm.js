@@ -40,8 +40,7 @@ import CustomSnackbar from '../notifications/CustomSnackbar';
 import { getPaymentButtonText } from '../../lib/utils/orderFormUtils';
 import { ThemeProvider } from '@mui/material';
 import theme from '@/styles/theme';
-import { initiateCheckout, purchase, contactInfoProvided, paymentInitiated } from '@/lib/metadata/facebookPixels';
-import { v4 as uuidv4 } from 'uuid';
+import { purchase, paymentInitiated, initiateCheckout as trackInitiateCheckout } from '@/lib/metadata/facebookPixels';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -744,10 +743,29 @@ const OrderForm = ({
         category: item.productDetails?.category?.name || item.productDetails?.category,
         name: item.productDetails?.name,
       }));
-      await contactInfoProvided(
-        { firstName: data.name, email: data.email, phoneNumber: phoneToUse },
-        { totalValue: totalCost, contents, numItems: contents.length, contentName: contents.map(c => c.name).filter(Boolean).join(', ') }
-      );
+      
+      // Fire Meta InitiateCheckout event with email/phone for better matching
+      try {
+        const { v4: uuidv4 } = await import('uuid');
+        const numItems = contents.reduce((sum, item) => sum + (item.quantity || 0), 0);
+        const contentName = contents.map(c => c.name).filter(Boolean).join(', ');
+        
+        await trackInitiateCheckout({
+          eventID: uuidv4(),
+          totalValue: totalCost,
+          contents,
+          contentName,
+          contentCategory: 'checkout',
+          numItems,
+        }, {
+          email: data.email,
+          phoneNumber: phoneToUse,
+          firstName: data.name,
+        });
+      } catch (metaErr) {
+        console.warn('Meta InitiateCheckout tracking failed (non-critical):', metaErr);
+      }
+      
       try {
         gaAddBillingInfo({ value: totalCost, items: contents, coupon: typeof couponCode === 'string' && couponCode ? couponCode : undefined });
       } catch (gaErr) {
@@ -1009,27 +1027,6 @@ const OrderForm = ({
       dispatch(setLastOrderId(createdOrderId));
 
       if (razorpayOrder && amountDueOnline > 0) {
-        initiateCheckout(
-          {
-            eventID: uuidv4(),
-            totalValue: totalCost,
-            contents: cartItems.map((item) => ({
-              productId: item.productId || item._id,
-              quantity: item.quantity,
-              price: item.priceAtPurchase,
-            })),
-            contentName: cartItems.map((item) => item.productDetails.name).join(', '),
-            contentCategory: cartItems.map((item) => item.productDetails.category),
-            numItems: cartItems.length,
-          },
-          {
-            email: orderForm.userDetails.email || '',
-            phoneNumber: orderForm.userDetails.phoneNumber,
-          }
-        ).catch(error => {
-          console.error('FB pixel tracking error (non-critical):', error);
-        });
-
         try {
           funnelClient.track('payment_initiated', {
             dedupeKey: `payment_initiated:${createdOrderId}`,

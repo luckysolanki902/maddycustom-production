@@ -1,6 +1,7 @@
 // src/app/layout.js
 
 import '@/styles/globals.css';
+import { Suspense } from 'react';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { generateWebsiteSchema, generateOrganizationSchema } from '@/lib/metadata/json-lds';
 import ReduxProvider from '@/components/layouts/ReduxProvider';
@@ -88,29 +89,33 @@ export default function RootLayout({ children }) {
         <ReduxProvider>
           <ScrollProvider>
             <NavigationListener />
-            <UTMCapture />
+            <Suspense fallback={null}>
+              <UTMCapture />
+            </Suspense>
             <FunnelClientBridge />
             <CouponTimerBanner/>
             {/* <UTMLogger /> */}
             <TopLoadingBar />
             <ChatSessionProvider>
-            <FullPageLoader />
-            <Topbar />
-            <Sidebar />
-            <SearchCategoryDialog />
-            <CartDrawer />
-            <RecommendationDrawer />
-            <CartInitializer />
-            {children}
-            <FloatingActionBar />
-            <Footer />
-            <TimeTracker />
-            <PathnameTracker />
-            <ScrollChecker />
-            {/* Client-only utilities (conditionally hidden in B2B) */}
-            <ClientUIWrappers />
-            {/* Chat launcher (client only) */}
-            <SupportChatProvider />
+              <FullPageLoader />
+              <Topbar />
+              <Sidebar />
+              <SearchCategoryDialog />
+              <CartDrawer />
+              <RecommendationDrawer />
+              <Suspense fallback={null}>
+                <CartInitializer />
+              </Suspense>
+              {children}
+              <FloatingActionBar />
+              <Footer />
+              <TimeTracker />
+              <PathnameTracker />
+              <ScrollChecker />
+              {/* Client-only utilities (conditionally hidden in B2B) */}
+              <ClientUIWrappers />
+              {/* Chat launcher (client only) */}
+              <SupportChatProvider />
             </ChatSessionProvider>
           </ScrollProvider>
         </ReduxProvider>

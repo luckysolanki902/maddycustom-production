@@ -8,14 +8,14 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 
 const includeDummyReviewCount = true; // Toggle this to enable/disable dummy reviews
 
-export const revalidate = 1800; // seconds
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
     await connectToDatabase();
 
     // Extract query parameters
-    const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
     const fetchReviewSource = searchParams.get('fetchReviewSource'); // 'variant', 'product', or 'specCat'
     const productId = searchParams.get('productId');
     const variantId = searchParams.get('variantId');

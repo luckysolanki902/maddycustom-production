@@ -128,6 +128,70 @@ const isValidIPv4 = (ip) => {
   return ipv4Regex.test(ip) && !ip.includes(':');
 };
 
+const SHA256_HEX_REGEX = /^[a-f0-9]{64}$/i;
+
+let sha256PolyfillPromise;
+
+const loadSha256Polyfill = async () => {
+  if (!sha256PolyfillPromise) {
+    sha256PolyfillPromise = import('js-sha256').then((mod) => {
+      if (mod && typeof mod.sha256 === 'function') {
+        return mod.sha256;
+      }
+      if (typeof mod === 'function') {
+        return mod;
+      }
+      if (mod && typeof mod.default === 'function') {
+        return mod.default;
+      }
+      throw new Error('Unable to load js-sha256 module');
+    });
+  }
+  return sha256PolyfillPromise;
+};
+
+const hashWithSubtle = async (value) => {
+  if (typeof window !== 'undefined' && window.crypto?.subtle) {
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(value);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (error) {
+      // Fall through to polyfill
+    }
+  }
+
+  try {
+    const sha256 = await loadSha256Polyfill();
+    return sha256(value);
+  } catch (error) {
+    return null;
+  }
+};
+
+const hashIdentifier = async (value, { forceLowercase = false } = {}) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const raw = String(value).trim();
+  if (!raw) {
+    return null;
+  }
+
+  const prepared = forceLowercase ? raw.toLowerCase() : raw;
+  if (SHA256_HEX_REGEX.test(prepared)) {
+    return prepared.toLowerCase();
+  }
+
+  const hashed = await hashWithSubtle(prepared);
+  return hashed || null;
+};
+
+const hashEmailIdentifier = async (email) => hashIdentifier(email, { forceLowercase: true });
+
 /**
  * Sends event data to the server-side Conversion API endpoint.
  * @param {string} eventName - The name of the event (e.g., 'Purchase', 'AddToCart').
@@ -193,19 +257,51 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       fbc: fbc || null, // Send null instead of undefined
     };
 
-    // Add user identifiers from final merged data
-    if (finalUserData.email) {
-      eventParams.emails = [finalUserData.email.trim().toLowerCase()];
+    if (eventParams.external_ids && Array.isArray(eventParams.external_ids)) {
+      const hashedExternalIds = (await Promise.all(
+        eventParams.external_ids.map(id => hashIdentifier(id))
+      )).filter(Boolean);
+
+      if (hashedExternalIds.length > 0) {
+        eventParams.external_ids = hashedExternalIds;
+      } else {
+        delete eventParams.external_ids;
+      }
+    }
+
+    const normalizedEmail = finalUserData.email ? finalUserData.email.trim().toLowerCase() : '';
+    if (normalizedEmail) {
+      const hashedEmail = await hashEmailIdentifier(normalizedEmail);
+      if (hashedEmail) {
+        eventParams.emails = [hashedEmail];
+      }
     }
 
     if (finalUserData.phoneNumber) {
-      // Normalize phone number
       const normalizedPhone = finalUserData.phoneNumber.replace(/[^\d+]/g, '');
-      eventParams.phones = [normalizedPhone];
+      const hashedPhone = await hashIdentifier(normalizedPhone);
+      if (hashedPhone) {
+        eventParams.phones = [hashedPhone];
+      }
     }
 
     if (finalUserData.firstName) {
-      eventParams.first_name = finalUserData.firstName;
+      eventParams.first_name = finalUserData.firstName.trim();
+    }
+
+    // Lightweight debug log (avoid PII output)
+    try {
+      const debugDetails = {
+        event: name,
+        eventId,
+        email: Boolean(finalUserData.email || eventParams.emails?.length),
+        phone: Boolean(finalUserData.phoneNumber || eventParams.phones?.length),
+        value: otherOptions?.value ?? null,
+        contents: otherOptions?.contents?.length || 0,
+      };
+      console.debug('[FB Pixel] Dispatch', debugDetails);
+    } catch (logError) {
+      console.error('FB Pixel debug log failed:', logError);
     }
 
     // Send event to Facebook Pixel (client-side)
@@ -220,8 +316,10 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       delete pixelParams.client_user_agent;
       delete pixelParams.fbp;
       delete pixelParams.fbc;
-      delete pixelParams.external_ids;
       delete pixelParams.first_name; // Don't send PII to client-side pixel
+      if (eventParams.external_ids) {
+        pixelParams.external_ids = eventParams.external_ids;
+      }
 
       const cmd = STANDARD_EVENTS.has(name) ? 'track' : 'trackCustom';
       window.fbq(cmd, name, pixelParams, { eventID: eventId });

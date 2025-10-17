@@ -2,13 +2,13 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategory from '@/models/SpecificCategory';
 import Product from '@/models/Product';
 
-export const revalidate = 3600; // 1 hour edge cache
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
     await connectToDatabase();
     
-    const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit')) || 6;
     
     // Fetch both interior and exterior products

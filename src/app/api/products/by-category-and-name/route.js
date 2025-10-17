@@ -2,9 +2,11 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const categoryId = searchParams.get('categoryId');
     const productName = searchParams.get('productName');
 

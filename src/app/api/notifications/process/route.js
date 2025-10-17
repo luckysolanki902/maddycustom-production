@@ -7,6 +7,8 @@ import NotificationTemplate from '@/models/NotificationTemplate';
 import { sendSMS } from '@/lib/utils/msg91Sender';
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request) {
   try {
     await connectToDatabase();
@@ -307,7 +309,7 @@ export async function GET(request) {
   try {
     await connectToDatabase();
     
-    const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit')) || 10;
     const channel = searchParams.get('channel');
 

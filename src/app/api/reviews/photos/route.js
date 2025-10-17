@@ -1,16 +1,17 @@
 // app/api/reviews/photos/route.js
-export const revalidate = 1800; // seconds
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Review from '@/models/Review';
 import User from '@/models/User';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req) {
   try {
     await connectToDatabase();
 
-    const { searchParams } = new URL(req.url);
+  const searchParams = req.nextUrl.searchParams;
     const fetchReviewSource = searchParams.get('fetchReviewSource'); // 'variant', 'product', or 'specCat'
     const productId = searchParams.get('productId');
     const variantId = searchParams.get('variantId');

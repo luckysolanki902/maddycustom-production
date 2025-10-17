@@ -3,7 +3,7 @@ import DisplayAsset from '@/models/DisplayAssets';
 import { NextResponse } from 'next/server';
 import { shouldDisplayAsset } from '@/lib/utils/displayAssetUtils';
 
-export const revalidate = 300;  
+export const dynamic = 'force-dynamic';
 
 // Convert any link (absolute or relative) to a root-relative URL that always starts with '/'
 function toRelativeLink(link) {
@@ -32,11 +32,11 @@ export async function GET(request) {
     // Connect to the database
     await connectToDatabase();
 
-    const { searchParams } = new URL(request.url);
-  const page = searchParams.get('page');
-  const componentName = searchParams.get('componentName');
-  const idsParam = searchParams.get('ids'); // comma-separated Mongo _id list
-  const limitParam = searchParams.get('limit');
+    const searchParams = request.nextUrl.searchParams;
+    const page = searchParams.get('page');
+    const componentName = searchParams.get('componentName');
+    const idsParam = searchParams.get('ids'); // comma-separated Mongo _id list
+    const limitParam = searchParams.get('limit');
     // Build query object
     let query = { isActive: true };
     

@@ -29,6 +29,8 @@ const hashData = (data) => {
   return crypto.createHash('sha256').update(data).digest('hex');
 };
 
+const isSha256Hash = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value.trim());
+
 /**
  * Creates a Content object for Facebook Conversion API.
  * @param {object} product - The product details.
@@ -183,8 +185,13 @@ const validateEventData = (eventName, options) => {
   // Validate email format (but make it optional and forgiving)
   if (options.emails && Array.isArray(options.emails)) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const sha256Regex = /^[a-f0-9]{64}$/;
     for (const email of options.emails) {
-      if (email && email.trim() && !emailRegex.test(email.trim())) {
+      const normalized = email?.trim();
+      if (!normalized) continue;
+      const isPlainEmail = emailRegex.test(normalized);
+      const isSha256 = sha256Regex.test(normalized.toLowerCase());
+      if (!isPlainEmail && !isSha256) {
         warnings.push(`Email format may be invalid, but will still be processed: ${email}`);
         // Don't add to errors - just warn, as email is optional
       }
@@ -270,6 +277,20 @@ export async function POST(request) {
     if (validation.warnings && validation.warnings.length > 0 && !isPageView) {
       console.warn(`Event validation warnings [${eventName}]:`, validation.warnings);
     }
+
+    try {
+      const debugLog = {
+        event: eventName,
+        eventId: options.eventID || options.event_id || 'na',
+        emails: options.emails?.length || 0,
+        phones: options.phones?.length || 0,
+        contents: options.contents?.length || 0,
+        value: options.value ?? null,
+      };
+      console.debug('[Meta CAPI] Dispatch', debugLog);
+    } catch (debugError) {
+      console.error('Meta CAPI debug log failed:', debugError);
+    }
     
     // Validate eventName
     const validEvents = [
@@ -291,16 +312,42 @@ export async function POST(request) {
 
     // Prepare enhanced user data for better matching
     const hashedEmails = options.emails
-      ? options.emails.map((email) => hashData(email.trim().toLowerCase()))
+      ? options.emails
+          .map((email) => {
+            if (!email) return null;
+            const normalized = String(email).trim().toLowerCase();
+            if (!normalized) return null;
+            return isSha256Hash(normalized) ? normalized : hashData(normalized);
+          })
+          .filter(Boolean)
       : [];
     
     const hashedPhones = options.phones
-      ? options.phones.map((phone) => hashData(normalizePhoneNumber(phone)))
+      ? options.phones
+          .map((phone) => {
+            if (phone === undefined || phone === null) return null;
+            const trimmed = String(phone).trim();
+            if (!trimmed) return null;
+            if (isSha256Hash(trimmed)) {
+              return trimmed.toLowerCase();
+            }
+            const normalized = normalizePhoneNumber(trimmed);
+            if (!normalized) return null;
+            return hashData(normalized);
+          })
+          .filter(Boolean)
       : [];
 
     // Hash external IDs for privacy
     const hashedExternalIds = options.external_ids
-      ? options.external_ids.map((id) => hashData(String(id)))
+      ? options.external_ids
+          .map((id) => {
+            if (id === undefined || id === null) return null;
+            const prepared = String(id).trim();
+            if (!prepared) return null;
+            return isSha256Hash(prepared) ? prepared.toLowerCase() : hashData(prepared);
+          })
+          .filter(Boolean)
       : [];
 
     // Prepare User Data with enhanced matching

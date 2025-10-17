@@ -3,8 +3,10 @@ import { trackShiprocketOrder } from '@/lib/utils/shiprocket';
 import Order from '@/models/Order';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
   const orderIdParam = searchParams.get('orderId');
   const phoneParam = searchParams.get('phone');
   const phoneDigits = phoneParam ? phoneParam.replace(/\D/g, '') : '';

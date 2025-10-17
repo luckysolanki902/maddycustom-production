@@ -303,6 +303,8 @@ export default function ViewCart({ isDrawer = false }) {
   const extraCharge = selectedPM?.extraCharge || 0;
   const totalPay = grand + deliveryCost + extraCharge;
 
+  const userDetails = orderForm.userDetails || {};
+
   const fuelCapWrapQuantity = useMemo(() => {
     if (!cartItems || !cartItems.length) {
       return 0;
@@ -677,7 +679,7 @@ export default function ViewCart({ isDrawer = false }) {
       return;
     }
 
-    // Open the order form
+    // Open the order form (Meta InitiateCheckout will fire when user submits contact info)
     setDlgOrder(true);
   };
 

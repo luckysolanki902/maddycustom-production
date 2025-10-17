@@ -7,6 +7,8 @@ import User from '@/models/User';
 import Product from '@/models/Product';
 import Option from '@/models/Option';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request) {
   try {
     await connectToDatabase();
@@ -241,7 +243,7 @@ export async function GET(request) {
   try {
     await connectToDatabase();
     
-    const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
     const phoneNumber = searchParams.get('phoneNumber');
     const userId = searchParams.get('userId');
     const notificationType = searchParams.get('notificationType');

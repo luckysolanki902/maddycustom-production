@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import connectToDb from '@/lib/middleware/connectToDb';
 import SearchQuery from '@/models/data-tracking/SearchQuery';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request) {
   try {
     // Don't await database connection to make it non-blocking
@@ -51,7 +53,7 @@ export async function GET(request) {
   try {
     await connectToDb();
     
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit')) || 100;
     const skip = parseInt(searchParams.get('skip')) || 0;
     const query = searchParams.get('query');

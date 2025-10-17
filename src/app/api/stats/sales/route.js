@@ -1,7 +1,8 @@
-export const revalidate = 1800; // seconds
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
 import mongoose from 'mongoose';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/stats/sales?type=specificCategory|specificCategoryVariant&id=<id>&days=<optionalDays>&round=<true|false>
@@ -13,9 +14,9 @@ export async function GET(request) {
     // Connect to the database
     await connectToDatabase();
 
-    // Parse query parameters
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type'); // "specificCategory" OR "specificCategoryVariant"
+  // Parse query parameters
+  const searchParams = request.nextUrl.searchParams;
+  const type = searchParams.get('type'); // "specificCategory" OR "specificCategoryVariant"
     const id = searchParams.get('id'); // the category/variant id
     const daysParam = searchParams.get('days');
     const roundParam = searchParams.get('round');
