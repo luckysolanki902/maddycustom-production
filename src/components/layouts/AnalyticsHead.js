@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react'
+import React, { Suspense } from 'react'
 import FacebookPixel from '../analytics/FacebookPixel'
 import FacebookClickIdHandler from '../analytics/FacebookClickIdHandler'
 import FacebookPageViewTracker from '../analytics/FacebookPageViewTracker'
@@ -17,7 +17,9 @@ export default function AnalyticsHead() {
             <GoogleTagManager />
             <FacebookPixel />
             <FacebookClickIdHandler />
-            <FacebookPageViewTracker />
+            <Suspense fallback={null}>
+                <FacebookPageViewTracker />
+            </Suspense>
             <GoogleAnalyticsGA4 />
             <Clarity />
             <Razorpay />

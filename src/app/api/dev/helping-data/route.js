@@ -3,7 +3,7 @@ import getHelpingData from '@/lib/faq/getHelpingData';
 
 export async function GET(request) {
   try {
-    const url = new URL(request.url);
+    const url = request.nextUrl;
     const format = url.searchParams.get('format') || 'json';
     const text = await getHelpingData();
 

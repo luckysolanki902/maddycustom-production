@@ -4,11 +4,13 @@ import Offer from '@/models/Offer';
 import { NextResponse } from 'next/server';
 import moment from 'moment-timezone';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   await connectToDatabase();
 
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const showAsCards = searchParams.get('cards') === 'true';
 
     const nowIst     = moment().tz('Asia/Kolkata');

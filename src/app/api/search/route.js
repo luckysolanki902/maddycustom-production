@@ -7,12 +7,12 @@ import SpecificCategory from '@/models/SpecificCategory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Option from '@/models/Option';
 
-export const revalidate = 3600; // Revalidate this page every hour
+export const dynamic = 'force-dynamic';
 
 export async function GET(req) {
   try {
     await connectToDb();
-    const { searchParams } = new URL(req.url);
+    const searchParams = req.nextUrl.searchParams;
     const q = searchParams.get('q');
     if (!q || typeof q !== 'string' || !q.trim()) {
       return NextResponse.json({ error: 'Missing query param' }, { status: 400 });

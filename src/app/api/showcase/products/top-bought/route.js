@@ -11,7 +11,7 @@ import Order from '@/models/Order';
 import Option from '@/models/Option';
 import Inventory from '@/models/Inventory';
 
-export const revalidate = 36000;              // 10 h edge‑cache
+export const dynamic = 'force-dynamic';
 const PAGE_SIZE = 20;
 
 // In-memory cache for optimized performance
@@ -193,7 +193,7 @@ async function fetchCartDesignGroupProducts(cartDesignIds, excludeProductIds) {
 }
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
   const subCategoriesParam = searchParams.get('subCategories') || '';
   const skip = parseInt(searchParams.get('skip') || '0', 10);
   const singleVariantCode = (searchParams.get('singleVariantCode') || '').trim();

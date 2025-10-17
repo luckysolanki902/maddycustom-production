@@ -4,10 +4,10 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
 
-export const revalidate = 1800; // seconds
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
   const categoryCode = searchParams.get('category');
   // Accept the extra parameter "number" for the total product count (default to 10 if not provided)
   const numberParam = parseInt(searchParams.get('number'), 10) || 10;

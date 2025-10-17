@@ -8,13 +8,13 @@ import SpecificCategory from '@/models/SpecificCategory';
 
 const disableFakeAddition = false; // Toggle to disable dummy reviews
 
-export const revalidate = 1800; // seconds
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
     await connectToDatabase();
 
-    const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
     // Allowed values: 'variant', 'product', or 'specCat'
     const fetchReviewSource = searchParams.get('fetchReviewSource');
     const productId = searchParams.get('productId');

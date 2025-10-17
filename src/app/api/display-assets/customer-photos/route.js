@@ -3,7 +3,7 @@ import DisplayAsset from '@/models/DisplayAssets';
 import { NextResponse } from 'next/server';
 import { shouldDisplayAsset } from '@/lib/utils/displayAssetUtils';
 
-export const revalidate = 3600; // ISR: 1 hour
+export const dynamic = 'force-dynamic';
 
 function toRelativeLink(link) {
   if (!link) return link;
@@ -26,7 +26,7 @@ export async function GET(request) {
   try {
     await connectToDatabase();
 
-    const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
     const page = searchParams.get('page'); // optional page filter (e.g., 'homepage', 'viewcart')
     const limitParam = searchParams.get('limit');
 

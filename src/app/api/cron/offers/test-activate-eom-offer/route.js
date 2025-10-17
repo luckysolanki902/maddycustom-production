@@ -3,6 +3,8 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import mongoose from 'mongoose';
 const Offer = require('@/models/Offer');
 
+export const dynamic = 'force-dynamic';
+
 /**
  * TEST ENDPOINT: Force activates the End-of-Month offer (EOM50) regardless of date
  * This is a temporary endpoint for testing purposes only
@@ -12,7 +14,7 @@ export async function GET(request) {
     await connectToDatabase();
     
     // Get optional test parameters from query
-    const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
     const forceDays = searchParams.get('days') ? parseInt(searchParams.get('days')) : null;
     const forceReset = searchParams.get('reset') === 'true';
     

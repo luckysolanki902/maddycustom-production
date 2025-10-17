@@ -828,7 +828,7 @@ async function ensureAssistantSession(userId) {
 
 export async function GET(request) {
   try {
-    const url = new URL(request.url);
+    const url = request.nextUrl;
     const userId = url.searchParams.get("userId");
     await connectToDb();
     if (!userId) {

@@ -17,7 +17,6 @@ const FacebookPixel = () => {
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
             fbq('init', '887502090050413'); 
-            fbq('track', 'PageView');
             
             // Signal that Facebook Pixel has loaded
             window.fbPixelLoaded = true;

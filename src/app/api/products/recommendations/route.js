@@ -3,9 +3,11 @@ import { NextResponse } from 'next/server';
 import Product from '@/models/Product';
 import connectToDb from '@/lib/middleware/connectToDb';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   await connectToDb();
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
   const designGroupId = searchParams.get('designGroupId');
   const productId = searchParams.get('productId');
 
