@@ -2,6 +2,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getFbp, getFbc, getFacebookTrackingParams, getFacebookTrackingParamsAsync } from '@/lib/utils/cookies';
 import { enhanceEventData } from '@/lib/utils/userDataEnhancer';
+import { getExternalId } from '@/lib/utils/externalIdManager';
 const StopFacebookPixels = false; // Set to true to disable Facebook Pixel events
 
 // Standard FB event names that should use fbq('track', ...). Others use 'trackCustom'.
@@ -250,6 +251,9 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       fbc = fallbackParams.fbc;
     }
 
+    // Get persistent external_id for deduplication (CRITICAL for matching browser + server events)
+    const persistentExternalId = getExternalId();
+    
     // Enhanced event parameters with better data structure
     const eventParams = {
       ...enhancedData,
@@ -257,9 +261,23 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       fbc: fbc || null, // Send null instead of undefined
     };
 
+    // Process external_ids array (merge existing + persistent)
+    const externalIdsToHash = [];
+    
+    // Add persistent external_id first (highest priority)
+    if (persistentExternalId) {
+      externalIdsToHash.push(persistentExternalId);
+    }
+    
+    // Add any additional external_ids from enhancedData
     if (eventParams.external_ids && Array.isArray(eventParams.external_ids)) {
+      externalIdsToHash.push(...eventParams.external_ids);
+    }
+    
+    // Hash all external IDs
+    if (externalIdsToHash.length > 0) {
       const hashedExternalIds = (await Promise.all(
-        eventParams.external_ids.map(id => hashIdentifier(id))
+        externalIdsToHash.map(id => hashIdentifier(id))
       )).filter(Boolean);
 
       if (hashedExternalIds.length > 0) {
@@ -267,6 +285,8 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
       } else {
         delete eventParams.external_ids;
       }
+    } else {
+      delete eventParams.external_ids;
     }
 
     const normalizedEmail = finalUserData.email ? finalUserData.email.trim().toLowerCase() : '';

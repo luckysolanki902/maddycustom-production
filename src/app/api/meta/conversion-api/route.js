@@ -95,6 +95,36 @@ const normalizePhoneNumber = (phone) => {
 };
 
 /**
+ * Extracts external ID from cookie for better event matching
+ * This reads the mc_external_id cookie set by the browser
+ * @param {Request} request - The Next.js request object
+ * @returns {string|null} - The extracted external ID or null
+ */
+const getExternalIdFromCookie = (request) => {
+  try {
+    const cookieHeader = request.headers.get('cookie');
+    if (!cookieHeader) return null;
+    
+    const cookies = cookieHeader.split(';');
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'mc_external_id' && value) {
+        const decoded = decodeURIComponent(value);
+        // Validate UUID format
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(decoded)) {
+          return decoded;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[External ID] Error reading cookie:', error);
+  }
+  
+  return null;
+};
+
+/**
  * Extracts external ID from URL for better event matching
  * @param {string} url - The URL to extract external ID from
  * @returns {string|null} - The extracted external ID or null
@@ -349,6 +379,16 @@ export async function POST(request) {
           })
           .filter(Boolean)
       : [];
+
+    // CRITICAL: Get persistent external_id from cookie (shared with browser Pixel)
+    const persistentExternalId = getExternalIdFromCookie(request);
+    if (persistentExternalId) {
+      // Add as first external_id (highest priority for deduplication)
+      const hashedPersistentId = hashData(persistentExternalId);
+      if (hashedPersistentId && !hashedExternalIds.includes(hashedPersistentId)) {
+        hashedExternalIds.unshift(hashedPersistentId); // Add at beginning
+      }
+    }
 
     // Prepare User Data with enhanced matching
     const userData = new UserData()
