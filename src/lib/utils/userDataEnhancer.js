@@ -1,5 +1,7 @@
 'use client';
 
+import { getExternalId } from './externalIdManager';
+
 /**
  * Enhanced user data collection for better Facebook Conversion API match quality
  * This module provides utilities to collect and enhance user data for better event matching
@@ -37,29 +39,15 @@ export const collectEnhancedUserData = () => {
       userData.userId = urlParams.get('user_id');
     }
     
-    // Generate or get session identifier for better tracking
-    let sessionId = sessionStorage.getItem('fb_session_id');
-    if (!sessionId) {
-      sessionId = generateSessionId();
-      sessionStorage.setItem('fb_session_id', sessionId);
-    }
-    userData.sessionId = sessionId;
+    // REMOVED: Session ID generation (replaced with persistent external_id)
+    // The persistent external_id from externalIdManager.js is now the primary identifier
+    // and will be automatically included in all events via enhanceEventData
     
   } catch (error) {
     console.error('Error collecting user data:', error);
   }
   
   return userData;
-};
-
-/**
- * Generates a unique session identifier
- * @returns {string} Session identifier
- */
-const generateSessionId = () => {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substr(2, 9);
-  return `session_${timestamp}_${random}`;
 };
 
 /**
@@ -227,12 +215,15 @@ export const enhanceEventData = (eventName, customData = {}, options = {}) => {
     phones.push(userData.phoneNumber);
   }
   
-  if (userData.userId) {
-    externalIds.push(userData.userId);
+  // CRITICAL: Get persistent external_id (shared between browser and server)
+  const persistentExternalId = getExternalId();
+  if (persistentExternalId) {
+    externalIds.push(persistentExternalId);
   }
   
-  if (userData.sessionId) {
-    externalIds.push(userData.sessionId);
+  // Add user ID if logged in
+  if (userData.userId) {
+    externalIds.push(userData.userId);
   }
   
   // Add to enhanced data
