@@ -1,1 +1,0 @@
-// UserDataSlice -> array recent searches max 10 {timestamp, pageSlug, textValue},

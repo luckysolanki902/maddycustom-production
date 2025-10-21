@@ -252,6 +252,70 @@ const validateEventData = (eventName, options) => {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
+ * Extracts real client IP from request headers
+ * CRITICAL: This fixes the "Server sending client IP addresses with multiple users" error
+ * 
+ * @param {Request} request - The Next.js request object
+ * @returns {string} - The client IP address or empty string
+ */
+const extractClientIpFromRequest = (request) => {
+  try {
+    // Priority order for IP extraction (industry standard)
+    const headers = [
+      'x-forwarded-for',      // Most common proxy/load balancer header
+      'x-real-ip',            // Alternative proxy header
+      'cf-connecting-ip',     // Cloudflare
+      'true-client-ip',       // Cloudflare Enterprise
+      'x-client-ip',          // Some CDNs
+      'x-vercel-forwarded-for' // Vercel
+    ];
+
+    for (const header of headers) {
+      const value = request.headers.get(header);
+      if (value) {
+        // x-forwarded-for can be comma-separated: "client, proxy1, proxy2"
+        // We want the FIRST IP (the original client)
+        const ip = value.split(',')[0].trim();
+        if (ip && isValidIpAddress(ip)) {
+          return ip;
+        }
+      }
+    }
+
+    // Fallback to request.ip if available
+    if (request.ip && isValidIpAddress(request.ip)) {
+      return request.ip;
+    }
+
+    return ''; // Return empty string if no valid IP found
+  } catch (error) {
+    console.error('[CAPI] Error extracting client IP:', error);
+    return '';
+  }
+};
+
+/**
+ * Validates IP address format (IPv4 or IPv6)
+ * @param {string} ip - The IP address to validate
+ * @returns {boolean} - Whether the IP is valid
+ */
+const isValidIpAddress = (ip) => {
+  if (!ip || typeof ip !== 'string') return false;
+  const trimmed = ip.trim();
+  if (!trimmed) return false;
+
+  // IPv4 validation
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  if (ipv4Regex.test(trimmed)) return true;
+
+  // IPv6 validation
+  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$|^(?:[0-9a-fA-F]{1,4}:)*::[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4})*$/;
+  if (ipv6Regex.test(trimmed) && trimmed.includes(':')) return true;
+
+  return false;
+};
+
+/**
  * POST /api/meta/conversion-api
  *
  * Handles sending events to Facebook's Conversion API.
@@ -276,9 +340,32 @@ export async function POST(request) {
     const { eventName, options = {} } = await request.json();
     requestedEventName = eventName || 'Unknown';
     
+    // CRITICAL FIX: Extract real client IP from request headers
+    const realClientIp = extractClientIpFromRequest(request);
+    
+    // Override any client-provided IP with the real IP from headers
+    options.client_ip_address = realClientIp;
+    
+    // Also extract user agent from headers if not provided or empty
+    if (!options.client_user_agent || options.client_user_agent.trim() === '') {
+      const userAgentFromHeaders = request.headers.get('user-agent');
+      if (userAgentFromHeaders) {
+        options.client_user_agent = userAgentFromHeaders;
+      }
+    }
+    
     // Only log detailed info for non-PageView events
     const isPageView = eventName === 'PageView';
 
+    // Log incoming request for critical events (helps debug coverage issues)
+    if (!isPageView && ['InitiateCheckout', 'Purchase', 'AddToCart'].includes(eventName)) {
+      console.log(`[Meta CAPI] Received ${eventName} request`, {
+        eventID: options.eventID || options.event_id || 'na',
+        hasEmail: Boolean(options.emails?.length),
+        hasPhone: Boolean(options.phones?.length),
+        value: options.value ?? null,
+      });
+    }
     
     // Validate and fix timestamp
     const currentTimestamp = Math.floor(Date.now() / 1000);
@@ -584,6 +671,18 @@ export async function POST(request) {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         response = await eventRequest.execute();
+        
+        // Log success for critical events to help monitor coverage
+        if (!isPageView && ['InitiateCheckout', 'Purchase', 'AddToCart'].includes(eventName)) {
+          console.log(`[Meta CAPI] ✓ ${eventName} sent to Meta successfully`, {
+            eventID: options.eventID || options.event_id || 'na',
+            matchQualityScore,
+            realClientIp: realClientIp ? 'present' : 'missing',
+            fbp: fbpSet ? 'present' : 'missing',
+            fbc: fbcSet ? 'present' : 'missing',
+          });
+        }
+        
         break; // success, break the retry loop
       } catch (error) {
         const errorDetails = {
@@ -607,7 +706,16 @@ export async function POST(request) {
     }
     
     return NextResponse.json(
-      { message: 'Event sent successfully', response },
+      { 
+        message: 'Event sent successfully', 
+        response,
+        debug: {
+          eventName,
+          eventID: options.eventID || options.event_id,
+          matchQualityScore,
+          realClientIp: realClientIp ? 'present' : 'missing',
+        }
+      },
       { status: 200 }
     );
   } catch (err) {

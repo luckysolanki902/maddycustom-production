@@ -58,54 +58,24 @@ const STANDARD_EVENTS = new Set([
   'Contact'
 ]);
 
-// Enhanced IP address detection with better IPv6 support and fallback
+/**
+ * CRITICAL FIX: DO NOT fetch IP from client-side
+ * 
+ * The previous implementation fetched IP from external services (ipify.org),
+ * which caused Meta's "Server sending client IP addresses with multiple users" error.
+ * 
+ * CORRECT APPROACH (per Meta's documentation):
+ * - Client-side code should NOT determine IP address
+ * - Server-side API (/api/meta/conversion-api) must extract the REAL client IP
+ *   from request headers (X-Forwarded-For, X-Real-IP, etc.)
+ * - This ensures each user has their unique IP for proper attribution
+ * 
+ * This function now returns null, signaling the server to extract IP from headers.
+ */
 const getClientIp = async () => {
-  try {
-    // Try IPv6 first (Meta's recommendation for better matching)
-    const ipv6Response = await fetch('https://api64.ipify.org?format=json', {
-      timeout: 3000 // 3 second timeout
-    });
-    
-    if (ipv6Response.ok) {
-      const ipv6Data = await ipv6Response.json();
-      if (ipv6Data.ip && isValidIPv6(ipv6Data.ip)) {
-        return ipv6Data.ip;
-      }
-    }
-  } catch (error) {
-  }
-
-  // Fallback to IPv4
-  try {
-    const ipv4Response = await fetch('https://api.ipify.org?format=json', {
-      timeout: 3000 // 3 second timeout
-    });
-    
-    if (ipv4Response.ok) {
-      const ipv4Data = await ipv4Response.json();
-      if (ipv4Data.ip && isValidIPv4(ipv4Data.ip)) {
-        return ipv4Data.ip;
-      }
-    }
-  } catch (error) {
-    // console.error('IPv4 detection also failed:', error.message);
-  }
-
-  // Final fallback - try to get IP from headers (if available)
-  try {
-    // This might work in some server environments
-    const response = await fetch('/api/get-client-ip', { 
-      method: 'GET',
-      timeout: 2000 
-    });
-    if (response.ok) {
-      const data = await response.json();
-      return data.ip || '';
-    }
-  } catch (error) {
-  }
-
-  return ''; // Return empty string instead of null
+  // DO NOT FETCH IP FROM CLIENT SIDE
+  // The server will extract the real client IP from request headers
+  return null;
 };
 
 /**
@@ -195,21 +165,61 @@ const hashEmailIdentifier = async (email) => hashIdentifier(email, { forceLowerc
 
 /**
  * Sends event data to the server-side Conversion API endpoint.
+ * Enhanced with retry logic to improve event coverage (target: 75%+)
+ * 
  * @param {string} eventName - The name of the event (e.g., 'Purchase', 'AddToCart').
  * @param {object} options - Additional event parameters.
+ * @param {number} retries - Number of retry attempts remaining
  */
-const sendToServer = async (eventName, options) => {
+const sendToServer = async (eventName, options, retries = 2) => {
   if (StopFacebookPixels) return;
+  
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
     const res = await fetch('/api/meta/conversion-api', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ eventName, options }),
+      signal: controller.signal,
     });
-    if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
-    await res.json();
+    
+    clearTimeout(timeoutId);
+    
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => 'Unknown error');
+      throw new Error(`Server responded with status ${res.status}: ${errorText}`);
+    }
+    
+    const result = await res.json();
+    
+    // Log success for important events (helps with debugging coverage issues)
+    if (['InitiateCheckout', 'Purchase', 'AddToCart'].includes(eventName)) {
+      console.debug(`[Meta CAPI Client] ✓ ${eventName} sent successfully`, {
+        eventID: options.eventID || options.event_id || 'na',
+        hasEmail: Boolean(options.emails?.length),
+        hasPhone: Boolean(options.phones?.length),
+      });
+    }
+    
+    return result;
   } catch (error) {
-    // console.error('Error sending event to server:', error);
+    // Log failures for critical events
+    if (['InitiateCheckout', 'Purchase'].includes(eventName)) {
+      console.warn(`[Meta CAPI Client] ✗ ${eventName} failed:`, error.message);
+    }
+    
+    // Retry logic for network errors
+    if (retries > 0 && (error.name === 'AbortError' || error.message.includes('fetch failed'))) {
+      console.debug(`[Meta CAPI Client] Retrying ${eventName} (${retries} attempts left)...`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      return sendToServer(eventName, options, retries - 1);
+    }
+    
+    // Don't throw - we don't want to break the user experience
+    // But log the error for monitoring
+    console.error(`[Meta CAPI Client] Final error for ${eventName}:`, error);
   }
 };
 
@@ -224,8 +234,8 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
   try {
     const eventId = otherOptions.eventID || uuidv4(); // Allow passing eventID
     const eventTime = Math.floor(Date.now() / 1000); // Use current timestamp in seconds
-    const client_ip_address = await getClientIp();
-    const client_user_agent = navigator.userAgent;
+    const client_ip_address = null; // Server will extract from request headers
+    const client_user_agent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
 
     // Enhance event data with automatically collected user data
     const { userData: autoUserData, enhancedData } = enhanceEventData(name, otherOptions, {
