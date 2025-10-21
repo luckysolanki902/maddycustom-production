@@ -165,18 +165,48 @@ const hashEmailIdentifier = async (email) => hashIdentifier(email, { forceLowerc
 
 /**
  * Sends event data to the server-side Conversion API endpoint.
- * Enhanced with retry logic to improve event coverage (target: 75%+)
+ * 
+ * FIRE-AND-FORGET PATTERN:
+ * - Events are queued immediately (non-blocking, 0ms delay)
+ * - Processed asynchronously in background
+ * - Automatic retry with exponential backoff
+ * - Persisted to localStorage for reliability
+ * - ZERO impact on user experience
  * 
  * @param {string} eventName - The name of the event (e.g., 'Purchase', 'AddToCart').
  * @param {object} options - Additional event parameters.
- * @param {number} retries - Number of retry attempts remaining
  */
-const sendToServer = async (eventName, options, retries = 2) => {
+const sendToServer = async (eventName, options) => {
   if (StopFacebookPixels) return;
   
+  // Use event queue for non-blocking, reliable delivery
+  if (typeof window !== 'undefined') {
+    // Lazy load the queue manager to avoid blocking initial load
+    import('./eventQueueManager.js').then(module => {
+      const queueManager = module.default;
+      if (queueManager) {
+        queueManager.enqueue(eventName, options);
+      }
+    }).catch(error => {
+      // Fallback to direct send if queue manager fails
+      console.warn('[Meta CAPI] Queue manager failed, using direct send:', error);
+      sendDirectToServer(eventName, options);
+    });
+  } else {
+    // Server-side: send directly (won't happen in normal flow)
+    sendDirectToServer(eventName, options);
+  }
+};
+
+/**
+ * Direct send fallback (used when queue manager is unavailable)
+ * @param {string} eventName - The event name
+ * @param {object} options - Event options
+ */
+const sendDirectToServer = async (eventName, options) => {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     
     const res = await fetch('/api/meta/conversion-api', {
       method: 'POST',
@@ -188,38 +218,12 @@ const sendToServer = async (eventName, options, retries = 2) => {
     clearTimeout(timeoutId);
     
     if (!res.ok) {
-      const errorText = await res.text().catch(() => 'Unknown error');
-      throw new Error(`Server responded with status ${res.status}: ${errorText}`);
+      throw new Error(`HTTP ${res.status}`);
     }
     
-    const result = await res.json();
-    
-    // Log success for important events (helps with debugging coverage issues)
-    if (['InitiateCheckout', 'Purchase', 'AddToCart'].includes(eventName)) {
-      console.debug(`[Meta CAPI Client] ✓ ${eventName} sent successfully`, {
-        eventID: options.eventID || options.event_id || 'na',
-        hasEmail: Boolean(options.emails?.length),
-        hasPhone: Boolean(options.phones?.length),
-      });
-    }
-    
-    return result;
+    return await res.json();
   } catch (error) {
-    // Log failures for critical events
-    if (['InitiateCheckout', 'Purchase'].includes(eventName)) {
-      console.warn(`[Meta CAPI Client] ✗ ${eventName} failed:`, error.message);
-    }
-    
-    // Retry logic for network errors
-    if (retries > 0 && (error.name === 'AbortError' || error.message.includes('fetch failed'))) {
-      console.debug(`[Meta CAPI Client] Retrying ${eventName} (${retries} attempts left)...`);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-      return sendToServer(eventName, options, retries - 1);
-    }
-    
-    // Don't throw - we don't want to break the user experience
-    // But log the error for monitoring
-    console.error(`[Meta CAPI Client] Final error for ${eventName}:`, error);
+    console.error(`[Meta CAPI] Direct send failed for ${eventName}:`, error);
   }
 };
 

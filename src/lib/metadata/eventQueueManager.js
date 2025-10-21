@@ -23,11 +23,27 @@ class EventQueueManager {
     this.processingInterval = 2000; // Process every 2 seconds
     this.maxRetries = 3;
     this.storageKey = 'meta_event_queue';
+    this.monitor = null; // Will be lazy-loaded
     
     // Load persisted events from localStorage
     if (typeof window !== 'undefined') {
       this.loadPersistedEvents();
       this.startProcessing();
+      
+      // Lazy load monitor (non-blocking)
+      this.loadMonitor();
+    }
+  }
+
+  /**
+   * Lazy load the performance monitor
+   */
+  async loadMonitor() {
+    try {
+      const monitorModule = await import('./metaPixelMonitor.js');
+      this.monitor = monitorModule.default;
+    } catch (error) {
+      console.warn('[EventQueue] Monitor not available:', error);
     }
   }
 
@@ -135,6 +151,12 @@ class EventQueueManager {
       event.status = 'success';
       this.removeFromQueue(event.id);
       
+      // Record success in monitor
+      if (this.monitor) {
+        const duration = Date.now() - event.timestamp;
+        this.monitor.recordCapiEvent(event.eventName, true, duration);
+      }
+      
       // Log success for important events
       if (['InitiateCheckout', 'Purchase', 'AddToCart'].includes(event.eventName)) {
         console.debug(`[EventQueue] ✓ ${event.eventName} delivered`, {
@@ -145,6 +167,12 @@ class EventQueueManager {
 
     } catch (error) {
       event.retries++;
+
+      // Record failure in monitor
+      if (this.monitor) {
+        this.monitor.recordCapiEvent(event.eventName, false);
+        this.monitor.recordError(event.eventName, error, 'capi');
+      }
 
       if (event.retries >= this.maxRetries) {
         // Max retries reached - remove from queue
@@ -234,13 +262,20 @@ class EventQueueManager {
    * Get queue status (for debugging)
    */
   getStatus() {
-    return {
+    const status = {
       total: this.queue.length,
       pending: this.queue.filter(e => e.status === 'pending').length,
       processing: this.queue.filter(e => e.status === 'processing').length,
       failed: this.queue.filter(e => e.status === 'failed').length,
-      processing: this.processing
+      isProcessing: this.processing
     };
+
+    // Record queue size in monitor
+    if (this.monitor) {
+      this.monitor.recordQueueSize(status.total);
+    }
+
+    return status;
   }
 
   /**

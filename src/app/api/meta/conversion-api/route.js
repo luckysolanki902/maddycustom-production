@@ -21,6 +21,64 @@ if (!access_token) {
 FacebookAdsApi.init(access_token);
 
 /**
+ * Simple in-memory rate limiter
+ * Prevents overwhelming Meta's API with too many requests
+ */
+class RateLimiter {
+  constructor(maxRequests = 100, windowMs = 60000) {
+    this.maxRequests = maxRequests;
+    this.windowMs = windowMs;
+    this.requests = new Map(); // ip -> timestamps[]
+  }
+
+  /**
+   * Check if request is allowed
+   * @param {string} identifier - IP address or other identifier
+   * @returns {boolean} - Whether request is allowed
+   */
+  isAllowed(identifier) {
+    const now = Date.now();
+    const timestamps = this.requests.get(identifier) || [];
+    
+    // Remove old timestamps outside the window
+    const recentTimestamps = timestamps.filter(t => now - t < this.windowMs);
+    
+    if (recentTimestamps.length >= this.maxRequests) {
+      return false;
+    }
+    
+    // Add current timestamp
+    recentTimestamps.push(now);
+    this.requests.set(identifier, recentTimestamps);
+    
+    // Cleanup old entries periodically
+    if (Math.random() < 0.01) { // 1% chance
+      this.cleanup();
+    }
+    
+    return true;
+  }
+
+  /**
+   * Cleanup old entries
+   */
+  cleanup() {
+    const now = Date.now();
+    for (const [identifier, timestamps] of this.requests.entries()) {
+      const recent = timestamps.filter(t => now - t < this.windowMs);
+      if (recent.length === 0) {
+        this.requests.delete(identifier);
+      } else {
+        this.requests.set(identifier, recent);
+      }
+    }
+  }
+}
+
+// Rate limiter: 100 requests per minute per IP
+const rateLimiter = new RateLimiter(100, 60000);
+
+/**
  * Hashes a given string using SHA256.
  * @param {string} data - The data to hash.
  * @returns {string} - The hashed data in hexadecimal format.
@@ -255,12 +313,20 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * Extracts real client IP from request headers
  * CRITICAL: This fixes the "Server sending client IP addresses with multiple users" error
  * 
+ * Enhanced with middleware pre-extraction for better performance
+ * 
  * @param {Request} request - The Next.js request object
  * @returns {string} - The client IP address or empty string
  */
 const extractClientIpFromRequest = (request) => {
   try {
-    // Priority order for IP extraction (industry standard)
+    // First, check if middleware already extracted the IP (fastest path)
+    const middlewareIp = request.headers.get('x-client-ip-extracted');
+    if (middlewareIp && isValidIpAddress(middlewareIp)) {
+      return middlewareIp;
+    }
+
+    // Fallback to manual extraction (industry standard priority order)
     const headers = [
       'x-forwarded-for',      // Most common proxy/load balancer header
       'x-real-ip',            // Alternative proxy header
@@ -282,7 +348,7 @@ const extractClientIpFromRequest = (request) => {
       }
     }
 
-    // Fallback to request.ip if available
+    // Final fallback to request.ip if available
     if (request.ip && isValidIpAddress(request.ip)) {
       return request.ip;
     }
@@ -342,6 +408,18 @@ export async function POST(request) {
     
     // CRITICAL FIX: Extract real client IP from request headers
     const realClientIp = extractClientIpFromRequest(request);
+    
+    // Rate limiting (protect API from abuse)
+    if (realClientIp && !rateLimiter.isAllowed(realClientIp)) {
+      console.warn(`[Meta CAPI] Rate limit exceeded for IP: ${realClientIp}`);
+      return NextResponse.json(
+        { 
+          error: 'Rate limit exceeded',
+          message: 'Too many requests. Please try again later.'
+        },
+        { status: 429 }
+      );
+    }
     
     // Override any client-provided IP with the real IP from headers
     options.client_ip_address = realClientIp;
