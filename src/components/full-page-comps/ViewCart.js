@@ -837,7 +837,7 @@ export default function ViewCart({ isDrawer = false }) {
                     variants={shippingBannerVariants}
                     initial="hidden"
                     animate={["visible", "pulse"]}
-                  >
+                  > 
                     <div className={styles.shippingIconWrapper}>
                       <LocalShippingIcon className={styles.shippingIcon} />
                     </div>
@@ -1106,10 +1106,10 @@ export default function ViewCart({ isDrawer = false }) {
         </motion.div>)
       }
 
-      <FuelCapWrapBonusDialog
+      {/* <FuelCapWrapBonusDialog
         open={showFuelCapBonus}
         onClose={handleFuelCapBonusClose}
-      />
+      /> */}
       <ApplyCoupon
         open={dlgCoupon}
         onClose={() => setDlgCoupon(false)}
