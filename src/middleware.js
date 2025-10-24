@@ -53,12 +53,18 @@ export function middleware(request) {
   // This ensures accurate IP tracking across the entire request chain
   if (pathname === '/api/meta/conversion-api') {
     const clientIp = extractClientIp(request);
-    const response = NextResponse.next();
     
-    // Add client IP to request headers for downstream use
-    response.headers.set('x-client-ip-extracted', clientIp);
+    // CRITICAL FIX: Clone request and add header to the REQUEST (not response)
+    // This allows the API route to read it via request.headers.get()
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-client-ip-extracted', clientIp);
     
-    return response;
+    // Create new request with modified headers
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   }
 
   // Allow the request to proceed if no match is found

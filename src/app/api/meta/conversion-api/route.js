@@ -322,7 +322,8 @@ const extractClientIpFromRequest = (request) => {
   try {
     // First, check if middleware already extracted the IP (fastest path)
     const middlewareIp = request.headers.get('x-client-ip-extracted');
-    if (middlewareIp && isValidIpAddress(middlewareIp)) {
+    if (middlewareIp && middlewareIp !== '' && isValidIpAddress(middlewareIp)) {
+      console.log('[CAPI IP] Using middleware-extracted IP:', middlewareIp);
       return middlewareIp;
     }
 
@@ -343,6 +344,7 @@ const extractClientIpFromRequest = (request) => {
         // We want the FIRST IP (the original client)
         const ip = value.split(',')[0].trim();
         if (ip && isValidIpAddress(ip)) {
+          console.log(`[CAPI IP] Extracted from ${header}:`, ip);
           return ip;
         }
       }
@@ -350,9 +352,11 @@ const extractClientIpFromRequest = (request) => {
 
     // Final fallback to request.ip if available
     if (request.ip && isValidIpAddress(request.ip)) {
+      console.log('[CAPI IP] Using request.ip:', request.ip);
       return request.ip;
     }
 
+    console.warn('[CAPI IP] No valid IP found, using empty string');
     return ''; // Return empty string if no valid IP found
   } catch (error) {
     console.error('[CAPI] Error extracting client IP:', error);
@@ -408,6 +412,15 @@ export async function POST(request) {
     
     // CRITICAL FIX: Extract real client IP from request headers
     const realClientIp = extractClientIpFromRequest(request);
+    
+    // Log IP extraction for debugging (only for non-PageView events)
+    if (!eventName || eventName !== 'PageView') {
+      console.log(`[Meta CAPI] IP extracted for ${eventName || 'Unknown'}:`, {
+        ip: realClientIp || 'MISSING',
+        ipValid: !!realClientIp,
+        ipLength: realClientIp?.length || 0,
+      });
+    }
     
     // Rate limiting (protect API from abuse)
     if (realClientIp && !rateLimiter.isAllowed(realClientIp)) {
