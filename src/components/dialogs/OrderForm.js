@@ -245,7 +245,6 @@ const OrderForm = ({
 
   // Geolocation capture
   const [geo, setGeo] = useState({ lat: null, lng: null });
-
   // Initialize extraFields in Redux store when dialog opens
   useEffect(() => {
     if (open && aggregatedExtraFields.length > 0) {
@@ -646,6 +645,23 @@ const OrderForm = ({
     setShowPhoneConfirmation(false);
   }, [formattedPhone, setValue, dispatch]);
 
+  const handlePaymentStatusChange = useCallback((status, detail = {}) => {
+    logger.debug('Razorpay status update', { status, detail });
+    try {
+      funnelClient.track('razorpay_modal_status', {
+        status,
+        orderId: detail?.orderId,
+        hasUserActivation: detail?.hasUserActivation,
+        visibilityState: detail?.visibilityState,
+        paymentStatus: detail?.paymentStatus,
+        recovered: detail?.recovered,
+        gracePeriodMs: detail?.gracePeriodMs,
+      });
+    } catch (analyticsErr) {
+      logger.debug('Failed to track razorpay status', { error: analyticsErr?.message, status });
+    }
+  }, []);
+
   // Normalize floor display: avoid duplicating the word 'Floor'
   const formatFloorForAddress = useCallback((value) => {
     if (value === null || value === undefined) return '';
@@ -855,7 +871,6 @@ const OrderForm = ({
     setPurchaseInitiated(true);
     setIsLoading(true);
     setIsPaymentProcessing(true);
-
     const cartSnapshot = computeCartSnapshot();
     const numericTotal = Number(totalCost);
     const orderValue = Number.isFinite(numericTotal) ? numericTotal : undefined;
@@ -1111,13 +1126,23 @@ const OrderForm = ({
           customerMobile: orderForm.userDetails.phoneNumber,
           orderId: createdOrderId,
           razorpayOrder,
+          onStatusChange: handlePaymentStatusChange,
         });
 
         if (paymentResult.cancelled) {
           setIsPaymentProcessing(false);
           setPurchaseInitiated(false);
-          showSnackbar('Payment was cancelled.', 'warning');
-          logger.info('Payment cancelled by user');
+          const reason = paymentResult.reason || 'user-dismissed';
+          if (paymentResult.pendingVerification) {
+            showSnackbar('Waiting for confirmation from your UPI app. You can retry if needed.', 'info');
+          } else if (reason === 'status-check-error') {
+            showSnackbar('Could not confirm payment with Razorpay. Please check your UPI app before retrying.', 'warning');
+          } else if (reason === 'grace-timeout') {
+            showSnackbar('We are still waiting for confirmation from your UPI app. If money was deducted, it should reflect shortly.', 'info');
+          } else {
+            showSnackbar('Payment was cancelled.', 'warning');
+          }
+          logger.info('Payment cancelled by user', { reason, pendingVerification: paymentResult.pendingVerification });
           return;
         }
         
@@ -1241,7 +1266,7 @@ const OrderForm = ({
   }, [purchaseInitiated, computeCartSnapshot, cartItems, totalCost, normalizedCouponCode, paymentModeName,
     dispatch, showSnackbar, isPincodeValid, serviceabilityCache, orderForm,
     formatFloorForAddress, geo, paymentModeConfig, discountAmountFinal, couponsDetails, deliveryCost,
-    utmDetails, couponCode, handleFullClose, reset, router]);
+    utmDetails, couponCode, handleFullClose, reset, router, handlePaymentStatusChange]);
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {

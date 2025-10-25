@@ -7,18 +7,63 @@
  */
 import { paymentLogger } from '../utils/logger';
 
-export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrder }) =>
+const GRACE_PERIOD_MS = 45000; // wait up to 45 seconds for UPI handoff to complete
+
+export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrder, onStatusChange }) =>
   new Promise((resolve, reject) => {
+    let promiseSettled = false;
+    const safeResolve = (value) => {
+      if (promiseSettled) return;
+      promiseSettled = true;
+      resolve(value);
+    };
+    const safeReject = (err) => {
+      if (promiseSettled) return;
+      promiseSettled = true;
+      reject(err);
+    };
+
+    const emitStatus = (status, detail = {}) => {
+      if (typeof onStatusChange === 'function') {
+        try {
+          onStatusChange(status, detail);
+        } catch (callbackErr) {
+          paymentLogger.warn('Status callback failed', {
+            status,
+            orderId,
+            error: callbackErr?.message || 'unknown',
+          });
+        }
+      }
+    };
+
+    const buildClientContext = (extra = {}) => {
+      const hasNavigator = typeof navigator !== 'undefined';
+      const hasDocument = typeof document !== 'undefined';
+      return {
+        orderId,
+        timestamp: Date.now(),
+        userAgent: hasNavigator ? navigator.userAgent : undefined,
+        visibilityState: hasDocument ? document.visibilityState : undefined,
+        hasUserActivation: hasNavigator && navigator.userActivation
+          ? navigator.userActivation.isActive
+          : undefined,
+        ...extra,
+      };
+    };
+
     // Validate browser environment
     if (typeof window === 'undefined') {
       paymentLogger.error('Not in browser environment');
-      return reject(new Error('Payment must be initiated from browser'));
+      emitStatus('environment-mismatch', buildClientContext({ reason: 'no-window' }));
+      return safeReject(new Error('Payment must be initiated from browser'));
     }
 
     // Validate Razorpay script is loaded
     if (!window.Razorpay) {
       paymentLogger.error('Razorpay script not loaded');
-      return reject(new Error('Payment system not ready. Please refresh and try again.'));
+      emitStatus('sdk-not-ready', buildClientContext({ reason: 'missing-script' }));
+      return safeReject(new Error('Payment system not ready. Please refresh and try again.'));
     }
 
     const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY;
@@ -26,13 +71,16 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
 
     if (!key || !logoUrl) {
       paymentLogger.error('Missing configuration', { hasKey: !!key, hasLogo: !!logoUrl });
-      return reject(new Error('Payment configuration error'));
+      emitStatus('config-missing', buildClientContext({ hasKey: !!key, hasLogo: !!logoUrl }));
+      return safeReject(new Error('Payment configuration error'));
     }
 
     paymentLogger.payment('Initializing payment', { orderId, amount: razorpayOrder.amount });
+    emitStatus('initializing', buildClientContext({ amount: razorpayOrder.amount }));
 
     let paymentStarted = false;
     let modalDismissTime = null;
+    let graceTimer = null;
 
     const options = {
       key,
@@ -55,6 +103,11 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
       handler: async (resp) => {
         paymentStarted = true; // Mark payment as completed
         paymentLogger.payment('Payment successful, verifying...', { orderId, paymentId: resp.razorpay_payment_id });
+        if (graceTimer) {
+          clearTimeout(graceTimer);
+          graceTimer = null;
+        }
+        emitStatus('success-handler', buildClientContext({ paymentId: resp.razorpay_payment_id }));
 
         try {
           const ver = await fetch('/api/checkout/order/payment/verify', {
@@ -70,15 +123,18 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
 
           if (ver.status === 200) {
             paymentLogger.payment('Verification successful');
-            resolve(resp);            // verified OK
+            emitStatus('success', buildClientContext({ paymentId: resp.razorpay_payment_id, verification: 'api-success' }));
+            safeResolve(resp);            // verified OK
           } else {
             const { message } = await ver.json();
             paymentLogger.error('Verification failed', { message });
-            reject(new Error(`Payment verification failed: ${message || 'Unknown'}`));
+            emitStatus('verification-failed', buildClientContext({ message }));
+            safeReject(new Error(`Payment verification failed: ${message || 'Unknown'}`));
           }
         } catch (err) {
           paymentLogger.error('Verification error', { error: err.message });
-          reject(new Error(`Verification error: ${err.message}`));
+          emitStatus('verification-error', buildClientContext({ error: err.message }));
+          safeReject(new Error(`Verification error: ${err.message}`));
         }
       },
 
@@ -87,48 +143,56 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
         ondismiss: () => {
           modalDismissTime = Date.now();
           paymentLogger.payment('Modal dismissed', { paymentStarted, orderId });
+          emitStatus('modal-dismissed', buildClientContext({ paymentStarted, modalDismissTime }));
 
           // If payment handler already fired, don't treat as cancellation
           if (paymentStarted) {
             paymentLogger.payment('Payment already completed, ignoring dismiss');
+            emitStatus('modal-dismissed-after-success', buildClientContext());
             return;
           }
 
-          // Give user 10 seconds grace period for UPI app completion
-          // This handles cases where user switches to UPI app and comes back
-          paymentLogger.payment('Starting 10s grace period for payment completion...');
-          
-          setTimeout(async () => {
-            if (!paymentStarted) {
-              paymentLogger.payment('Grace period ended, checking payment status with server...');
-              
-              try {
-                const statusResponse = await fetch(`/api/checkout/order/status/${orderId}`);
-                const statusData = await statusResponse.json();
+          // Give user grace period for UPI app completion, but resolve immediately so UI can recover
+          paymentLogger.payment('Starting grace period for payment completion...', { graceMs: GRACE_PERIOD_MS });
+          emitStatus('waiting-for-upi', buildClientContext({ gracePeriodMs: GRACE_PERIOD_MS }));
 
-                paymentLogger.payment('Status check result', statusData);
+          const pollStatus = async () => {
+            try {
+              const statusResponse = await fetch(`/api/checkout/order/status/${orderId}`);
+              const statusData = await statusResponse.json();
 
-                if (statusData.isPaid && statusData.paymentDetails?.razorpayDetails?.paymentId) {
-                  paymentLogger.payment('Payment confirmed by webhook! Recovering...', {
-                    paymentId: statusData.paymentDetails.razorpayDetails.paymentId
-                  });
-                  resolve({
-                    razorpay_payment_id: statusData.paymentDetails.razorpayDetails.paymentId,
-                    recovered: true,
-                    message: 'Payment was successful'
-                  });
-                } else {
-                  paymentLogger.payment('Payment not found, marking as cancelled');
-                  resolve({ cancelled: true });
-                }
-              } catch (statusError) {
-                paymentLogger.error('Status check failed', { error: statusError.message });
-                resolve({ cancelled: true });
+              paymentLogger.payment('Status check result', statusData);
+              emitStatus('status-check', buildClientContext({
+                isPaid: statusData.isPaid,
+                paymentStatus: statusData.paymentStatus,
+                hasPaymentId: Boolean(statusData.paymentDetails?.razorpayDetails?.paymentId),
+              }));
+
+              if (statusData.isPaid && statusData.paymentDetails?.razorpayDetails?.paymentId) {
+                paymentLogger.payment('Payment confirmed by webhook! Recovering...', {
+                  paymentId: statusData.paymentDetails.razorpayDetails.paymentId
+                });
+                emitStatus('recovered-success', buildClientContext({
+                  paymentId: statusData.paymentDetails.razorpayDetails.paymentId,
+                }));
+              } else {
+                paymentLogger.payment('Payment not found after grace period');
+                emitStatus('grace-period-ended', buildClientContext({
+                  paymentStatus: statusData.paymentStatus,
+                }));
               }
-            } else {
-              paymentLogger.payment('Payment completed during grace period');
+            } catch (statusError) {
+              paymentLogger.error('Status check failed', { error: statusError.message });
+              emitStatus('status-check-error', buildClientContext({ error: statusError.message }));
             }
-          }, 10000); // 10 second grace period
+          };
+
+          graceTimer = setTimeout(() => {
+            pollStatus();
+            graceTimer = null;
+          }, GRACE_PERIOD_MS);
+
+          safeResolve({ cancelled: true, reason: 'user-dismissed', pendingVerification: true });
         },
       },
 
@@ -140,14 +204,27 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
     };
 
     const rz = new window.Razorpay(options);
+
+    const contextBeforeOpen = buildClientContext();
+    if (contextBeforeOpen.hasUserActivation === false) {
+      paymentLogger.warn('User activation missing before opening Razorpay modal', contextBeforeOpen);
+      emitStatus('intent-blocked', { ...contextBeforeOpen, reason: 'lost-user-activation' });
+    }
     
-    paymentLogger.payment('Opening Razorpay modal...');
+    paymentLogger.payment('Opening Razorpay modal...', contextBeforeOpen);
+    emitStatus('modal-opening', contextBeforeOpen);
     rz.open();
+    emitStatus('modal-opened', buildClientContext());
 
     rz.on('payment.failed', (resp) => {
       paymentStarted = false;
+      if (graceTimer) {
+        clearTimeout(graceTimer);
+        graceTimer = null;
+      }
       const msg = resp?.error?.description || 'Unknown error';
       paymentLogger.error('Payment failed', { message: msg, error: resp?.error });
-      reject(new Error(`Payment failed: ${msg}`));
+      emitStatus('failure', buildClientContext({ message: msg, error: resp?.error }));
+      safeReject(new Error(`Payment failed: ${msg}`));
     });
   });
