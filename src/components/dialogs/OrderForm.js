@@ -35,6 +35,8 @@ import {
 } from '../../store/slices/orderFormSlice';
 import { closeAllDialogs } from '@/store/slices/uiSlice';  // Import the new action
 import { makePayment } from '../../lib/payments/makePayment';
+import { ensureRazorpayLoaded } from '../../lib/payments/ensureRazorpayLoaded';
+import { createLogger } from '@/lib/utils/logger';
 import { useRouter } from 'next/navigation';
 import CustomSnackbar from '../notifications/CustomSnackbar';
 import { getPaymentButtonText } from '../../lib/utils/orderFormUtils';
@@ -57,6 +59,9 @@ import useCheckoutPrefetch from '@/hooks/useCheckoutPrefetch';
 import funnelClient from '@/lib/analytics/funnelClient';
 import { gaAddBillingInfo, gaAddPaymentInfo, gaPurchase } from '@/lib/metadata/googleAds';
 import { buildPurchaseEventPayload } from '@/lib/analytics/purchaseEventPayload';
+
+// Create logger for OrderForm component
+const logger = createLogger('OrderForm');
 
 const sanitizeFloorValue = (value) => {
   if (value === undefined || value === null) return '';
@@ -1028,6 +1033,11 @@ const OrderForm = ({
 
       if (razorpayOrder && amountDueOnline > 0) {
         try {
+          // Ensure Razorpay script is loaded before proceeding
+          logger.info('Ensuring Razorpay script is loaded...');
+          await ensureRazorpayLoaded();
+          logger.info('Razorpay script confirmed loaded');
+
           funnelClient.track('payment_initiated', {
             dedupeKey: `payment_initiated:${createdOrderId}`,
             cart: cartSnapshot,
@@ -1107,13 +1117,20 @@ const OrderForm = ({
           setIsPaymentProcessing(false);
           setPurchaseInitiated(false);
           showSnackbar('Payment was cancelled.', 'warning');
+          logger.info('Payment cancelled by user');
           return;
         }
-        showSnackbar('Payment Successful!', 'success');
+        
+        if (paymentResult.recovered) {
+          logger.info('Payment recovered from webhook!');
+          showSnackbar('Payment Successful! (Confirmed by server)', 'success');
+        } else {
+          showSnackbar('Payment Successful!', 'success');
+        }
       } else if (amountDueOnline === 0) {
         showSnackbar('Order placed successfully! Payment will be collected on delivery.', 'success');
       } else {
-        console.warn('Unexpected payment state:', { razorpayOrder, amountDueOnline });
+        logger.warn('Unexpected payment state', { razorpayOrder, amountDueOnline });
         showSnackbar('Order placed. Awaiting payment confirmation.', 'info');
       }
 
