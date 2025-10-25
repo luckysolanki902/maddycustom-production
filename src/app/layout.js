@@ -10,6 +10,7 @@ import FloatingActionBar from '@/components/utils/FloatingActionButton';
 import { ChatSessionProvider } from '@/components/Chat/ChatSessionContext';
 import TopLoadingBar from '@/components/utils/TopLoadingBar';
 import AnalyticsHead from '@/components/layouts/AnalyticsHead';
+import Razorpay from '@/components/analytics/Razorpay';
 import { GoogleTagManagerNoScript } from '@/components/analytics/GoogleTagManager';
 import UTMCapture from '@/components/analytics/UTMCapture';
 import FunnelClientBridge from '@/components/analytics/FunnelClientBridge';
@@ -72,6 +73,7 @@ export default function RootLayout({ children }) {
         <meta name="facebook-domain-verification" content="a6ebwo6vcn6vvdob84g9gfwmdo3joc" />
         <link rel="preconnect" href="https://www.youtube.com" />
         <AnalyticsHead />
+        <Razorpay />
 
 
         {/* JSON-LD Structured Data */}
