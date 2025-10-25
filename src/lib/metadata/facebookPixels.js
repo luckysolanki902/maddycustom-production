@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getFbp, getFbc, getFacebookTrackingParams, getFacebookTrackingParamsAsync } from '@/lib/utils/cookies';
 import { enhanceEventData } from '@/lib/utils/userDataEnhancer';
 import { getExternalId } from '@/lib/utils/externalIdManager';
+import { detectClientIP, getClientIPSync } from '@/lib/utils/ipDetection';
 const StopFacebookPixels = false; // Set to true to disable Facebook Pixel events
 
 // Standard FB event names that should use fbq('track', ...). Others use 'trackCustom'.
@@ -238,7 +239,18 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
   try {
     const eventId = otherOptions.eventID || uuidv4(); // Allow passing eventID
     const eventTime = Math.floor(Date.now() / 1000); // Use current timestamp in seconds
-    const client_ip_address = null; // Server will extract from request headers
+    
+    // Detect client IP address (will use cache if available)
+    // This is CRITICAL for Meta Pixel deduplication and attribution
+    let client_ip_address = getClientIPSync(); // Try cache first (synchronous)
+    if (!client_ip_address) {
+      // If not cached, detect it (async, but won't block event)
+      client_ip_address = await detectClientIP().catch(err => {
+        console.warn('[Meta Pixel] IP detection failed:', err);
+        return null;
+      });
+    }
+    
     const client_user_agent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
 
     // Enhance event data with automatically collected user data

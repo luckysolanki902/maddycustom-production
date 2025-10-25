@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
+import { detectClientIP, getClientIPSync, clearIPCache } from '@/lib/utils/ipDetection';
 import {
   Box,
   Container,
@@ -179,6 +180,11 @@ export default function MetaPixelTest() {
   const hasRunTest = useRef(false);
   const hasInitialized = useRef(false);
   
+  // IP Detection state
+  const [clientIP, setClientIP] = useState(null);
+  const [ipDetecting, setIpDetecting] = useState(true);
+  const [ipFormat, setIpFormat] = useState(null); // 'IPv4' or 'IPv6'
+  
   // Authentication state
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordError, setPasswordError] = useState('');
@@ -224,6 +230,63 @@ export default function MetaPixelTest() {
     };
     
     checkAuth();
+  }, []);
+  
+  // Detect IP on mount (runs immediately after auth check)
+  useEffect(() => {
+    const detectIP = async () => {
+      console.log('[IP Detection] Starting...');
+      setIpDetecting(true);
+      
+      try {
+        // Try sync first (cache)
+        let ip = getClientIPSync();
+        
+        if (!ip) {
+          // Detect async
+          ip = await detectClientIP();
+        }
+        
+        if (ip) {
+          setClientIP(ip);
+          
+          // Determine format
+          const isIPv6 = ip.includes(':');
+          setIpFormat(isIPv6 ? 'IPv6' : 'IPv4');
+          
+          console.log('[IP Detection] Success:', ip, isIPv6 ? 'IPv6' : 'IPv4');
+        } else {
+          console.warn('[IP Detection] Failed - no IP detected');
+        }
+      } catch (error) {
+        console.error('[IP Detection] Error:', error);
+      } finally {
+        setIpDetecting(false);
+      }
+    };
+    
+    detectIP();
+  }, []);
+  
+  // Helper to refresh IP detection
+  const refreshIPDetection = useCallback(async () => {
+    console.log('[IP Detection] Refreshing...');
+    clearIPCache();
+    setIpDetecting(true);
+    
+    try {
+      const ip = await detectClientIP();
+      if (ip) {
+        setClientIP(ip);
+        const isIPv6 = ip.includes(':');
+        setIpFormat(isIPv6 ? 'IPv6' : 'IPv4');
+        console.log('[IP Detection] Refreshed:', ip);
+      }
+    } catch (error) {
+      console.error('[IP Detection] Refresh error:', error);
+    } finally {
+      setIpDetecting(false);
+    }
   }, []);
   
   // Handle password verification
@@ -322,7 +385,7 @@ export default function MetaPixelTest() {
       country: 'IN',
       zp: '400001',
       external_id: 'test-user-123',
-      client_ip_address: window.location.hostname === 'localhost' ? '1.1.1.1' : undefined,
+      client_ip_address: clientIP || (window.location.hostname === 'localhost' ? '1.1.1.1' : undefined),
       client_user_agent: navigator.userAgent,
       fbc: getCookie('_fbc') || searchParams.get('_fbc') || undefined,
       fbp: getCookie('_fbp') || searchParams.get('_fbp') || undefined,
@@ -333,7 +396,9 @@ export default function MetaPixelTest() {
       hasFbc: !!testUserData.fbc,
       hasFbp: !!testUserData.fbp,
       hasEmail: !!testUserData.em,
-      hasPhone: !!testUserData.ph
+      hasPhone: !!testUserData.ph,
+      clientIP: testUserData.client_ip_address,
+      ipFormat: testUserData.client_ip_address?.includes(':') ? 'IPv6' : 'IPv4'
     });
     
     const results = [];
@@ -433,7 +498,7 @@ export default function MetaPixelTest() {
     setCurrentTestStep('');
     setCurrentStage('');
     console.log('[Test] Test completed');
-  }, [calculateOverallMetrics, searchParams]);
+  }, [calculateOverallMetrics, searchParams, clientIP]);
   
   // Redirect with test parameters on mount
   useEffect(() => {
@@ -868,6 +933,50 @@ export default function MetaPixelTest() {
             </Button>
           </Stack>
         </Box>
+        
+        {/* IP Detection Banner */}
+        <Card sx={{ mb: 3, border: clientIP ? '2px solid #10b981' : '2px solid #f59e0b', bgcolor: clientIP ? '#f0fdf4' : '#fffbeb' }}>
+          <CardContent>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={8}>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <NetworkCheck sx={{ fontSize: 32, color: clientIP ? '#10b981' : '#f59e0b' }} />
+                  <Box>
+                    <Typography variant="h6" fontWeight={700} sx={{ color: '#2d2d2d' }}>
+                      {ipDetecting ? 'Detecting IP Address...' : clientIP ? `Your IP: ${clientIP}` : 'IP Detection Failed'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {ipDetecting ? 'Please wait while we detect your IP address for accurate Meta Pixel tracking' : 
+                       clientIP ? `Format: ${ipFormat} • Source: Browser API • This IP will be sent to both Pixel and CAPI` :
+                       'Unable to detect IP - test will use fallback'}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                  {clientIP && (
+                    <Chip 
+                      label={ipFormat} 
+                      color={ipFormat === 'IPv4' ? 'primary' : 'secondary'}
+                      size="small"
+                      variant="outlined"
+                    />
+                  )}
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={refreshIPDetection}
+                    disabled={ipDetecting}
+                    startIcon={ipDetecting ? <CircularProgress size={16} /> : <Refresh />}
+                  >
+                    {ipDetecting ? 'Detecting...' : 'Refresh'}
+                  </Button>
+                </Stack>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
         
         {testResults.length === 0 ? (
           <Alert severity="info">
