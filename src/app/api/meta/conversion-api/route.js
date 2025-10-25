@@ -485,20 +485,6 @@ export async function POST(request) {
     if (validation.warnings && validation.warnings.length > 0 && !isPageView) {
       console.warn(`Event validation warnings [${eventName}]:`, validation.warnings);
     }
-
-    try {
-      const debugLog = {
-        event: eventName,
-        eventId: options.eventID || options.event_id || 'na',
-        emails: options.emails?.length || 0,
-        phones: options.phones?.length || 0,
-        contents: options.contents?.length || 0,
-        value: options.value ?? null,
-      };
-      console.debug('[Meta CAPI] Dispatch', debugLog);
-    } catch (debugError) {
-      console.error('Meta CAPI debug log failed:', debugError);
-    }
     
     // Validate eventName
     const validEvents = [
@@ -519,44 +505,60 @@ export async function POST(request) {
     }
 
     // Prepare enhanced user data for better matching
-    const hashedEmails = options.emails
-      ? options.emails
-          .map((email) => {
-            if (!email) return null;
-            const normalized = String(email).trim().toLowerCase();
-            if (!normalized) return null;
-            return isSha256Hash(normalized) ? normalized : hashData(normalized);
-          })
-          .filter(Boolean)
-      : [];
+    // Support both array format (emails/phones) and single format (em/ph)
+    const emailsToProcess = options.emails || (options.em ? [options.em] : []);
+    const phonesToProcess = options.phones || (options.ph ? [options.ph] : []);
     
-    const hashedPhones = options.phones
-      ? options.phones
-          .map((phone) => {
-            if (phone === undefined || phone === null) return null;
-            const trimmed = String(phone).trim();
-            if (!trimmed) return null;
-            if (isSha256Hash(trimmed)) {
-              return trimmed.toLowerCase();
-            }
-            const normalized = normalizePhoneNumber(trimmed);
-            if (!normalized) return null;
-            return hashData(normalized);
-          })
-          .filter(Boolean)
-      : [];
+    const hashedEmails = emailsToProcess
+      .map((email) => {
+        if (!email) return null;
+        const normalized = String(email).trim().toLowerCase();
+        if (!normalized) return null;
+        return isSha256Hash(normalized) ? normalized : hashData(normalized);
+      })
+      .filter(Boolean);
+    
+    const hashedPhones = phonesToProcess
+      .map((phone) => {
+        if (phone === undefined || phone === null) return null;
+        const trimmed = String(phone).trim();
+        if (!trimmed) return null;
+        if (isSha256Hash(trimmed)) {
+          return trimmed.toLowerCase();
+        }
+        const normalized = normalizePhoneNumber(trimmed);
+        if (!normalized) return null;
+        return hashData(normalized);
+      })
+      .filter(Boolean);
 
     // Hash external IDs for privacy
-    const hashedExternalIds = options.external_ids
-      ? options.external_ids
-          .map((id) => {
-            if (id === undefined || id === null) return null;
-            const prepared = String(id).trim();
-            if (!prepared) return null;
-            return isSha256Hash(prepared) ? prepared.toLowerCase() : hashData(prepared);
-          })
-          .filter(Boolean)
-      : [];
+    // Support both external_ids (array) and external_id (single)
+    const externalIdsToProcess = options.external_ids || (options.external_id ? [options.external_id] : []);
+    const hashedExternalIds = externalIdsToProcess
+      .map((id) => {
+        if (id === undefined || id === null) return null;
+        const prepared = String(id).trim();
+        if (!prepared) return null;
+        return isSha256Hash(prepared) ? prepared.toLowerCase() : hashData(prepared);
+      })
+      .filter(Boolean);
+      
+    // Debug log AFTER processing
+    try {
+      const debugLog = {
+        event: eventName,
+        eventId: options.eventID || options.event_id || 'na',
+        emails: hashedEmails.length || 0,
+        phones: hashedPhones.length || 0,
+        externalIds: hashedExternalIds.length || 0,
+        contents: options.contents?.length || 0,
+        value: options.value ?? null,
+      };
+      console.debug('[Meta CAPI] Dispatch', debugLog);
+    } catch (debugError) {
+      console.error('Meta CAPI debug log failed:', debugError);
+    }
 
     // CRITICAL: Get persistent external_id from cookie (shared with browser Pixel)
     const persistentExternalId = getExternalIdFromCookie(request);
@@ -581,43 +583,51 @@ export async function POST(request) {
     }
 
     // Add first name if available (Meta recommends this for better matching)
-    if (options.first_name) {
-      userData.setFirstNames([hashData(options.first_name.trim().toLowerCase())]);
+    if (options.first_name || options.fn) {
+      const firstName = (options.first_name || options.fn).trim().toLowerCase();
+      userData.setFirstName(hashData(firstName));
     }
 
     // Add last name if available (additional matching signal)
-    if (options.last_name) {
-      userData.setLastNames([hashData(options.last_name.trim().toLowerCase())]);
+    if (options.last_name || options.ln) {
+      const lastName = (options.last_name || options.ln).trim().toLowerCase();
+      userData.setLastName(hashData(lastName));
     }
 
     // Add date of birth if available (YYYYMMDD format)
-    if (options.date_of_birth) {
-      userData.setDateOfBirths([hashData(options.date_of_birth)]);
+    if (options.date_of_birth || options.db) {
+      const dob = options.date_of_birth || options.db;
+      userData.setDateOfBirth(hashData(String(dob)));
     }
 
     // Add gender if available (m/f)
-    if (options.gender && ['m', 'f'].includes(options.gender.toLowerCase())) {
-      userData.setGenders([hashData(options.gender.toLowerCase())]);
+    if (options.gender && ['m', 'f', 'male', 'female'].includes(options.gender.toLowerCase())) {
+      const gender = options.gender.toLowerCase().charAt(0); // 'm' or 'f'
+      userData.setGender(hashData(gender));
     }
 
-    // Add city if available
-    if (options.city) {
-      userData.setCities([hashData(options.city.trim().toLowerCase())]);
+    // Add city if available (should be hashed)
+    if (options.city || options.ct) {
+      const city = (options.city || options.ct).trim().toLowerCase();
+      userData.setCity(hashData(city));
     }
 
-    // Add state if available
-    if (options.state) {
-      userData.setStates([hashData(options.state.trim().toLowerCase())]);
+    // Add state if available (should be hashed - use 2-letter code)
+    if (options.state || options.st) {
+      const state = (options.state || options.st).trim().toLowerCase();
+      userData.setState(hashData(state));
     }
 
-    // Add country if available
+    // Add country if available (use 2-letter ISO code, hashed)
     if (options.country) {
-      userData.setCountryCodes([hashData(options.country.trim().toLowerCase())]);
+      const country = options.country.trim().toUpperCase(); // Should be 2-letter code like 'IN', 'US'
+      userData.setCountry(hashData(country.toLowerCase()));
     }
 
-    // Add zip code if available  
-    if (options.zip_code) {
-      userData.setZipCodes([hashData(options.zip_code.trim())]);
+    // Add zip code if available (should be hashed)
+    if (options.zip_code || options.zp) {
+      const zip = (options.zip_code || options.zp).trim();
+      userData.setZip(hashData(zip));
     }
 
     // Add additional URL-based external ID for better matching
@@ -805,6 +815,13 @@ export async function POST(request) {
           eventID: options.eventID || options.event_id,
           matchQualityScore,
           realClientIp: realClientIp ? 'present' : 'missing',
+          hasEmail: hashedEmails.length > 0,
+          hasPhone: hashedPhones.length > 0,
+          hasFbc: fbcSet,
+          hasFbp: fbpSet,
+          hasExternalId: hashedExternalIds.length > 0,
+          fbp: fbpSet ? 'present' : 'missing',
+          fbc: fbcSet ? 'present' : 'missing',
         }
       },
       { status: 200 }

@@ -16,7 +16,13 @@ const FacebookPixel = () => {
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '887502090050413'); 
+            
+            // Initialize Pixel with autoConfig disabled to prevent auto-PageView
+            // We'll manually track PageView with proper eventID for deduplication
+            fbq('init', '887502090050413', {}, {
+              autoConfig: false,  // Disable automatic PageView tracking
+              debug: false
+            }); 
             
             // Signal that Facebook Pixel has loaded
             window.fbPixelLoaded = true;
