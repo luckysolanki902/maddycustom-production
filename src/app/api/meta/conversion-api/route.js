@@ -426,7 +426,7 @@ export async function POST(request) {
     if (realClientIp && !rateLimiter.isAllowed(realClientIp)) {
       console.warn(`[Meta CAPI] Rate limit exceeded for IP: ${realClientIp}`);
       return NextResponse.json(
-        { 
+        {
           error: 'Rate limit exceeded',
           message: 'Too many requests. Please try again later.'
         },
@@ -434,8 +434,30 @@ export async function POST(request) {
       );
     }
     
-    // Override any client-provided IP with the real IP from headers
-    options.client_ip_address = realClientIp;
+    // Handle client IP address - prefer client-detected IP over server extraction
+    // This is CRITICAL for Meta Pixel deduplication and attribution
+    const clientProvidedIp = options.client_ip_address;
+    const hasValidClientIp = clientProvidedIp && 
+      typeof clientProvidedIp === 'string' && 
+      clientProvidedIp.trim() !== '' &&
+      clientProvidedIp !== 'null' &&
+      clientProvidedIp !== 'undefined';
+    
+    if (!hasValidClientIp) {
+      // Only use server-extracted IP as fallback when client doesn't provide one
+      options.client_ip_address = realClientIp;
+      
+      // Log the fallback usage for monitoring
+      if (!['PageView'].includes(eventName)) {
+        console.log(`[Meta CAPI] Using server-extracted IP (${realClientIp}) - client IP not provided for ${eventName}`);
+      }
+    } else {
+      // Client provided valid IP - use it!
+      // This ensures IP matches between browser Pixel and server CAPI
+      if (!['PageView'].includes(eventName)) {
+        console.log(`[Meta CAPI] Using client-detected IP (${clientProvidedIp}) for ${eventName}`);
+      }
+    }
     
     // Also extract user agent from headers if not provided or empty
     if (!options.client_user_agent || options.client_user_agent.trim() === '') {
@@ -443,9 +465,7 @@ export async function POST(request) {
       if (userAgentFromHeaders) {
         options.client_user_agent = userAgentFromHeaders;
       }
-    }
-    
-    // Only log detailed info for non-PageView events
+    }    // Only log detailed info for non-PageView events
     const isPageView = eventName === 'PageView';
 
     // Log incoming request for critical events (helps debug coverage issues)

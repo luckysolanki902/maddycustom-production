@@ -14,6 +14,7 @@ import Razorpay from '@/components/analytics/Razorpay';
 import { GoogleTagManagerNoScript } from '@/components/analytics/GoogleTagManager';
 import UTMCapture from '@/components/analytics/UTMCapture';
 import FunnelClientBridge from '@/components/analytics/FunnelClientBridge';
+import IPDetectionInitializer from '@/components/analytics/IPDetectionInitializer';
 // import UTMLogger from '@/components/analytics/UTMLogger';
 import SupportChatProvider from '@/components/Chat/SupportChatProvider';
 
@@ -91,6 +92,7 @@ export default function RootLayout({ children }) {
         <ReduxProvider>
           <ScrollProvider>
             <NavigationListener />
+            <IPDetectionInitializer />
             <Suspense fallback={null}>
               <UTMCapture />
             </Suspense>
