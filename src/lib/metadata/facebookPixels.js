@@ -459,7 +459,11 @@ export const viewContent = async (product, userData = {}) => {
  */
 export const pageView = async (userData = {}, pageData = {}) => {
   try {
+    // Generate a unique event ID for deduplication between Pixel and CAPI
+    const eventID = pageData.eventID || uuidv4();
+    
     await trackEvent('PageView', userData, {
+      eventID, // Include eventID for deduplication
       content_name: pageData.content_name || document.title,
       content_category: pageData.content_category || 'page',
       content_type: 'website',
