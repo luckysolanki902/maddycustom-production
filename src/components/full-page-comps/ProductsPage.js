@@ -35,7 +35,7 @@ import IsolatedTopBoughtProducts from '@/components/showcase/products/IsolatedTo
 import { showTopStrip, hideTopStrip } from '@/store/slices/uiSlice';
 import { HIDE_PRODUCT_VIDEOS } from '@/lib/constants/featureToggles';
 import funnelClient from '@/lib/analytics/funnelClient';
-import OfferBanner from '../showcase/banners/OfferBanner';
+// import OfferBanner from '../showcase/banners/OfferBanner';
 
 /* ------------------------------------------------------------------ */
 /* Smooth "Top-Bought" fade-in/slide-up wrapper                        */
@@ -451,7 +451,7 @@ export default function ProductsPage({
                 </div>
               </div>
             </header>
-            <OfferBanner categoryMongoId={category?._id}/>
+            {/* <OfferBanner categoryMongoId={category?._id}/> */}
             {/* Video for small devices - only render here for mobile */}
             {!HIDE_PRODUCT_VIDEOS && shouldShowVideoInPage && (
               <div className={wrapperStyles.videoCard} aria-label="Product Video" style={{ backgroundColor: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0 1rem', marginBottom: '2rem', boxShadow: 'none' }}>
