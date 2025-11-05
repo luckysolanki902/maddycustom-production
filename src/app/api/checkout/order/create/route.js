@@ -215,8 +215,11 @@ export async function POST(request) {
         console.warn(
           `SECURITY WARNING: Client totalAmount (${clientTotalAmount}) ` +
           `differs from server-calculated totalAmount (${finalTotalAmountForOrder}). ` +
+          `Breakdown: Items subtotal=${serverCalculatedItemsSubTotal}, ` +
+          `Discount=${actualDiscountAmount}, After discount=${totalAfterDiscount}, ` +
+          `Extra charges=${serverExtraCharges.map(c => `${c.chargesName}:${c.chargesAmount}`).join(', ')}. ` +
           `Order ID (to be created): User ${user._id}, Phone ${phoneNumber}. ` +
-          `Using server-calculated value. Coupon: ${actualCouponCode}, Discount: ${actualDiscountAmount}`
+          `Using server-calculated value. Coupon: ${actualCouponCode || 'none'}`
         );
     }
 
