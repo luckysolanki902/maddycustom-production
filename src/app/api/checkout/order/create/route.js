@@ -347,12 +347,19 @@ export async function POST(request) {
       const orderGroupId = generateOrderGroupId();
       const itemGroups = [];
       
+      // Map grouped items to their corresponding transformed items from baseOrderData
       if (inventoryItems.length > 0) {
-        itemGroups.push({ items: inventoryItems });
+        const transformedInventoryItems = baseOrderData.items.filter((orderItem, index) => 
+          inventoryItems.some(rawItem => serverVerifiedItems[index] === rawItem)
+        );
+        itemGroups.push({ items: transformedInventoryItems });
       }
       
       if (nonInventoryItems.length > 0) {
-        itemGroups.push({ items: nonInventoryItems });
+        const transformedNonInventoryItems = baseOrderData.items.filter((orderItem, index) => 
+          nonInventoryItems.some(rawItem => serverVerifiedItems[index] === rawItem)
+        );
+        itemGroups.push({ items: transformedNonInventoryItems });
       }
 
       const splitOrdersData = createSplitOrdersData(baseOrderData, itemGroups, orderGroupId);
