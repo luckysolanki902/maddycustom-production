@@ -193,8 +193,9 @@ export function createSplitOrdersData(originalOrderData, itemGroups, orderGroupI
   const orders = [];
   
   // Calculate subtotals for each group (before discount and extra charges)
+  // Items in itemGroups are already in the transformed format (from baseOrderData.items)
   const groups = itemGroups.map(group => ({
-    groupTotal: group.items.reduce((sum, item) => sum + (item.serverPrice * item.quantity), 0),
+    groupTotal: group.items.reduce((sum, item) => sum + (item.priceAtPurchase * item.quantity), 0),
     items: group.items
   }));
 
