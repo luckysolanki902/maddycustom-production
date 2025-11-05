@@ -515,6 +515,7 @@ export async function POST(request) {
       'PageView',
       'ContactInfoProvided',
       'PaymentInitiated',
+      'Search', // Add Search event
     ];
     if (!validEvents.includes(eventName)) {
       console.error('Invalid event type received:', eventName);
