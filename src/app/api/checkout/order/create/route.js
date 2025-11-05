@@ -347,17 +347,23 @@ export async function POST(request) {
       const orderGroupId = generateOrderGroupId();
       const itemGroups = [];
       
-      // Map grouped items to their corresponding transformed items from baseOrderData
+      // Map raw items back to transformed order items from baseOrderData
       if (inventoryItems.length > 0) {
-        const transformedInventoryItems = baseOrderData.items.filter((orderItem, index) => 
-          inventoryItems.some(rawItem => serverVerifiedItems[index] === rawItem)
+        const transformedInventoryItems = baseOrderData.items.filter(orderItem => 
+          inventoryItems.some(rawItem => 
+            rawItem.product.toString() === orderItem.product.toString() &&
+            (rawItem.option ? rawItem.option.toString() === orderItem.option?.toString() : !orderItem.option)
+          )
         );
         itemGroups.push({ items: transformedInventoryItems });
       }
       
       if (nonInventoryItems.length > 0) {
-        const transformedNonInventoryItems = baseOrderData.items.filter((orderItem, index) => 
-          nonInventoryItems.some(rawItem => serverVerifiedItems[index] === rawItem)
+        const transformedNonInventoryItems = baseOrderData.items.filter(orderItem => 
+          nonInventoryItems.some(rawItem => 
+            rawItem.product.toString() === orderItem.product.toString() &&
+            (rawItem.option ? rawItem.option.toString() === orderItem.option?.toString() : !orderItem.option)
+          )
         );
         itemGroups.push({ items: transformedNonInventoryItems });
       }
