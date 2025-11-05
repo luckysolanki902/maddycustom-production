@@ -217,9 +217,10 @@ const extractExternalId = (url) => {
 const validateTimestamp = (timestamp) => {
   const now = Math.floor(Date.now() / 1000);
   const sevenDaysAgo = now - (7 * 24 * 60 * 60); // 7 days in seconds
+  const futureBuffer = 10; // Allow 10 seconds into the future for clock sync issues
   
-  // If timestamp is in the future or too old, use current time
-  if (!timestamp || timestamp > now || timestamp < sevenDaysAgo) {
+  // If timestamp is too far in future or too old, use current time
+  if (!timestamp || timestamp > (now + futureBuffer) || timestamp < sevenDaysAgo) {
     return now;
   }
   
@@ -243,13 +244,14 @@ const validateEventData = (eventName, options) => {
   
   const now = Math.floor(Date.now() / 1000);
   const sevenDaysAgo = now - (7 * 24 * 60 * 60);
+  const futureBuffer = 10; // Allow 10 seconds for clock sync
   
   // Validate timestamp more thoroughly
   if (options.event_time) {
     if (isNaN(options.event_time) || options.event_time <= 0) {
       errors.push('Event time must be a valid Unix timestamp');
-    } else if (options.event_time > now) {
-      warnings.push(`Event timestamp ${options.event_time} is in the future, will be adjusted to current time`);
+    } else if (options.event_time > (now + futureBuffer)) {
+      warnings.push(`Event timestamp ${options.event_time} is too far in the future, will be adjusted to current time`);
     } else if (options.event_time < sevenDaysAgo) {
       warnings.push(`Event timestamp ${options.event_time} is older than 7 days, will be adjusted to current time`);
     }
