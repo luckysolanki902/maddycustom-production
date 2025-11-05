@@ -101,13 +101,14 @@ const FunnelEventSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
-    errors: {
+    validationErrors: { // Renamed from 'errors' to avoid reserved keyword warning
       type: [String],
       default: undefined,
     },
   },
   {
     timestamps: true,
+    suppressReservedKeysWarning: true, // Suppress the warning for any remaining reserved keys
   }
 );
 

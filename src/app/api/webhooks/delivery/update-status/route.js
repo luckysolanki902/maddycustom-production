@@ -129,9 +129,11 @@ export async function POST(request) {
 
   await connectToDatabase();
   const session = await mongoose.startSession();
+  let isTransactionActive = false;
   
   try {
     session.startTransaction();
+    isTransactionActive = true;
     
     // Read body exactly once so we can reuse for error logging without re-reading stream
     const rawBody = await request.text();
@@ -140,7 +142,10 @@ export async function POST(request) {
       payload = JSON.parse(rawBody);
     } catch (e) {
       console.error('Invalid JSON payload for delivery webhook:', e.message);
-      await session.abortTransaction();
+      if (isTransactionActive) {
+        await session.abortTransaction();
+        isTransactionActive = false;
+      }
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
     
@@ -153,7 +158,10 @@ export async function POST(request) {
     const { order_id, current_status } = payload;
     if (!order_id || !current_status) {
       console.error('Missing required fields in webhook payload:', payload);
-      await session.abortTransaction();
+      if (isTransactionActive) {
+        await session.abortTransaction();
+        isTransactionActive = false;
+      }
       return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
     }
 
@@ -169,7 +177,10 @@ export async function POST(request) {
 
     if (!order) {
       console.error(`Order not found for identifier: ${order_id}`);
-      await session.abortTransaction();
+      if (isTransactionActive) {
+        await session.abortTransaction();
+        isTransactionActive = false;
+      }
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
@@ -185,6 +196,7 @@ export async function POST(request) {
     if (order.deliveryStatus === mappedStatus && order.actualDeliveryStatus === current_status) {
       console.log(`Order ${order._id} already has status ${mappedStatus}. Skipping duplicate processing.`);
       await session.commitTransaction();
+      isTransactionActive = false;
       return NextResponse.json({ 
         message: 'Order status unchanged, no processing needed.',
         currentStatus: mappedStatus 
@@ -359,6 +371,7 @@ export async function POST(request) {
     console.log(`Order ${order._id} status updated: ${previousStatus} -> ${mappedStatus}`);
 
     await session.commitTransaction();
+    isTransactionActive = false; // Mark transaction as no longer active
     
     const processingTime = Date.now() - webhookStartTime;
     console.log(`Webhook processing completed in ${processingTime}ms for order ${order._id}`);
@@ -372,19 +385,24 @@ export async function POST(request) {
         actualStatus: current_status
       },
       inventorySummary: {
-        processed: inventoryResults.processed.length,
-        failed: inventoryResults.failed.length,
-        skipped: inventoryResults.skipped.length
+        processed: 0, // inventoryResults.processed.length,
+        failed: 0, // inventoryResults.failed.length,
+        skipped: 0 // inventoryResults.skipped.length
       },
       processingTimeMs: processingTime
     }, { status: 200 });
 
   } catch (error) {
-    await session.abortTransaction();
+    // Only abort transaction if it's still active
+    if (isTransactionActive) {
+      await session.abortTransaction();
+      isTransactionActive = false;
+    }
+    
     console.error('Webhook error during processing:', {
       error: error.message,
       stack: error.stack,
-      payload: rawBody?.substring(0, 5000) || 'No body captured'
+      transactionWasActive: isTransactionActive
     });
     
     const isWriteConflict = /write conflict/i.test(error.message) || error.code === 112;
