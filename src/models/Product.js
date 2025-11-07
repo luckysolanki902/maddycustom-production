@@ -97,6 +97,12 @@ const ProductSchema = new mongoose.Schema(
       required: false,
       index: true,
     },
+    uniqueNumericId: {
+      type: Number,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
     designTemplate: {
       designCode: {
         type: String,
@@ -159,11 +165,19 @@ const ProductSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Pre-save hook to ensure pageSlug starts with a "/"
-ProductSchema.pre('save', function (next) {
+// Pre-save hook to ensure pageSlug starts with a "/" and generate uniqueNumericId
+ProductSchema.pre('save', async function (next) {
   if (this.pageSlug && !this.pageSlug.startsWith('/')) {
     this.pageSlug = '/' + this.pageSlug;
   }
+  
+  // Generate uniqueNumericId if not present (13-digit ID)
+  if (!this.uniqueNumericId) {
+    const timestamp = Date.now().toString().slice(-10);
+    const random = Math.floor(Math.random() * 1000);
+    this.uniqueNumericId = Number(`${timestamp}${random.toString().padStart(3, '0')}`);
+  }
+  
   next();
 });
 

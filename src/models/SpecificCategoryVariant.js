@@ -67,6 +67,12 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
+    uniqueNumericId: {
+      type: Number,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
     specificCategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'SpecificCategory',
@@ -208,6 +214,20 @@ const SpecificCategoryVariantSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Pre-save hook to generate uniqueNumericId if not present
+SpecificCategoryVariantSchema.pre('save', async function (next) {
+  if (!this.uniqueNumericId) {
+    const timestamp = Date.now().toString().slice(-10);
+    const random = Math.floor(Math.random() * 1000);
+    this.uniqueNumericId = Number(`${timestamp}${random.toString().padStart(3, '0')}`);
+  }
+  next();
+});
+
+module.exports =
+  mongoose.models.SpecificCategoryVariant ||
+  mongoose.model('SpecificCategoryVariant', SpecificCategoryVariantSchema);
 
 
 
