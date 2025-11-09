@@ -2,31 +2,49 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
-import Product from '@/models/Product';
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
-import User from '@/models/User';
+
+const IST_TIME_ZONE = 'Asia/Kolkata';
+const IST_ISO_OFFSET = '+05:30';
+
+const padTo2Digits = (value) => value.toString().padStart(2, '0');
+
+const getIstYearAndMonth = (date) => {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: IST_TIME_ZONE,
+    year: 'numeric',
+    month: 'numeric',
+  });
+
+  const parts = formatter.formatToParts(date);
+
+  return {
+    year: Number(parts.find((part) => part.type === 'year').value),
+    month: Number(parts.find((part) => part.type === 'month').value),
+  };
+};
+
+const buildIstDate = (year, month, day) =>
+  new Date(`${year}-${padTo2Digits(month)}-${padTo2Digits(day)}T00:00:00${IST_ISO_OFFSET}`);
 
 export async function GET(req) {
   try {
     await connectToDatabase();
-    const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+    const now = new Date();
+    const { year: istYear, month: istMonth } = getIstYearAndMonth(now);
 
-    // Define the time window:
-    // - Orders must be at least 10 days old
-    // - And they should be after Feb 1, 2025 (ensure this makes sense with your test data)
-    const TEN_DAYS_IN_MS = 10 * 24 * 60 * 60 * 1000;
-    const cutoffDate = new Date(Date.now() - TEN_DAYS_IN_MS);
-    const FEB_1_2025 = new Date('2025-02-01T00:00:00Z');
+    // Determine the 15th boundaries in IST for the current and previous month
+    const currentMonthBoundary = buildIstDate(istYear, istMonth, 15);
+    const previousMonth = istMonth === 1 ? 12 : istMonth - 1;
+    const previousMonthYear = istMonth === 1 ? istYear - 1 : istYear;
+    const previousMonthBoundary = buildIstDate(previousMonthYear, previousMonth, 15);
 
-    // Find orders that were created between Feb 1, 2025 and 10 days ago and have been delivered
     const orders = await Order.find({
-      createdAt: { $gte: FEB_1_2025, $lte: cutoffDate },
+      createdAt: { $gte: previousMonthBoundary, $lt: currentMonthBoundary },
       deliveryStatus: 'delivered',
     })
-      .sort({ createdAt: -1 }) // recent orders first
-      .limit(20)
+      .sort({ createdAt: -1 })
       .populate('user')
-      .populate('items.product')
       .exec();
 
     if (!orders.length) {
@@ -46,55 +64,10 @@ export async function GET(req) {
         });
         continue;
       }
-      if (!order.items?.length) {
-        details.push({
-          orderId: order._id,
-          status: 'skipped',
-          reason: 'No items in order',
-        });
-        continue;
-      }
-
-      const firstItem = order.items[0];
-      if (!firstItem?.product) {
-        details.push({
-          orderId: order._id,
-          status: 'skipped',
-          reason: 'First item does not contain product details',
-        });
-        continue;
-      }
-
-      // Extract necessary details
       const userName = order.user.name || 'Customer';
-      const product = firstItem.product;
-      const productName = product.name || 'your product';
-      const pageSlug = product.pageSlug || '';
+      const firstName = userName.trim().split(/\s+/)[0] || 'Customer';
+      const templateParams = [firstName];
 
-      const templateParams = [productName];
-
-      // Example media attachment (adjust URL and filename as needed)
-      const media = {
-        url: `${baseImageUrl}/assets/marketing/aisensy-whatsapp-media/customers_matters.jpg`,
-        filename: 'customer-matters',
-      };
-
-      // Example button directing user to the reviews section on the product page
-      const buttons = [
-        {
-          type: 'button',
-          sub_type: 'url',
-          index: '0',
-          parameters: [
-            {
-              type: 'text',
-              text: `${pageSlug.startsWith('/') ? '' : '/'}${pageSlug}#reviews`,
-            },
-          ],
-        },
-      ];
-
-      // Build a simplified user object to pass along
       const userObj = {
         _id: order.user._id,
         name: order.user.name,
@@ -104,12 +77,10 @@ export async function GET(req) {
       // Call the AiSensy sender
       const result = await sendWhatsAppMessage({
         user: userObj,
-        campaignName: 'reviews_new',
+        campaignName: 'feedback_api',
         orderId: order._id,
         templateParams,
-        prefUserName: userObj.name,
-        media,
-        buttons,
+        prefUserName: firstName,
       });
 
       if (result.success) {
@@ -134,6 +105,10 @@ export async function GET(req) {
     return NextResponse.json({
       message: `Review campaign completed. Orders checked: ${orders.length}, Successfully sent: ${sentCount}.`,
       details,
+      window: {
+        start: previousMonthBoundary,
+        end: currentMonthBoundary,
+      },
     });
   } catch (error) {
     console.error('Error in review-campaign route:', error);
