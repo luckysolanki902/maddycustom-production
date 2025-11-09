@@ -55,23 +55,25 @@ export async function GET(req) {
     let details = [];
 
     for (const order of orders) {
-      // Skip orders if missing user/phone or if items are absent
-      if (!order.user || !order.user.phoneNumber) {
+      const receiverName = order.address?.receiverName || order.user?.name || 'Customer';
+      const receiverPhoneNumber = order.address?.receiverPhoneNumber;
+
+      if (!receiverPhoneNumber) {
         details.push({
           orderId: order._id,
           status: 'skipped',
-          reason: 'Missing user or phone number',
+          reason: 'Missing receiver phone number',
         });
         continue;
       }
-      const userName = order.user.name || 'Customer';
-      const firstName = userName.trim().split(/\s+/)[0] || 'Customer';
+
+      const firstName = receiverName.trim().split(/\s+/)[0] || 'Customer';
       const templateParams = [firstName];
 
       const userObj = {
-        _id: order.user._id,
-        name: order.user.name,
-        phoneNumber: order.user.phoneNumber,
+        _id: order.user?._id,
+        name: receiverName,
+        phoneNumber: receiverPhoneNumber,
       };
 
       // Call the AiSensy sender
