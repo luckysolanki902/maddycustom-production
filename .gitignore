@@ -45,3 +45,4 @@ next-env.d.ts
 /src/app/api/create-from-scratch/**/
 /private/
 /src/local-functions
+cloudflared.txt

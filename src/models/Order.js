@@ -188,6 +188,20 @@ const OrderSchema = new mongoose.Schema(
         orderId: String,
         signature: String,
       },
+      payuDetails: {
+        txnId: String,
+        mihpayid: String,
+        status: String,
+        method: String,
+        methodMeta: {
+          type: mongoose.Schema.Types.Mixed,
+          default: null,
+        },
+        rawResponse: {
+          type: mongoose.Schema.Types.Mixed,
+          default: null,
+        },
+      },
     },
     // Shipping address
     address: {
