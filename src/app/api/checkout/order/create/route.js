@@ -17,6 +17,9 @@ import {
   createSplitOrdersData, 
   generateOrderGroupId 
 } from '@/lib/utils/orderSplitting';
+import { PAYMENT_PROVIDERS, getActivePaymentProvider } from '@/lib/payments/providers';
+
+const SMALL_TEST_PAYMENT_ENABLED = process.env.SMALL_TEST_PAYMENT === 'true';
 
 // Initialize Razorpay instance outside the handler for reuse
 const razorpayInstance = new Razorpay({
@@ -26,6 +29,8 @@ const razorpayInstance = new Razorpay({
 
 export async function POST(request) {
   try {
+    const body = await request.json();
+
     let {
       userId,
       phoneNumber,
@@ -40,7 +45,10 @@ export async function POST(request) {
       utmDetails,
       utmHistory,
       extraFields,
-    } = await request.json();
+      payuSession: clientPayuSession,
+    } = body;
+
+    const paymentProvider = getActivePaymentProvider();
 
     // Validate essential fields
     if ((!userId && !phoneNumber) || !clientItems || !clientItems.length || !paymentModeId || !address ||
@@ -259,6 +267,18 @@ export async function POST(request) {
         serverAmountDueCod = 0;
     }
 
+    if (SMALL_TEST_PAYMENT_ENABLED && serverAmountDueOnline > 0) {
+      const forcedAmount = finalTotalAmountForOrder >= 1 ? 1 : finalTotalAmountForOrder;
+      if (forcedAmount > 0 && serverAmountDueOnline !== forcedAmount) {
+        console.info('SMALL_TEST_PAYMENT active: overriding online payable to ₹1 for gateway testing', {
+          originalOnlineAmount: serverAmountDueOnline,
+          forcedAmount,
+        });
+        serverAmountDueOnline = forcedAmount;
+        serverAmountDueCod = Math.max(finalTotalAmountForOrder - serverAmountDueOnline, 0);
+      }
+    }
+
     // --- Save Order(s) and Prepare for Payment ---
     let utmHistoryId = null;
     if (utmHistory && Array.isArray(utmHistory) && utmHistory.length > 0) {
@@ -408,54 +428,81 @@ export async function POST(request) {
     // Handle Razorpay order creation for online payments
     const mainOrder = orders.find(order => order.isMainOrder) || orders[0];
     let razorpayOrderResponse = null;
+    let payuSession = null;
     
     if (serverAmountDueOnline > 0) {
-      const amountInPaise = Math.floor(serverAmountDueOnline * 100);
-      const receiptId = shortid.generate();
-      const razorpayOptions = {
-        amount: amountInPaise.toString(),
-        currency: 'INR',
-        receipt: receiptId,
-        payment_capture: 1,
-        notes: {
-          databaseOrderId: mainOrder._id.toString(),
-          orderGroupId: mainOrder.orderGroupId || '',
-          isLinkedOrder: orders.length > 1 ? 'true' : 'false',
-        },
-      };
-
-      try {
-        razorpayOrderResponse = await razorpayInstance.orders.create(razorpayOptions);
-        
-        // Update Razorpay details for all orders with online payments
-        for (const order of orders) {
-          if (order.paymentDetails.amountDueOnline > 0) {
-            order.paymentDetails.razorpayDetails.orderId = razorpayOrderResponse.id;
-            order.paymentDetails.razorpayDetails.receipt = receiptId;
-            await order.save();
-          }
-        }
-      } catch (rzpError) {
-        console.error('Razorpay order creation failed:', rzpError);
-        
-        // Update all orders with error status
-        await Promise.all(orders.map(order =>
-          Order.findByIdAndUpdate(order._id, { 
-            $set: { 
-              paymentStatus: 'failed', 
-              'paymentDetails.razorpayDetails.error': rzpError.message 
-            } 
-          })
-        ));
-        
-        return NextResponse.json(
-          { 
-            message: 'Failed to initiate payment with Razorpay. Please try again or contact support.', 
-            orderId: mainOrderId,
-            orderIds: orders.map(order => order._id)
-          },
-          { status: 500 }
+      if (paymentProvider === PAYMENT_PROVIDERS.PAYU) {
+        const payuTxnId = `MADDY-${mainOrder._id.toString()}-${Date.now()}`;
+  const userSelectedMethod = clientPayuSession?.method || 'card';
+  const userSelectedBankCode = clientPayuSession?.bankCode;
+        await Promise.all(
+          orders.map(order =>
+            Order.findByIdAndUpdate(order._id, {
+              $set: {
+                'paymentDetails.payuDetails': {
+                  txnId: payuTxnId,
+                  status: 'pending',
+                  method: userSelectedMethod,
+                  methodMeta: userSelectedBankCode ? { bankCode: userSelectedBankCode } : null,
+                },
+              },
+            })
+          )
         );
+        payuSession = {
+          txnId: payuTxnId,
+          amount: serverAmountDueOnline,
+          method: userSelectedMethod,
+          bankCode: userSelectedBankCode,
+        };
+      } else {
+        const amountInPaise = Math.floor(serverAmountDueOnline * 100);
+        const receiptId = shortid.generate();
+        const razorpayOptions = {
+          amount: amountInPaise.toString(),
+          currency: 'INR',
+          receipt: receiptId,
+          payment_capture: 1,
+          notes: {
+            databaseOrderId: mainOrder._id.toString(),
+            orderGroupId: mainOrder.orderGroupId || '',
+            isLinkedOrder: orders.length > 1 ? 'true' : 'false',
+          },
+        };
+
+        try {
+          razorpayOrderResponse = await razorpayInstance.orders.create(razorpayOptions);
+          
+          // Update Razorpay details for all orders with online payments
+          for (const order of orders) {
+            if (order.paymentDetails.amountDueOnline > 0) {
+              order.paymentDetails.razorpayDetails.orderId = razorpayOrderResponse.id;
+              order.paymentDetails.razorpayDetails.receipt = receiptId;
+              await order.save();
+            }
+          }
+        } catch (rzpError) {
+          console.error('Razorpay order creation failed:', rzpError);
+          
+          // Update all orders with error status
+          await Promise.all(orders.map(order =>
+            Order.findByIdAndUpdate(order._id, { 
+              $set: { 
+                paymentStatus: 'failed', 
+                'paymentDetails.razorpayDetails.error': rzpError.message 
+              } 
+            })
+          ));
+          
+          return NextResponse.json(
+            { 
+              message: 'Failed to initiate payment with Razorpay. Please try again or contact support.', 
+              orderId: mainOrderId,
+              orderIds: orders.map(order => order._id)
+            },
+            { status: 500 }
+          );
+        }
       }
     }
 
@@ -465,7 +512,9 @@ export async function POST(request) {
         orderId: mainOrderId,
         orderIds: orders.map(order => order._id),
         isSplitOrder: orders.length > 1,
-        razorpayOrder: razorpayOrderResponse,
+        paymentProvider,
+        razorpayOrder: paymentProvider === PAYMENT_PROVIDERS.RAZORPAY ? razorpayOrderResponse : null,
+        payuSession,
         amountDueOnline: serverAmountDueOnline,
       },
       { status: 201 }

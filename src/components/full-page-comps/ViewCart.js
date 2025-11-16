@@ -273,8 +273,8 @@ export default function ViewCart({ isDrawer = false }) {
   const isFirstOrder = false;  // hook into your user meta when ready
   const [revalidatingCoupons, setRevalidatingCoupons] = useState(false);
 
-  // Minimum purchase amount configuration
-  const minPurchaseAmt = 349; // Minimum order amount in INR
+  // Minimum purchase amount configuration if process.env.SMALL_TEST_PAYMENT is true then it should be 0 rs else 349rs
+  const minPurchaseAmt = process.env.SMALL_TEST_PAYMENT === 'true' ? 0 : 349; // Minimum order amount in INR
 
   /* ---------- cart totals ------------------------------------------- */
   const qty = calculateTotalQuantity(cartItems);
