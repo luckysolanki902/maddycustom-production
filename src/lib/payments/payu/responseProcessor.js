@@ -2,6 +2,12 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
+import Coupon from '@/models/Coupon';
+import Product from '@/models/Product';
+import Option from '@/models/Option';
+import mongoose from 'mongoose';
+import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shiprocket';
+import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 import { validatePayuCredentials } from './config';
 import { verifyReverseHash } from './hash';
 import { PAYU_FAILURE_STATUSES, PAYU_SUCCESS_STATUSES } from './constants';
@@ -103,7 +109,34 @@ function createHashError() {
   return error;
 }
 
+// Helper: Update inventory for a given Inventory document _id
+async function updateInventory(inventoryId, delta, session) {
+  const result = await mongoose.model('Inventory').updateOne(
+    { _id: inventoryId },
+    {
+      $inc: {
+        availableQuantity: delta,
+        reservedQuantity: -delta,
+      },
+    },
+    { session }
+  );
+  return result;
+}
+
 export async function processPayuGatewayResponse(payload, options = {}) {
+  const logs = [];
+  const timestampStr = new Date().toLocaleString('en-IN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata',
+  });
+
   if (!payload || typeof payload !== 'object') {
     throw new Error('Empty payload received from PayU');
   }
@@ -140,34 +173,283 @@ export async function processPayuGatewayResponse(payload, options = {}) {
   }
 
   await connectToDatabase();
-  const orders = await Order.find({ 'paymentDetails.payuDetails.txnId': txnId }).exec();
-  if (!orders || orders.length === 0) {
-    return {
-      txnId,
-      updatedCount: 0,
-      normalizedStatus: normalisePayuStatus(payload.status, payload.unmappedstatus),
-      primaryOrderId: payload.udf1 || null,
-    };
-  }
+  
+  // Start transaction session
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  const normalizedStatus = normalisePayuStatus(payload.status, payload.unmappedstatus);
-  const updatedOrders = await Promise.all(
-    orders.map((orderDoc) => {
-      const { update } = buildPayuOrderUpdate(orderDoc, payload, normalizedStatus);
-      return Order.findByIdAndUpdate(
-        orderDoc._id,
-        { $set: update },
-        { new: true }
-      ).exec();
-    })
-  );
+  try {
+    const orders = await Order.find({ 'paymentDetails.payuDetails.txnId': txnId }).session(session);
+    if (!orders || orders.length === 0) {
+      await session.abortTransaction();
+      session.endSession();
+      return {
+        txnId,
+        updatedCount: 0,
+        normalizedStatus: normalisePayuStatus(payload.status, payload.unmappedstatus),
+        primaryOrderId: payload.udf1 || null,
+      };
+    }
 
-  return {
-    txnId,
-    normalizedStatus,
-    updatedCount: updatedOrders.length,
-    primaryOrderId: payload.udf1 || updatedOrders[0]?._id?.toString() || null,
-  };
+    logs.push(`[${timestampStr}] Processing ${orders.length} orders for txnId: ${txnId}`);
+
+    const normalizedStatus = normalisePayuStatus(payload.status, payload.unmappedstatus);
+    logs.push(`[${timestampStr}] Normalized status: ${normalizedStatus}`);
+
+    // Check if already processed
+    const alreadyProcessed = orders.some(ord => 
+      ['allPaid', 'paidPartially'].includes(ord.paymentStatus)
+    );
+
+    if (normalizedStatus === 'success' && !alreadyProcessed) {
+      // Update payment details for all orders
+      for (const orderDoc of orders) {
+        const { update } = buildPayuOrderUpdate(orderDoc, payload, normalizedStatus);
+        await Order.findByIdAndUpdate(
+          orderDoc._id,
+          { $set: update },
+          { new: true, session }
+        ).exec();
+        logs.push(`[${timestampStr}] Order ${orderDoc._id} status -> ${update.paymentStatus}`);
+      }
+
+      // Handle coupon usage increment (only once for main order)
+      const mainOrder = orders.find(ord => ord.isMainOrder) || orders[0];
+      if (mainOrder.couponApplied?.length > 0) {
+        const [appliedCoupon] = mainOrder.couponApplied;
+        if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
+          const couponDoc = await Coupon.findOne({ code: appliedCoupon.couponCode }).session(session);
+          if (couponDoc) {
+            couponDoc.usageCount += 1;
+            await couponDoc.save({ session });
+            
+            // Update coupon increment status in all orders
+            for (const ord of orders) {
+              if (ord.couponApplied?.length > 0) {
+                const updated = await Order.findByIdAndUpdate(
+                  ord._id,
+                  {
+                    $set: {
+                      'couponApplied.$[elem].incrementedCouponUsage': true
+                    }
+                  },
+                  {
+                    arrayFilters: [{ 'elem.couponCode': appliedCoupon.couponCode }],
+                    session,
+                    new: true
+                  }
+                );
+              }
+            }
+            logs.push(`[${timestampStr}] Coupon usage incremented: ${appliedCoupon.couponCode}`);
+          }
+        }
+      }
+
+      // Deduct inventory for each order
+      for (const ord of orders) {
+        const updatedOrd = await Order.findById(ord._id).session(session);
+        if (
+          (updatedOrd.paymentStatus === 'paidPartially' || updatedOrd.paymentStatus === 'allPaid') &&
+          !updatedOrd.inventoryDeducted &&
+          !updatedOrd.isTestingOrder
+        ) {
+          logs.push(`[${timestampStr}] Deducting inventory for order ${updatedOrd._id}`);
+          const unitDelta = -1;
+
+          for (const item of updatedOrd.items) {
+            if (item.option) {
+              logs.push(`Updating inventory for Option ${item.option} x ${item.quantity}`);
+              const optionDoc = await Option.findById(item.option).session(session);
+              if (optionDoc?.inventoryData) {
+                await updateInventory(optionDoc.inventoryData, unitDelta * item.quantity, session);
+              } else {
+                logs.push(`Option ${item.option} has no inventoryData reference. Cannot update inventory.`);
+              }
+            } else if (item.product) {
+              logs.push(`Updating inventory for Product ${item.product} x ${item.quantity}`);
+              const productDoc = await Product.findById(item.product).session(session);
+              if (productDoc?.inventoryData) {
+                await updateInventory(productDoc.inventoryData, unitDelta * item.quantity, session);
+              } else {
+                logs.push(`No inventoryData reference found on product ${item.product}. Cannot update inventory.`);
+              }
+            } else {
+              logs.push(`Order item does not have an option or product reference. Skipping.`);
+            }
+          }
+          
+          // Mark inventory as deducted
+          await Order.findByIdAndUpdate(
+            updatedOrd._id,
+            { $set: { inventoryDeducted: true } },
+            { session }
+          );
+        }
+      }
+
+      // Get updated orders with populated data for Shiprocket
+      const updatedAllOrders = await Promise.all(
+        orders.map(ord => 
+          Order.findById(ord._id)
+            .populate({
+              path: 'items.product',
+              populate: {
+                path: 'specificCategoryVariant',
+                model: 'SpecificCategoryVariant',
+              },
+            })
+            .session(session)
+        )
+      );
+
+      // Create Shiprocket orders
+      for (const ord of updatedAllOrders) {
+        if (
+          ['allPaid', 'paidPartially'].includes(ord.paymentStatus) &&
+          ord.deliveryStatus === 'pending' &&
+          !ord.shiprocketOrderId &&
+          !ord.isTestingOrder
+        ) {
+          logs.push(`[${timestampStr}] Attempting to create Shiprocket order for ID: ${ord._id}`);
+          
+          try {
+            const { totalWeight, length, breadth, height } = getDimensionsAndWeight(ord.items);
+            
+            const shiprocketPayload = {
+              order_id: ord._id.toString(),
+              order_date: ord.createdAt.toISOString().split('T')[0],
+              pickup_location: 'Auto',
+              billing_customer_name: ord.customerName,
+              billing_last_name: '',
+              billing_address: ord.shippingAddress.addressLine1,
+              billing_address_2: ord.shippingAddress.addressLine2 || '',
+              billing_city: ord.shippingAddress.city,
+              billing_pincode: ord.shippingAddress.pincode,
+              billing_state: ord.shippingAddress.state,
+              billing_country: 'India',
+              billing_email: ord.email || 'support@maddycustom.com',
+              billing_phone: ord.phone,
+              shipping_is_billing: true,
+              order_items: ord.items.map((item) => ({
+                name: item.name || 'Product',
+                sku: item.product?.sku || 'DEFAULT-SKU',
+                units: item.quantity,
+                selling_price: item.pricePerUnit || 0,
+                discount: 0,
+                tax: 0,
+                hsn: item.product?.specificCategoryVariant?.hsn || 0,
+              })),
+              payment_method: ord.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
+              sub_total: ord.amounts.productTotal,
+              length,
+              breadth,
+              height,
+              weight: totalWeight,
+            };
+
+            const shiprocketResponse = await createShiprocketOrder(shiprocketPayload);
+            
+            if (shiprocketResponse?.order_id && shiprocketResponse?.shipment_id) {
+              await Order.findByIdAndUpdate(
+                ord._id,
+                {
+                  $set: {
+                    shiprocketOrderId: shiprocketResponse.order_id.toString(),
+                    shiprocketShipmentId: shiprocketResponse.shipment_id.toString(),
+                    deliveryStatus: 'confirmed',
+                  },
+                },
+                { session }
+              );
+              logs.push(`[${timestampStr}] Shiprocket order created: ${shiprocketResponse.order_id}`);
+            } else {
+              logs.push(`[${timestampStr}] Shiprocket response missing order_id or shipment_id`);
+            }
+          } catch (shiprocketError) {
+            logs.push(`[${timestampStr}] Shiprocket creation failed: ${shiprocketError.message}`);
+            console.error(`[PayU] Shiprocket creation failed for order ${ord._id}`, shiprocketError);
+          }
+        }
+      }
+
+      // Commit transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      // Send WhatsApp notification (after transaction)
+      const mainOrder = orders.find(ord => ord.isMainOrder) || orders[0];
+      if (mainOrder && !mainOrder.isTestingOrder) {
+        try {
+          const orderLink = `${process.env.NEXT_PUBLIC_BASE_URL}/orders/myorder/${mainOrder._id}`;
+          await sendWhatsAppMessage(mainOrder.phone, 'order_confirmation', {
+            orderId: mainOrder._id.toString(),
+            orderLink,
+          });
+          logs.push(`[${timestampStr}] WhatsApp notification sent`);
+        } catch (whatsappError) {
+          logs.push(`[${timestampStr}] WhatsApp notification failed: ${whatsappError.message}`);
+          console.error('[PayU] WhatsApp notification failed', whatsappError);
+        }
+      }
+
+      console.info('[PayU] Processing logs:', logs);
+
+      return {
+        txnId,
+        normalizedStatus,
+        updatedCount: orders.length,
+        orderIds: orders.map(o => o._id.toString()),
+        primaryOrderId: payload.udf1 || mainOrder?._id?.toString() || null,
+      };
+    } else if (normalizedStatus === 'failure') {
+      // Update payment status to failed for all orders
+      for (const orderDoc of orders) {
+        if (!['allPaid', 'paidPartially', 'failed'].includes(orderDoc.paymentStatus)) {
+          const { update } = buildPayuOrderUpdate(orderDoc, payload, normalizedStatus);
+          await Order.findByIdAndUpdate(
+            orderDoc._id,
+            { $set: update },
+            { session }
+          ).exec();
+          logs.push(`[${timestampStr}] Order ${orderDoc._id} status -> failed`);
+        }
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      console.info('[PayU] Processing logs:', logs);
+
+      return {
+        txnId,
+        normalizedStatus,
+        updatedCount: orders.length,
+        orderIds: orders.map(o => o._id.toString()),
+        primaryOrderId: payload.udf1 || orders[0]?._id?.toString() || null,
+      };
+    } else {
+      // Already processed or pending status
+      await session.commitTransaction();
+      session.endSession();
+
+      logs.push(`[${timestampStr}] Orders already processed or status is pending`);
+      console.info('[PayU] Processing logs:', logs);
+
+      return {
+        txnId,
+        normalizedStatus,
+        updatedCount: 0,
+        orderIds: orders.map(o => o._id.toString()),
+        primaryOrderId: payload.udf1 || orders[0]?._id?.toString() || null,
+      };
+    }
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('[PayU] Transaction failed, rolled back:', error);
+    console.error('[PayU] Processing logs:', logs);
+    throw error;
 }
 
 export async function parsePayuPayload(request) {
