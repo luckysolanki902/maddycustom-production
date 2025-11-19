@@ -2618,79 +2618,69 @@ const OrderForm = ({
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
                           <Button
+                            variant="outlined"
                             onClick={handlePayWithUPI}
                             disabled={isPaymentProcessing || upiPaymentState === 'waiting'}
                             sx={{
                               width: '100%',
                               borderRadius: '20px',
-                              padding: 0,
-                              textTransform: 'none',
                               justifyContent: 'space-between',
-                              alignItems: 'stretch',
-                              bgcolor: upiSelected ? '#1b1b1b' : accentColor,
-                              color: '#fff',
-                              border: `1px solid ${upiSelected ? '#000' : 'transparent'}`,
-                              boxShadow: upiSelected
-                                ? '0 14px 35px rgba(0,0,0,0.35)'
-                                : '0 12px 30px rgba(0,0,0,0.25)',
+                              alignItems: 'center',
+                              textTransform: 'none',
+                              px: 2.2,
+                              py: 1.8,
+                              borderWidth: 2,
+                              borderColor: upiSelected ? accentColor : alpha(accentColor, 0.2),
+                              bgcolor: upiSelected ? alpha(accentColor, 0.08) : '#fff',
+                              color: accentColor,
                               '&:hover': {
-                                bgcolor: '#111',
+                                borderColor: accentColor,
+                                bgcolor: alpha(accentColor, 0.08),
                               },
                               '&:disabled': {
-                                bgcolor: '#bdbdbd',
-                                color: '#f5f5f5',
-                                boxShadow: 'none',
+                                borderColor: alpha('#aaa', 0.5),
+                                color: '#b3b3b3',
+                                bgcolor: '#f7f7f7',
                               },
                             }}
                           >
-                            <Box sx={{ p: 2.2, display: 'flex', flexDirection: 'column', gap: 0.4, textAlign: 'left' }}>
-                              <Typography
-                                variant="subtitle1"
-                                sx={{
-                                  fontFamily: 'Jost, sans-serif',
-                                  fontWeight: 600,
-                                  fontSize: '1rem',
-                                }}
-                              >
-                                {upiPaymentState === 'processing'
-                                  ? 'Opening your UPI app…'
-                                  : upiPaymentState === 'waiting'
-                                    ? 'Waiting for approval…'
-                                    : 'Pay instantly with UPI'}
-                              </Typography>
-                  
-                            </Box>
-                            <Box
-                              sx={{
-                                position: 'relative',
-                                pr: { xs: 1.75, sm: 2 },
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.75,
-                              }}
-                            >
+                            <Box sx={{ display: 'flex', gap: 1.2, alignItems: 'center' }}>
                               <Box
                                 sx={{
-                                  width: 60,
-                                  height: 40,
+                                  width: 42,
+                                  height: 42,
                                   borderRadius: '14px',
+                                  bgcolor: alpha(accentColor, 0.08),
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
+                                  overflow: 'hidden',
                                 }}
                               >
-                                <Box sx={{ position: 'relative', width: 90, height: '100%' }}>
+                                <Box sx={{ position: 'relative', width: 48, height: 24 }}>
                                   <Image
                                     src="/images/payments/upi_logo.png"
                                     alt="UPI"
                                     fill
                                     sizes="48px"
-                                      style={{ objectFit: 'contain' }}
+                                    style={{ objectFit: 'contain' }}
                                   />
                                 </Box>
                               </Box>
-
+                              <Box sx={{ textAlign: 'left' }}>
+                                <Typography
+                                  variant="subtitle1"
+                                  sx={{ fontFamily: 'Jost, sans-serif', fontWeight: 600, fontSize: '0.98rem' }}
+                                >
+                                  {upiPaymentState === 'processing'
+                                    ? 'Opening your UPI app…'
+                                    : upiPaymentState === 'waiting'
+                                      ? 'Waiting for approval…'
+                                      : 'Pay instantly with UPI'}
+                                </Typography>
+                              </Box>
                             </Box>
+                            <KeyboardArrowRightIcon sx={{ color: accentColor }} />
                           </Button>
                         </motion.div>
 
