@@ -11,7 +11,7 @@ import { paymentLogger } from '@/lib/utils/logger';
 export async function GET(request, { params }) {
   try {
     await connectToDatabase();
-    const { orderId } = params;
+    const { orderId } = await params;
 
     paymentLogger.info('Checking order status', { orderId });
 

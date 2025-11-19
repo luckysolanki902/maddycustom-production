@@ -3,9 +3,14 @@ import { getAppBaseUrl, parsePayuPayload, processPayuGatewayResponse } from '@/l
 
 function buildRedirectUrl(request, orderId, outcome) {
   const baseUrl = getAppBaseUrl(request);
-  const url = new URL(orderId ? `/orders/myorder/${orderId}` : '/orders/myorder', baseUrl);
+  const url = new URL('/payments/payu/result', baseUrl);
   url.searchParams.set('gateway', 'payu');
-  url.searchParams.set('status', outcome);
+  if (orderId) {
+    url.searchParams.set('orderId', orderId);
+  }
+  if (outcome) {
+    url.searchParams.set('status', outcome);
+  }
   return url.toString();
 }
 

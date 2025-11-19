@@ -34,6 +34,7 @@ const initialState = {
   lastOrderIdSetAt: null,
   extraFields: {},
   loginDialogShown: false,
+  autoOpenRequest: null,
 };
 
 const orderFormSlice = createSlice({
@@ -77,6 +78,12 @@ const orderFormSlice = createSlice({
     setLastOrderId: (s, a) => { s.lastOrderId = a.payload; },
     setExtraFields: (s, a) => { s.extraFields = { ...s.extraFields, ...a.payload }; },
     setLoginDialogShown: (s, a) => { s.loginDialogShown = a.payload; },
+    setOrderFormAutoOpen: (s, a) => {
+      s.autoOpenRequest = a.payload || null;
+    },
+    clearOrderFormAutoOpen: (s) => {
+      s.autoOpenRequest = null;
+    },
 
     resetOrderForm: (s) => {
       // Preserve userDetails, addressDetails, userExists, prefilledAddress
@@ -90,6 +97,7 @@ const orderFormSlice = createSlice({
       s.loginDialogShown = initialState.loginDialogShown;
       s.lastOrderId = initialState.lastOrderId;
       s.lastOrderIdSetAt = initialState.lastOrderIdSetAt;
+      s.autoOpenRequest = initialState.autoOpenRequest;
     },
   },
 });
@@ -107,6 +115,8 @@ export const {
   setLastOrderId,
   setExtraFields,
   setLoginDialogShown,
+  setOrderFormAutoOpen,
+  clearOrderFormAutoOpen,
   resetOrderForm,
 } = orderFormSlice.actions;
 

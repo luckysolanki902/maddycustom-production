@@ -202,6 +202,35 @@ const OrderSchema = new mongoose.Schema(
           default: null,
         },
       },
+      providerChoice: {
+        preferred: {
+          type: String,
+          enum: ['razorpay', 'payu'],
+          default: 'razorpay',
+        },
+        selected: {
+          type: String,
+          enum: ['razorpay', 'payu'],
+          default: 'razorpay',
+        },
+        recommended: {
+          type: String,
+          enum: ['razorpay', 'payu'],
+          default: 'razorpay',
+        },
+        reason: {
+          type: String,
+          default: 'env_preference',
+        },
+        decidedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        healthSnapshot: {
+          type: mongoose.Schema.Types.Mixed,
+          default: null,
+        },
+      },
     },
     // Shipping address
     address: {
