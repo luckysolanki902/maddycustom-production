@@ -2597,7 +2597,7 @@ const OrderForm = ({
                             textTransform: 'uppercase',
                           }}
                         >
-                          Amount Payable
+                          Amount Payable {paymentModeName && paymentModeName.toLowerCase() !== 'online' ? '(Online)' : ''}
                         </Typography>
                         <Typography
                           variant="h3"
@@ -2608,13 +2608,13 @@ const OrderForm = ({
                             mt: 0.5,
                           }}
                         >
-                          {formatCurrency(totalCost)}
+                          {formatCurrency(paymentModeName && paymentModeName.toLowerCase() === 'cod' ? 0 : (paymentModeName && paymentModeName.toLowerCase() === 'split' ? Math.floor(totalCost / 2) : totalCost))}
                         </Typography>
                         <Typography
                           variant="body2"
                           sx={{ fontFamily: 'Jost, sans-serif', color: '#8d8d8d', mt: 0.5 }}
                         >
-                          Includes shipping, taxes & discounts
+                          {paymentModeName && paymentModeName.toLowerCase() === 'split' ? `₹${Math.ceil(totalCost / 2)} due at delivery` : 'Includes shipping, taxes & discounts'}
                         </Typography>
                       </Box>
 
