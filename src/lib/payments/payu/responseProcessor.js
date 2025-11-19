@@ -5,6 +5,7 @@ import Order from '@/models/Order';
 import Coupon from '@/models/Coupon';
 import Product from '@/models/Product';
 import Option from '@/models/Option';
+import User from '@/models/User';
 import mongoose from 'mongoose';
 import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shiprocket';
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
@@ -315,40 +316,40 @@ export async function processPayuGatewayResponse(payload, options = {}) {
           logs.push(`[${timestampStr}] Attempting to create Shiprocket order for ID: ${ord._id}`);
           
           try {
-            // Ensure shipping address exists
-            if (!ord.shippingAddress || !ord.shippingAddress.addressLine1) {
-              logs.push(`[${timestampStr}] Order ${ord._id} missing shipping address, skipping Shiprocket`);
+            // Ensure address exists
+            if (!ord.address || !ord.address.addressLine1) {
+              logs.push(`[${timestampStr}] Order ${ord._id} missing address, skipping Shiprocket`);
               continue;
             }
 
             const { totalWeight, length, breadth, height } = getDimensionsAndWeight(ord.items);
             
+            const [firstName, ...restName] = ord.address.receiverName.split(' ');
+            const lastName = restName.join(' ');
+
             const shiprocketPayload = {
               order_id: ord._id.toString(),
               order_date: ord.createdAt.toISOString().split('T')[0],
               pickup_location: 'Auto',
-              billing_customer_name: ord.customerName,
-              billing_last_name: '',
-              billing_address: ord.shippingAddress.addressLine1,
-              billing_address_2: ord.shippingAddress.addressLine2 || '',
-              billing_city: ord.shippingAddress.city,
-              billing_pincode: ord.shippingAddress.pincode,
-              billing_state: ord.shippingAddress.state,
-              billing_country: 'India',
-              billing_email: ord.email || 'support@maddycustom.com',
-              billing_phone: ord.phone,
+              billing_customer_name: firstName,
+              billing_last_name: lastName || '',
+              billing_address: `${ord.address.addressLine1} ${ord.address.addressLine2 || ''}`,
+              billing_city: ord.address.city,
+              billing_pincode: ord.address.pincode,
+              billing_state: ord.address.state,
+              billing_country: ord.address.country,
+              billing_phone: ord.address.receiverPhoneNumber,
               shipping_is_billing: true,
               order_items: ord.items.map((item) => ({
                 name: item.name || 'Product',
-                sku: item.product?.sku || 'DEFAULT-SKU',
+                sku: item.wrapFinish ? `${item.sku}-${item.wrapFinish.charAt(0).toLowerCase()}` : item.sku,
                 units: item.quantity,
-                selling_price: item.pricePerUnit || 0,
-                discount: 0,
-                tax: 0,
-                hsn: item.product?.specificCategoryVariant?.hsn || 0,
+                selling_price: item.priceAtPurchase || 0,
               })),
               payment_method: ord.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
-              sub_total: ord.amounts.productTotal,
+              sub_total: ord.paymentDetails.amountDueCod > 0
+                ? ord.paymentDetails.amountDueCod
+                : ord.totalAmount,
               length,
               breadth,
               height,
@@ -357,21 +358,20 @@ export async function processPayuGatewayResponse(payload, options = {}) {
 
             const shiprocketResponse = await createShiprocketOrder(shiprocketPayload);
             
-            if (shiprocketResponse?.order_id && shiprocketResponse?.shipment_id) {
+            if (shiprocketResponse?.status_code === 1 && !shiprocketResponse?.packaging_box_error) {
               await Order.findByIdAndUpdate(
                 ord._id,
                 {
                   $set: {
                     shiprocketOrderId: shiprocketResponse.order_id.toString(),
-                    shiprocketShipmentId: shiprocketResponse.shipment_id.toString(),
-                    deliveryStatus: 'confirmed',
+                    deliveryStatus: 'orderCreated',
                   },
                 },
                 { session }
               );
               logs.push(`[${timestampStr}] Shiprocket order created: ${shiprocketResponse.order_id}`);
             } else {
-              logs.push(`[${timestampStr}] Shiprocket response missing order_id or shipment_id`);
+              logs.push(`[${timestampStr}] Shiprocket response missing order_id or packaging_box_error`);
             }
           } catch (shiprocketError) {
             logs.push(`[${timestampStr}] Shiprocket creation failed: ${shiprocketError.message}`);
@@ -385,18 +385,45 @@ export async function processPayuGatewayResponse(payload, options = {}) {
       session.endSession();
 
       // Send WhatsApp notification (after transaction)
-      if (mainOrder && !mainOrder.isTestingOrder && mainOrder.phone) {
-        try {
-          const orderLink = `${process.env.NEXT_PUBLIC_BASE_URL}/orders/myorder/${mainOrder._id}`;
-          await sendWhatsAppMessage(mainOrder.phone, 'order_confirmation', {
-            orderId: mainOrder._id.toString(),
-            orderLink,
-          });
-          logs.push(`[${timestampStr}] WhatsApp notification sent`);
-        } catch (whatsappError) {
-          logs.push(`[${timestampStr}] WhatsApp notification failed: ${whatsappError.message}`);
-          console.error('[PayU] WhatsApp notification failed', whatsappError);
+      try {
+        if (!mainOrder.isTestingOrder) {
+          const userDoc = await User.findById(mainOrder.user);
+          if (userDoc) {
+            const buttons = [
+              {
+                type: 'button',
+                sub_type: 'url',
+                index: '0',
+                parameters: [
+                  {
+                    type: 'text',
+                    text: mainOrder._id?.toString() || 'Order ID',
+                  },
+                ],
+              },
+            ];
+            await sendWhatsAppMessage({
+              user: userDoc,
+              prefUserName: mainOrder.address.receiverName || '',
+              campaignName:
+                new Date().getTime() < new Date('2025-04-03T00:00:00.000Z').getTime()
+                  ? 'delay_eid'
+                  : 'order_confirmed',
+              orderId: mainOrder._id,
+              templateParams: [],
+              carouselCards: [],
+              buttons,
+            });
+            logs.push(`[${timestampStr}] WhatsApp message sent to user: ${userDoc._id}`);
+          } else {
+            logs.push(`[${timestampStr}] No matching user found for orderId: ${mainOrder._id}`);
+          }
+        } else {
+          logs.push(`[${timestampStr}] Skipping WhatsApp message (isTestingOrder = true).`);
         }
+      } catch (whatsappError) {
+        logs.push(`[${timestampStr}] WhatsApp message sending failed: ${whatsappError.message}`);
+        console.error('[PayU] WhatsApp notification failed', whatsappError);
       }
 
       console.info('[PayU] Processing logs:', logs);
