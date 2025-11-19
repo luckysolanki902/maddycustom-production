@@ -6,6 +6,7 @@ import Coupon from '@/models/Coupon';
 import Product from '@/models/Product';
 import Option from '@/models/Option';
 import User from '@/models/User';
+import Inventory from '@/models/Inventory';
 import mongoose from 'mongoose';
 import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shiprocket';
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
