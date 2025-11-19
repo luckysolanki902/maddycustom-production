@@ -378,7 +378,6 @@ export async function processPayuGatewayResponse(payload, options = {}) {
       session.endSession();
 
       // Send WhatsApp notification (after transaction)
-      const mainOrder = orders.find(ord => ord.isMainOrder) || orders[0];
       if (mainOrder && !mainOrder.isTestingOrder) {
         try {
           const orderLink = `${process.env.NEXT_PUBLIC_BASE_URL}/orders/myorder/${mainOrder._id}`;
@@ -450,6 +449,7 @@ export async function processPayuGatewayResponse(payload, options = {}) {
     console.error('[PayU] Transaction failed, rolled back:', error);
     console.error('[PayU] Processing logs:', logs);
     throw error;
+  }
 }
 
 export async function parsePayuPayload(request) {
