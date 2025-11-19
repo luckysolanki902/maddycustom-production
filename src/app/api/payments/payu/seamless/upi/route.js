@@ -4,6 +4,8 @@ import Order from '@/models/Order';
 import { initiatePayuPayment } from '@/lib/payments/payu/api';
 import { validatePayuCredentials } from '@/lib/payments/payu/config';
 import { formatPayuAmount, generatePayuRequestHash } from '@/lib/payments/payu/hash';
+import User from '@/models/User';
+
 
 const getOrigin = (request) =>
   request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '';
