@@ -9,7 +9,7 @@ import { paymentLogger } from '../utils/logger';
 
 const GRACE_PERIOD_MS = 45000; // wait up to 45 seconds for UPI handoff to complete
 
-export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrder, onStatusChange }) =>
+export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrder, onStatusChange, hideUpi = false, upiOnly = false }) =>
   new Promise((resolve, reject) => {
     let promiseSettled = false;
     const safeResolve = (value) => {
@@ -82,6 +82,41 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
     let modalDismissTime = null;
     let graceTimer = null;
 
+    if (hideUpi && upiOnly) {
+      paymentLogger.warn('Invalid Razorpay config: hideUpi & upiOnly cannot both be true', { orderId });
+    }
+
+    let displayConfig = null;
+    if (upiOnly) {
+      displayConfig = {
+        display: {
+          blocks: {
+            upi: {
+              name: 'Pay via UPI',
+              instruments: [
+                { method: 'upi' },
+                { method: 'upi', flows: ['collect'] },
+                { method: 'upi', flows: ['intent'] },
+              ],
+            },
+          },
+          sequence: ['block.upi'],
+          preferences: {
+            show_default_blocks: false,
+          },
+        },
+      };
+    } else if (hideUpi) {
+      displayConfig = {
+        display: {
+          hide: [{ method: 'upi' }],
+          preferences: {
+            show_default_blocks: true,
+          },
+        },
+      };
+    }
+
     const options = {
       key,
       name: 'Maddy Custom',
@@ -92,6 +127,7 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
       image: logoUrl,
       notes: { orderId },
       theme: { color: '#000000' },
+      ...(displayConfig ? { config: displayConfig } : {}),
 
       /** 
        * REMOVED: method: 'upi' and upi.flow: 'intent'

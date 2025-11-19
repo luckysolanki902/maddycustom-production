@@ -32,7 +32,8 @@ import {
   setLastOrderId,
   setCoupon,
   removeCoupon,
-  setExtraFields
+  setExtraFields,
+  clearOrderFormAutoOpen,
 } from '../../store/slices/orderFormSlice';
 import { closeAllDialogs } from '@/store/slices/uiSlice';  // Import the new action
 import { makePayment } from '../../lib/payments/makePayment';
@@ -53,9 +54,8 @@ import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
-import QrCode2Icon from '@mui/icons-material/QrCode2';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
 import reverseGeocodeClient from '@/lib/utils/reverseGeocodeClient';
@@ -64,7 +64,6 @@ import funnelClient from '@/lib/analytics/funnelClient';
 import { gaAddBillingInfo, gaAddPaymentInfo, gaPurchase } from '@/lib/metadata/googleAds';
 import { buildPurchaseEventPayload } from '@/lib/analytics/purchaseEventPayload';
 import { PAYMENT_PROVIDERS } from '@/lib/payments/providers';
-import { DEFAULT_PAYU_METHOD, PAYU_NETBANKING_BANKS, PAYU_PAYMENT_METHODS, PAYU_DEFAULT_NETBANKING_CODE } from '@/lib/payments/payu/constants';
 
 // Create logger for OrderForm component
 const logger = createLogger('OrderForm');
@@ -203,19 +202,31 @@ const OrderForm = ({
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-  const [payuPendingPayment, setPayuPendingPayment] = useState(null);
   const clientPaymentProvider = (
     process.env.NEXT_PUBLIC_PAYMENT_GATEWAY_PROVIDER ||
     process.env.NEXT_PUBLIC_PAYMENT_GATEWAY ||
     'razorpay'
   ).toLowerCase();
   const isPayuProvider = clientPaymentProvider === PAYMENT_PROVIDERS.PAYU;
-  const [selectedPayuMethod, setSelectedPayuMethod] = useState(DEFAULT_PAYU_METHOD);
-  const [selectedNetbankingBankCode, setSelectedNetbankingBankCode] = useState(
-    PAYU_DEFAULT_NETBANKING_CODE || PAYU_NETBANKING_BANKS[0]?.code || ''
-  );
-  const requiresPayuPaymentTab = isPayuProvider;
-  const totalTabs = requiresPayuPaymentTab ? 3 : 2;
+  const autoOpenRequest = orderForm.autoOpenRequest;
+  const lastOrderId = orderForm.lastOrderId;
+  const customerName = orderForm.userDetails?.name || '';
+  const customerPhone = orderForm.userDetails?.phoneNumber || '';
+  const accentColor = '#2d2d2d';
+
+  // Payment method selection
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null); // 'upi' or 'other'
+  const [upiPaymentState, setUpiPaymentState] = useState('idle'); // 'idle' | 'processing' | 'waiting' | 'success' | 'failed'
+  const [upiIntentUrl, setUpiIntentUrl] = useState(null);
+  const [currentTxnId, setCurrentTxnId] = useState(null);
+  const pollingIntervalRef = useRef(null);
+  const paymentGuardActive = isPaymentProcessing || upiPaymentState === 'waiting' || upiPaymentState === 'processing';
+  const upiSelected = selectedPaymentMethod === 'upi';
+  const otherSelected = selectedPaymentMethod === 'other';
+  
+  // Show payment tab after address
+  const requiresPayuPaymentTab = true;
+  const totalTabs = 3; // User details + Address + Payment
 
   // Extract and aggregate unique extraFields from cart items - memoized
   const aggregatedExtraFields = useMemo(() => {
@@ -232,12 +243,6 @@ const OrderForm = ({
     });
     return Array.from(fieldsMap.values());
   }, [items]);
-
-  const payuMethodIcons = useMemo(() => ({
-    upi: QrCode2Icon,
-    card: CreditCardIcon,
-    netbanking: AccountBalanceIcon,
-  }), []);
 
   const formatCurrency = useCallback((value) => {
     const numeric = Number(value) || 0;
@@ -275,11 +280,54 @@ const OrderForm = ({
     return 'Pay securely and continue';
   }, [requiresPayuPaymentTab, paymentModeConfig]);
 
-  const addressStepButtonText = useMemo(() => (
-    requiresPayuPaymentTab ? 'Continue to payment' : getPaymentButtonText(paymentModeConfig)
-  ), [requiresPayuPaymentTab, paymentModeConfig]);
+  // Cleanup polling on unmount or dialog close
+  useEffect(() => {
+    if (!open) {
+      // Dialog is closing - cleanup any pending payment
+      if (pollingIntervalRef.current) {
+        console.log('🔴 Dialog closing - cleaning up payment polling');
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      // Reset payment states when dialog closes
+      setUpiPaymentState('idle');
+      setIsPaymentProcessing(false);
+      setSelectedPaymentMethod(null);
+    }
+    
+    return () => {
+      if (pollingIntervalRef.current) {
+        console.log('🔴 Component unmounting - cleaning up payment polling');
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [open]);
 
-  const isNetbankingSelected = selectedPayuMethod === 'netbanking';
+  // Snackbar helper - MUST be defined before handleCancelPayment
+  const showSnackbar = useCallback((message, severity = 'success') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  }, []);
+
+  // Cancel UPI payment handler
+  const handleCancelPayment = useCallback(() => {
+    console.log('🔴 User cancelled payment');
+    
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    
+    setUpiPaymentState('idle');
+    setIsPaymentProcessing(false);
+    setSelectedPaymentMethod(null);
+    setCurrentTxnId(null);
+    setUpiIntentUrl(null);
+    
+    showSnackbar('Payment cancelled. You can try again when ready.', 'info');
+  }, [showSnackbar]);
 
   // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
   const dvStructArea = orderForm?.prefilledAddress?.structured?.areaLocality || '';
@@ -344,12 +392,6 @@ const OrderForm = ({
     mode: 'onChange',
     shouldUnregister: false // Prevents field unregistration which helps with focus issues
   });
-
-  const showSnackbar = useCallback((message, severity = 'success') => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
-  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -444,8 +486,6 @@ const OrderForm = ({
     if (open) {
       setTabIndex(0);
       setPurchaseInitiated(false);
-      setSelectedPayuMethod(DEFAULT_PAYU_METHOD);
-      setSelectedNetbankingBankCode(PAYU_DEFAULT_NETBANKING_CODE || PAYU_NETBANKING_BANKS[0]?.code || '');
     }
   }, [open]);
 
@@ -491,13 +531,12 @@ const OrderForm = ({
         cart: cartSnapshot,
         metadata: {
           paymentMode: paymentModeName,
-          defaultMethod: selectedPayuMethod,
         },
       });
     } catch (err) {
       console.warn('PayU payment tab analytics failed:', err);
     }
-  }, [open, requiresPayuPaymentTab, tabIndex, computeCartSnapshot, paymentModeName, selectedPayuMethod]);
+  }, [open, requiresPayuPaymentTab, tabIndex, computeCartSnapshot, paymentModeName]);
 
   // Sync form values with Redux store when dialog is opened
   useEffect(() => {
@@ -667,9 +706,10 @@ const OrderForm = ({
   }, [isMobile, isInputFocused]);
 
   const handleTabChange = useCallback((newValue) => {
+    if (paymentGuardActive) return;
     if (newValue < 0 || newValue >= totalTabs) return;
     setTabIndex(newValue);
-  }, [totalTabs]);
+  }, [paymentGuardActive, totalTabs]);
 
 
 
@@ -762,12 +802,7 @@ const OrderForm = ({
     setTabIndex(2);
   }, [isPincodeValid, pincodeCheckInProgress, showSnackbar]);
 
-  const handlePayuMethodChange = useCallback((methodId) => {
-    setSelectedPayuMethod(methodId);
-    if (methodId === 'netbanking' && !selectedNetbankingBankCode) {
-      setSelectedNetbankingBankCode(PAYU_DEFAULT_NETBANKING_CODE || PAYU_NETBANKING_BANKS[0]?.code || '');
-    }
-  }, [selectedNetbankingBankCode]);
+
 
   // Normalize floor display: avoid duplicating the word 'Floor'
   const formatFloorForAddress = useCallback((value) => {
@@ -798,95 +833,7 @@ const OrderForm = ({
   const handleFullClose = useCallback(() => {
     onClose();
     dispatch(closeAllDialogs());
-  }, [onClose, dispatch]);
-
-  const submitPayuForm = useCallback((payuSessionPayload) => {
-    if (!payuSessionPayload?.actionUrl || !payuSessionPayload?.fields) {
-      showSnackbar('Unable to start PayU payment. Please try again.', 'error');
-      return;
-    }
-
-    try {
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = payuSessionPayload.actionUrl;
-      form.style.display = 'none';
-
-      Object.entries(payuSessionPayload.fields).forEach(([key, value]) => {
-        if (value === undefined || value === null) return;
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = value;
-        form.appendChild(input);
-      });
-
-      document.body.appendChild(form);
-      form.submit();
-      setPayuPendingPayment({ method: payuSessionPayload.method });
-    } catch (error) {
-      console.error('PayU form submission failed', error);
-      showSnackbar('PayU payment could not be started. Please retry.', 'error');
-    }
-  }, [showSnackbar]);
-
-  const launchUpiIntent = useCallback((rawIntentUrl) => {
-    if (!rawIntentUrl || typeof rawIntentUrl !== 'string') {
-      showSnackbar('Invalid UPI intent link received. Falling back to PayU.', 'warning');
-      return false;
-    }
-
-    const sanitizedUrl = rawIntentUrl.replace(/&amp;/g, '&');
-
-    try {
-      const anchor = document.createElement('a');
-      anchor.href = sanitizedUrl;
-      anchor.style.display = 'none';
-      document.body.appendChild(anchor);
-      anchor.click();
-      window.setTimeout(() => {
-        if (anchor.parentNode) {
-          anchor.parentNode.removeChild(anchor);
-        }
-      }, 0);
-      showSnackbar('Pick your preferred UPI app to finish the payment.', 'info');
-      return true;
-    } catch (intentError) {
-      console.error('UPI intent launch failed', intentError);
-      try {
-        window.location.assign(sanitizedUrl);
-        showSnackbar('Pick your preferred UPI app to finish the payment.', 'info');
-        return true;
-      } catch (fallbackError) {
-        console.error('UPI intent navigation failed', fallbackError);
-        showSnackbar('Could not open a UPI app automatically. Retrying with PayU.', 'error');
-        return false;
-      }
-    }
-  }, [showSnackbar]);
-
-  const preparePayuPayment = useCallback(async ({ orderId, method = DEFAULT_PAYU_METHOD, bankCode }) => {
-    try {
-      setIsPaymentProcessing(true);
-      const response = await axios.post('/api/payments/payu/session', { orderId, method, bankCode });
-      const payload = response.data;
-
-      if (payload?.intentUrl) {
-        const launched = launchUpiIntent(payload.intentUrl);
-        if (launched) {
-          setPayuPendingPayment({ method, intentUrl: payload.intentUrl, txnId: payload.txnId || orderId, startedAt: Date.now() });
-          return;
-        }
-        console.warn('UPI intent launch failed, reverting to hosted PayU UI');
-      }
-
-      submitPayuForm(payload);
-    } catch (error) {
-      console.error('Failed to create PayU session', error);
-      showSnackbar(error?.response?.data?.error || 'Failed to prepare PayU payment.', 'error');
-      setIsPaymentProcessing(false);
-    }
-  }, [launchUpiIntent, setPayuPendingPayment, showSnackbar, submitPayuForm]);
+  }, [dispatch, onClose]);
 
   // Pre-validate coupon in background as soon as form opens (skip if same signature validated recently)
   const lastCouponValidateKeyRef = useRef('');
@@ -1060,27 +1007,22 @@ const OrderForm = ({
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
-    if (purchaseInitiated) return; // Prevent multiple submissions
+    console.log('🔵 onSubmitAddressDetails called with data:', data);
+    console.log('🔵 Current orderForm state:', orderForm);
+    console.log('🔵 Cart items:', cartItems);
+    console.log('🔵 Payment mode config:', paymentModeConfig);
+    
+    if (purchaseInitiated) {
+      console.log('⚠️ Purchase already initiated, returning');
+      return;
+    }
     if (!paymentModeConfig?._id) {
+      console.log('❌ Payment mode config missing');
       showSnackbar('Payment option is still loading. Please pick one to continue.', 'warning');
       return;
     }
 
-    const normalizedPayuMethod = selectedPayuMethod || DEFAULT_PAYU_METHOD;
-    const bankCodeForNetbanking =
-      normalizedPayuMethod === 'netbanking'
-        ? (selectedNetbankingBankCode || PAYU_DEFAULT_NETBANKING_CODE)
-        : undefined;
-
-    if (
-      clientPaymentProvider === PAYMENT_PROVIDERS.PAYU &&
-      normalizedPayuMethod === 'netbanking' &&
-      !bankCodeForNetbanking
-    ) {
-      showSnackbar('Select your bank to continue with netbanking.', 'warning');
-      return;
-    }
-
+    console.log('✅ Starting order creation process...');
     setPurchaseInitiated(true);
     setIsLoading(true);
     setIsPaymentProcessing(true);
@@ -1197,13 +1139,7 @@ const OrderForm = ({
         });
       }
 
-      const payuSessionPayload = isPayuProvider
-        ? {
-            method: normalizedPayuMethod,
-            ...(bankCodeForNetbanking ? { bankCode: bankCodeForNetbanking } : {}),
-          }
-        : null;
-
+      // Note: payuSession is not sent for merchant-hosted checkout (merchant selects method in PaymentDialog)
       const finalOrderPayload = {
         userId: orderForm.userDetails.userId,
         phoneNumber: orderForm.userDetails.phoneNumber,
@@ -1251,13 +1187,16 @@ const OrderForm = ({
           landmark: data.landmark,
           ...(floorParsed !== undefined ? { floor: floorParsed } : {}),
         },
-        ...(payuSessionPayload ? { payuSession: payuSessionPayload } : {}),
       };
 
+      console.log('🔄 Sending order creation request with payload:', finalOrderPayload);
+      
       const [orderCreationResponse] = await Promise.all([
         axios.post('/api/checkout/order/create', finalOrderPayload),
         addressAddPromise
       ]);
+
+      console.log('✅ Order creation response received:', orderCreationResponse.data);
 
       const {
         orderId: createdOrderId,
@@ -1267,247 +1206,42 @@ const OrderForm = ({
         amountDueOnline
       } = orderCreationResponse.data;
 
-      const activeProvider = serverPaymentProvider || clientPaymentProvider;
+      if (!createdOrderId) {
+        console.log('❌ No order ID in response!');
+        throw new Error('Order creation failed - no order ID received');
+      }
 
+      console.log('✅ Order created successfully with ID:', createdOrderId);
+      console.log('📝 Razorpay order from response:', razorpayOrder);
+      console.log('📝 Dispatching setLastOrderId to Redux...');
       dispatch(setLastOrderId(createdOrderId));
-
-      if (activeProvider === PAYMENT_PROVIDERS.PAYU && amountDueOnline > 0) {
-        if (normalizedPayuMethod === 'netbanking' && !bankCodeForNetbanking) {
-          showSnackbar('Select your bank to continue with netbanking.', 'warning');
-          setIsPaymentProcessing(false);
-          setIsLoading(false);
-          setPurchaseInitiated(false);
-          return;
-        }
-
-        funnelClient.track('payu_payment_prompt', {
-          orderId: createdOrderId,
-          amountDueOnline,
-          method: normalizedPayuMethod,
-          bankCode: bankCodeForNetbanking,
-        });
-        setIsPaymentProcessing(true);
-        await preparePayuPayment({
-          orderId: createdOrderId,
-          method: normalizedPayuMethod,
-          bankCode: bankCodeForNetbanking,
-        });
-        return;
+      
+      // Also store the razorpayOrder details in a ref for later use
+      if (razorpayOrder) {
+        console.log('💾 Storing Razorpay order for later use');
+        window.sessionStorage.setItem(`razorpay_order_${createdOrderId}`, JSON.stringify({
+          id: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency || 'INR',
+        }));
       }
-
-      if (razorpayOrder && amountDueOnline > 0) {
-        try {
-          // Ensure Razorpay script is loaded before proceeding
-          logger.info('Ensuring Razorpay script is loaded...');
-          await ensureRazorpayLoaded();
-          logger.info('Razorpay script confirmed loaded');
-
-          funnelClient.track('payment_initiated', {
-            dedupeKey: `payment_initiated:${createdOrderId}`,
-            cart: cartSnapshot,
-            order: {
-              orderId: createdOrderId,
-              value: orderValue,
-              currency: orderValue !== undefined ? 'INR' : undefined,
-              coupon: normalizedCouponCode,
-            },
-            metadata: {
-              paymentMode: paymentModeName,
-              amountDueOnline,
-              razorpayOrderId: razorpayOrder?.id,
-              requiresGateway: true,
-            },
-          });
-        } catch (err) {
-          console.warn('Funnel payment_initiated track failed:', err);
-        }
-
-        try {
-          const contents = cartItems.map((item) => ({
-            productId: item.productId || item._id,
-            quantity: item.quantity,
-            price: item.priceAtPurchase || item.productDetails.price,
-            brand: item.productDetails?.brand,
-            category: item.productDetails?.category?.name || item.productDetails?.category,
-            name: item.productDetails?.name
-          }));
-          await paymentInitiated({
-            value: totalCost,
-            amount_due_online: amountDueOnline,
-            payment_mode: paymentModeConfig?.name,
-            payment_mode_id: paymentModeConfig?._id,
-            is_split_payment: !!(paymentModeConfig?.configuration?.onlinePercentage > 0 && paymentModeConfig?.configuration?.onlinePercentage < 100),
-            contents,
-            numItems: contents.length,
-            contentName: contents.map(c => c.name).filter(Boolean).join(', '),
-            orderId: createdOrderId,
-          }, {
-            email: orderForm.userDetails.email || '',
-            phoneNumber: orderForm.userDetails.phoneNumber,
-          });
-        } catch (err) {
-          console.warn('Payment initiated analytics failed (non-critical):', err);
-        }
-
-        try {
-          const gaContents = cartItems.map((item) => ({
-            productId: item.productId || item._id,
-            quantity: item.quantity,
-            price: item.priceAtPurchase || item.productDetails.price,
-            brand: item.productDetails?.brand,
-            category: item.productDetails?.category?.name || item.productDetails?.category,
-            name: item.productDetails?.name
-          }));
-          gaAddPaymentInfo({
-            value: amountDueOnline || totalCost,
-            items: gaContents,
-            payment_type: paymentModeConfig?.name || 'online',
-            coupon: typeof couponCode === 'string' && couponCode ? couponCode : undefined,
-          });
-        } catch (gaErr) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.debug('gaAddPaymentInfo failed', gaErr);
-          }
-        }
-
-        const paymentResult = await makePayment({
-          customerName: orderForm.userDetails.name || '',
-          customerMobile: orderForm.userDetails.phoneNumber,
-          orderId: createdOrderId,
-          razorpayOrder,
-          onStatusChange: handlePaymentStatusChange,
-        });
-
-        if (paymentResult.cancelled) {
-          setIsPaymentProcessing(false);
-          setPurchaseInitiated(false);
-          const reason = paymentResult.reason || 'user-dismissed';
-          if (paymentResult.pendingVerification) {
-            showSnackbar('Waiting for confirmation from your UPI app. You can retry if needed.', 'info');
-          } else if (reason === 'status-check-error') {
-            showSnackbar('Could not confirm payment with Razorpay. Please check your UPI app before retrying.', 'warning');
-          } else if (reason === 'grace-timeout') {
-            showSnackbar('We are still waiting for confirmation from your UPI app. If money was deducted, it should reflect shortly.', 'info');
-          } else {
-            showSnackbar('Payment was cancelled.', 'warning');
-          }
-          logger.info('Payment cancelled by user', { reason, pendingVerification: paymentResult.pendingVerification });
-          return;
-        }
-        
-        if (paymentResult.recovered) {
-          logger.info('Payment recovered from webhook!');
-          showSnackbar('Payment Successful! (Confirmed by server)', 'success');
-        } else {
-          showSnackbar('Payment Successful!', 'success');
-        }
-      } else if (amountDueOnline === 0) {
-        showSnackbar('Order placed successfully! Payment will be collected on delivery.', 'success');
-      } else {
-        logger.warn('Unexpected payment state', { razorpayOrder, amountDueOnline });
-        showSnackbar('Order placed. Awaiting payment confirmation.', 'info');
-      }
-
-      try {
-        const amountPaidOnlineValue = Number.isFinite(amountDueOnline) && amountDueOnline > 0 ? amountDueOnline : 0;
-        const amountDueCodValue = Math.max(totalForPurchase - amountPaidOnlineValue, 0);
-
-        const purchasePayload = buildPurchaseEventPayload({
-          orderId: createdOrderId,
-          totalValue: orderValue ?? totalForPurchase,
-          currency: 'INR',
-          couponCode: normalizedCouponCode,
-          cartSummary: cartSnapshot,
-          items: analyticsItems,
-          paymentMode: paymentModeName,
-          paymentStatus: amountDueOnline > 0 ? 'online_partial' : 'cod',
-          amountDueOnline,
-          amountPaidOnline: amountPaidOnlineValue,
-          amountDueCod: amountDueCodValue,
-          totalDiscount: discountAmountFinal || 0,
-          metadata: {
-            source: 'order_form_submit',
-            isSplitOrder: Boolean(orderCreationResponse?.data?.isSplitOrder),
-          },
-        });
-
-        if (purchasePayload) {
-          funnelClient.track('purchase', purchasePayload);
-          void funnelClient.flush('purchase');
-        }
-      } catch (err) {
-        console.warn('Funnel purchase track failed:', err);
-      }
-
-      if (!process.env.NEXT_PUBLIC_isTestingOrder) {
-        purchase(
-          {
-            orderId: createdOrderId,
-            totalAmount: totalCost,
-            items: cartItems.map((item) => ({
-              product: item.productId,
-              name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-                ? item.productDetails.category?.name.slice(0, -1)
-                : item.productDetails.category?.name
-                }`,
-              quantity: item.quantity,
-              priceAtPurchase: item.priceAtPurchase,
-            })),
-          },
-          {
-            email: orderForm.userDetails.email || '',
-            phoneNumber: orderForm.userDetails.phoneNumber,
-          }
-        ).catch(error => {
-          console.error('FB pixel purchase event error (non-critical):', error);
-        });
-
-        try {
-          gaPurchase({
-            transaction_id: createdOrderId,
-            value: totalCost,
-            items: cartItems.map((item) => ({
-              product: item.productId,
-              name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
-                ? item.productDetails.category?.name.slice(0, -1)
-                : item.productDetails.category?.name
-                }`,
-              quantity: item.quantity,
-              priceAtPurchase: item.priceAtPurchase,
-            })),
-            shipping: deliveryCost || 0,
-            tax: 0,
-            coupon: typeof couponCode === 'string' && couponCode ? couponCode : undefined,
-          });
-        } catch (gaErr) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.debug('gaPurchase failed', gaErr);
-          }
-        }
-      }
-
-      pendingOperationsRef.current = {
-        userCheck: null,
-        addressAdd: null,
-        couponValidation: null,
-      };
-
-      dispatch(clearUTMDetails());
-      if (!process.env.NEXT_PUBLIC_isTestingOrder) dispatch(clearCart());
-      dispatch(resetOrderForm());
-      reset();
-
-      handleFullClose();
-
-      setTimeout(() => {
-        router.push(`/orders/myorder/${createdOrderId}`);
-      }, 100);
+      
+      console.log('✅ Moving to payment tab (index 2)');
+      // Just move to payment tab - user will choose payment method there
+      setIsLoading(false);
+      setPurchaseInitiated(false);
+      setTabIndex(2); // Move to payment tab
 
     } catch (error) {
-      console.error('Error during purchase process:', error);
+      console.log('❌ ERROR during order creation:', error);
+      console.log('❌ Error response:', error.response?.data);
+      console.log('❌ Error message:', error.message);
+      console.log('❌ Full error object:', error);
       const errorMessage = error.response?.data?.message || error.message || 'An error occurred. Please try again.';
       showSnackbar(errorMessage, 'error');
+      // Don't move to payment tab if order creation failed
     } finally {
+      console.log('🔵 Order creation process completed (finally block)');
       setIsLoading(false);
       setIsPaymentProcessing(false);
       setPurchaseInitiated(false);
@@ -1515,19 +1249,292 @@ const OrderForm = ({
   }, [purchaseInitiated, computeCartSnapshot, cartItems, totalCost, normalizedCouponCode, paymentModeName,
     dispatch, showSnackbar, isPincodeValid, serviceabilityCache, orderForm,
     formatFloorForAddress, geo, paymentModeConfig, discountAmountFinal, couponsDetails, deliveryCost,
-  utmDetails, couponCode, handleFullClose, reset, router, handlePaymentStatusChange,
-  clientPaymentProvider, preparePayuPayment, selectedPayuMethod, selectedNetbankingBankCode,
-  isPayuProvider]);
+  utmDetails, couponCode, showSnackbar, router]);
+
+  const fetchOrCreateRazorpayOrder = useCallback(async () => {
+    if (!lastOrderId) {
+      throw new Error('Order not created yet. Please go back and complete shipping details.');
+    }
+
+    console.log('🔍 Ensuring Razorpay order details for:', lastOrderId);
+    const orderResponse = await axios.get(`/api/order/${lastOrderId}`);
+    const order = orderResponse.data.order || orderResponse.data || {};
+    const amountDueOnline = order.paymentDetails?.amountDueOnline ?? order.totalAmount ?? 0;
+    const normalizedAmount = Number(amountDueOnline) || 0;
+    const amountPaise = Math.max(1, Math.floor(normalizedAmount * 100));
+    const razorpayDetails = order.paymentDetails?.razorpayDetails;
+    let razorpayOrderToUse = razorpayDetails?.orderId
+      ? {
+          id: razorpayDetails.orderId,
+          amount: amountPaise,
+          currency: 'INR',
+        }
+      : null;
+
+    const sessionKey = `razorpay_order_${lastOrderId}`;
+
+    if (!razorpayOrderToUse && typeof window !== 'undefined') {
+      const cachedOrder = window.sessionStorage.getItem(sessionKey);
+      if (cachedOrder) {
+        razorpayOrderToUse = JSON.parse(cachedOrder);
+      }
+    }
+
+    if (!razorpayOrderToUse) {
+      console.log('🔄 Creating Razorpay order via API...');
+      const createResponse = await axios.post('/api/payments/razorpay/create-order', {
+        orderId: lastOrderId,
+      });
+      razorpayOrderToUse = {
+        id: createResponse.data.razorpayOrderId,
+        amount: Math.floor(createResponse.data.amount * 100),
+        currency: 'INR',
+      };
+
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(sessionKey, JSON.stringify(razorpayOrderToUse));
+      }
+    }
+
+    if (!razorpayOrderToUse) {
+      throw new Error('Payment details not found. Please try again or contact support.');
+    }
+
+    return razorpayOrderToUse;
+  }, [lastOrderId]);
+
+  const initiateRazorpayPayment = useCallback(async ({ hideUpi = false, upiOnly = false, paymentContext = 'other' } = {}) => {
+    console.log('🟣 initiateRazorpayPayment called', { hideUpi, upiOnly, paymentContext, lastOrderId });
+
+    if (!lastOrderId) {
+      showSnackbar('Order not created yet. Please go back and complete shipping details.', 'error');
+      setTabIndex(1);
+      return;
+    }
+
+    if (upiOnly) {
+      setSelectedPaymentMethod('upi');
+      setUpiPaymentState('processing');
+    } else {
+      setSelectedPaymentMethod('other');
+    }
+
+    setIsPaymentProcessing(true);
+
+    try {
+      const razorpayOrderToUse = await fetchOrCreateRazorpayOrder();
+      await ensureRazorpayLoaded();
+      console.log('✅ Razorpay SDK loaded, opening payment modal...');
+
+      const paymentResult = await makePayment({
+        customerName,
+        customerMobile: customerPhone,
+        orderId: lastOrderId,
+        razorpayOrder: razorpayOrderToUse,
+        onStatusChange: handlePaymentStatusChange,
+        hideUpi,
+        upiOnly,
+      });
+
+      if (paymentResult.cancelled) {
+        setIsPaymentProcessing(false);
+        if (upiOnly) {
+          setUpiPaymentState('idle');
+        }
+        if (paymentResult.pendingVerification) {
+          showSnackbar('Waiting for payment confirmation. You can retry if needed.', 'info');
+        } else {
+          showSnackbar('Payment was cancelled.', 'warning');
+        }
+        return;
+      }
+
+      showSnackbar('Payment Successful!', 'success');
+
+      if (!process.env.NEXT_PUBLIC_isTestingOrder) dispatch(clearCart());
+      dispatch(resetOrderForm());
+      reset();
+      handleFullClose();
+      
+      setTimeout(() => {
+        router.push(`/orders/myorder/${lastOrderId}`);
+      }, 500);
+    } catch (error) {
+      console.error('Razorpay payment failed:', error);
+      setIsPaymentProcessing(false);
+      if (upiOnly) {
+        setUpiPaymentState('failed');
+      }
+      showSnackbar(error.message || 'Payment failed. Please try again.', 'error');
+    }
+  }, [lastOrderId, customerName, customerPhone, fetchOrCreateRazorpayOrder, handlePaymentStatusChange, dispatch, resetOrderForm, reset, handleFullClose, router, showSnackbar]);
+
+  // NEW: Handle UPI payment with PayU S2S on mobile, Razorpay UPI elsewhere
+  const handlePayWithUPI = useCallback(async () => {
+    console.log('🟢 handlePayWithUPI called');
+    console.log('🟢 Current orderForm.lastOrderId:', lastOrderId);
+    
+    if (!lastOrderId) {
+      console.log('❌ No lastOrderId found! Sending back to address tab');
+      showSnackbar('Order not created yet. Please go back and complete shipping details.', 'error');
+      setTabIndex(1); // Go back to address tab
+      return;
+    }
+
+    if (!isMobile) {
+      await initiateRazorpayPayment({ upiOnly: true, paymentContext: 'upi-desktop' });
+      return;
+    }
+
+    // Prevent multiple simultaneous payment attempts
+    if (isPaymentProcessing || upiPaymentState === 'processing' || upiPaymentState === 'waiting') {
+      console.log('⚠️ Payment already in progress');
+      showSnackbar('Payment already in progress', 'warning');
+      return;
+    }
+
+    console.log('✅ Order ID exists, proceeding with UPI payment');
+    setSelectedPaymentMethod('upi');
+    setUpiPaymentState('processing');
+    setIsPaymentProcessing(true);
+
+    try {
+      console.log('🔄 Calling PayU seamless UPI API...');
+      // Call PayU seamless UPI API for intent
+      const response = await axios.post('/api/payments/payu/seamless/upi', {
+        orderId: lastOrderId,
+        mode: 'intent',
+      });
+      console.log('✅ PayU UPI response:', response.data);
+
+      const { intentUrl, txnId } = response.data;
+      
+      if (!intentUrl || !txnId) {
+        throw new Error('Invalid response from payment gateway');
+      }
+      
+      setCurrentTxnId(txnId);
+      setUpiIntentUrl(intentUrl);
+
+      if (intentUrl) {
+        // Launch UPI intent
+        setUpiPaymentState('waiting');
+        console.log('🔄 Launching UPI intent:', intentUrl);
+        
+        // Try to open UPI app
+        try {
+          if (/android/i.test(navigator.userAgent)) {
+            window.location.href = intentUrl;
+          } else {
+            // Fallback for non-Android
+            const anchor = document.createElement('a');
+            anchor.href = intentUrl;
+            anchor.style.display = 'none';
+            document.body.appendChild(anchor);
+            anchor.click();
+            setTimeout(() => anchor.remove(), 100);
+          }
+          console.log('✅ UPI intent launched');
+        } catch (launchError) {
+          console.error('❌ Failed to launch UPI intent:', launchError);
+          throw new Error('Failed to open UPI app. Please try again.');
+        }
+
+        // Start polling for payment status
+        let pollCount = 0;
+        const maxPolls = 60; // 5 minutes
+        const pollInterval = 5000; // 5 seconds
+
+        console.log('🔄 Starting payment verification polling...');
+        pollingIntervalRef.current = setInterval(async () => {
+          pollCount++;
+          console.log(`🔄 Poll attempt ${pollCount}/${maxPolls}`);
+
+          try {
+            const verifyRes = await axios.post('/api/payments/payu/verify', {
+              txnIds: [txnId],
+            });
+
+            const txnData = verifyRes.data?.transaction_details?.[txnId];
+            console.log('📊 Transaction data:', txnData);
+            
+            if (txnData) {
+              const status = (txnData.status || '').toLowerCase();
+              console.log('💳 Payment status:', status);
+
+              if (status === 'success') {
+                console.log('✅ Payment successful!');
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+                setUpiPaymentState('success');
+                showSnackbar('Payment Successful! Redirecting...', 'success');
+                
+                // Clear cart and redirect
+                if (!process.env.NEXT_PUBLIC_isTestingOrder) dispatch(clearCart());
+                dispatch(resetOrderForm());
+                reset();
+                handleFullClose();
+                
+                setTimeout(() => {
+                  router.push(`/orders/myorder/${lastOrderId}`);
+                }, 500);
+              } else if (status === 'failed' || status === 'failure') {
+                console.log('❌ Payment failed');
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+                setUpiPaymentState('failed');
+                setIsPaymentProcessing(false);
+                showSnackbar('Payment failed. Please try again.', 'error');
+              }
+            }
+
+            // Timeout after max polls
+            if (pollCount >= maxPolls) {
+              console.log('⏱️ Polling timeout reached');
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+              setUpiPaymentState('failed');
+              setIsPaymentProcessing(false);
+              showSnackbar('Payment verification timeout. Please check your order status or try again.', 'warning');
+            }
+          } catch (pollError) {
+            console.error('❌ Payment polling error:', pollError);
+            // Don't stop polling on single error, might be network issue
+            if (pollCount >= 3) {
+              // After 3 failed polls, show warning but continue
+              console.warn('⚠️ Multiple polling failures detected');
+            }
+          }
+        }, pollInterval);
+
+      } else {
+        throw new Error('Failed to generate UPI intent link');
+      }
+    } catch (error) {
+      console.error('UPI payment failed:', error);
+      setUpiPaymentState('failed');
+      setIsPaymentProcessing(false);
+      showSnackbar(error.response?.data?.error || 'Failed to initiate UPI payment', 'error');
+    }
+  }, [lastOrderId, showSnackbar, dispatch, reset, handleFullClose, router, isMobile, initiateRazorpayPayment, isPaymentProcessing, upiPaymentState]);
+
+  // NEW: Handle other payment methods (Razorpay)
+  const handlePayWithOther = useCallback(() => {
+    initiateRazorpayPayment({ hideUpi: true, paymentContext: 'other' });
+  }, [initiateRazorpayPayment]);
 
   const currentSubmitHandler = useMemo(() => {
     if (tabIndex === 0) return onSubmitUserDetails;
-    if (tabIndex === 1 && requiresPayuPaymentTab) return handleProceedToPayuOptions;
-    return onSubmitAddressDetails;
-  }, [tabIndex, requiresPayuPaymentTab, onSubmitUserDetails, handleProceedToPayuOptions, onSubmitAddressDetails]);
+    if (tabIndex === 1) return onSubmitAddressDetails; // Create order and move to payment tab
+    return null; // No submit on payment tab - use buttons
+  }, [tabIndex, onSubmitUserDetails, onSubmitAddressDetails]);
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
-    if (isPaymentProcessing) return;
+    if (paymentGuardActive) {
+      showSnackbar('Please wait for payment to complete or cancel it first', 'warning');
+      return;
+    }
 
     // if on shipping tab (index 1), go back to user details (index 0)
     if (tabIndex === 1) {
@@ -1536,7 +1543,7 @@ const OrderForm = ({
       // otherwise close the dialog
       onClose();
     }
-  }, [isPaymentProcessing, onClose, tabIndex]);
+  }, [paymentGuardActive, onClose, tabIndex, showSnackbar]);
 
 
 
@@ -1639,16 +1646,24 @@ const OrderForm = ({
     <ThemeProvider theme={theme}>
       <Dialog
         open={open}
-        onClose={(event, reason) => {
-          if (reason === 'backdropClick') {
-            onClose();
-          } else {
-            handleClose();
-          }
+        onClose={(event) => {
+          event?.preventDefault?.();
+          handleClose();
         }}
         maxWidth="sm"
         fullWidth
-        disableEscapeKeyDown={isPaymentProcessing}
+        disableEscapeKeyDown={paymentGuardActive}
+        BackdropProps={{
+          sx: {
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            cursor: paymentGuardActive ? 'not-allowed' : 'pointer',
+          },
+          onClick: paymentGuardActive
+            ? (event) => {
+                event.stopPropagation();
+              }
+            : undefined,
+        }}
         PaperProps={{
           sx: {
             borderRadius: '1.5rem',
@@ -1768,10 +1783,10 @@ const OrderForm = ({
                             fontWeight: 600,
                             fontSize: { xs: '0.7rem', sm: '0.8rem' },
                             boxShadow: isActive ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
-                            cursor: isCompleted ? 'pointer' : 'default'
+                            cursor: isCompleted && !paymentGuardActive ? 'pointer' : 'default'
                           }}
                           onClick={() => {
-                            if (isCompleted) handleTabChange(index);
+                            if (isCompleted && !paymentGuardActive) handleTabChange(index);
                           }}
                         >
                           {index + 1}
@@ -1816,7 +1831,9 @@ const OrderForm = ({
 
             {tabIndex > 0 && (
               <Box
-                onClick={() => handleTabChange(tabIndex - 1)}
+                onClick={() => {
+                  if (!paymentGuardActive) handleTabChange(tabIndex - 1);
+                }}
                 sx={{
                   position: 'absolute',
                   left: '0.5rem', // Reduced from 1rem
@@ -2467,7 +2484,7 @@ const OrderForm = ({
 
                 {tabIndex === 2 && (
                   <motion.div
-                    key="payuPayment"
+                    key="payment"
                     custom={2}
                     variants={formVariants}
                     initial="initial"
@@ -2479,152 +2496,262 @@ const OrderForm = ({
                       sx={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '0.75rem',
-                        paddingTop: '0.5rem',
-                        px: { xs: 0.5, sm: 1 },
+                        gap: 2,
+                        paddingTop: 1,
+                        px: { xs: 1.25, sm: 2 },
+                        pb: 1.5,
                       }}
                     >
-                      <Typography
-                        variant="subtitle1"
-                        sx={{
-                          fontFamily: 'Jost, sans-serif',
-                          fontSize: '0.95rem',
-                          fontWeight: 600,
-                          color: '#1a1a1a',
-                        }}
-                      >
-                        Pick a payment option
-                      </Typography>
-
-                      <Grid container spacing={1}>
-                        {PAYU_PAYMENT_METHODS.map((method) => {
-                          const IconComponent = payuMethodIcons[method.id];
-                          const isSelected = selectedPayuMethod === method.id;
-                          return (
-                            <Grid item xs={12} key={method.id}>
-                              <Box
-                                component="button"
-                                type="button"
-                                onClick={() => handlePayuMethodChange(method.id)}
-                                sx={{
-                                  width: '100%',
-                                  borderRadius: '14px',
-                                  border: `1.5px solid ${isSelected ? '#111' : alpha('#000', 0.12)}`,
-                                  backgroundColor: '#fff',
-                                  color: '#111',
-                                  p: 1.2,
-                                  textAlign: 'left',
-                                  cursor: 'pointer',
-                                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                                  boxShadow: isSelected ? '0 6px 18px rgba(0,0,0,0.06)' : 'none',
-                                  '&:focus-visible': {
-                                    outline: 'none',
-                                    borderColor: '#111',
-                                    boxShadow: '0 0 0 3px rgba(17,17,17,0.08)',
-                                  },
-                                }}
+                      {/* UPI Payment Waiting Status */}
+                      {upiPaymentState === 'waiting' && (
+                        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
+                          <Box
+                            sx={{
+                              p: 2,
+                              borderRadius: '18px',
+                              bgcolor: '#FFF4E5',
+                              border: `1px solid ${alpha('#F57C00', 0.35)}`,
+                              display: 'flex',
+                              flexDirection: { xs: 'column', sm: 'row' },
+                              gap: 1.5,
+                              alignItems: { sm: 'center' },
+                              justifyContent: 'space-between',
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                              <CircularProgress size={20} sx={{ color: '#F57C00' }} />
+                              <Typography
+                                variant="subtitle2"
+                                sx={{ fontFamily: 'Jost, sans-serif', color: '#D35400', fontWeight: 600 }}
                               >
-                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                  {IconComponent && (
-                                    <IconComponent sx={{ color: method.accent, fontSize: '1.4rem' }} />
-                                  )}
-                                  <Box sx={{ flexGrow: 1 }}>
-                                    <Typography
-                                      variant="subtitle2"
-                                      sx={{
-                                        fontFamily: 'Jost, sans-serif',
-                                        fontWeight: 600,
-                                      }}
-                                    >
-                                      {method.title}
-                                    </Typography>
-                                    <Typography
-                                      variant="body2"
-                                      sx={{
-                                        fontFamily: 'Jost, sans-serif',
-                                        color: '#555',
-                                        fontSize: '0.78rem',
-                                      }}
-                                    >
-                                      {method.description}
-                                    </Typography>
-                                  </Box>
-                                  {method.badge && (
-                                    <Box
-                                      sx={{
-                                        px: 1,
-                                        py: 0.2,
-                                        borderRadius: '999px',
-                                        backgroundColor: alpha(method.accent, 0.12),
-                                        color: method.accent,
-                                        fontSize: '0.65rem',
-                                        fontWeight: 600,
-                                        textTransform: 'uppercase',
-                                      }}
-                                    >
-                                      {method.badge}
-                                    </Box>
-                                  )}
-                                </Box>
-                              </Box>
-                            </Grid>
-                          );
-                        })}
-                      </Grid>
-
-                      {selectedPayuMethod === 'netbanking' && (
-                        <Box
-                          sx={{
-                            borderRadius: '12px',
-                            border: `1px solid ${alpha('#000', 0.08)}`,
-                            p: 1,
-                            backgroundColor: '#fafafa',
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            sx={{ fontFamily: 'Jost, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#777' }}
-                          >
-                            Choose your bank
-                          </Typography>
-                          <TextField
-                            select
-                            fullWidth
-                            value={selectedNetbankingBankCode}
-                            onChange={(e) => setSelectedNetbankingBankCode(e.target.value)}
-                            size="small"
-                            sx={{ mt: 0.8 }}
-                          >
-                            {PAYU_NETBANKING_BANKS.map((bank) => (
-                              <MenuItem key={bank.code} value={bank.code}>
-                                {bank.name}
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                        </Box>
+                                Waiting for payment confirmation…
+                              </Typography>
+                            </Box>
+                          
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={handleCancelPayment}
+                              sx={{
+                                borderColor: '#F57C00',
+                                color: '#D35400',
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                px: 2.5,
+                                borderRadius: '999px',
+                                '&:hover': {
+                                  borderColor: '#D35400',
+                                  bgcolor: 'rgba(243, 131, 33, 0.08)',
+                                },
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </Box>
+                        </motion.div>
                       )}
 
+                      {/* Payment Failed Status */}
+                      {upiPaymentState === 'failed' && (
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+                          <Box
+                            sx={{
+                              p: 2,
+                              borderRadius: '18px',
+                              bgcolor: '#FEF0F0',
+                              border: `1px solid ${alpha('#C62828', 0.35)}`,
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              sx={{ color: '#B71C1C', fontFamily: 'Jost, sans-serif', fontWeight: 500 }}
+                            >
+                              Payment failed or timed out. Please try again when you&apos;re ready.
+                            </Typography>
+                          </Box>
+                        </motion.div>
+                      )}
+
+                      {/* Amount Display */}
                       <Box
                         sx={{
-                          borderRadius: '14px',
-                          border: `1px solid ${alpha('#000', 0.08)}`,
-                          p: 1.2,
-                          backgroundColor: '#fafafa'
+                          textAlign: 'center',
+                          py: 2,
+                          px: 2,
+                          borderRadius: '22px',
+                          background: 'linear-gradient(135deg, #ffffff 0%, #f5f5f5 60%)',
+                          border: `1px solid ${alpha('#000', 0.06)}`,
+                          boxShadow: '0 18px 45px rgba(0,0,0,0.08)',
                         }}
                       >
                         <Typography
-                          variant="subtitle2"
-                          sx={{ fontFamily: 'Jost, sans-serif', color: '#111', fontSize: '0.9rem', fontWeight: 600 }}
+                          variant="caption"
+                          sx={{
+                            fontFamily: 'Jost, sans-serif',
+                            color: '#777',
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                          }}
                         >
-                          Pay now: {formatCurrency(payuOnlineAmount)}
+                          Amount Payable
+                        </Typography>
+                        <Typography
+                          variant="h3"
+                          sx={{
+                            fontWeight: 700,
+                            fontFamily: 'Jost, sans-serif',
+                            color: accentColor,
+                            mt: 0.5,
+                          }}
+                        >
+                          {formatCurrency(totalCost)}
                         </Typography>
                         <Typography
                           variant="body2"
-                          sx={{ fontFamily: 'Jost, sans-serif', color: '#555', mt: 0.4, fontSize: '0.78rem' }}
+                          sx={{ fontFamily: 'Jost, sans-serif', color: '#8d8d8d', mt: 0.5 }}
                         >
-                          You will be redirected to PayU to complete the payment securely. Split or partial payments are handled automatically.
+                          Includes shipping, taxes & discounts
                         </Typography>
                       </Box>
+
+                      {/* Payment Buttons */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+                          <Button
+                            onClick={handlePayWithUPI}
+                            disabled={isPaymentProcessing || upiPaymentState === 'waiting'}
+                            sx={{
+                              width: '100%',
+                              borderRadius: '20px',
+                              padding: 0,
+                              textTransform: 'none',
+                              justifyContent: 'space-between',
+                              alignItems: 'stretch',
+                              bgcolor: upiSelected ? '#1b1b1b' : accentColor,
+                              color: '#fff',
+                              border: `1px solid ${upiSelected ? '#000' : 'transparent'}`,
+                              boxShadow: upiSelected
+                                ? '0 14px 35px rgba(0,0,0,0.35)'
+                                : '0 12px 30px rgba(0,0,0,0.25)',
+                              '&:hover': {
+                                bgcolor: '#111',
+                              },
+                              '&:disabled': {
+                                bgcolor: '#bdbdbd',
+                                color: '#f5f5f5',
+                                boxShadow: 'none',
+                              },
+                            }}
+                          >
+                            <Box sx={{ p: 2.2, display: 'flex', flexDirection: 'column', gap: 0.4, textAlign: 'left' }}>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{
+                                  fontFamily: 'Jost, sans-serif',
+                                  fontWeight: 600,
+                                  fontSize: '1rem',
+                                }}
+                              >
+                                {upiPaymentState === 'processing'
+                                  ? 'Opening your UPI app…'
+                                  : upiPaymentState === 'waiting'
+                                    ? 'Waiting for approval…'
+                                    : 'Pay instantly with UPI'}
+                              </Typography>
+                  
+                            </Box>
+                            <Box
+                              sx={{
+                                position: 'relative',
+                                pr: { xs: 1.75, sm: 2 },
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.75,
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  width: 60,
+                                  height: 40,
+                                  borderRadius: '14px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <Box sx={{ position: 'relative', width: 90, height: '100%' }}>
+                                  <Image
+                                    src="/images/payments/upi_logo.png"
+                                    alt="UPI"
+                                    fill
+                                    sizes="48px"
+                                      style={{ objectFit: 'contain' }}
+                                  />
+                                </Box>
+                              </Box>
+
+                            </Box>
+                          </Button>
+                        </motion.div>
+
+                        <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+                          <Button
+                            variant="outlined"
+                            onClick={handlePayWithOther}
+                            disabled={isPaymentProcessing || upiPaymentState === 'waiting'}
+                            sx={{
+                              width: '100%',
+                              borderRadius: '20px',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              textTransform: 'none',
+                              px: 2.2,
+                              py: 1.8,
+                              borderWidth: 2,
+                              borderColor: otherSelected ? accentColor : alpha(accentColor, 0.2),
+                              bgcolor: otherSelected ? alpha(accentColor, 0.08) : '#fff',
+                              color: accentColor,
+                              '&:hover': {
+                                borderColor: accentColor,
+                                bgcolor: alpha(accentColor, 0.08),
+                              },
+                              '&:disabled': {
+                                borderColor: alpha('#aaa', 0.5),
+                                color: '#b3b3b3',
+                                bgcolor: '#f7f7f7',
+                              },
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', gap: 1.2, alignItems: 'center' }}>
+                              <Box
+                                sx={{
+                                  width: 42,
+                                  height: 42,
+                                  borderRadius: '14px',
+                                  bgcolor: alpha(accentColor, 0.08),
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <CreditCardIcon sx={{ fontSize: 20 }} />
+                              </Box>
+                              <Box sx={{ textAlign: 'left' }}>
+                                <Typography
+                                  variant="subtitle1"
+                                  sx={{ fontFamily: 'Jost, sans-serif', fontWeight: 600, fontSize: '0.98rem' }}
+                                >
+                                  Card, Wallet & More
+                                </Typography>
+                              
+                              </Box>
+                            </Box>
+                            <KeyboardArrowRightIcon sx={{ color: accentColor }} />
+                          </Button>
+                        </motion.div>
+                      </Box>
+
+                   
                     </Box>
                   </motion.div>
                 )}
@@ -2682,7 +2809,7 @@ const OrderForm = ({
                     <BlackButton
                       extraClass="lg"
                       isLoading={isLoading}
-                      buttonText={addressStepButtonText}
+                      buttonText="Continue to Payment"
                       type="submit"
                       disabled={
                         isPaymentProcessing ||
@@ -2696,32 +2823,6 @@ const OrderForm = ({
                         px: 3,
                         py: 0.5,
                         boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                        fontFamily: 'Jost, sans-serif',
-                        fontSize: '0.9rem'
-                      }}
-                    />
-                  </motion.div>
-                )}
-                {tabIndex === 2 && (
-                  <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-                    <BlackButton
-                      extraClass="lg"
-                      isLoading={isLoading || isPaymentProcessing}
-                      buttonText={payuCtaLabel}
-                      type="submit"
-                      disabled={
-                        isPaymentProcessing ||
-                        isLoading ||
-                        purchaseInitiated ||
-                        (isNetbankingSelected && !selectedNetbankingBankCode) ||
-                        pincodeCheckInProgress ||
-                        !isPincodeValid
-                      }
-                      sx={{
-                        borderRadius: '50px',
-                        px: 3,
-                        py: 0.5,
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
                         fontFamily: 'Jost, sans-serif',
                         fontSize: '0.9rem'
                       }}
@@ -2754,7 +2855,6 @@ const OrderForm = ({
               sx={{
                 mt: { xs: 0.25, sm: 1 }, // Much smaller margin on mobile
                 pt: { xs: 0.25, sm: 1 }, // Much smaller padding on mobile
-                borderTop: '1px solid #f0f0f0',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',

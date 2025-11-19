@@ -101,6 +101,7 @@ export default function ViewCart({ isDrawer = false }) {
   /* ---------- redux and state (unchanged) ---------------------------- */
   const cartItems = useSelector(s => s.cart.items);
   const orderForm = useSelector(s => s.orderForm);
+  const autoOpenRequest = useSelector(s => s.orderForm.autoOpenRequest);
   const couponRedux = orderForm.couponApplied;
   // Get persisted shipping timer state
   const persistedShippingTimer = useSelector(s => s.persistentUi.shippingTimer);
@@ -358,6 +359,24 @@ export default function ViewCart({ isDrawer = false }) {
   const codAmount = isSplitPayment ? totalPay - onlineAmount : 0;
   const snack = useCallback((m, s = 'success') => setSnackbar({ open: true, message: m, severity: s }), []);
   const dispatchCoupon = p => dispatch(setCouponApplied({ ...p }));
+
+  const lastAutoOpenIdRef = useRef(null);
+
+  useEffect(() => {
+    if (!autoOpenRequest) return;
+    const currentId = autoOpenRequest.issuedAt || autoOpenRequest.at || Date.now();
+    if (lastAutoOpenIdRef.current === currentId) return;
+    lastAutoOpenIdRef.current = currentId;
+
+    if (!dlgOrder) {
+      setDlgOrder(true);
+    }
+
+    const payload = autoOpenRequest.snackbar;
+    if (payload?.message) {
+      snack(payload.message, payload.severity || 'info');
+    }
+  }, [autoOpenRequest, dlgOrder, snack]);
   /* ---------- coupon apply / remove --------------------------------- */
   const applyCoupon = useCallback((code, amount, type, offer, fromAuto = false) => {
     if (amount <= 0) { 

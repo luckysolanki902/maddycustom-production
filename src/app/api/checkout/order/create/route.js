@@ -17,7 +17,7 @@ import {
   createSplitOrdersData, 
   generateOrderGroupId 
 } from '@/lib/utils/orderSplitting';
-import { PAYMENT_PROVIDERS, getActivePaymentProvider } from '@/lib/payments/providers';
+import { PAYMENT_PROVIDERS, decidePaymentProvider } from '@/lib/payments/providers';
 
 const SMALL_TEST_PAYMENT_ENABLED = process.env.SMALL_TEST_PAYMENT === 'true';
 
@@ -48,7 +48,8 @@ export async function POST(request) {
       payuSession: clientPayuSession,
     } = body;
 
-    const paymentProvider = getActivePaymentProvider();
+  const { provider: paymentProvider, meta: providerDecisionMeta } = await decidePaymentProvider({ mode: 'upi' });
+  const providerDecisionTimestamp = new Date();
 
     // Validate essential fields
     if ((!userId && !phoneNumber) || !clientItems || !clientItems.length || !paymentModeId || !address ||
@@ -333,6 +334,14 @@ export async function POST(request) {
         amountDueCod: serverAmountDueCod,
         amountPaidCod: 0,
         razorpayDetails: {},
+        providerChoice: {
+          preferred: providerDecisionMeta?.preferredProvider || paymentProvider,
+          selected: paymentProvider,
+          recommended: providerDecisionMeta?.recommendedProvider || paymentProvider,
+          reason: providerDecisionMeta?.reason || 'env_preference',
+          decidedAt: providerDecisionTimestamp,
+          healthSnapshot: providerDecisionMeta?.inspectedProviders || {},
+        },
       },
       isTestingOrder: isTestingOrder,
       address: {
@@ -433,7 +442,7 @@ export async function POST(request) {
     if (serverAmountDueOnline > 0) {
       if (paymentProvider === PAYMENT_PROVIDERS.PAYU) {
         const payuTxnId = `MADDY-${mainOrder._id.toString()}-${Date.now()}`;
-  const userSelectedMethod = clientPayuSession?.method || 'card';
+  const userSelectedMethod = clientPayuSession?.method || null; // null = method to be chosen in PaymentDialog
   const userSelectedBankCode = clientPayuSession?.bankCode;
         await Promise.all(
           orders.map(order =>
@@ -516,6 +525,7 @@ export async function POST(request) {
         razorpayOrder: paymentProvider === PAYMENT_PROVIDERS.RAZORPAY ? razorpayOrderResponse : null,
         payuSession,
         amountDueOnline: serverAmountDueOnline,
+        gatewayDecision: providerDecisionMeta,
       },
       { status: 201 }
     );
