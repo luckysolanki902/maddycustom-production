@@ -86,7 +86,33 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
       paymentLogger.warn('Invalid Razorpay config: hideUpi & upiOnly cannot both be true', { orderId });
     }
 
-  
+    // Build display config based on hideUpi and upiOnly flags
+    const displayConfig = {};
+    
+    if (hideUpi) {
+      displayConfig.preferences = {
+        hide: [{ method: 'upi' }]
+      };
+    } else if (upiOnly) {
+      // For UPI-only mode, show only UPI methods and force collect flow (not intent)
+      displayConfig.method = 'upi';
+      displayConfig.config = {
+        display: {
+          blocks: {
+            banks: {
+              name: 'Pay using UPI',
+              instruments: [
+                { method: 'upi' }
+              ]
+            }
+          },
+          sequence: ['block.banks'],
+          preferences: {
+            show_default_blocks: false
+          }
+        }
+      };
+    }
 
     const options = {
       key,
@@ -98,6 +124,7 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
       image: logoUrl,
       notes: { orderId },
       theme: { color: '#000000' },
+      ...displayConfig,
 
       /** 
        * REMOVED: method: 'upi' and upi.flow: 'intent'

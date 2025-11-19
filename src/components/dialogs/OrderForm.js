@@ -1381,8 +1381,12 @@ const OrderForm = ({
       return;
     }
 
-    if (!isMobile) {
-      await initiateRazorpayPayment({ upiOnly: true, paymentContext: 'upi-desktop' });
+    // Detect iOS devices (iPhone, iPad, iPod)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    // Use Razorpay UPI collect for desktop or iOS devices
+    if (!isMobile || isIOS) {
+      await initiateRazorpayPayment({ upiOnly: true, paymentContext: isIOS ? 'upi-ios' : 'upi-desktop' });
       return;
     }
 
