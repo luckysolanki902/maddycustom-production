@@ -322,15 +322,15 @@ export async function processPayuGatewayResponse(payload, options = {}) {
               continue;
             }
 
-            const { totalWeight, length, breadth, height } = getDimensionsAndWeight(ord.items);
+            const dimensionsAndWeight = await getDimensionsAndWeight(ord.items);
+            const { length, breadth, height, weight } = dimensionsAndWeight;
             
             const [firstName, ...restName] = ord.address.receiverName.split(' ');
             const lastName = restName.join(' ');
 
             const shiprocketPayload = {
               order_id: ord._id.toString(),
-              order_date: ord.createdAt.toISOString().split('T')[0],
-              pickup_location: 'Auto',
+              order_date: new Date().toISOString(),
               billing_customer_name: firstName,
               billing_last_name: lastName || '',
               billing_address: `${ord.address.addressLine1} ${ord.address.addressLine2 || ''}`,
@@ -341,10 +341,10 @@ export async function processPayuGatewayResponse(payload, options = {}) {
               billing_phone: ord.address.receiverPhoneNumber,
               shipping_is_billing: true,
               order_items: ord.items.map((item) => ({
-                name: item.name || 'Product',
+                name: item.name,
                 sku: item.wrapFinish ? `${item.sku}-${item.wrapFinish.charAt(0).toLowerCase()}` : item.sku,
                 units: item.quantity,
-                selling_price: item.priceAtPurchase || 0,
+                selling_price: item.priceAtPurchase,
               })),
               payment_method: ord.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
               sub_total: ord.paymentDetails.amountDueCod > 0
@@ -353,7 +353,7 @@ export async function processPayuGatewayResponse(payload, options = {}) {
               length,
               breadth,
               height,
-              weight: totalWeight,
+              weight,
             };
 
             const shiprocketResponse = await createShiprocketOrder(shiprocketPayload);
