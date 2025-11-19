@@ -299,6 +299,7 @@ export async function processPayuGatewayResponse(payload, options = {}) {
                 model: 'SpecificCategoryVariant',
               },
             })
+            .populate('user')
             .session(session)
         )
       );
@@ -314,6 +315,12 @@ export async function processPayuGatewayResponse(payload, options = {}) {
           logs.push(`[${timestampStr}] Attempting to create Shiprocket order for ID: ${ord._id}`);
           
           try {
+            // Ensure shipping address exists
+            if (!ord.shippingAddress || !ord.shippingAddress.addressLine1) {
+              logs.push(`[${timestampStr}] Order ${ord._id} missing shipping address, skipping Shiprocket`);
+              continue;
+            }
+
             const { totalWeight, length, breadth, height } = getDimensionsAndWeight(ord.items);
             
             const shiprocketPayload = {
@@ -378,7 +385,7 @@ export async function processPayuGatewayResponse(payload, options = {}) {
       session.endSession();
 
       // Send WhatsApp notification (after transaction)
-      if (mainOrder && !mainOrder.isTestingOrder) {
+      if (mainOrder && !mainOrder.isTestingOrder && mainOrder.phone) {
         try {
           const orderLink = `${process.env.NEXT_PUBLIC_BASE_URL}/orders/myorder/${mainOrder._id}`;
           await sendWhatsAppMessage(mainOrder.phone, 'order_confirmation', {
