@@ -90,32 +90,10 @@ export const makePayment = ({ customerName, customerMobile, orderId, razorpayOrd
     const displayConfig = {};
     
     if (hideUpi) {
-// do nothing, show all methods
+      // do nothing, show all methods
     } else if (upiOnly) {
-      // For UPI-only mode, show only UPI ID input (collect flow) - hide app buttons
+      // For UPI-only mode, force UPI method with intent flow
       displayConfig.method = 'upi';
-      displayConfig.config = {
-        display: {
-          blocks: {
-            utib: {
-              name: 'Pay with UPI ID',
-              instruments: [
-                {
-                  method: 'upi',
-                  flows: ['collect']
-                }
-              ]
-            }
-          },
-          hide: [
-            { method: 'upi', flows: ['intent'] }
-          ],
-          sequence: ['block.utib'],
-          preferences: {
-            show_default_blocks: false
-          }
-        }
-      };
     }
 
     const options = {
