@@ -11,8 +11,7 @@ import {
   useMediaQuery,
   CircularProgress,
   alpha,
-  Button,
-  MenuItem
+  Button
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -32,13 +31,10 @@ import {
   setLastOrderId,
   setCoupon,
   removeCoupon,
-  setExtraFields,
-  clearOrderFormAutoOpen,
+  setExtraFields
 } from '../../store/slices/orderFormSlice';
 import { closeAllDialogs } from '@/store/slices/uiSlice';  // Import the new action
 import { makePayment } from '../../lib/payments/makePayment';
-import { ensureRazorpayLoaded } from '../../lib/payments/ensureRazorpayLoaded';
-import { createLogger } from '@/lib/utils/logger';
 import { useRouter } from 'next/navigation';
 import CustomSnackbar from '../notifications/CustomSnackbar';
 import { getPaymentButtonText } from '../../lib/utils/orderFormUtils';
@@ -54,8 +50,6 @@ import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
-import CreditCardIcon from '@mui/icons-material/CreditCard';
-import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import { debounce } from 'lodash';
 import useHistoryState from '@/hooks/useHistoryState';
 import reverseGeocodeClient from '@/lib/utils/reverseGeocodeClient';
@@ -63,11 +57,6 @@ import useCheckoutPrefetch from '@/hooks/useCheckoutPrefetch';
 import funnelClient from '@/lib/analytics/funnelClient';
 import { gaAddBillingInfo, gaAddPaymentInfo, gaPurchase } from '@/lib/metadata/googleAds';
 import { buildPurchaseEventPayload } from '@/lib/analytics/purchaseEventPayload';
-import { PAYMENT_PROVIDERS } from '@/lib/payments/providers';
-import { captureClientTrackingData } from '@/lib/analytics/trackingCapture';
-
-// Create logger for OrderForm component
-const logger = createLogger('OrderForm');
 
 const sanitizeFloorValue = (value) => {
   if (value === undefined || value === null) return '';
@@ -203,31 +192,6 @@ const OrderForm = ({
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-  const clientPaymentProvider = (
-    process.env.NEXT_PUBLIC_PAYMENT_GATEWAY_PROVIDER ||
-    process.env.NEXT_PUBLIC_PAYMENT_GATEWAY ||
-    'razorpay'
-  ).toLowerCase();
-  const isPayuProvider = clientPaymentProvider === PAYMENT_PROVIDERS.PAYU;
-  const autoOpenRequest = orderForm.autoOpenRequest;
-  const lastOrderId = orderForm.lastOrderId;
-  const customerName = orderForm.userDetails?.name || '';
-  const customerPhone = orderForm.userDetails?.phoneNumber || '';
-  const accentColor = '#2d2d2d';
-
-  // Payment method selection
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null); // 'upi' or 'other'
-  const [upiPaymentState, setUpiPaymentState] = useState('idle'); // 'idle' | 'processing' | 'waiting' | 'success' | 'failed'
-  const [upiIntentUrl, setUpiIntentUrl] = useState(null);
-  const [currentTxnId, setCurrentTxnId] = useState(null);
-  const pollingIntervalRef = useRef(null);
-  const paymentGuardActive = isPaymentProcessing || upiPaymentState === 'waiting' || upiPaymentState === 'processing';
-  const upiSelected = selectedPaymentMethod === 'upi';
-  const otherSelected = selectedPaymentMethod === 'other';
-  
-  // Show payment tab after address
-  const requiresPayuPaymentTab = true;
-  const totalTabs = 3; // User details + Address + Payment
 
   // Extract and aggregate unique extraFields from cart items - memoized
   const aggregatedExtraFields = useMemo(() => {
@@ -244,91 +208,6 @@ const OrderForm = ({
     });
     return Array.from(fieldsMap.values());
   }, [items]);
-
-  const formatCurrency = useCallback((value) => {
-    const numeric = Number(value) || 0;
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(numeric);
-  }, []);
-
-  const payuOnlineAmount = useMemo(() => {
-    const pct = Number(paymentModeConfig?.configuration?.onlinePercentage);
-    const base = Number(totalCost) || 0;
-    if (Number.isFinite(pct) && pct > 0 && pct <= 100) {
-      return Math.round(base * (pct / 100));
-    }
-    return base;
-  }, [paymentModeConfig?.configuration?.onlinePercentage, totalCost]);
-
-  const stepTitles = useMemo(() => {
-    if (!requiresPayuPaymentTab) {
-      return ["Let's get to know you", 'Where should we deliver?'];
-    }
-    return [
-      "Let's get to know you",
-      'Where should we deliver?',
-      'Choose how you want to pay',
-    ];
-  }, [requiresPayuPaymentTab]);
-
-  const payuCtaLabel = useMemo(() => {
-    if (!requiresPayuPaymentTab) {
-      return getPaymentButtonText(paymentModeConfig);
-    }
-    return 'Pay securely and continue';
-  }, [requiresPayuPaymentTab, paymentModeConfig]);
-
-  // Cleanup polling on unmount or dialog close
-  useEffect(() => {
-    if (!open) {
-      // Dialog is closing - cleanup any pending payment
-      if (pollingIntervalRef.current) {
-        console.log('🔴 Dialog closing - cleaning up payment polling');
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-      // Reset payment states when dialog closes
-      setUpiPaymentState('idle');
-      setIsPaymentProcessing(false);
-      setSelectedPaymentMethod(null);
-    }
-    
-    return () => {
-      if (pollingIntervalRef.current) {
-        console.log('🔴 Component unmounting - cleaning up payment polling');
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-  }, [open]);
-
-  // Snackbar helper - MUST be defined before handleCancelPayment
-  const showSnackbar = useCallback((message, severity = 'success') => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
-  }, []);
-
-  // Cancel UPI payment handler
-  const handleCancelPayment = useCallback(() => {
-    console.log('🔴 User cancelled payment');
-    
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-    
-    setUpiPaymentState('idle');
-    setIsPaymentProcessing(false);
-    setSelectedPaymentMethod(null);
-    setCurrentTxnId(null);
-    setUpiIntentUrl(null);
-    
-    showSnackbar('Payment cancelled. You can try again when ready.', 'info');
-  }, [showSnackbar]);
 
   // Setup react-hook-form with defaultValues as a memoized object to prevent rerenders
   const dvStructArea = orderForm?.prefilledAddress?.structured?.areaLocality || '';
@@ -361,6 +240,7 @@ const OrderForm = ({
 
   // Geolocation capture
   const [geo, setGeo] = useState({ lat: null, lng: null });
+
   // Initialize extraFields in Redux store when dialog opens
   useEffect(() => {
     if (open && aggregatedExtraFields.length > 0) {
@@ -393,6 +273,12 @@ const OrderForm = ({
     mode: 'onChange',
     shouldUnregister: false // Prevents field unregistration which helps with focus issues
   });
+
+  const showSnackbar = useCallback((message, severity = 'success') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -521,23 +407,6 @@ const OrderForm = ({
       }
     }
   }, [tabIndex, open, computeCartSnapshot, prefilledAddress, addressDetails]);
-
-  useEffect(() => {
-    if (!open || !requiresPayuPaymentTab) return;
-    if (tabIndex !== 2) return;
-
-    try {
-      const cartSnapshot = computeCartSnapshot();
-      funnelClient.track('payu_payment_options_viewed', {
-        cart: cartSnapshot,
-        metadata: {
-          paymentMode: paymentModeName,
-        },
-      });
-    } catch (err) {
-      console.warn('PayU payment tab analytics failed:', err);
-    }
-  }, [open, requiresPayuPaymentTab, tabIndex, computeCartSnapshot, paymentModeName]);
 
   // Sync form values with Redux store when dialog is opened
   useEffect(() => {
@@ -707,10 +576,8 @@ const OrderForm = ({
   }, [isMobile, isInputFocused]);
 
   const handleTabChange = useCallback((newValue) => {
-    if (paymentGuardActive) return;
-    if (newValue < 0 || newValue >= totalTabs) return;
     setTabIndex(newValue);
-  }, [paymentGuardActive, totalTabs]);
+  }, []);
 
 
 
@@ -774,37 +641,6 @@ const OrderForm = ({
     setShowPhoneConfirmation(false);
   }, [formattedPhone, setValue, dispatch]);
 
-  const handlePaymentStatusChange = useCallback((status, detail = {}) => {
-    logger.debug('Razorpay status update', { status, detail });
-    try {
-      funnelClient.track('razorpay_modal_status', {
-        status,
-        orderId: detail?.orderId,
-        hasUserActivation: detail?.hasUserActivation,
-        visibilityState: detail?.visibilityState,
-        paymentStatus: detail?.paymentStatus,
-        recovered: detail?.recovered,
-        gracePeriodMs: detail?.gracePeriodMs,
-      });
-    } catch (analyticsErr) {
-      logger.debug('Failed to track razorpay status', { error: analyticsErr?.message, status });
-    }
-  }, []);
-
-  const handleProceedToPayuOptions = useCallback(() => {
-    if (!isPincodeValid) {
-      showSnackbar('Please confirm a serviceable pincode before choosing payment.', 'warning');
-      return;
-    }
-    if (pincodeCheckInProgress) {
-      showSnackbar('Hold on, we are validating your pincode.', 'info');
-      return;
-    }
-    setTabIndex(2);
-  }, [isPincodeValid, pincodeCheckInProgress, showSnackbar]);
-
-
-
   // Normalize floor display: avoid duplicating the word 'Floor'
   const formatFloorForAddress = useCallback((value) => {
     if (value === null || value === undefined) return '';
@@ -830,11 +666,13 @@ const OrderForm = ({
     landmark: (s) => toTitleCase(s),
   }), [toTitleCase]);
 
+
+
   // New function to fully close everything - both OrderForm and CartDrawer
   const handleFullClose = useCallback(() => {
     onClose();
     dispatch(closeAllDialogs());
-  }, [dispatch, onClose]);
+  }, [onClose, dispatch]);
 
   // Pre-validate coupon in background as soon as form opens (skip if same signature validated recently)
   const lastCouponValidateKeyRef = useRef('');
@@ -1008,25 +846,11 @@ const OrderForm = ({
 
   // Optimize address submission with better parallelization
   const onSubmitAddressDetails = useCallback(async (data) => {
-    console.log('🔵 onSubmitAddressDetails called with data:', data);
-    console.log('🔵 Current orderForm state:', orderForm);
-    console.log('🔵 Cart items:', cartItems);
-    console.log('🔵 Payment mode config:', paymentModeConfig);
-    
-    if (purchaseInitiated) {
-      console.log('⚠️ Purchase already initiated, returning');
-      return;
-    }
-    if (!paymentModeConfig?._id) {
-      console.log('❌ Payment mode config missing');
-      showSnackbar('Payment option is still loading. Please pick one to continue.', 'warning');
-      return;
-    }
-
-    console.log('✅ Starting order creation process...');
+    if (purchaseInitiated) return; // Prevent multiple submissions
     setPurchaseInitiated(true);
     setIsLoading(true);
     setIsPaymentProcessing(true);
+
     const cartSnapshot = computeCartSnapshot();
     const numericTotal = Number(totalCost);
     const orderValue = Number.isFinite(numericTotal) ? numericTotal : undefined;
@@ -1140,15 +964,6 @@ const OrderForm = ({
         });
       }
 
-      let trackingMetadata = null;
-      try {
-        trackingMetadata = await captureClientTrackingData();
-        console.log('📊 Captured tracking metadata for order:', trackingMetadata);
-      } catch (trackingError) {
-        console.warn('Failed to capture tracking metadata:', trackingError);
-      }
-
-      // Note: payuSession is not sent for merchant-hosted checkout (merchant selects method in PaymentDialog)
       const finalOrderPayload = {
         userId: orderForm.userDetails.userId,
         phoneNumber: orderForm.userDetails.phoneNumber,
@@ -1196,62 +1011,212 @@ const OrderForm = ({
           landmark: data.landmark,
           ...(floorParsed !== undefined ? { floor: floorParsed } : {}),
         },
-        analyticsInfo: trackingMetadata,
       };
 
-      console.log('🔄 Sending order creation request with payload:', finalOrderPayload);
-      
       const [orderCreationResponse] = await Promise.all([
         axios.post('/api/checkout/order/create', finalOrderPayload),
         addressAddPromise
       ]);
 
-      console.log('✅ Order creation response received:', orderCreationResponse.data);
-
       const {
         orderId: createdOrderId,
         razorpayOrder,
-        payuSession,
-        paymentProvider: serverPaymentProvider,
         amountDueOnline
       } = orderCreationResponse.data;
 
-      if (!createdOrderId) {
-        console.log('❌ No order ID in response!');
-        throw new Error('Order creation failed - no order ID received');
+      dispatch(setLastOrderId(createdOrderId));
+
+      if (razorpayOrder && amountDueOnline > 0) {
+        try {
+          funnelClient.track('payment_initiated', {
+            dedupeKey: `payment_initiated:${createdOrderId}`,
+            cart: cartSnapshot,
+            order: {
+              orderId: createdOrderId,
+              value: orderValue,
+              currency: orderValue !== undefined ? 'INR' : undefined,
+              coupon: normalizedCouponCode,
+            },
+            metadata: {
+              paymentMode: paymentModeName,
+              amountDueOnline,
+              razorpayOrderId: razorpayOrder?.id,
+              requiresGateway: true,
+            },
+          });
+        } catch (err) {
+          console.warn('Funnel payment_initiated track failed:', err);
+        }
+
+        try {
+          const contents = cartItems.map((item) => ({
+            productId: item.productId || item._id,
+            quantity: item.quantity,
+            price: item.priceAtPurchase || item.productDetails.price,
+            brand: item.productDetails?.brand,
+            category: item.productDetails?.category?.name || item.productDetails?.category,
+            name: item.productDetails?.name
+          }));
+          await paymentInitiated({
+            value: totalCost,
+            amount_due_online: amountDueOnline,
+            payment_mode: paymentModeConfig?.name,
+            payment_mode_id: paymentModeConfig?._id,
+            is_split_payment: !!(paymentModeConfig?.configuration?.onlinePercentage > 0 && paymentModeConfig?.configuration?.onlinePercentage < 100),
+            contents,
+            numItems: contents.length,
+            contentName: contents.map(c => c.name).filter(Boolean).join(', '),
+            orderId: createdOrderId,
+          }, {
+            email: orderForm.userDetails.email || '',
+            phoneNumber: orderForm.userDetails.phoneNumber,
+          });
+        } catch (err) {
+          console.warn('Payment initiated analytics failed (non-critical):', err);
+        }
+
+        try {
+          const gaContents = cartItems.map((item) => ({
+            productId: item.productId || item._id,
+            quantity: item.quantity,
+            price: item.priceAtPurchase || item.productDetails.price,
+            brand: item.productDetails?.brand,
+            category: item.productDetails?.category?.name || item.productDetails?.category,
+            name: item.productDetails?.name
+          }));
+          gaAddPaymentInfo({
+            value: amountDueOnline || totalCost,
+            items: gaContents,
+            payment_type: paymentModeConfig?.name || 'online',
+            coupon: typeof couponCode === 'string' && couponCode ? couponCode : undefined,
+          });
+        } catch (gaErr) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.debug('gaAddPaymentInfo failed', gaErr);
+          }
+        }
+
+        const paymentResult = await makePayment({
+          customerName: orderForm.userDetails.name || '',
+          customerMobile: orderForm.userDetails.phoneNumber,
+          orderId: createdOrderId,
+          razorpayOrder,
+        });
+
+        if (paymentResult.cancelled) {
+          setIsPaymentProcessing(false);
+          setPurchaseInitiated(false);
+          showSnackbar('Payment was cancelled.', 'warning');
+          return;
+        }
+        showSnackbar('Payment Successful!', 'success');
+      } else if (amountDueOnline === 0) {
+        showSnackbar('Order placed successfully! Payment will be collected on delivery.', 'success');
+      } else {
+        console.warn('Unexpected payment state:', { razorpayOrder, amountDueOnline });
+        showSnackbar('Order placed. Awaiting payment confirmation.', 'info');
       }
 
-      console.log('✅ Order created successfully with ID:', createdOrderId);
-      console.log('📝 Razorpay order from response:', razorpayOrder);
-      console.log('📝 Dispatching setLastOrderId to Redux...');
-      dispatch(setLastOrderId(createdOrderId));
-      
-      // Also store the razorpayOrder details in a ref for later use
-      if (razorpayOrder) {
-        console.log('💾 Storing Razorpay order for later use');
-        window.sessionStorage.setItem(`razorpay_order_${createdOrderId}`, JSON.stringify({
-          id: razorpayOrder.id,
-          amount: razorpayOrder.amount,
-          currency: razorpayOrder.currency || 'INR',
-        }));
+      try {
+        const amountPaidOnlineValue = Number.isFinite(amountDueOnline) && amountDueOnline > 0 ? amountDueOnline : 0;
+        const amountDueCodValue = Math.max(totalForPurchase - amountPaidOnlineValue, 0);
+
+        const purchasePayload = buildPurchaseEventPayload({
+          orderId: createdOrderId,
+          totalValue: orderValue ?? totalForPurchase,
+          currency: 'INR',
+          couponCode: normalizedCouponCode,
+          cartSummary: cartSnapshot,
+          items: analyticsItems,
+          paymentMode: paymentModeName,
+          paymentStatus: amountDueOnline > 0 ? 'online_partial' : 'cod',
+          amountDueOnline,
+          amountPaidOnline: amountPaidOnlineValue,
+          amountDueCod: amountDueCodValue,
+          totalDiscount: discountAmountFinal || 0,
+          metadata: {
+            source: 'order_form_submit',
+            isSplitOrder: Boolean(orderCreationResponse?.data?.isSplitOrder),
+          },
+        });
+
+        if (purchasePayload) {
+          funnelClient.track('purchase', purchasePayload);
+          void funnelClient.flush('purchase');
+        }
+      } catch (err) {
+        console.warn('Funnel purchase track failed:', err);
       }
-      
-      console.log('✅ Moving to payment tab (index 2)');
-      // Just move to payment tab - user will choose payment method there
-      setIsLoading(false);
-      setPurchaseInitiated(false);
-      setTabIndex(2); // Move to payment tab
+
+      if (!process.env.NEXT_PUBLIC_isTestingOrder) {
+        purchase(
+          {
+            orderId: createdOrderId,
+            totalAmount: totalCost,
+            items: cartItems.map((item) => ({
+              product: item.productId,
+              name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+                ? item.productDetails.category?.name.slice(0, -1)
+                : item.productDetails.category?.name
+                }`,
+              quantity: item.quantity,
+              priceAtPurchase: item.priceAtPurchase,
+            })),
+          },
+          {
+            email: orderForm.userDetails.email || '',
+            phoneNumber: orderForm.userDetails.phoneNumber,
+          }
+        ).catch(error => {
+          console.error('FB pixel purchase event error (non-critical):', error);
+        });
+
+        try {
+          gaPurchase({
+            transaction_id: createdOrderId,
+            value: totalCost,
+            items: cartItems.map((item) => ({
+              product: item.productId,
+              name: `${item.productDetails.name} ${item.productDetails.category?.name?.endsWith('s')
+                ? item.productDetails.category?.name.slice(0, -1)
+                : item.productDetails.category?.name
+                }`,
+              quantity: item.quantity,
+              priceAtPurchase: item.priceAtPurchase,
+            })),
+            shipping: deliveryCost || 0,
+            tax: 0,
+            coupon: typeof couponCode === 'string' && couponCode ? couponCode : undefined,
+          });
+        } catch (gaErr) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.debug('gaPurchase failed', gaErr);
+          }
+        }
+      }
+
+      pendingOperationsRef.current = {
+        userCheck: null,
+        addressAdd: null,
+        couponValidation: null,
+      };
+
+      dispatch(clearUTMDetails());
+      if (!process.env.NEXT_PUBLIC_isTestingOrder) dispatch(clearCart());
+      dispatch(resetOrderForm());
+      reset();
+
+      handleFullClose();
+
+      setTimeout(() => {
+        router.push(`/orders/myorder/${createdOrderId}`);
+      }, 100);
 
     } catch (error) {
-      console.log('❌ ERROR during order creation:', error);
-      console.log('❌ Error response:', error.response?.data);
-      console.log('❌ Error message:', error.message);
-      console.log('❌ Full error object:', error);
+      console.error('Error during purchase process:', error);
       const errorMessage = error.response?.data?.message || error.message || 'An error occurred. Please try again.';
       showSnackbar(errorMessage, 'error');
-      // Don't move to payment tab if order creation failed
     } finally {
-      console.log('🔵 Order creation process completed (finally block)');
       setIsLoading(false);
       setIsPaymentProcessing(false);
       setPurchaseInitiated(false);
@@ -1259,296 +1224,11 @@ const OrderForm = ({
   }, [purchaseInitiated, computeCartSnapshot, cartItems, totalCost, normalizedCouponCode, paymentModeName,
     dispatch, showSnackbar, isPincodeValid, serviceabilityCache, orderForm,
     formatFloorForAddress, geo, paymentModeConfig, discountAmountFinal, couponsDetails, deliveryCost,
-  utmDetails]);
-
-  const fetchOrCreateRazorpayOrder = useCallback(async () => {
-    if (!lastOrderId) {
-      throw new Error('Order not created yet. Please go back and complete shipping details.');
-    }
-
-    console.log('🔍 Ensuring Razorpay order details for:', lastOrderId);
-    const orderResponse = await axios.get(`/api/order/${lastOrderId}`);
-    const order = orderResponse.data.order || orderResponse.data || {};
-    const amountDueOnline = order.paymentDetails?.amountDueOnline ?? order.totalAmount ?? 0;
-    const normalizedAmount = Number(amountDueOnline) || 0;
-    const amountPaise = Math.max(1, Math.floor(normalizedAmount * 100));
-    const razorpayDetails = order.paymentDetails?.razorpayDetails;
-    let razorpayOrderToUse = razorpayDetails?.orderId
-      ? {
-          id: razorpayDetails.orderId,
-          amount: amountPaise,
-          currency: 'INR',
-        }
-      : null;
-
-    const sessionKey = `razorpay_order_${lastOrderId}`;
-
-    if (!razorpayOrderToUse && typeof window !== 'undefined') {
-      const cachedOrder = window.sessionStorage.getItem(sessionKey);
-      if (cachedOrder) {
-        razorpayOrderToUse = JSON.parse(cachedOrder);
-      }
-    }
-
-    if (!razorpayOrderToUse) {
-      console.log('🔄 Creating Razorpay order via API...');
-      const createResponse = await axios.post('/api/payments/razorpay/create-order', {
-        orderId: lastOrderId,
-      });
-      razorpayOrderToUse = {
-        id: createResponse.data.razorpayOrderId,
-        amount: Math.floor(createResponse.data.amount * 100),
-        currency: 'INR',
-      };
-
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem(sessionKey, JSON.stringify(razorpayOrderToUse));
-      }
-    }
-
-    if (!razorpayOrderToUse) {
-      throw new Error('Payment details not found. Please try again or contact support.');
-    }
-
-    return razorpayOrderToUse;
-  }, [lastOrderId]);
-
-  const initiateRazorpayPayment = useCallback(async ({ hideUpi = false, upiOnly = false, paymentContext = 'other' } = {}) => {
-    console.log('🟣 initiateRazorpayPayment called', { hideUpi, upiOnly, paymentContext, lastOrderId });
-
-    if (!lastOrderId) {
-      showSnackbar('Order not created yet. Please go back and complete shipping details.', 'error');
-      setTabIndex(1);
-      return;
-    }
-
-    if (upiOnly) {
-      setSelectedPaymentMethod('upi');
-      setUpiPaymentState('processing');
-    } else {
-      setSelectedPaymentMethod('other');
-    }
-
-    setIsPaymentProcessing(true);
-
-    try {
-      const razorpayOrderToUse = await fetchOrCreateRazorpayOrder();
-      await ensureRazorpayLoaded();
-      console.log('✅ Razorpay SDK loaded, opening payment modal...');
-
-      const paymentResult = await makePayment({
-        customerName,
-        customerMobile: customerPhone,
-        orderId: lastOrderId,
-        razorpayOrder: razorpayOrderToUse,
-        onStatusChange: handlePaymentStatusChange,
-        hideUpi,
-        upiOnly,
-      });
-
-      if (paymentResult.cancelled) {
-        setIsPaymentProcessing(false);
-        if (upiOnly) {
-          setUpiPaymentState('idle');
-        }
-        if (paymentResult.pendingVerification) {
-          showSnackbar('Waiting for payment confirmation. You can retry if needed.', 'info');
-        } else {
-          showSnackbar('Payment was cancelled.', 'warning');
-        }
-        return;
-      }
-
-      showSnackbar('Payment Successful!', 'success');
-
-      if (!process.env.NEXT_PUBLIC_isTestingOrder) dispatch(clearCart());
-      dispatch(resetOrderForm());
-      reset();
-      handleFullClose();
-      
-      setTimeout(() => {
-        router.push(`/orders/myorder/${lastOrderId}`);
-      }, 500);
-    } catch (error) {
-      console.error('Razorpay payment failed:', error);
-      setIsPaymentProcessing(false);
-      if (upiOnly) {
-        setUpiPaymentState('failed');
-      }
-      showSnackbar(error.message || 'Payment failed. Please try again.', 'error');
-    }
-  }, [lastOrderId, customerName, customerPhone, fetchOrCreateRazorpayOrder, handlePaymentStatusChange, dispatch, reset, handleFullClose, router, showSnackbar]);
-
-  // NEW: Handle UPI payment with PayU S2S on mobile, Razorpay UPI elsewhere
-  const handlePayWithUPI = useCallback(async () => {
-    console.log('🟢 handlePayWithUPI called');
-    console.log('🟢 Current orderForm.lastOrderId:', lastOrderId);
-    
-    if (!lastOrderId) {
-      console.log('❌ No lastOrderId found! Sending back to address tab');
-      showSnackbar('Order not created yet. Please go back and complete shipping details.', 'error');
-      setTabIndex(1); // Go back to address tab
-      return;
-    }
-
-    // Detect iOS devices (iPhone, iPad, iPod)
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
-    // Use Razorpay UPI collect for desktop or iOS devices
-    if (!isMobile || isIOS) {
-      await initiateRazorpayPayment({ upiOnly: true, paymentContext: isIOS ? 'upi-ios' : 'upi-desktop' });
-      return;
-    }
-
-    // Prevent multiple simultaneous payment attempts
-    if (isPaymentProcessing || upiPaymentState === 'processing' || upiPaymentState === 'waiting') {
-      console.log('⚠️ Payment already in progress');
-      showSnackbar('Payment already in progress', 'warning');
-      return;
-    }
-
-    console.log('✅ Order ID exists, proceeding with UPI payment');
-    setSelectedPaymentMethod('upi');
-    setUpiPaymentState('processing');
-    setIsPaymentProcessing(true);
-
-    try {
-      console.log('🔄 Calling PayU seamless UPI API...');
-      // Call PayU seamless UPI API for intent
-      const response = await axios.post('/api/payments/payu/seamless/upi', {
-        orderId: lastOrderId,
-        mode: 'intent',
-      });
-      console.log('✅ PayU UPI response:', response.data);
-
-      const { intentUrl, txnId } = response.data;
-      
-      if (!intentUrl || !txnId) {
-        throw new Error('Invalid response from payment gateway');
-      }
-      
-      setCurrentTxnId(txnId);
-      setUpiIntentUrl(intentUrl);
-
-      if (intentUrl) {
-        // Launch UPI intent
-        setUpiPaymentState('waiting');
-        console.log('🔄 Launching UPI intent:', intentUrl);
-        
-        // Try to open UPI app
-        try {
-          if (/android/i.test(navigator.userAgent)) {
-            window.location.href = intentUrl;
-          } else {
-            // Fallback for non-Android
-            const anchor = document.createElement('a');
-            anchor.href = intentUrl;
-            anchor.style.display = 'none';
-            document.body.appendChild(anchor);
-            anchor.click();
-            setTimeout(() => anchor.remove(), 100);
-          }
-          console.log('✅ UPI intent launched');
-        } catch (launchError) {
-          console.error('❌ Failed to launch UPI intent:', launchError);
-          throw new Error('Failed to open UPI app. Please try again.');
-        }
-
-        // Start polling for payment status
-        let pollCount = 0;
-        const maxPolls = 60; // 5 minutes
-        const pollInterval = 5000; // 5 seconds
-
-        console.log('🔄 Starting payment verification polling...');
-        pollingIntervalRef.current = setInterval(async () => {
-          pollCount++;
-          console.log(`🔄 Poll attempt ${pollCount}/${maxPolls}`);
-
-          try {
-            const verifyRes = await axios.post('/api/payments/payu/verify', {
-              txnIds: [txnId],
-            });
-
-            const txnData = verifyRes.data?.transaction_details?.[txnId];
-            console.log('📊 Transaction data:', txnData);
-            
-            if (txnData) {
-              const status = (txnData.status || '').toLowerCase();
-              console.log('💳 Payment status:', status);
-
-              if (status === 'success') {
-                console.log('✅ Payment successful!');
-                clearInterval(pollingIntervalRef.current);
-                pollingIntervalRef.current = null;
-                setUpiPaymentState('success');
-                showSnackbar('Payment Successful! Redirecting...', 'success');
-                
-                // Clear cart and redirect
-                if (!process.env.NEXT_PUBLIC_isTestingOrder) dispatch(clearCart());
-                dispatch(resetOrderForm());
-                reset();
-                handleFullClose();
-                
-                setTimeout(() => {
-                  router.push(`/orders/myorder/${lastOrderId}`);
-                }, 500);
-              } else if (status === 'failed' || status === 'failure') {
-                console.log('❌ Payment failed');
-                clearInterval(pollingIntervalRef.current);
-                pollingIntervalRef.current = null;
-                setUpiPaymentState('failed');
-                setIsPaymentProcessing(false);
-                showSnackbar('Payment failed. Please try again.', 'error');
-              }
-            }
-
-            // Timeout after max polls
-            if (pollCount >= maxPolls) {
-              console.log('⏱️ Polling timeout reached');
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-              setUpiPaymentState('failed');
-              setIsPaymentProcessing(false);
-              showSnackbar('Payment verification timeout. Please check your order status or try again.', 'warning');
-            }
-          } catch (pollError) {
-            console.error('❌ Payment polling error:', pollError);
-            // Don't stop polling on single error, might be network issue
-            if (pollCount >= 3) {
-              // After 3 failed polls, show warning but continue
-              console.warn('⚠️ Multiple polling failures detected');
-            }
-          }
-        }, pollInterval);
-
-      } else {
-        throw new Error('Failed to generate UPI intent link');
-      }
-    } catch (error) {
-      console.error('UPI payment failed:', error);
-      setUpiPaymentState('failed');
-      setIsPaymentProcessing(false);
-      showSnackbar(error.response?.data?.error || 'Failed to initiate UPI payment', 'error');
-    }
-  }, [lastOrderId, showSnackbar, dispatch, reset, handleFullClose, router, isMobile, initiateRazorpayPayment, isPaymentProcessing, upiPaymentState]);
-
-  // NEW: Handle other payment methods (Razorpay)
-  const handlePayWithOther = useCallback(() => {
-    initiateRazorpayPayment({ hideUpi: true, paymentContext: 'other' });
-  }, [initiateRazorpayPayment]);
-
-  const currentSubmitHandler = useMemo(() => {
-    if (tabIndex === 0) return onSubmitUserDetails;
-    if (tabIndex === 1) return onSubmitAddressDetails; // Create order and move to payment tab
-    return null; // No submit on payment tab - use buttons
-  }, [tabIndex, onSubmitUserDetails, onSubmitAddressDetails]);
+    utmDetails, couponCode, handleFullClose, reset, router]);
 
   // Handle dialog close (prevent closing during payment)
   const handleClose = useCallback(() => {
-    if (paymentGuardActive) {
-      showSnackbar('Please wait for payment to complete or cancel it first', 'warning');
-      return;
-    }
+    if (isPaymentProcessing) return;
 
     // if on shipping tab (index 1), go back to user details (index 0)
     if (tabIndex === 1) {
@@ -1557,7 +1237,7 @@ const OrderForm = ({
       // otherwise close the dialog
       onClose();
     }
-  }, [paymentGuardActive, onClose, tabIndex, showSnackbar]);
+  }, [isPaymentProcessing, onClose, tabIndex]);
 
 
 
@@ -1660,24 +1340,16 @@ const OrderForm = ({
     <ThemeProvider theme={theme}>
       <Dialog
         open={open}
-        onClose={(event) => {
-          event?.preventDefault?.();
-          handleClose();
+        onClose={(event, reason) => {
+          if (reason === 'backdropClick') {
+            onClose();
+          } else {
+            handleClose();
+          }
         }}
         maxWidth="sm"
         fullWidth
-        disableEscapeKeyDown={paymentGuardActive}
-        BackdropProps={{
-          sx: {
-            backgroundColor: 'rgba(0,0,0,0.65)',
-            cursor: paymentGuardActive ? 'not-allowed' : 'pointer',
-          },
-          onClick: paymentGuardActive
-            ? (event) => {
-                event.stopPropagation();
-              }
-            : undefined,
-        }}
+        disableEscapeKeyDown={isPaymentProcessing}
         PaperProps={{
           sx: {
             borderRadius: '1.5rem',
@@ -1689,7 +1361,7 @@ const OrderForm = ({
             transform: 'translate(-50%, -50%)',
             width: { xs: '90vw', sm: '500px' },
             maxWidth: '500px',
-            height: '85vh',
+            height: { xs: '85vh', sm: 'auto' },
             maxHeight: '90vh',
             margin: 0,
             // Ensure minimum height on mobile to prevent shrinking
@@ -1747,69 +1419,79 @@ const OrderForm = ({
             </motion.div>
 
             {/* Custom Stepper */}
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                mt: { xs: 0.5, sm: 1.5 },
-                position: 'relative',
-                minHeight: { xs: '20px', sm: '30px' },
-              }}
-            >
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: { xs: 1, sm: 1.5 },
-                }}
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              mt: { xs: 0.5, sm: 1.5 }, // Much smaller margin on mobile
+              position: 'relative',
+              height: { xs: '20px', sm: '30px' }, // Smaller height on mobile
+            }}>
+              <Box sx={{
+                position: 'absolute',
+                left: '50%',
+                width: '60px',
+                height: '2px',
+                backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
+                transform: 'translateX(-30px)',
+                transition: 'background-color 0.5s'
+              }} />
+
+              <motion.div
+                animate={{ scale: tabIndex === 0 ? 1.1 : 0.9, x: -40 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
               >
-                {stepTitles.map((_, index) => {
-                  const isActive = tabIndex === index;
-                  const isCompleted = tabIndex > index;
-                  return (
-                    <React.Fragment key={`step-${index}`}>
-                      {index > 0 && (
-                        <Box
-                          sx={{
-                            width: { xs: '28px', sm: '40px' },
-                            height: '2px',
-                            backgroundColor: tabIndex >= index ? '#000' : '#e0e0e0',
-                            transition: 'background-color 0.3s',
-                          }}
-                        />
-                      )}
-                      <motion.div
-                        animate={{ scale: isActive ? 1.1 : 0.95 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                      >
-                        <Box
-                          sx={{
-                            width: { xs: '20px', sm: '24px' },
-                            height: { xs: '20px', sm: '24px' },
-                            borderRadius: '50%',
-                            backgroundColor: isActive ? '#000' : (isCompleted ? '#555' : '#e0e0e0'),
-                            color: isActive || isCompleted ? 'white' : '#999',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            fontFamily: 'Jost, sans-serif',
-                            fontWeight: 600,
-                            fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                            boxShadow: isActive ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
-                            cursor: isCompleted && !paymentGuardActive ? 'pointer' : 'default'
-                          }}
-                          onClick={() => {
-                            if (isCompleted && !paymentGuardActive) handleTabChange(index);
-                          }}
-                        >
-                          {index + 1}
-                        </Box>
-                      </motion.div>
-                    </React.Fragment>
-                  );
-                })}
-              </Box>
+                <Box
+                  sx={{
+                    width: { xs: '20px', sm: '25px' }, // Smaller on mobile
+                    height: { xs: '20px', sm: '25px' },
+                    borderRadius: '50%',
+                    backgroundColor: '#000',
+                    color: 'white',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    fontFamily: 'Jost, sans-serif',
+                    fontWeight: 600,
+                    fontSize: { xs: '0.7rem', sm: '0.8rem' }, // Smaller font on mobile
+                    zIndex: 1,
+                    boxShadow: tabIndex === 0 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'box-shadow 0.3s',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => tabIndex !== 0 && handleTabChange(0)}
+                >
+                  1
+                </Box>
+              </motion.div>
+
+              <motion.div
+                animate={{ scale: tabIndex === 1 ? 1.1 : 0.9, x: 40 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              >
+                <Box
+                  sx={{
+                    width: { xs: '20px', sm: '25px' }, // Smaller on mobile
+                    height: { xs: '20px', sm: '25px' },
+                    borderRadius: '50%',
+                    backgroundColor: tabIndex === 1 ? '#000' : '#e0e0e0',
+                    color: tabIndex === 1 ? 'white' : '#999',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    fontFamily: 'Jost, sans-serif',
+                    fontWeight: 600,
+                    fontSize: { xs: '0.7rem', sm: '0.8rem' }, // Smaller font on mobile
+                    zIndex: 1,
+                    boxShadow: tabIndex === 1 ? '0 0 0 4px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'box-shadow 0.3s, background-color 0.3s, color 0.3s',
+                    cursor: tabIndex === 1 ? 'pointer' : 'default'
+                  }}
+                >
+
+                  2
+                </Box>
+              </motion.div>
             </Box>
 
             {/* Title - Hidden on small/short mobile screens */}
@@ -1839,15 +1521,13 @@ const OrderForm = ({
                   color: '#333',
                 }}
               >
-                {stepTitles[tabIndex] || stepTitles[stepTitles.length - 1]}
+                {tabIndex === 0 ? "Let's get to know you" : "Where should we deliver?"}
               </Typography>
             </motion.div>
 
-            {tabIndex > 0 && (
+            {tabIndex === 1 && (
               <Box
-                onClick={() => {
-                  if (!paymentGuardActive) handleTabChange(tabIndex - 1);
-                }}
+                onClick={() => handleTabChange(0)}
                 sx={{
                   position: 'absolute',
                   left: '0.5rem', // Reduced from 1rem
@@ -1873,7 +1553,7 @@ const OrderForm = ({
           {/* Form Wrapper - Handles submission and layout (scrollable fields + fixed buttons) */}
           <Box
             component="form"
-            onSubmit={handleSubmit(currentSubmitHandler)}
+            onSubmit={handleSubmit(tabIndex === 0 ? onSubmitUserDetails : onSubmitAddressDetails)}
             sx={{
               display: 'flex',
               flexDirection: 'column',
@@ -2495,270 +2175,6 @@ const OrderForm = ({
                     </Box>
                   </motion.div>
                 )}
-
-                {tabIndex === 2 && (
-                  <motion.div
-                    key="payment"
-                    custom={2}
-                    variants={formVariants}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    style={{ width: '100%' }}
-                  >
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 2,
-                        paddingTop: 1,
-                        px: { xs: 1.25, sm: 2 },
-                        pb: 1.5,
-                      }}
-                    >
-                      {/* UPI Payment Waiting Status */}
-                      {upiPaymentState === 'waiting' && (
-                        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
-                          <Box
-                            sx={{
-                              p: 2,
-                              borderRadius: '18px',
-                              bgcolor: '#FFF4E5',
-                              border: `1px solid ${alpha('#F57C00', 0.35)}`,
-                              display: 'flex',
-                              flexDirection: { xs: 'column', sm: 'row' },
-                              gap: 1.5,
-                              alignItems: { sm: 'center' },
-                              justifyContent: 'space-between',
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                              <CircularProgress size={20} sx={{ color: '#F57C00' }} />
-                              <Typography
-                                variant="subtitle2"
-                                sx={{ fontFamily: 'Jost, sans-serif', color: '#D35400', fontWeight: 600 }}
-                              >
-                                Waiting for payment confirmation…
-                              </Typography>
-                            </Box>
-                          
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={handleCancelPayment}
-                              sx={{
-                                borderColor: '#F57C00',
-                                color: '#D35400',
-                                textTransform: 'none',
-                                fontWeight: 600,
-                                px: 2.5,
-                                borderRadius: '999px',
-                                '&:hover': {
-                                  borderColor: '#D35400',
-                                  bgcolor: 'rgba(243, 131, 33, 0.08)',
-                                },
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                          </Box>
-                        </motion.div>
-                      )}
-
-                      {/* Payment Failed Status */}
-                      {upiPaymentState === 'failed' && (
-                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
-                          <Box
-                            sx={{
-                              p: 2,
-                              borderRadius: '18px',
-                              bgcolor: '#FEF0F0',
-                              border: `1px solid ${alpha('#C62828', 0.35)}`,
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{ color: '#B71C1C', fontFamily: 'Jost, sans-serif', fontWeight: 500 }}
-                            >
-                              Payment failed or timed out. Please try again when you&apos;re ready.
-                            </Typography>
-                          </Box>
-                        </motion.div>
-                      )}
-
-                      {/* Amount Display */}
-                      <Box
-                        sx={{
-                          textAlign: 'center',
-                          py: 2,
-                          px: 2,
-                          borderRadius: '22px',
-                          background: 'linear-gradient(135deg, #ffffff 0%, #f5f5f5 60%)',
-                          border: `1px solid ${alpha('#000', 0.06)}`,
-                          boxShadow: '0 18px 45px rgba(0,0,0,0.08)',
-                        }}
-                      >
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            fontFamily: 'Jost, sans-serif',
-                            color: '#777',
-                            letterSpacing: '0.12em',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          Amount Payable {payuOnlineAmount < totalCost ? '(Online)' : ''}
-                        </Typography>
-                        <Typography
-                          variant="h3"
-                          sx={{
-                            fontWeight: 700,
-                            fontFamily: 'Jost, sans-serif',
-                            color: accentColor,
-                            mt: 0.5,
-                          }}
-                        >
-                          {formatCurrency(payuOnlineAmount)}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{ fontFamily: 'Jost, sans-serif', color: '#8d8d8d', mt: 0.5 }}
-                        >
-                          {payuOnlineAmount < totalCost ? `₹${totalCost - payuOnlineAmount} due at delivery` : 'Includes shipping, taxes & discounts'}
-                        </Typography>
-                      </Box>
-
-                      {/* Payment Buttons */}
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                          <Button
-                            variant="outlined"
-                            onClick={handlePayWithUPI}
-                            disabled={isPaymentProcessing || upiPaymentState === 'waiting'}
-                            sx={{
-                              width: '100%',
-                              borderRadius: '20px',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              textTransform: 'none',
-                              px: 2.2,
-                              py: 1.8,
-                              borderWidth: 2,
-                              borderColor: upiSelected ? accentColor : alpha(accentColor, 0.2),
-                              bgcolor: upiSelected ? alpha(accentColor, 0.08) : '#fff',
-                              color: accentColor,
-                              '&:hover': {
-                                borderColor: accentColor,
-                                bgcolor: alpha(accentColor, 0.08),
-                              },
-                              '&:disabled': {
-                                borderColor: alpha('#aaa', 0.5),
-                                color: '#b3b3b3',
-                                bgcolor: '#f7f7f7',
-                              },
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', gap: 1.2, alignItems: 'center' }}>
-                              <Box
-                                sx={{
-                                  width: 42,
-                                  height: 42,
-                                  borderRadius: '14px',
-                                  bgcolor: alpha(accentColor, 0.08),
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  overflow: 'hidden',
-                                }}
-                              >
-                                <Box sx={{ position: 'relative', width: 48, height: 24 }}>
-                                  <Image
-                                    src="/images/payments/upi_logo.png"
-                                    alt="UPI"
-                                    fill
-                                    sizes="48px"
-                                    style={{ objectFit: 'contain' }}
-                                  />
-                                </Box>
-                              </Box>
-                              <Box sx={{ textAlign: 'left' }}>
-                                <Typography
-                                  variant="subtitle1"
-                                  sx={{ fontFamily: 'Jost, sans-serif', fontWeight: 600, fontSize: '0.98rem' }}
-                                >
-                                  {upiPaymentState === 'processing'
-                                    ? 'Opening your UPI app…'
-                                    : upiPaymentState === 'waiting'
-                                      ? 'Waiting for approval…'
-                                      : 'Pay instantly with UPI'}
-                                </Typography>
-                              </Box>
-                            </Box>
-                            <KeyboardArrowRightIcon sx={{ color: accentColor }} />
-                          </Button>
-                        </motion.div>
-
-                        <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                          <Button
-                            variant="outlined"
-                            onClick={handlePayWithOther}
-                            disabled={isPaymentProcessing || upiPaymentState === 'waiting'}
-                            sx={{
-                              width: '100%',
-                              borderRadius: '20px',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              textTransform: 'none',
-                              px: 2.2,
-                              py: 1.8,
-                              borderWidth: 2,
-                              borderColor: otherSelected ? accentColor : alpha(accentColor, 0.2),
-                              bgcolor: otherSelected ? alpha(accentColor, 0.08) : '#fff',
-                              color: accentColor,
-                              '&:hover': {
-                                borderColor: accentColor,
-                                bgcolor: alpha(accentColor, 0.08),
-                              },
-                              '&:disabled': {
-                                borderColor: alpha('#aaa', 0.5),
-                                color: '#b3b3b3',
-                                bgcolor: '#f7f7f7',
-                              },
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', gap: 1.2, alignItems: 'center' }}>
-                              <Box
-                                sx={{
-                                  width: 42,
-                                  height: 42,
-                                  borderRadius: '14px',
-                                  bgcolor: alpha(accentColor, 0.08),
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <CreditCardIcon sx={{ fontSize: 20 }} />
-                              </Box>
-                              <Box sx={{ textAlign: 'left' }}>
-                                <Typography
-                                  variant="subtitle1"
-                                  sx={{ fontFamily: 'Jost, sans-serif', fontWeight: 600, fontSize: '0.98rem' }}
-                                >
-                                  Card, Wallet & More
-                                </Typography>
-                              
-                              </Box>
-                            </Box>
-                            <KeyboardArrowRightIcon sx={{ color: accentColor }} />
-                          </Button>
-                        </motion.div>
-                      </Box>
-
-                   
-                    </Box>
-                  </motion.div>
-                )}
               </AnimatePresence>
             </Box> {/* End Scrollable Fields Area */}
 
@@ -2813,7 +2229,7 @@ const OrderForm = ({
                     <BlackButton
                       extraClass="lg"
                       isLoading={isLoading}
-                      buttonText="Continue to Payment"
+                      buttonText={getPaymentButtonText(paymentModeConfig)}
                       type="submit"
                       disabled={
                         isPaymentProcessing ||
@@ -2859,6 +2275,7 @@ const OrderForm = ({
               sx={{
                 mt: { xs: 0.25, sm: 1 }, // Much smaller margin on mobile
                 pt: { xs: 0.25, sm: 1 }, // Much smaller padding on mobile
+                borderTop: '1px solid #f0f0f0',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -3007,53 +2424,36 @@ const OrderForm = ({
                   alignItems: 'center',
                   gap: 1,
                   '@media (max-height: 600px)': {
-                    display: 'none',
+                    display: 'none', // Hide payment logo on short screens
                   },
                 }}
               >
-                {isPayuProvider ? (
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontFamily: 'Jost, sans-serif',
-                      color: '#666',
-                      fontSize: { xs: '0.55rem', sm: '0.65rem' },
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}
-                  >
-                    Payments secured by PayU & Shiprocket
-                  </Typography>
-                ) : (
-                  <>
-                    <Image
-                      loading="eager"
-                      src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`}
-                      width={isMobile ? 40 : 50}
-                      height={isMobile ? 12 : 15}
-                      alt="Razorpay"
-                      style={{ opacity: 0.7 }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontFamily: 'Jost, sans-serif',
-                        color: '#666',
-                        fontSize: { xs: '0.5rem', sm: '0.6rem' },
-                      }}
-                    >
-                      |
-                    </Typography>
-                    <Image
-                      loading="eager"
-                      src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`}
-                      width={isMobile ? 40 : 50}
-                      height={isMobile ? 12 : 15}
-                      alt="Shiprocket"
-                      style={{ opacity: 0.7 }}
-                    />
-                  </>
-                )}
+                <Image
+                  loading="eager"
+                  src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`}
+                  width={isMobile ? 40 : 50} // Smaller on mobile
+                  height={isMobile ? 12 : 15}
+                  alt="Razorpay"
+                  style={{ opacity: 0.7 }}
+                />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontFamily: 'Jost, sans-serif',
+                    color: '#666',
+                    fontSize: { xs: '0.5rem', sm: '0.6rem' }, // Smaller on mobile
+                  }}
+                >
+                  |
+                </Typography>
+                <Image
+                  loading="eager"
+                  src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`}
+                  width={isMobile ? 40 : 50} // Smaller on mobile
+                  height={isMobile ? 12 : 15}
+                  alt="Shiprocket"
+                  style={{ opacity: 0.7 }}
+                />
               </Box>
             </Box>
           </motion.div>
