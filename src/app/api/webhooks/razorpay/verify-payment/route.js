@@ -302,14 +302,17 @@ export async function POST(request) {
           const dimensionsAndWeight = await getDimensionsAndWeight(ord.items);
           const { length, breadth, height, weight } = dimensionsAndWeight;
           
-          const [firstName, ...restName] = ord.address.receiverName.split(' ');
-          const lastName = restName.join(' ');
+          // Properly split name and handle edge cases
+          const fullName = (ord.address.receiverName || '').trim();
+          const nameParts = fullName.split(/\s+/).filter(part => part.length > 0);
+          const firstName = nameParts[0] || 'Customer';
+          const lastName = nameParts.slice(1).join(' ') || '';
 
           const shiprocketOrderData = {
             order_id: ord._id.toString(),
             order_date: new Date().toISOString(),
             billing_customer_name: firstName,
-            billing_last_name: lastName || '',
+            billing_last_name: lastName,
             billing_address: `${ord.address.addressLine1} ${ord.address.addressLine2 || ''}`,
             billing_city: ord.address.city,
             billing_pincode: ord.address.pincode,
