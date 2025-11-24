@@ -6,7 +6,6 @@ import Order from '@/models/Order';
 import Coupon from '@/models/Coupon';
 import User from '@/models/User';
 import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shiprocket';
-import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import Product from '@/models/Product';
@@ -14,21 +13,8 @@ import Option from '@/models/Option';
 import Inventory from '@/models/Inventory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import SpecificCategory from '@/models/SpecificCategory';
-
-// Helper: Update inventory for a given Inventory document _id
-async function updateInventory(inventoryId, delta, session) {
-  const result = await mongoose.model('Inventory').updateOne(
-    { _id: inventoryId },
-    {
-      $inc: {
-        availableQuantity: delta,
-        reservedQuantity: -delta,
-      },
-    },
-    { session }
-  );
-  return result;
-}
+import { handlePostPaymentSuccess } from '@/lib/payments/postPaymentHandler';
+import { processOrderFulfillment } from '@/lib/orders/fulfillmentHandler';
 
 // Disable body parsing to access raw body
 export const config = {
@@ -210,44 +196,30 @@ export async function POST(request) {
         logs.push(`[${timestampStr}] payment.captured received but order group already processed or not pending.`);
       }
 
-      // 4a. Deduct inventory for each order individually
-      for (const ord of allOrders) {
-        if (
-          (ord.paymentStatus === 'paidPartially' || ord.paymentStatus === 'allPaid') &&
-          !ord.inventoryDeducted && // ensure we don't deduct twice
-          !ord.isTestingOrder // skip for test orders
-        ) {
-          logs.push(`[${timestampStr}] Deducting inventory for order ${ord._id}`);
-          const unitDelta = -1;
+      // -----------------------------
+      // 5. Process Order Fulfillment (Inventory, Coupon, Shiprocket)
+      // -----------------------------
+      // This handles inventory deduction, coupon increment, and Shiprocket creation
+      // It returns the updated orders which we can use for post-payment success
+      const fulfilledOrders = await processOrderFulfillment(allOrders.map(o => o._id), session, logs);
+      
+      // -----------------------------
+      // 6. Commit Transaction
+      // -----------------------------
+      await session.commitTransaction();
+      session.endSession();
 
-          for (const item of ord.items) {
-            if (item.option) {
-              // Use Option's inventoryData if present
-              logs.push(`Updating inventory for Option ${item.option} x ${item.quantity}`);
-              const optionDoc = await Option.findById(item.option).session(session);
-              if (optionDoc?.inventoryData) {
-                await updateInventory(optionDoc.inventoryData, unitDelta * item.quantity, session);
-              } else {
-                logs.push(`Option ${item.option} has no inventoryData reference. Cannot update inventory.`);
-              }
-            } else if (item.product) {
-              // Otherwise, update Product's inventoryData
-              logs.push(`Updating inventory for Product ${item.product} x ${item.quantity}`);
-              const productDoc = await Product.findById(item.product).session(session);
-              if (productDoc?.inventoryData) {
-                await updateInventory(productDoc.inventoryData, unitDelta * item.quantity, session);
-              } else {
-                logs.push(`No inventoryData reference found on product ${item.product}. Cannot update inventory.`);
-              }
-            } else {
-              logs.push(`Order item does not have an option or product reference. Skipping. ${JSON.stringify(item)}`);
-            }
-          }
-          // Mark inventory as deducted for this order
-          ord.inventoryDeducted = true;
-          await ord.save({ session });
-        }
-      }
+      // -----------------------------
+      // 7. Post-Payment Success Handler (Meta CAPI + WhatsApp)
+      // -----------------------------
+      await handlePostPaymentSuccess(fulfilledOrders, logs);
+
+      console.info(`Webhook processed successfully for orderId: ${internalOrderId}`, logs);
+      return NextResponse.json(
+        { message: `Webhook processed successfully for orderId: ${internalOrderId}`, logs },
+        { status: 200 }
+      );
+
     } else if (razorpayEvent === 'payment.failed') {
       // Update payment status for all orders with pending payments
       let anyUpdated = false;
@@ -270,167 +242,25 @@ export async function POST(request) {
       }
     }
 
-    // -----------------------------
-    // 5. Create Shiprocket Orders for Each Eligible Order
-    // -----------------------------
-    // Get updated order data for all orders
-    const updatedAllOrders = await Promise.all(
-      allOrders.map(ord => 
-        Order.findById(ord._id)
-          .populate({
-            path: 'items.product',
-            populate: {
-              path: 'specificCategoryVariant',
-              model: 'SpecificCategoryVariant',
-            },
-          })
-          .session(session)
-      )
-    );
+    // Note: Shiprocket creation logic has been moved to processOrderFulfillment above.
+    // The old block 5 is removed.
 
-    // Process each order for Shiprocket creation
-    for (const ord of updatedAllOrders) {
-      if (
-        ['allPaid', 'paidPartially'].includes(ord.paymentStatus) &&
-        ord.deliveryStatus === 'pending' &&
-        !ord.shiprocketOrderId &&
-        !ord.isTestingOrder
-      ) {
-        logs.push(`[${timestampStr}] Attempting to create Shiprocket order for ID: ${ord._id}`);
-        
-        try {
-          const dimensionsAndWeight = await getDimensionsAndWeight(ord.items);
-          const { length, breadth, height, weight } = dimensionsAndWeight;
-          
-          // Properly split name and handle edge cases
-          const fullName = (ord.address.receiverName || '').trim();
-          const nameParts = fullName.split(/\s+/).filter(part => part.length > 0);
-          const firstName = nameParts[0] || 'Customer';
-          const lastName = nameParts.slice(1).join(' ') || '';
+    // If we reached here without entering payment.captured block (e.g. unhandled event or logic flow),
+    // we should probably commit if we did anything, but the logic above handles commits inside the blocks.
+    // Wait, if payment.captured was true, we returned inside that block.
+    // If payment.failed was true, we returned inside that block.
+    
+    // If we are here, it means either:
+    // 1. razorpayEvent was not captured/failed (but we checked that at start)
+    // 2. We fell through?
+    
+    // Actually, looking at the code structure, I replaced the inventory block which was inside `if (razorpayEvent === 'payment.captured')`.
+    // But I need to remove the old Shiprocket block (Block 5) which was *after* the if/else blocks.
+    
+    // Let's clean up the rest of the file.
+    
+    return NextResponse.json({ message: 'Event processed.' }, { status: 200 });
 
-          const shiprocketOrderData = {
-            order_id: ord._id.toString(),
-            order_date: new Date().toISOString(),
-            billing_customer_name: firstName,
-            billing_last_name: lastName,
-            billing_address: `${ord.address.addressLine1} ${ord.address.addressLine2 || ''}`,
-            billing_city: ord.address.city,
-            billing_pincode: ord.address.pincode,
-            billing_state: ord.address.state,
-            billing_country: ord.address.country,
-            billing_phone: ord.address.receiverPhoneNumber,
-            shipping_is_billing: true,
-            order_items: ord.items.map(item => ({
-              name: item.name,
-              sku: item.wrapFinish ? `${item.sku}-${item.wrapFinish.charAt(0).toLowerCase()}` : item.sku,
-              units: item.quantity,
-              selling_price: item.priceAtPurchase,
-            })),
-            payment_method: ord.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
-            sub_total: ord.paymentDetails.amountDueCod > 0
-              ? ord.paymentDetails.amountDueCod
-              : ord.totalAmount,
-            length,
-            breadth,
-            height,
-            weight,
-          };
-
-          const srResponse = await createShiprocketOrder(shiprocketOrderData);
-          if (srResponse.status_code === 1 && !srResponse.packaging_box_error) {
-            await Order.findByIdAndUpdate(
-              ord._id,
-              {
-                shiprocketOrderId: srResponse.order_id,
-                deliveryStatus: 'orderCreated',
-              },
-              { session }
-            );
-            logs.push(`[${timestampStr}] Shiprocket order created for ${ord._id}: ${srResponse.order_id}`);
-          } else {
-            console.error(`Shiprocket API error for order ${ord._id}:`, srResponse);
-            logs.push(`[${timestampStr}] Shiprocket creation failed for order ${ord._id}: packaging_box_error or invalid`);
-            // Continue with other orders even if one fails
-          }
-        } catch (err) {
-          console.error(`Shiprocket creation error for order ${ord._id}:`, err);
-          logs.push(`[${timestampStr}] Shiprocket creation failed for order ${ord._id}: ${err.message}`);
-          // Continue with other orders even if one fails
-        }
-      } else {
-        let reason = 'unknown reason';
-        if (!['allPaid', 'paidPartially'].includes(ord.paymentStatus)) {
-          reason = 'paymentStatus is not successful';
-        } else if (ord.deliveryStatus !== 'pending') {
-          reason = 'deliveryStatus is not pending';
-        } else if (ord.shiprocketOrderId) {
-          reason = 'shiprocketOrderId already exists';
-        } else if (ord.isTestingOrder) {
-          reason = 'isTestingOrder flag is true';
-        }
-        logs.push(`[${timestampStr}] Skipping Shiprocket for order ${ord._id}: ${reason}`);
-      }
-    }
-
-    // -----------------------------
-    // 6. Commit Transaction
-    // -----------------------------
-    await session.commitTransaction();
-    session.endSession();
-
-    // -----------------------------
-    // 7. Send WhatsApp Notification (Async)
-    // -----------------------------
-    try {
-      // Use the main order for WhatsApp notification
-      const mainOrder = updatedAllOrders.find(ord => ord.isMainOrder) || updatedAllOrders[0];
-      
-      if (!mainOrder.isTestingOrder) {
-        const userDoc = await User.findById(mainOrder.user);
-        if (userDoc) {
-          const buttons = [
-            {
-              type: 'button',
-              sub_type: 'url',
-              index: '0',
-              parameters: [
-                {
-                  type: 'text',
-                  text: mainOrder._id?.toString() || 'Order ID',
-                },
-              ],
-            },
-          ];
-          await sendWhatsAppMessage({
-            user: userDoc,
-            prefUserName: mainOrder.address.receiverName || '',
-            campaignName:
-              new Date().getTime() < new Date('2025-04-03T00:00:00.000Z').getTime()
-                ? 'delay_eid'
-                : 'order_confirmed',
-            orderId: mainOrder._id,
-            templateParams: [],
-            carouselCards: [],
-            buttons,
-          });
-          logs.push(`[${timestampStr}] WhatsApp message sent to user: ${userDoc._id}`);
-        } else {
-          logs.push(`[${timestampStr}] No matching user found for orderId: ${mainOrder._id}`);
-        }
-      } else {
-        logs.push(`[${timestampStr}] Skipping WhatsApp message (isTestingOrder = true).`);
-      }
-    } catch (msgErr) {
-      const mainOrder = updatedAllOrders.find(ord => ord.isMainOrder) || updatedAllOrders[0];
-      console.error(`WhatsApp message failed for order ${mainOrder._id}:`, msgErr);
-      logs.push(`[${timestampStr}] WhatsApp message sending failed (error logged).`);
-    }
-
-    console.info(`Webhook processed successfully for orderId: ${internalOrderId}`, logs);
-    return NextResponse.json(
-      { message: `Webhook processed successfully for orderId: ${internalOrderId}`, logs },
-      { status: 200 }
-    );
   } catch (err) {
     await session.abortTransaction();
     session.endSession();

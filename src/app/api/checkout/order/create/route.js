@@ -46,6 +46,7 @@ export async function POST(request) {
       utmHistory,
       extraFields,
       payuSession: clientPayuSession,
+      analyticsInfo: clientAnalyticsInfo,
     } = body;
 
   const { provider: paymentProvider, meta: providerDecisionMeta } = await decidePaymentProvider({ mode: 'upi' });
@@ -362,6 +363,12 @@ export async function POST(request) {
       extraFields: {
         ...extraFields,
         geo: address.geo || extraFields?.geo || undefined,
+      },
+      analyticsInfo: {
+        fbp: clientAnalyticsInfo?.fbp || null,
+        fbc: clientAnalyticsInfo?.fbc || null,
+        userAgent: clientAnalyticsInfo?.userAgent || request.headers.get('user-agent') || null,
+        ip: request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || null,
       },
     };
 

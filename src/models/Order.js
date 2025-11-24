@@ -378,7 +378,16 @@ const OrderSchema = new mongoose.Schema(
       ref: 'UTMHistory',
       index: true,
     },
+
+    // Analytics info captured from client
+    analyticsInfo: {
+      fbp: String,
+      fbc: String,
+      userAgent: String,
+      ip: String,
+    },
   },
+  
   { timestamps: true }
 );
 
