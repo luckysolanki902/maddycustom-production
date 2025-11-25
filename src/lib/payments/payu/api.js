@@ -15,6 +15,7 @@ export async function initiatePayuPayment(requestPayload) {
   const { payment: paymentUrl } = getPayuEndpoints();
 
   const amount = formatPayuAmount(requestPayload.amount);
+  
   const payload = {
     key,
     txnid: requestPayload.txnid,
