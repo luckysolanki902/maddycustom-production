@@ -106,52 +106,35 @@ export async function POST(request) {
     const body = await request.json();
     const { orderId, vpa, mode = 'vpa' } = body;
 
-    console.log('🟣 PayU UPI API called with:', { orderId, mode, vpa, bodyKeys: Object.keys(body) });
-
     if (!orderId) {
-      console.error('❌ Missing orderId in request');
       return NextResponse.json({ error: 'orderId is required.' }, { status: 400 });
     }
 
     // For VPA mode, validate VPA
     if (mode === 'vpa' && !vpa) {
-      console.error('❌ Missing vpa for VPA mode');
       return NextResponse.json({ error: 'vpa is required for VPA mode.' }, { status: 400 });
     }
 
     if (mode === 'vpa') {
       const vpaRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/;
       if (!vpaRegex.test(vpa)) {
-        console.error('❌ Invalid VPA format:', vpa);
         return NextResponse.json({ error: 'Invalid UPI ID format.' }, { status: 400 });
       }
     }
 
-    console.log('✅ Connecting to database...');
     await connectToDatabase();
     
-    console.log('🔍 Looking for order:', orderId);
     const order = await Order.findById(orderId).populate('user', 'email phoneNumber name').exec();
 
     if (!order) {
-      console.error('❌ Order not found:', orderId);
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
-    console.log('✅ Order found:', { 
-      id: order._id, 
-      hasPayuDetails: !!order.paymentDetails?.payuDetails,
-      txnId: order.paymentDetails?.payuDetails?.txnId,
-      amountDue: order.paymentDetails?.amountDueOnline
-    });
-
     if (!order.paymentDetails?.payuDetails?.txnId) {
-      console.error('❌ Order missing PayU txnId');
       return NextResponse.json({ error: 'Order is not configured for PayU payments.' }, { status: 400 });
     }
 
     if (order.paymentDetails.amountDueOnline <= 0) {
-      console.error('❌ No amount due:', order.paymentDetails.amountDueOnline);
       return NextResponse.json({ error: 'No online amount due for this order.' }, { status: 400 });
     }
 

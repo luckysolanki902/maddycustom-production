@@ -46,6 +46,7 @@ export async function POST(request) {
       utmHistory,
       extraFields,
       payuSession: clientPayuSession,
+      analyticsInfo,
     } = body;
 
   const { provider: paymentProvider, meta: providerDecisionMeta } = await decidePaymentProvider({ mode: 'upi' });
@@ -363,6 +364,7 @@ export async function POST(request) {
         ...extraFields,
         geo: address.geo || extraFields?.geo || undefined,
       },
+      analyticsInfo: analyticsInfo || null,
     };
 
     // Group items by inventory management

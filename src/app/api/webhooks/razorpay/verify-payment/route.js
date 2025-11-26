@@ -3,32 +3,12 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
-import Coupon from '@/models/Coupon';
-import User from '@/models/User';
-import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shiprocket';
-import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import Product from '@/models/Product';
-import Option from '@/models/Option';
-import Inventory from '@/models/Inventory';
-import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
-import SpecificCategory from '@/models/SpecificCategory';
+import { handlePaymentSuccess, sendPaymentSuccessWhatsApp } from '@/lib/payments/handlePaymentSuccess';
+import { createLogger } from '@/lib/utils/logger';
 
-// Helper: Update inventory for a given Inventory document _id
-async function updateInventory(inventoryId, delta, session) {
-  const result = await mongoose.model('Inventory').updateOne(
-    { _id: inventoryId },
-    {
-      $inc: {
-        availableQuantity: delta,
-        reservedQuantity: -delta,
-      },
-    },
-    { session }
-  );
-  return result;
-}
+const logger = createLogger('RazorpayWebhook');
 
 // Disable body parsing to access raw body
 export const config = {
@@ -159,6 +139,11 @@ export async function POST(request) {
       if (!alreadyProcessed && allOrders.some(ord => ord.paymentStatus === 'pending' || ord.paymentStatus === 'failed')) {
         const paymentAmount = payment.amount / 100; // convert paise -> INR
         logs.push(`[${timestampStr}] Processing payment capture for ${allOrders.length} orders`);
+        logger.info('Processing payment capture', {
+          orderCount: allOrders.length,
+          paymentId,
+          paymentAmount,
+        });
 
         // Update payment details for all orders with online payment due
         for (const ord of allOrders) {
@@ -181,72 +166,27 @@ export async function POST(request) {
           }
         }
 
-        // Handle coupon usage increment (only once for the main order)
-        const mainOrder = allOrders.find(ord => ord.isMainOrder) || allOrders[0];
-        if (mainOrder.couponApplied?.length > 0) {
-          const [appliedCoupon] = mainOrder.couponApplied;
-          if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
-            const couponDoc = await Coupon.findOne({ code: appliedCoupon.couponCode }).session(session);
-            if (couponDoc) {
-              couponDoc.usageCount += 1;
-              await couponDoc.save({ session });
-              
-              // Update coupon increment status in all orders
-              for (const ord of allOrders) {
-                if (ord.couponApplied?.length > 0) {
-                  ord.couponApplied = ord.couponApplied.map(c =>
-                    c.couponCode === appliedCoupon.couponCode
-                      ? { ...c.toObject(), incrementedCouponUsage: true }
-                      : c
-                  );
-                  await ord.save({ session });
-                }
-              }
-              logs.push(`[${timestampStr}] Coupon usage incremented: ${appliedCoupon.couponCode}`);
-            }
-          }
-        }
+        // Use centralized payment success handler
+        logs.push(`[${timestampStr}] Calling centralized payment success handler`);
+        logger.info('Invoking centralized handler', {
+          orderCount: allOrders.length,
+          paymentProvider: 'razorpay',
+        });
+        
+        const handlerResult = await handlePaymentSuccess(allOrders, session, {
+          paymentProvider: 'razorpay',
+        });
+        
+        logs.push(...handlerResult.logs);
+        logger.info('Centralized handler completed', {
+          success: handlerResult.success,
+          mainOrderId: handlerResult.mainOrderId,
+        });
       } else {
         logs.push(`[${timestampStr}] payment.captured received but order group already processed or not pending.`);
-      }
-
-      // 4a. Deduct inventory for each order individually
-      for (const ord of allOrders) {
-        if (
-          (ord.paymentStatus === 'paidPartially' || ord.paymentStatus === 'allPaid') &&
-          !ord.inventoryDeducted && // ensure we don't deduct twice
-          !ord.isTestingOrder // skip for test orders
-        ) {
-          logs.push(`[${timestampStr}] Deducting inventory for order ${ord._id}`);
-          const unitDelta = -1;
-
-          for (const item of ord.items) {
-            if (item.option) {
-              // Use Option's inventoryData if present
-              logs.push(`Updating inventory for Option ${item.option} x ${item.quantity}`);
-              const optionDoc = await Option.findById(item.option).session(session);
-              if (optionDoc?.inventoryData) {
-                await updateInventory(optionDoc.inventoryData, unitDelta * item.quantity, session);
-              } else {
-                logs.push(`Option ${item.option} has no inventoryData reference. Cannot update inventory.`);
-              }
-            } else if (item.product) {
-              // Otherwise, update Product's inventoryData
-              logs.push(`Updating inventory for Product ${item.product} x ${item.quantity}`);
-              const productDoc = await Product.findById(item.product).session(session);
-              if (productDoc?.inventoryData) {
-                await updateInventory(productDoc.inventoryData, unitDelta * item.quantity, session);
-              } else {
-                logs.push(`No inventoryData reference found on product ${item.product}. Cannot update inventory.`);
-              }
-            } else {
-              logs.push(`Order item does not have an option or product reference. Skipping. ${JSON.stringify(item)}`);
-            }
-          }
-          // Mark inventory as deducted for this order
-          ord.inventoryDeducted = true;
-          await ord.save({ session });
-        }
+        logger.info('Payment already processed', {
+          orderIds: allOrders.map(o => o._id.toString()),
+        });
       }
     } else if (razorpayEvent === 'payment.failed') {
       // Update payment status for all orders with pending payments
@@ -256,6 +196,10 @@ export async function POST(request) {
           ord.paymentStatus = 'failed';
           ord.paymentDetails.razorpayDetails.paymentId = paymentId;
           logs.push(`[${timestampStr}] Order ${ord._id} status -> failed`);
+          logger.info('Order marked as failed', {
+            orderId: ord._id.toString(),
+            paymentId,
+          });
           await ord.save({ session });
           anyUpdated = true;
         }
@@ -264,108 +208,15 @@ export async function POST(request) {
       if (anyUpdated) {
         await session.commitTransaction();
         session.endSession();
+        logger.info('Payment failure processed', {
+          orderIds: allOrders.map(o => o._id.toString()),
+        });
         return NextResponse.json({ message: 'Payment failed.' }, { status: 200 });
       } else {
         logs.push(`[${timestampStr}] payment.failed received but order group already processed.`);
-      }
-    }
-
-    // -----------------------------
-    // 5. Create Shiprocket Orders for Each Eligible Order
-    // -----------------------------
-    // Get updated order data for all orders
-    const updatedAllOrders = await Promise.all(
-      allOrders.map(ord => 
-        Order.findById(ord._id)
-          .populate({
-            path: 'items.product',
-            populate: {
-              path: 'specificCategoryVariant',
-              model: 'SpecificCategoryVariant',
-            },
-          })
-          .session(session)
-      )
-    );
-
-    // Process each order for Shiprocket creation
-    for (const ord of updatedAllOrders) {
-      if (
-        ['allPaid', 'paidPartially'].includes(ord.paymentStatus) &&
-        ord.deliveryStatus === 'pending' &&
-        !ord.shiprocketOrderId &&
-        !ord.isTestingOrder
-      ) {
-        logs.push(`[${timestampStr}] Attempting to create Shiprocket order for ID: ${ord._id}`);
-        
-        try {
-          const dimensionsAndWeight = await getDimensionsAndWeight(ord.items);
-          const { length, breadth, height, weight } = dimensionsAndWeight;
-          
-          const [firstName, ...restName] = ord.address.receiverName.split(' ');
-          const lastName = restName.join(' ');
-
-          const shiprocketOrderData = {
-            order_id: ord._id.toString(),
-            order_date: new Date().toISOString(),
-            billing_customer_name: firstName,
-            billing_last_name: lastName || '',
-            billing_address: `${ord.address.addressLine1} ${ord.address.addressLine2 || ''}`,
-            billing_city: ord.address.city,
-            billing_pincode: ord.address.pincode,
-            billing_state: ord.address.state,
-            billing_country: ord.address.country,
-            billing_phone: ord.address.receiverPhoneNumber,
-            shipping_is_billing: true,
-            order_items: ord.items.map(item => ({
-              name: item.name,
-              sku: item.wrapFinish ? `${item.sku}-${item.wrapFinish.charAt(0).toLowerCase()}` : item.sku,
-              units: item.quantity,
-              selling_price: item.priceAtPurchase,
-            })),
-            payment_method: ord.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
-            sub_total: ord.paymentDetails.amountDueCod > 0
-              ? ord.paymentDetails.amountDueCod
-              : ord.totalAmount,
-            length,
-            breadth,
-            height,
-            weight,
-          };
-
-          const srResponse = await createShiprocketOrder(shiprocketOrderData);
-          if (srResponse.status_code === 1 && !srResponse.packaging_box_error) {
-            await Order.findByIdAndUpdate(
-              ord._id,
-              {
-                shiprocketOrderId: srResponse.order_id,
-                deliveryStatus: 'orderCreated',
-              },
-              { session }
-            );
-            logs.push(`[${timestampStr}] Shiprocket order created for ${ord._id}: ${srResponse.order_id}`);
-          } else {
-            console.error(`Shiprocket API error for order ${ord._id}:`, srResponse);
-            logs.push(`[${timestampStr}] Shiprocket creation failed for order ${ord._id}: packaging_box_error or invalid`);
-            // Continue with other orders even if one fails
-          }
-        } catch (err) {
-          console.error(`Shiprocket creation error for order ${ord._id}:`, err);
-          logs.push(`[${timestampStr}] Shiprocket creation failed for order ${ord._id}: ${err.message}`);
-          // Continue with other orders even if one fails
-        }
-      } else {
-        let reason = 'unknown reason';
-        if (!['allPaid', 'paidPartially'].includes(ord.paymentStatus)) {
-          reason = 'paymentStatus is not successful';
-        } else if (ord.deliveryStatus !== 'pending') {
-          reason = 'deliveryStatus is not pending';
-        } else if (ord.shiprocketOrderId) {
-          reason = 'shiprocketOrderId already exists';
-        } else if (ord.isTestingOrder) {
-          reason = 'isTestingOrder flag is true';
-        }
-        logs.push(`[${timestampStr}] Skipping Shiprocket for order ${ord._id}: ${reason}`);
+        logger.info('Payment failure already processed', {
+          orderIds: allOrders.map(o => o._id.toString()),
+        });
       }
     }
 
@@ -374,55 +225,32 @@ export async function POST(request) {
     // -----------------------------
     await session.commitTransaction();
     session.endSession();
+    logger.info('Transaction committed successfully', {
+      orderIds: allOrders.map(o => o._id.toString()),
+    });
 
     // -----------------------------
-    // 7. Send WhatsApp Notification (Async)
+    // 7. Send WhatsApp Notification (After Transaction)
     // -----------------------------
     try {
-      // Use the main order for WhatsApp notification
-      const mainOrder = updatedAllOrders.find(ord => ord.isMainOrder) || updatedAllOrders[0];
+      // Get updated main order with populated user
+      const mainOrder = allOrders.find(ord => ord.isMainOrder) || allOrders[0];
+      const populatedMainOrder = await Order.findById(mainOrder._id).populate('user');
       
-      if (!mainOrder.isTestingOrder) {
-        const userDoc = await User.findById(mainOrder.user);
-        if (userDoc) {
-          const buttons = [
-            {
-              type: 'button',
-              sub_type: 'url',
-              index: '0',
-              parameters: [
-                {
-                  type: 'text',
-                  text: mainOrder._id?.toString() || 'Order ID',
-                },
-              ],
-            },
-          ];
-          await sendWhatsAppMessage({
-            user: userDoc,
-            prefUserName: mainOrder.address.receiverName || '',
-            campaignName:
-              new Date().getTime() < new Date('2025-04-03T00:00:00.000Z').getTime()
-                ? 'delay_eid'
-                : 'order_confirmed',
-            orderId: mainOrder._id,
-            templateParams: [],
-            carouselCards: [],
-            buttons,
-          });
-          logs.push(`[${timestampStr}] WhatsApp message sent to user: ${userDoc._id}`);
-        } else {
-          logs.push(`[${timestampStr}] No matching user found for orderId: ${mainOrder._id}`);
-        }
-      } else {
-        logs.push(`[${timestampStr}] Skipping WhatsApp message (isTestingOrder = true).`);
-      }
-    } catch (msgErr) {
-      const mainOrder = updatedAllOrders.find(ord => ord.isMainOrder) || updatedAllOrders[0];
-      console.error(`WhatsApp message failed for order ${mainOrder._id}:`, msgErr);
-      logs.push(`[${timestampStr}] WhatsApp message sending failed (error logged).`);
+      const whatsappLogs = await sendPaymentSuccessWhatsApp(populatedMainOrder);
+      logs.push(...whatsappLogs);
+    } catch (whatsappError) {
+      logs.push(`[${timestampStr}] WhatsApp notification error: ${whatsappError.message}`);
+      logger.error('WhatsApp notification failed', {
+        error: whatsappError.message,
+        orderId: internalOrderId,
+      });
     }
 
+    logger.info('Webhook processed successfully', {
+      orderId: internalOrderId,
+      orderCount: allOrders.length,
+    });
     console.info(`Webhook processed successfully for orderId: ${internalOrderId}`, logs);
     return NextResponse.json(
       { message: `Webhook processed successfully for orderId: ${internalOrderId}`, logs },
@@ -431,6 +259,11 @@ export async function POST(request) {
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
+    logger.error('Webhook processing failed', {
+      error: err.message,
+      stack: err.stack,
+      orderId: internalOrderId,
+    });
     console.error(`Error processing Razorpay webhook for orderId ${internalOrderId}`, err, logs);
     return NextResponse.json(
       { error: `Internal error for orderId: ${internalOrderId}`, logs },

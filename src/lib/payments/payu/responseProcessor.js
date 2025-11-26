@@ -2,20 +2,16 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
-import Coupon from '@/models/Coupon';
-import Product from '@/models/Product';
-import Option from '@/models/Option';
-import User from '@/models/User';
-import Inventory from '@/models/Inventory';
 import mongoose from 'mongoose';
-import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shiprocket';
-import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 import { validatePayuCredentials } from './config';
 import { verifyReverseHash } from './hash';
 import { PAYU_FAILURE_STATUSES, PAYU_SUCCESS_STATUSES } from './constants';
+import { handlePaymentSuccess, sendPaymentSuccessWhatsApp } from '@/lib/payments/handlePaymentSuccess';
+import { createLogger } from '@/lib/utils/logger';
 
 const SUCCESS_SET = new Set(PAYU_SUCCESS_STATUSES.map((status) => status.toLowerCase()));
 const FAILURE_SET = new Set(PAYU_FAILURE_STATUSES.map((status) => status.toLowerCase()));
+const logger = createLogger('PayUWebhook');
 
 const PAYU_WEBHOOK_DEBUG_DIR =
   process.env.PAYU_WEBHOOK_DEBUG_DIR ||
@@ -111,21 +107,6 @@ function createHashError() {
   return error;
 }
 
-// Helper: Update inventory for a given Inventory document _id
-async function updateInventory(inventoryId, delta, session) {
-  const result = await mongoose.model('Inventory').updateOne(
-    { _id: inventoryId },
-    {
-      $inc: {
-        availableQuantity: delta,
-        reservedQuantity: -delta,
-      },
-    },
-    { session }
-  );
-  return result;
-}
-
 export async function processPayuGatewayResponse(payload, options = {}) {
   const logs = [];
   const timestampStr = new Date().toLocaleString('en-IN', {
@@ -139,9 +120,20 @@ export async function processPayuGatewayResponse(payload, options = {}) {
     timeZone: 'Asia/Kolkata',
   });
 
+  logs.push(`\n${'='.repeat(80)}`);
+  logs.push(`[${timestampStr}] 🔔 PayU Webhook Received`);
+  logs.push(`${'='.repeat(80)}`);
+
   if (!payload || typeof payload !== 'object') {
     throw new Error('Empty payload received from PayU');
   }
+
+  logs.push(`Transaction ID: ${payload.txnid || payload.TXNID || 'N/A'}`);
+  logs.push(`Payment Status: ${payload.status || 'N/A'}`);
+  logs.push(`Amount: ${payload.amount || 'N/A'}`);
+  logs.push(`Product Info: ${payload.productinfo || 'N/A'}`);
+  logs.push(`Payment ID: ${payload.mihpayid || payload.payuid || 'N/A'}`);
+  logs.push(`${'='.repeat(80)}\n`);
 
   const { skipHashVerification = false } = options;
   const txnId = payload.txnid || payload.TXNID;
@@ -183,6 +175,7 @@ export async function processPayuGatewayResponse(payload, options = {}) {
   try {
     const orders = await Order.find({ 'paymentDetails.payuDetails.txnId': txnId }).session(session);
     if (!orders || orders.length === 0) {
+      logs.push(`[${timestampStr}] ❌ No orders found for txnId: ${txnId}`);
       await session.abortTransaction();
       session.endSession();
       return {
@@ -193,10 +186,29 @@ export async function processPayuGatewayResponse(payload, options = {}) {
       };
     }
 
-    logs.push(`[${timestampStr}] Processing ${orders.length} orders for txnId: ${txnId}`);
+    // Log detailed order info including analytics
+    const mainOrder = orders.find(ord => ord.isMainOrder) || orders[0];
+    logs.push(`Found ${orders.length} order(s), main: ${mainOrder._id}`);
+    
+    // Check analytics data completeness (for monitoring)
+    const hasAnalyticsData = mainOrder.analyticsInfo && (
+      mainOrder.analyticsInfo.ip || mainOrder.analyticsInfo.externalId
+    );
+    if (!hasAnalyticsData) {
+      logger.warn('Missing analytics data for order', {
+        orderId: mainOrder._id.toString(),
+        txnId,
+      });
+    }
 
     const normalizedStatus = normalisePayuStatus(payload.status, payload.unmappedstatus);
-    logs.push(`[${timestampStr}] Normalized status: ${normalizedStatus}`);
+    logs.push(`[${timestampStr}] Normalized Payment Status: ${normalizedStatus}`);
+    logger.info('Payment status normalized', {
+      txnId,
+      normalizedStatus,
+      rawStatus: payload.status,
+      unmappedStatus: payload.unmappedstatus,
+    });
 
     // Check if already processed
     const alreadyProcessed = orders.some(ord => 
@@ -204,6 +216,12 @@ export async function processPayuGatewayResponse(payload, options = {}) {
     );
 
     if (normalizedStatus === 'success' && !alreadyProcessed) {
+      logs.push(`[${timestampStr}] Processing payment success for ${orders.length} orders`);
+      logger.info('Processing payment success', {
+        txnId,
+        orderCount: orders.length,
+      });
+
       // Update payment details for all orders
       for (const orderDoc of orders) {
         const { update } = buildPayuOrderUpdate(orderDoc, payload, normalizedStatus);
@@ -215,220 +233,54 @@ export async function processPayuGatewayResponse(payload, options = {}) {
         logs.push(`[${timestampStr}] Order ${orderDoc._id} status -> ${update.paymentStatus}`);
       }
 
-      // Handle coupon usage increment (only once for main order)
-      const mainOrder = orders.find(ord => ord.isMainOrder) || orders[0];
-      if (mainOrder.couponApplied?.length > 0) {
-        const [appliedCoupon] = mainOrder.couponApplied;
-        if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
-          const couponDoc = await Coupon.findOne({ code: appliedCoupon.couponCode }).session(session);
-          if (couponDoc) {
-            couponDoc.usageCount += 1;
-            await couponDoc.save({ session });
-            
-            // Update coupon increment status in all orders
-            for (const ord of orders) {
-              if (ord.couponApplied?.length > 0) {
-                const updated = await Order.findByIdAndUpdate(
-                  ord._id,
-                  {
-                    $set: {
-                      'couponApplied.$[elem].incrementedCouponUsage': true
-                    }
-                  },
-                  {
-                    arrayFilters: [{ 'elem.couponCode': appliedCoupon.couponCode }],
-                    session,
-                    new: true
-                  }
-                );
-              }
-            }
-            logs.push(`[${timestampStr}] Coupon usage incremented: ${appliedCoupon.couponCode}`);
-          }
-        }
-      }
-
-      // Deduct inventory for each order
-      for (const ord of orders) {
-        const updatedOrd = await Order.findById(ord._id).session(session);
-        if (
-          (updatedOrd.paymentStatus === 'paidPartially' || updatedOrd.paymentStatus === 'allPaid') &&
-          !updatedOrd.inventoryDeducted &&
-          !updatedOrd.isTestingOrder
-        ) {
-          logs.push(`[${timestampStr}] Deducting inventory for order ${updatedOrd._id}`);
-          const unitDelta = -1;
-
-          for (const item of updatedOrd.items) {
-            if (item.option) {
-              logs.push(`Updating inventory for Option ${item.option} x ${item.quantity}`);
-              const optionDoc = await Option.findById(item.option).session(session);
-              if (optionDoc?.inventoryData) {
-                await updateInventory(optionDoc.inventoryData, unitDelta * item.quantity, session);
-              } else {
-                logs.push(`Option ${item.option} has no inventoryData reference. Cannot update inventory.`);
-              }
-            } else if (item.product) {
-              logs.push(`Updating inventory for Product ${item.product} x ${item.quantity}`);
-              const productDoc = await Product.findById(item.product).session(session);
-              if (productDoc?.inventoryData) {
-                await updateInventory(productDoc.inventoryData, unitDelta * item.quantity, session);
-              } else {
-                logs.push(`No inventoryData reference found on product ${item.product}. Cannot update inventory.`);
-              }
-            } else {
-              logs.push(`Order item does not have an option or product reference. Skipping.`);
-            }
-          }
-          
-          // Mark inventory as deducted
-          await Order.findByIdAndUpdate(
-            updatedOrd._id,
-            { $set: { inventoryDeducted: true } },
-            { session }
-          );
-        }
-      }
-
-      // Get updated orders with populated data for Shiprocket
-      const updatedAllOrders = await Promise.all(
-        orders.map(ord => 
-          Order.findById(ord._id)
-            .populate({
-              path: 'items.product',
-              populate: {
-                path: 'specificCategoryVariant',
-                model: 'SpecificCategoryVariant',
-              },
-            })
-            .populate('user')
-            .session(session)
-        )
-      );
-
-      // Create Shiprocket orders
-      for (const ord of updatedAllOrders) {
-        if (
-          ['allPaid', 'paidPartially'].includes(ord.paymentStatus) &&
-          ord.deliveryStatus === 'pending' &&
-          !ord.shiprocketOrderId &&
-          !ord.isTestingOrder
-        ) {
-          logs.push(`[${timestampStr}] Attempting to create Shiprocket order for ID: ${ord._id}`);
-          
-          try {
-            // Ensure address exists
-            if (!ord.address || !ord.address.addressLine1) {
-              logs.push(`[${timestampStr}] Order ${ord._id} missing address, skipping Shiprocket`);
-              continue;
-            }
-
-            const dimensionsAndWeight = await getDimensionsAndWeight(ord.items);
-            const { length, breadth, height, weight } = dimensionsAndWeight;
-            
-            const [firstName, ...restName] = ord.address.receiverName.split(' ');
-            const lastName = restName.join(' ');
-
-            const shiprocketPayload = {
-              order_id: ord._id.toString(),
-              order_date: new Date().toISOString(),
-              billing_customer_name: firstName,
-              billing_last_name: lastName || '',
-              billing_address: `${ord.address.addressLine1} ${ord.address.addressLine2 || ''}`,
-              billing_city: ord.address.city,
-              billing_pincode: ord.address.pincode,
-              billing_state: ord.address.state,
-              billing_country: ord.address.country,
-              billing_phone: ord.address.receiverPhoneNumber,
-              shipping_is_billing: true,
-              order_items: ord.items.map((item) => ({
-                name: item.name,
-                sku: item.wrapFinish ? `${item.sku}-${item.wrapFinish.charAt(0).toLowerCase()}` : item.sku,
-                units: item.quantity,
-                selling_price: item.priceAtPurchase,
-              })),
-              payment_method: ord.paymentDetails.amountDueCod > 0 ? 'COD' : 'Prepaid',
-              sub_total: ord.paymentDetails.amountDueCod > 0
-                ? ord.paymentDetails.amountDueCod
-                : ord.totalAmount,
-              length,
-              breadth,
-              height,
-              weight,
-            };
-
-            const shiprocketResponse = await createShiprocketOrder(shiprocketPayload);
-            
-            if (shiprocketResponse?.status_code === 1 && !shiprocketResponse?.packaging_box_error) {
-              await Order.findByIdAndUpdate(
-                ord._id,
-                {
-                  $set: {
-                    shiprocketOrderId: shiprocketResponse.order_id.toString(),
-                    deliveryStatus: 'orderCreated',
-                  },
-                },
-                { session }
-              );
-              logs.push(`[${timestampStr}] Shiprocket order created: ${shiprocketResponse.order_id}`);
-            } else {
-              logs.push(`[${timestampStr}] Shiprocket response missing order_id or packaging_box_error`);
-            }
-          } catch (shiprocketError) {
-            logs.push(`[${timestampStr}] Shiprocket creation failed: ${shiprocketError.message}`);
-            console.error(`[PayU] Shiprocket creation failed for order ${ord._id}`, shiprocketError);
-          }
-        }
-      }
+      // Use centralized payment success handler
+      logs.push(`[${timestampStr}] Calling centralized payment success handler`);
+      logger.info('Invoking centralized handler', {
+        txnId,
+        orderCount: orders.length,
+        paymentProvider: 'payu',
+      });
+      
+      const handlerResult = await handlePaymentSuccess(orders, session, {
+        paymentProvider: 'payu',
+      });
+      
+      logs.push(...handlerResult.logs);
+      logger.info('Centralized handler completed', {
+        success: handlerResult.success,
+        mainOrderId: handlerResult.mainOrderId,
+        txnId,
+      });
 
       // Commit transaction
       await session.commitTransaction();
       session.endSession();
+      logger.info('Transaction committed successfully', {
+        txnId,
+        orderIds: orders.map(o => o._id.toString()),
+      });
 
       // Send WhatsApp notification (after transaction)
       try {
-        if (!mainOrder.isTestingOrder) {
-          const userDoc = await User.findById(mainOrder.user);
-          if (userDoc) {
-            const buttons = [
-              {
-                type: 'button',
-                sub_type: 'url',
-                index: '0',
-                parameters: [
-                  {
-                    type: 'text',
-                    text: mainOrder._id?.toString() || 'Order ID',
-                  },
-                ],
-              },
-            ];
-            await sendWhatsAppMessage({
-              user: userDoc,
-              prefUserName: mainOrder.address.receiverName || '',
-              campaignName:
-                new Date().getTime() < new Date('2025-04-03T00:00:00.000Z').getTime()
-                  ? 'delay_eid'
-                  : 'order_confirmed',
-              orderId: mainOrder._id,
-              templateParams: [],
-              carouselCards: [],
-              buttons,
-            });
-            logs.push(`[${timestampStr}] WhatsApp message sent to user: ${userDoc._id}`);
-          } else {
-            logs.push(`[${timestampStr}] No matching user found for orderId: ${mainOrder._id}`);
-          }
-        } else {
-          logs.push(`[${timestampStr}] Skipping WhatsApp message (isTestingOrder = true).`);
-        }
+        const mainOrder = orders.find(ord => ord.isMainOrder) || orders[0];
+        const populatedMainOrder = await Order.findById(mainOrder._id).populate('user');
+        
+        const whatsappLogs = await sendPaymentSuccessWhatsApp(populatedMainOrder);
+        logs.push(...whatsappLogs);
       } catch (whatsappError) {
-        logs.push(`[${timestampStr}] WhatsApp message sending failed: ${whatsappError.message}`);
-        console.error('[PayU] WhatsApp notification failed', whatsappError);
+        logs.push(`[${timestampStr}] WhatsApp notification error: ${whatsappError.message}`);
+        logger.error('WhatsApp notification failed', {
+          txnId,
+          error: whatsappError.message,
+        });
       }
 
-      console.info('[PayU] Processing logs:', logs);
+      logger.info('PayU webhook processed successfully', {
+        txnId,
+        orderCount: orders.length,
+      });
 
+      const mainOrder = orders.find(ord => ord.isMainOrder) || orders[0];
       return {
         txnId,
         normalizedStatus,
@@ -447,13 +299,20 @@ export async function processPayuGatewayResponse(payload, options = {}) {
             { session }
           ).exec();
           logs.push(`[${timestampStr}] Order ${orderDoc._id} status -> failed`);
+          logger.info('Order marked as failed', {
+            txnId,
+            orderId: orderDoc._id.toString(),
+          });
         }
       }
 
       await session.commitTransaction();
       session.endSession();
 
-      console.info('[PayU] Processing logs:', logs);
+      logger.info('Payment failure processed', {
+        txnId,
+        orderIds: orders.map(o => o._id.toString()),
+      });
 
       return {
         txnId,
@@ -467,8 +326,12 @@ export async function processPayuGatewayResponse(payload, options = {}) {
       await session.commitTransaction();
       session.endSession();
 
-      logs.push(`[${timestampStr}] Orders already processed or status is pending`);
-      console.info('[PayU] Processing logs:', logs);
+      logs.push(`Orders already processed or status is pending`);
+      logger.info('Orders already processed', {
+        txnId,
+        normalizedStatus,
+        orderIds: orders.map(o => o._id.toString()),
+      });
 
       return {
         txnId,
@@ -481,8 +344,11 @@ export async function processPayuGatewayResponse(payload, options = {}) {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.error('[PayU] Transaction failed, rolled back:', error);
-    console.error('[PayU] Processing logs:', logs);
+    logger.error('Transaction failed and rolled back', {
+      txnId,
+      error: error.message,
+      orderIds: orders.map(o => o._id.toString()),
+    });
     throw error;
   }
 }
