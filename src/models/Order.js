@@ -378,6 +378,42 @@ const OrderSchema = new mongoose.Schema(
       ref: 'UTMHistory',
       index: true,
     },
+
+    // Analytics and tracking information captured from client
+    analyticsInfo: {
+      ip: {
+        type: String,
+        default: null,
+      },
+      userAgent: {
+        type: String,
+        default: null,
+      },
+      externalId: {
+        type: String,
+        default: null,
+      },
+      fbp: {
+        type: String,
+        default: null,
+      },
+      fbc: {
+        type: String,
+        default: null,
+      },
+      gaClientId: {
+        type: String,
+        default: null,
+      },
+      capturedAt: {
+        type: Date,
+        default: null,
+      },
+      sourceUrl: {
+        type: String,
+        default: null,
+      },
+    },
   },
   { timestamps: true }
 );

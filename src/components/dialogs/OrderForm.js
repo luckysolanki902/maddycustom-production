@@ -64,6 +64,7 @@ import funnelClient from '@/lib/analytics/funnelClient';
 import { gaAddBillingInfo, gaAddPaymentInfo, gaPurchase } from '@/lib/metadata/googleAds';
 import { buildPurchaseEventPayload } from '@/lib/analytics/purchaseEventPayload';
 import { PAYMENT_PROVIDERS } from '@/lib/payments/providers';
+import { captureClientTrackingData } from '@/lib/analytics/trackingCapture';
 
 // Create logger for OrderForm component
 const logger = createLogger('OrderForm');
@@ -1139,6 +1140,15 @@ const OrderForm = ({
         });
       }
 
+      // Capture fresh client-side tracking data for analytics
+      let trackingMetadata = null;
+      try {
+        trackingMetadata = await captureClientTrackingData();
+      } catch (trackingError) {
+        // Continue with order creation even if tracking fails
+        console.warn('[OrderForm] Tracking capture failed:', trackingError.message);
+      }
+
       // Note: payuSession is not sent for merchant-hosted checkout (merchant selects method in PaymentDialog)
       const finalOrderPayload = {
         userId: orderForm.userDetails.userId,
@@ -1187,6 +1197,7 @@ const OrderForm = ({
           landmark: data.landmark,
           ...(floorParsed !== undefined ? { floor: floorParsed } : {}),
         },
+        analyticsInfo: trackingMetadata, // Fresh client-side tracking data captured above
       };
 
       console.log('🔄 Sending order creation request with payload:', finalOrderPayload);

@@ -23,52 +23,28 @@ export async function POST(request) {
   try {
     const payload = await parsePayuPayload(request);
     
-    console.info('📦 [PayU Webhook] Payload parsed successfully', {
+    // Production-safe logging - no sensitive data
+    console.info('📦 [PayU Webhook] Payload parsed', {
       requestId,
       txnId: payload?.txnid || payload?.TXNID,
       status: payload?.status,
-      unmappedStatus: payload?.unmappedstatus,
-      mihpayid: payload?.mihpayid,
       mode: payload?.mode,
       amount: payload?.amount,
-      productinfo: payload?.productinfo,
-      firstname: payload?.firstname,
-      email: payload?.email,
-      phone: payload?.phone,
-      bankcode: payload?.bankcode,
-      PG_TYPE: payload?.PG_TYPE,
-      bank_ref_num: payload?.bank_ref_num,
-      error: payload?.error,
-      error_Message: payload?.error_Message,
-      cardCategory: payload?.cardCategory,
-      card_type: payload?.card_type,
-      skipHash: SKIP_HASH_VALIDATION,
-      payloadKeys: Object.keys(payload || {}),
     });
 
     if (!payload?.txnid && !payload?.TXNID) {
-      console.warn('⚠️ [PayU Webhook] Missing transaction ID in payload', {
-        requestId,
-        payloadKeys: Object.keys(payload || {}),
-      });
+      console.warn('⚠️ [PayU Webhook] Missing transaction ID', { requestId });
     }
 
     if (payload?.status === 'failure' || payload?.status === 'failed') {
-      console.warn('⚠️ [PayU Webhook] Payment failure received', {
+      console.warn('⚠️ [PayU Webhook] Payment failure', {
         requestId,
         txnId: payload?.txnid || payload?.TXNID,
-        status: payload?.status,
-        unmappedStatus: payload?.unmappedstatus,
         error: payload?.error,
-        errorMessage: payload?.error_Message,
-        failureReason: payload?.field9,
       });
     }
 
-    console.info('🔄 [PayU Webhook] Processing payment response...', {
-      requestId,
-      skipHashVerification: SKIP_HASH_VALIDATION,
-    });
+    console.info('🔄 [PayU Webhook] Processing...', { requestId });
 
     const result = await processPayuGatewayResponse(payload, {
       skipHashVerification: SKIP_HASH_VALIDATION,
@@ -100,17 +76,11 @@ export async function POST(request) {
       requestId,
       message: error?.message,
       code: error?.code,
-      name: error?.name,
-      stack: error?.stack,
       processingTimeMs: processingTime,
     });
 
     if (error.code === 'INVALID_HASH') {
-      console.error('🔒 [PayU Webhook] Hash validation failed - potential security issue', {
-        requestId,
-        skipValidation: SKIP_HASH_VALIDATION,
-        errorDetails: error.message,
-      });
+      console.error('🔒 [PayU Webhook] Hash validation failed', { requestId });
     }
 
     console.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
