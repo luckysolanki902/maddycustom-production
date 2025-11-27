@@ -1409,6 +1409,79 @@ const OrderForm = ({
     }
 
     console.log('✅ Order ID exists, proceeding with UPI payment');
+
+    // Track payment_initiated funnel event
+    try {
+      funnelClient.track('payment_initiated', {
+        dedupeKey: `payment_initiated:${lastOrderId}:upi`,
+        cart: computeCartSnapshot(),
+        order: {
+          orderId: lastOrderId,
+          value: totalCost,
+          currency: 'INR',
+          coupon: normalizedCouponCode,
+        },
+        metadata: {
+          paymentMethod: 'upi',
+          paymentProvider: isMobile ? 'payu' : 'razorpay',
+          amountDueOnline: payuOnlineAmount,
+        },
+      });
+    } catch (err) {
+      console.warn('Funnel payment_initiated track failed:', err);
+    }
+
+    // Track Meta paymentInitiated event
+    try {
+      const contents = cartItems.map((item) => ({
+        productId: item.productId || item._id,
+        quantity: item.quantity,
+        price: item.priceAtPurchase || item.productDetails?.price,
+        brand: item.productDetails?.brand,
+        category: item.productDetails?.category?.name || item.productDetails?.category,
+        name: item.productDetails?.name,
+      }));
+      const isSplitPayment = !!(paymentModeConfig?.configuration?.onlinePercentage > 0 && paymentModeConfig?.configuration?.onlinePercentage < 100);
+      paymentInitiated({
+        value: totalCost,
+        amount_due_online: payuOnlineAmount,
+        payment_mode: paymentModeName,
+        payment_mode_id: paymentModeConfig?._id,
+        is_split_payment: isSplitPayment,
+        contents,
+        numItems: contents.length,
+        contentName: contents.map((c) => c.name).filter(Boolean).join(', '),
+        orderId: lastOrderId,
+      }, {
+        email: orderForm.userDetails?.email || '',
+        phoneNumber: orderForm.userDetails?.phoneNumber,
+      });
+    } catch (err) {
+      console.warn('Payment initiated analytics failed (non-critical):', err);
+    }
+
+    // Track Google Analytics add_payment_info event
+    try {
+      const gaContents = cartItems.map((item) => ({
+        productId: item.productId || item._id,
+        quantity: item.quantity,
+        price: item.priceAtPurchase || item.productDetails?.price,
+        brand: item.productDetails?.brand,
+        category: item.productDetails?.category?.name || item.productDetails?.category,
+        name: item.productDetails?.name,
+      }));
+      gaAddPaymentInfo({
+        value: payuOnlineAmount || totalCost,
+        items: gaContents,
+        payment_type: 'upi',
+        coupon: normalizedCouponCode || undefined,
+      });
+    } catch (gaErr) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('gaAddPaymentInfo failed', gaErr);
+      }
+    }
+
     setSelectedPaymentMethod('upi');
     setUpiPaymentState('processing');
     setIsPaymentProcessing(true);
@@ -1531,12 +1604,84 @@ const OrderForm = ({
       setIsPaymentProcessing(false);
       showSnackbar(error.response?.data?.error || 'Failed to initiate UPI payment', 'error');
     }
-  }, [lastOrderId, showSnackbar, dispatch, reset, handleFullClose, router, isMobile, initiateRazorpayPayment, isPaymentProcessing, upiPaymentState]);
+  }, [lastOrderId, showSnackbar, dispatch, reset, handleFullClose, router, isMobile, initiateRazorpayPayment, isPaymentProcessing, upiPaymentState, computeCartSnapshot, totalCost, normalizedCouponCode, payuOnlineAmount, cartItems, paymentModeName, orderForm.userDetails, paymentModeConfig]);
 
   // NEW: Handle other payment methods (Razorpay)
   const handlePayWithOther = useCallback(() => {
+    // Track payment_initiated funnel event
+    try {
+      funnelClient.track('payment_initiated', {
+        dedupeKey: `payment_initiated:${lastOrderId}:other`,
+        cart: computeCartSnapshot(),
+        order: {
+          orderId: lastOrderId,
+          value: totalCost,
+          currency: 'INR',
+          coupon: normalizedCouponCode,
+        },
+        metadata: {
+          paymentMethod: 'card_netbanking_wallet',
+          paymentProvider: 'razorpay',
+          amountDueOnline: payuOnlineAmount,
+        },
+      });
+    } catch (err) {
+      console.warn('Funnel payment_initiated track failed:', err);
+    }
+
+    // Track Meta paymentInitiated event
+    try {
+      const contents = cartItems.map((item) => ({
+        productId: item.productId || item._id,
+        quantity: item.quantity,
+        price: item.priceAtPurchase || item.productDetails?.price,
+        brand: item.productDetails?.brand,
+        category: item.productDetails?.category?.name || item.productDetails?.category,
+        name: item.productDetails?.name,
+      }));
+      const isSplitPayment = !!(paymentModeConfig?.configuration?.onlinePercentage > 0 && paymentModeConfig?.configuration?.onlinePercentage < 100);
+      paymentInitiated({
+        value: totalCost,
+        amount_due_online: payuOnlineAmount,
+        payment_mode: paymentModeName,
+        payment_mode_id: paymentModeConfig?._id,
+        is_split_payment: isSplitPayment,
+        contents,
+        numItems: contents.length,
+        contentName: contents.map((c) => c.name).filter(Boolean).join(', '),
+        orderId: lastOrderId,
+      }, {
+        email: orderForm.userDetails?.email || '',
+        phoneNumber: orderForm.userDetails?.phoneNumber,
+      });
+    } catch (err) {
+      console.warn('Payment initiated analytics failed (non-critical):', err);
+    }
+
+    // Track Google Analytics add_payment_info event
+    try {
+      const gaContents = cartItems.map((item) => ({
+        productId: item.productId || item._id,
+        quantity: item.quantity,
+        price: item.priceAtPurchase || item.productDetails?.price,
+        brand: item.productDetails?.brand,
+        category: item.productDetails?.category?.name || item.productDetails?.category,
+        name: item.productDetails?.name,
+      }));
+      gaAddPaymentInfo({
+        value: payuOnlineAmount || totalCost,
+        items: gaContents,
+        payment_type: paymentModeName || 'card_netbanking_wallet',
+        coupon: normalizedCouponCode || undefined,
+      });
+    } catch (gaErr) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('gaAddPaymentInfo failed', gaErr);
+      }
+    }
+
     initiateRazorpayPayment({ hideUpi: true, paymentContext: 'other' });
-  }, [initiateRazorpayPayment]);
+  }, [initiateRazorpayPayment, lastOrderId, computeCartSnapshot, totalCost, normalizedCouponCode, payuOnlineAmount, cartItems, paymentModeName, orderForm.userDetails, paymentModeConfig]);
 
   const currentSubmitHandler = useMemo(() => {
     if (tabIndex === 0) return onSubmitUserDetails;
