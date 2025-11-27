@@ -1,3 +1,5 @@
+/* Footer - Clean Minimal Design */
+
 .footerContainer {
   display: flex;
   align-items: center;
@@ -6,132 +8,102 @@
   background-color: #ffffff;
   border-top: 1px solid #eaeaea;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06);
-  min-height: 76px;
+  gap: 16px;
 }
 
-.priceContainer {
-  flex: 1;
-  margin-right: 18px;
-}
-
-/* Standard price summary styles */
-.priceSummary {
-  display: flex;
-  align-items: center;
-}
-
-.priceDetails {
-  display: flex;
-  flex-direction: column;
-}
-
-.totalText {
-  font-size: 13px;
-  color: #666666;
-  margin-bottom: 2px;
-}
-
-.priceStack {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-}
-
-.originalPrice {
-  font-size: 15px;
-  color: #888888;
-  text-decoration: line-through;
-  margin-bottom: 0;
-  display: inline-flex;
-}
-
-.finalPrice {
-  font-size: 20px;
-  font-weight: 600;
-  color: #212121;
-  line-height: 1.1;
-}
-
-.savingsBadge {
-  background-color: #e8f5e9;
-  color: #2e7d32;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 12px;
-  padding: 3px 8px;
-  margin-left: 12px;
-}
-
-/* Split payment styles */
-.splitWrapper {
+/* Price Section */
+.priceSection {
   display: flex;
   align-items: center;
   gap: 16px;
-  width: 100%;
+  flex: 1;
+}
+
+/* Total Block */
+.totalBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.totalLabel {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.totalRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .totalAmount {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.originalAmount {
+  font-size: 14px;
+  color: #999;
+  text-decoration: line-through;
+}
+
+/* Payment Info - Right side of price section */
+.paymentInfo {
+  display: flex;
+  align-items: center;
+}
+
+/* Simple Payment Tag (for online) */
+.paymentTag {
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-weight: 500;
+}
+
+/* Split Payment Badge */
+.splitBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8f9fa;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.splitItem {
   display: flex;
   flex-direction: column;
-  min-width: 90px;
+  align-items: center;
 }
 
-.totalValue {
-  font-size: 19px;
+.splitLabel {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.splitValue {
+  font-size: 13px;
   font-weight: 600;
-  color: #212121;
-  line-height: 1.2;
+  color: #333;
 }
 
-.paymentSplitContainer {
-  display: flex;
-  align-items: center;
-  border-radius: 8px;
-  background-color: #f5f7fa;
-  border: 1px solid #eef0f5;
-  padding: 2px;
-}
-
-.paymentOption {
-  display: flex;
-  align-items: center;
-  padding: 6px 10px;
-  background: transparent;
-  transition: all 0.2s;
-}
-
-.paymentIcon {
-  font-size: 18px !important;
-  margin-right: 8px;
-  color: #444444;
-}
-
-.paymentLabel {
-  display: block;
-  font-size: 11px;
-  color: #555555;
-  margin-bottom: 1px;
-  line-height: 1;
+.splitDivider {
+  font-size: 12px;
+  color: #ccc;
   font-weight: 500;
 }
 
-.paymentAmount {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: #212121;
-  line-height: 1.3;
-}
-
-.divider {
-  padding: 0 6px;
-  color: #888888;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-/* Checkout button */
+/* Checkout Button - Kept as is */
 .checkoutButton {
   background: linear-gradient(135deg, #212121, #424242);
   color: white;
@@ -149,6 +121,7 @@
   white-space: nowrap;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  flex-shrink: 0;
 }
 
 .checkoutButton:hover {
@@ -168,7 +141,31 @@
   gap: 8px;
 }
 
-/* Animation for shine effect */
+/* CTA Content with icon */
+.ctaContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ctaIcon {
+  font-size: 18px !important;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+/* Shine effect */
 .shineEffect::after {
   content: '';
   position: absolute;
@@ -195,88 +192,76 @@
   }
 }
 
-/* Responsive styles */
-@media (max-width: 768px) {
-  .footerContainer {
-    padding: 14px 16px;
-  }
-  
-  .checkoutButton {
-    min-width: 130px;
-    padding: 10px 18px;
-  }
-}
-
-@media (max-width: 576px) {
-  .splitWrapper {
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-  }
-  
-  .totalAmount {
-    min-width: 80px;
-  }
-
-  .paymentSplitContainer {
-    flex: 1;
-  }
-}
-
+/* Mobile Responsive */
 @media (max-width: 480px) {
   .footerContainer {
-    padding: 12px 14px;
     flex-direction: column;
     align-items: stretch;
-    gap: 14px;
-    min-height: auto;
+    gap: 10px;
+    padding: 10px 14px 12px;
   }
   
-  .priceContainer {
-    width: 100%;
-    margin-right: 0;
-    margin-bottom: 0;
-  }
-  
-  .splitWrapper {
+  .priceSection {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
-  }
-  
-  .paymentSplitContainer {
-    background: #f5f7fa;
-    flex: 1;
+    width: 100%;
+    gap: 12px;
   }
   
   .checkoutButton {
     width: 100%;
-    padding: 12px 14px;
+    padding: 11px 18px;
+    font-size: 14px;
   }
   
-  .totalValue, .finalPrice {
-    font-size: 17px;
+  .totalAmount {
+    font-size: 18px;
+  }
+  
+  .totalLabel {
+    font-size: 11px;
+  }
+  
+  .paymentTag {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+  
+  .splitBadge {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+  
+  .splitLabel {
+    font-size: 9px;
+  }
+  
+  .splitValue {
+    font-size: 11px;
   }
 }
 
 @media (max-width: 360px) {
   .footerContainer {
-    padding: 8px 10px;
+    padding: 8px 12px 10px;
+    gap: 8px;
   }
   
-  .splitWrapper {
-    flex-direction: column;
-    align-items: flex-start;
+  .totalAmount {
+    font-size: 16px;
   }
   
-  .paymentSplitContainer {
-    width: 100%;
-    margin-top: 6px;
+  .paymentTag {
+    font-size: 10px;
+    padding: 4px 8px;
   }
   
-  .paymentIcon {
-    font-size: 14px !important;
-    margin-right: 6px;
+  .splitBadge {
+    padding: 3px 6px;
+  }
+  
+  .splitValue {
+    font-size: 10px;
   }
 }

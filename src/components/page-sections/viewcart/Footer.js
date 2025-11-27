@@ -2,8 +2,9 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CircularProgress } from '@mui/material';
+import BoltIcon from '@mui/icons-material/Bolt';
 import styles from './styles/footer.module.css';
 
 const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = false, discount = 0, onlinePercentage, codPercentage, showPreparingUi = false }) => {
@@ -13,9 +14,6 @@ const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = 
 
   // Check if there's a discount to show savings
   const hasSavings = originalTotal > totalCost;
-  
-  // Calculate percentage savings
-  const savingsPercent = hasSavings ? Math.round(((originalTotal - totalCost) / originalTotal) * 100) : 0;
 
   // Determine if this is a split payment scenario
   const isSplitPayment = onlinePercentage > 0 && onlinePercentage < 100;
@@ -24,91 +22,65 @@ const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = 
   const onlineAmount = isSplitPayment ? Math.round((totalCost * onlinePercentage) / 100) : totalCost;
   const codAmount = isSplitPayment ? totalCost - onlineAmount : 0;
 
-  // Determine primary payment mode label for non-split payments
-  const paymentModeLabel = (() => {
-    if (typeof onlinePercentage === 'number') {
-      if (onlinePercentage >= 100) return 'Pay Online';
-      if (onlinePercentage <= 0) return 'Cash On Delivery';
-    }
-    if (typeof codPercentage === 'number') {
-      if (codPercentage >= 100) return 'Cash On Delivery';
-      if (codPercentage <= 0) return 'Pay Online';
-    }
-    // Default to COD if unclear
-    return 'Cash On Delivery';
-  })();
+  // CTA text with amount
+  const ctaText = isSplitPayment 
+    ? `PAY ₹${onlineAmount.toLocaleString('en-IN')} NOW`
+    : `PAY ₹${totalCost.toLocaleString('en-IN')} SECURELY`;
 
   return (
     <div className={styles.footerContainer}>
-      <div className={styles.priceContainer}>
-        {isSplitPayment ? (
-          <div className={styles.splitWrapper}>
-            <div className={styles.totalAmount}>
-              <span className={styles.totalText}>Total</span>
-              <div className={styles.priceStack}>
-                <span className={styles.finalPrice}>₹{totalCost.toFixed(0)}</span>
-                {hasSavings && (
-                  <span className={styles.originalPrice}>₹{originalTotal.toFixed(0)}</span>
-                )}
-              </div>
-            </div>
-            
-            <div className={styles.paymentSplitContainer}>
-              <div className={styles.paymentOption}>
-                <div>
-                  <span className={styles.paymentLabel}>Pay Online</span>
-                  <span className={styles.paymentAmount}>₹{onlineAmount}</span>
-                </div>
-              </div>
-              
-              <div className={styles.divider}>+</div>
-              
-              <div className={styles.paymentOption}>
-                <div>
-                  <span className={styles.paymentLabel}>Pay on Delivery</span>
-                  <span className={styles.paymentAmount}>₹{codAmount}</span>
-                </div>
-              </div>
-            </div>
-            
-            {/* {hasSavings && (
-              <div className={styles.savingsBadge}>
-                <span>Save {savingsPercent}%</span>
-              </div>
-            )} */}
+      {/* Price Info Section - Animated on payment mode change */}
+      <div className={styles.priceSection}>
+        {/* Total Amount - Always visible */}
+        <div className={styles.totalBlock}>
+          <span className={styles.totalLabel}>Total</span>
+          <div className={styles.totalRow}>
+            <span className={styles.totalAmount}>₹{totalCost.toLocaleString('en-IN')}</span>
+            {hasSavings && (
+              <span className={styles.originalAmount}>₹{originalTotal.toLocaleString('en-IN')}</span>
+            )}
           </div>
-        ) : (
-          <div className={styles.priceSummary}>
-            <div className={styles.priceDetails}>
-              <span className={styles.totalText}>Total Amount</span>
-              <div className={styles.priceStack}>
-                <span className={styles.finalPrice}>
-                  ₹{totalCost.toFixed(0)}
-                </span>
-                <span className={styles.originalPrice}>
-                  ₹{originalTotal > totalCost ? originalTotal.toFixed(0) : (totalCost * 1.2).toFixed(0)}
-                </span>
-              </div>
-            </div>
+        </div>
 
-            {/* Payment mode tag (same styling as split payment, no amount) */}
-            <div className={styles.paymentSplitContainer} style={{ marginLeft: 12 }}>
-              <div className={styles.paymentOption}>
-                <div>
-                  <span className={styles.paymentLabel}>{paymentModeLabel}</span>
-                </div>
+        {/* Payment Info - Animated transition */}
+        <AnimatePresence mode="wait">
+          {isSplitPayment ? (
+            <motion.div 
+              key="split"
+              className={styles.paymentInfo}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className={styles.splitBadge}>
+                <span className={styles.splitItem}>
+                  <span className={styles.splitLabel}>Now</span>
+                  <span className={styles.splitValue}>₹{onlineAmount.toLocaleString('en-IN')}</span>
+                </span>
+                <span className={styles.splitDivider}>+</span>
+                <span className={styles.splitItem}>
+                  <span className={styles.splitLabel}>Later</span>
+                  <span className={styles.splitValue}>₹{codAmount.toLocaleString('en-IN')}</span>
+                </span>
               </div>
-            </div>
-            
-            {/* {hasSavings && (
-              <div className={styles.savingsBadge}>
-                <span>Save {savingsPercent}%</span>
-              </div>
-            )} */}
-          </div>
-        )}
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="online"
+              className={styles.paymentInfo}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <span className={styles.paymentTag}>Pay Online</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       
+      {/* Button - Unchanged as requested */}
       <motion.button
         className={`${styles.checkoutButton} ${styles.shineEffect}`}
         onClick={handleCheckout}
@@ -122,7 +94,10 @@ const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = 
             <span>Preparing...</span>
           </div>
         ) : (
-          <span>Place Order</span>
+          <div className={styles.ctaContent}>
+            <BoltIcon className={styles.ctaIcon} />
+            <span>{ctaText}</span>
+          </div>
         )}
       </motion.button>
     </div>
