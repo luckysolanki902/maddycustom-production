@@ -47,16 +47,27 @@ const ProductCategorySlider = ({ position = "default" }) => {
     { name: "Bonnet Wraps", link: "/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps" },
   ];
 
+  // Calculate image height based on mobile breakpoint (matches CSS)
+  const imgHeight = isMobile ? 35 : 40;
+
   return (
     <div className={styles.cardContainer}>
       <div className={styles.cardRow}>
         {cardData.map((item, index) => (
           <Link href={item.link} key={index} className={styles.cardLink}>
-            <div className={ styles.card} style={{paddingLeft:item.image && 0}}>
-{    item.image &&  <Image src={`${baseImageUrl}${item.image}`} alt={item.name} width={100} height={100} className={styles.cardImg} />
-        }             
- <span className={styles.cardText}>{item.name}</span>
-
+            <div className={styles.card} style={{paddingLeft: item.image ? 0 : undefined}}>
+              {item.image && (
+                <Image 
+                  src={`${baseImageUrl}${item.image}`} 
+                  alt={item.name} 
+                  width={imgHeight} 
+                  height={imgHeight} 
+                  className={styles.cardImg}
+                  priority
+                  style={{ width: 'auto', height: imgHeight }}
+                />
+              )}
+              <span className={styles.cardText}>{item.name}</span>
             </div>
           </Link>
         ))}

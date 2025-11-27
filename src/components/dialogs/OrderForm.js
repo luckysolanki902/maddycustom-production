@@ -523,19 +523,31 @@ const OrderForm = ({
   }, [tabIndex, open, computeCartSnapshot, prefilledAddress, addressDetails]);
 
   useEffect(() => {
-    if (!open || !requiresPayuPaymentTab) return;
+    if (!open) return;
     if (tabIndex !== 2) return;
 
     try {
       const cartSnapshot = computeCartSnapshot();
-      funnelClient.track('payu_payment_options_viewed', {
+      // Track reach_payment_tab funnel event
+      funnelClient.track('reach_payment_tab', {
+        dedupeKey: `reach_payment_tab:${cartSnapshot?.items || 0}:${Date.now()}`,
         cart: cartSnapshot,
         metadata: {
           paymentMode: paymentModeName,
+          requiresPayuPaymentTab,
         },
       });
+      // Also track payu-specific analytics if PayU tab is enabled
+      if (requiresPayuPaymentTab) {
+        funnelClient.track('payu_payment_options_viewed', {
+          cart: cartSnapshot,
+          metadata: {
+            paymentMode: paymentModeName,
+          },
+        });
+      }
     } catch (err) {
-      console.warn('PayU payment tab analytics failed:', err);
+      console.warn('Payment tab analytics failed:', err);
     }
   }, [open, requiresPayuPaymentTab, tabIndex, computeCartSnapshot, paymentModeName]);
 
@@ -1046,25 +1058,8 @@ const OrderForm = ({
     };
 
     try {
-      try {
-        funnelClient.track('initiate_checkout', {
-          cart: cartSnapshot,
-          order: {
-            value: orderValue,
-            currency: orderValue !== undefined ? 'INR' : undefined,
-            coupon: normalizedCouponCode,
-          },
-          metadata: {
-            form: 'order_form_address',
-            paymentMode: paymentModeName,
-            couponApplied: Boolean(normalizedCouponCode),
-            addressCompleteness,
-            geoCaptured: Boolean(geo?.lat && geo?.lng),
-          },
-        });
-      } catch (err) {
-        console.warn('Funnel initiate_checkout track failed:', err);
-      }
+      // Note: initiate_checkout funnel event removed - Meta pixel still fires earlier in handleUserDetailsSubmit
+      // The funnel now tracks: address_tab_open -> reach_payment_tab -> payment_initiated -> purchase
 
       const initialValidationPromises = [];
 
@@ -1323,6 +1318,30 @@ const OrderForm = ({
       return;
     }
 
+    // Track payment_initiated funnel event (for UPI via Razorpay when called directly)
+    // Note: handlePayWithOther tracks payment_initiated before calling this, so we only track for upiOnly flows
+    if (upiOnly) {
+      try {
+        funnelClient.track('payment_initiated', {
+          dedupeKey: `payment_initiated:${lastOrderId}:upi-razorpay`,
+          cart: computeCartSnapshot(),
+          order: {
+            orderId: lastOrderId,
+            value: totalCost,
+            currency: 'INR',
+            coupon: normalizedCouponCode,
+          },
+          metadata: {
+            paymentMethod: 'upi',
+            paymentProvider: 'razorpay',
+            paymentContext,
+          },
+        });
+      } catch (err) {
+        console.warn('Funnel payment_initiated track failed:', err);
+      }
+    }
+
     if (upiOnly) {
       setSelectedPaymentMethod('upi');
       setUpiPaymentState('processing');
@@ -1378,7 +1397,7 @@ const OrderForm = ({
       }
       showSnackbar(error.message || 'Payment failed. Please try again.', 'error');
     }
-  }, [lastOrderId, customerName, customerPhone, fetchOrCreateRazorpayOrder, handlePaymentStatusChange, dispatch, reset, handleFullClose, router, showSnackbar]);
+  }, [lastOrderId, customerName, customerPhone, fetchOrCreateRazorpayOrder, handlePaymentStatusChange, dispatch, reset, handleFullClose, router, showSnackbar, computeCartSnapshot, totalCost, normalizedCouponCode]);
 
   // NEW: Handle UPI payment with PayU S2S on mobile, Razorpay UPI elsewhere
   const handlePayWithUPI = useCallback(async () => {

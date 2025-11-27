@@ -17,6 +17,8 @@
     width: auto;
     height: 40px;
     margin-right: 0.5rem;
+    flex-shrink: 0;
+    object-fit: contain;
   }
   
   .cardRow {
@@ -82,10 +84,11 @@ display: none;
      height: 35px;
 
     }
-     .cardImg{
-        height: 35px
-      }
+    .cardImg{
+      height: 35px;
+      flex-shrink: 0;
     }
+  }
   
   
   /* Extra media queries for very small screens (if needed) */

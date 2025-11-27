@@ -486,10 +486,33 @@ export default function AddToCartButton({
   const handleDecrement = async e => {
     e.stopPropagation();
     setLastAction("decrement");
-    if (cartItem.quantity === 1) {
+    
+    const isRemovingItem = cartItem.quantity === 1;
+    const previousQuantity = cartItem.quantity;
+    
+    if (isRemovingItem) {
       dispatch(removeItem({ productId: product._id }));
     } else {
       dispatch(decrementQuantity({ productId: product._id }));
+    }
+    
+    // Track remove_from_cart funnel event
+    try {
+      const price = Number(product.price) || 0;
+      funnelClient.track('remove_from_cart', {
+        product: buildProductPayload(1),
+        cart: getCartSnapshot(-1, -price), // Decrement by 1 item and subtract price
+        metadata: {
+          pageType: insertionDetails.pageType || pageType,
+          component: insertionDetails.component || 'AddToCartButton',
+          action: isRemovingItem ? 'remove' : 'decrement',
+          previousQuantity,
+          source: insertionDetails.source,
+        },
+        utm: utmDetails,
+      });
+    } catch (error) {
+      console.error('[Funnel] remove_from_cart event failed', error);
     }
   };
 
