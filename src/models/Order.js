@@ -379,12 +379,40 @@ const OrderSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Analytics info captured from client
+    // Analytics and tracking information captured from client
     analyticsInfo: {
-      fbp: String,
-      fbc: String,
-      userAgent: String,
-      ip: String,
+      ip: {
+        type: String,
+        default: null,
+      },
+      userAgent: {
+        type: String,
+        default: null,
+      },
+      externalId: {
+        type: String,
+        default: null,
+      },
+      fbp: {
+        type: String,
+        default: null,
+      },
+      fbc: {
+        type: String,
+        default: null,
+      },
+      gaClientId: {
+        type: String,
+        default: null,
+      },
+      capturedAt: {
+        type: Date,
+        default: null,
+      },
+      sourceUrl: {
+        type: String,
+        default: null,
+      },
     },
   },
   

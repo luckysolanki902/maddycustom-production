@@ -1140,12 +1140,13 @@ const OrderForm = ({
         });
       }
 
+      // Capture fresh client-side tracking data for analytics
       let trackingMetadata = null;
       try {
         trackingMetadata = await captureClientTrackingData();
-        console.log('📊 Captured tracking metadata for order:', trackingMetadata);
       } catch (trackingError) {
-        console.warn('Failed to capture tracking metadata:', trackingError);
+        // Continue with order creation even if tracking fails
+        console.warn('[OrderForm] Tracking capture failed:', trackingError.message);
       }
 
       // Note: payuSession is not sent for merchant-hosted checkout (merchant selects method in PaymentDialog)
@@ -1196,7 +1197,7 @@ const OrderForm = ({
           landmark: data.landmark,
           ...(floorParsed !== undefined ? { floor: floorParsed } : {}),
         },
-        analyticsInfo: trackingMetadata,
+        analyticsInfo: trackingMetadata, // Fresh client-side tracking data captured above
       };
 
       console.log('🔄 Sending order creation request with payload:', finalOrderPayload);

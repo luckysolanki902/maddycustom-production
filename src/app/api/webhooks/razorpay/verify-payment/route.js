@@ -3,18 +3,12 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
-import Coupon from '@/models/Coupon';
-import User from '@/models/User';
-import { createShiprocketOrder, getDimensionsAndWeight } from '@/lib/utils/shiprocket';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import Product from '@/models/Product';
-import Option from '@/models/Option';
-import Inventory from '@/models/Inventory';
-import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
-import SpecificCategory from '@/models/SpecificCategory';
-import { handlePostPaymentSuccess } from '@/lib/payments/postPaymentHandler';
-import { processOrderFulfillment } from '@/lib/orders/fulfillmentHandler';
+import { handlePaymentSuccess, sendPaymentSuccessWhatsApp } from '@/lib/payments/handlePaymentSuccess';
+import { createLogger } from '@/lib/utils/logger';
+
+const logger = createLogger('RazorpayWebhook');
 
 // Disable body parsing to access raw body
 export const config = {
@@ -145,6 +139,11 @@ export async function POST(request) {
       if (!alreadyProcessed && allOrders.some(ord => ord.paymentStatus === 'pending' || ord.paymentStatus === 'failed')) {
         const paymentAmount = payment.amount / 100; // convert paise -> INR
         logs.push(`[${timestampStr}] Processing payment capture for ${allOrders.length} orders`);
+        logger.info('Processing payment capture', {
+          orderCount: allOrders.length,
+          paymentId,
+          paymentAmount,
+        });
 
         // Update payment details for all orders with online payment due
         for (const ord of allOrders) {
@@ -167,59 +166,28 @@ export async function POST(request) {
           }
         }
 
-        // Handle coupon usage increment (only once for the main order)
-        const mainOrder = allOrders.find(ord => ord.isMainOrder) || allOrders[0];
-        if (mainOrder.couponApplied?.length > 0) {
-          const [appliedCoupon] = mainOrder.couponApplied;
-          if (appliedCoupon.couponCode && !appliedCoupon.incrementedCouponUsage) {
-            const couponDoc = await Coupon.findOne({ code: appliedCoupon.couponCode }).session(session);
-            if (couponDoc) {
-              couponDoc.usageCount += 1;
-              await couponDoc.save({ session });
-              
-              // Update coupon increment status in all orders
-              for (const ord of allOrders) {
-                if (ord.couponApplied?.length > 0) {
-                  ord.couponApplied = ord.couponApplied.map(c =>
-                    c.couponCode === appliedCoupon.couponCode
-                      ? { ...c.toObject(), incrementedCouponUsage: true }
-                      : c
-                  );
-                  await ord.save({ session });
-                }
-              }
-              logs.push(`[${timestampStr}] Coupon usage incremented: ${appliedCoupon.couponCode}`);
-            }
-          }
-        }
+        // Use centralized payment success handler
+        logs.push(`[${timestampStr}] Calling centralized payment success handler`);
+        logger.info('Invoking centralized handler', {
+          orderCount: allOrders.length,
+          paymentProvider: 'razorpay',
+        });
+        
+        const handlerResult = await handlePaymentSuccess(allOrders, session, {
+          paymentProvider: 'razorpay',
+        });
+        
+        logs.push(...handlerResult.logs);
+        logger.info('Centralized handler completed', {
+          success: handlerResult.success,
+          mainOrderId: handlerResult.mainOrderId,
+        });
       } else {
         logs.push(`[${timestampStr}] payment.captured received but order group already processed or not pending.`);
+        logger.info('Payment already processed', {
+          orderIds: allOrders.map(o => o._id.toString()),
+        });
       }
-
-      // -----------------------------
-      // 5. Process Order Fulfillment (Inventory, Coupon, Shiprocket)
-      // -----------------------------
-      // This handles inventory deduction, coupon increment, and Shiprocket creation
-      // It returns the updated orders which we can use for post-payment success
-      const fulfilledOrders = await processOrderFulfillment(allOrders.map(o => o._id), session, logs);
-      
-      // -----------------------------
-      // 6. Commit Transaction
-      // -----------------------------
-      await session.commitTransaction();
-      session.endSession();
-
-      // -----------------------------
-      // 7. Post-Payment Success Handler (Meta CAPI + WhatsApp)
-      // -----------------------------
-      await handlePostPaymentSuccess(fulfilledOrders, logs);
-
-      console.info(`Webhook processed successfully for orderId: ${internalOrderId}`, logs);
-      return NextResponse.json(
-        { message: `Webhook processed successfully for orderId: ${internalOrderId}`, logs },
-        { status: 200 }
-      );
-
     } else if (razorpayEvent === 'payment.failed') {
       // Update payment status for all orders with pending payments
       let anyUpdated = false;
@@ -228,6 +196,10 @@ export async function POST(request) {
           ord.paymentStatus = 'failed';
           ord.paymentDetails.razorpayDetails.paymentId = paymentId;
           logs.push(`[${timestampStr}] Order ${ord._id} status -> failed`);
+          logger.info('Order marked as failed', {
+            orderId: ord._id.toString(),
+            paymentId,
+          });
           await ord.save({ session });
           anyUpdated = true;
         }
@@ -236,34 +208,62 @@ export async function POST(request) {
       if (anyUpdated) {
         await session.commitTransaction();
         session.endSession();
+        logger.info('Payment failure processed', {
+          orderIds: allOrders.map(o => o._id.toString()),
+        });
         return NextResponse.json({ message: 'Payment failed.' }, { status: 200 });
       } else {
         logs.push(`[${timestampStr}] payment.failed received but order group already processed.`);
+        logger.info('Payment failure already processed', {
+          orderIds: allOrders.map(o => o._id.toString()),
+        });
       }
     }
 
-    // Note: Shiprocket creation logic has been moved to processOrderFulfillment above.
-    // The old block 5 is removed.
+    // -----------------------------
+    // 6. Commit Transaction
+    // -----------------------------
+    await session.commitTransaction();
+    session.endSession();
+    logger.info('Transaction committed successfully', {
+      orderIds: allOrders.map(o => o._id.toString()),
+    });
 
-    // If we reached here without entering payment.captured block (e.g. unhandled event or logic flow),
-    // we should probably commit if we did anything, but the logic above handles commits inside the blocks.
-    // Wait, if payment.captured was true, we returned inside that block.
-    // If payment.failed was true, we returned inside that block.
-    
-    // If we are here, it means either:
-    // 1. razorpayEvent was not captured/failed (but we checked that at start)
-    // 2. We fell through?
-    
-    // Actually, looking at the code structure, I replaced the inventory block which was inside `if (razorpayEvent === 'payment.captured')`.
-    // But I need to remove the old Shiprocket block (Block 5) which was *after* the if/else blocks.
-    
-    // Let's clean up the rest of the file.
-    
-    return NextResponse.json({ message: 'Event processed.' }, { status: 200 });
+    // -----------------------------
+    // 7. Send WhatsApp Notification (After Transaction)
+    // -----------------------------
+    try {
+      // Get updated main order with populated user
+      const mainOrder = allOrders.find(ord => ord.isMainOrder) || allOrders[0];
+      const populatedMainOrder = await Order.findById(mainOrder._id).populate('user');
+      
+      const whatsappLogs = await sendPaymentSuccessWhatsApp(populatedMainOrder);
+      logs.push(...whatsappLogs);
+    } catch (whatsappError) {
+      logs.push(`[${timestampStr}] WhatsApp notification error: ${whatsappError.message}`);
+      logger.error('WhatsApp notification failed', {
+        error: whatsappError.message,
+        orderId: internalOrderId,
+      });
+    }
 
+    logger.info('Webhook processed successfully', {
+      orderId: internalOrderId,
+      orderCount: allOrders.length,
+    });
+    console.info(`Webhook processed successfully for orderId: ${internalOrderId}`, logs);
+    return NextResponse.json(
+      { message: `Webhook processed successfully for orderId: ${internalOrderId}`, logs },
+      { status: 200 }
+    );
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
+    logger.error('Webhook processing failed', {
+      error: err.message,
+      stack: err.stack,
+      orderId: internalOrderId,
+    });
     console.error(`Error processing Razorpay webhook for orderId ${internalOrderId}`, err, logs);
     return NextResponse.json(
       { error: `Internal error for orderId: ${internalOrderId}`, logs },

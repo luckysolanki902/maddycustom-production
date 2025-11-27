@@ -35,7 +35,6 @@ export async function POST(request) {
 
     // Check if Razorpay order already exists
     if (order.paymentDetails?.razorpayDetails?.orderId) {
-      console.log('Razorpay order already exists:', order.paymentDetails.razorpayDetails.orderId);
       return NextResponse.json({
         success: true,
         razorpayOrderId: order.paymentDetails.razorpayDetails.orderId,
@@ -60,9 +59,7 @@ export async function POST(request) {
       },
     };
 
-    console.log('Creating Razorpay order with options:', razorpayOptions);
     const razorpayOrderResponse = await razorpayInstance.orders.create(razorpayOptions);
-    console.log('Razorpay order created:', razorpayOrderResponse.id);
 
     // Update order with Razorpay details
     if (!order.paymentDetails.razorpayDetails) {
@@ -71,8 +68,6 @@ export async function POST(request) {
     order.paymentDetails.razorpayDetails.orderId = razorpayOrderResponse.id;
     order.paymentDetails.razorpayDetails.receipt = receiptId;
     await order.save();
-
-    console.log('Order updated with Razorpay details');
 
     return NextResponse.json({
       success: true,
