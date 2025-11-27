@@ -2,9 +2,9 @@
 
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import styles from './styles/cartlist.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -14,13 +14,14 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import PaymentIcon from '@mui/icons-material/Payment';
 import { updateQuantity } from '@/store/slices/cartSlice';
+import funnelClient from '@/lib/analytics/funnelClient';
 // Lazy load add-ons slider to avoid impacting cart TTI
 const FuelCapWrapAddOns = dynamic(() => import('../viewcart/FuelCapWrapAddOns'), { ssr: false, loading: () => null });
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 
-const CartItem = ({ item, onRemove, readonly = false }) => {
+const CartItem = ({ item, onRemove, readonly = false, cartSnapshot }) => {
   const dispatch = useDispatch();
   const router = useRouter();
   const { productDetails, quantity } = item;
@@ -74,10 +75,59 @@ const CartItem = ({ item, onRemove, readonly = false }) => {
 
   const handleUpdateQuantity = (newQuantity) => {
     if (newQuantity >= 1) {
+      // Track remove_from_cart when decrementing
+      if (newQuantity < quantity) {
+        try {
+          funnelClient.track('remove_from_cart', {
+            product: {
+              id: productDetails._id,
+              name: productDetails.name,
+              price: productDetails.price,
+              quantity: 1,
+              category: productDetails.category?.name,
+            },
+            cart: cartSnapshot,
+            metadata: {
+              component: 'CartList',
+              action: 'decrement',
+              previousQuantity: quantity,
+              newQuantity,
+            },
+          });
+        } catch (err) {
+          console.warn('[Funnel] remove_from_cart tracking failed:', err);
+        }
+      }
       dispatch(updateQuantity({
         productId: productDetails._id,
         quantity: newQuantity
       }));
+    }
+  };
+
+  const handleRemoveItem = () => {
+    // Track remove_from_cart for full item removal
+    try {
+      funnelClient.track('remove_from_cart', {
+        product: {
+          id: productDetails._id,
+          name: productDetails.name,
+          price: productDetails.price,
+          quantity: quantity,
+          category: productDetails.category?.name,
+        },
+        cart: cartSnapshot,
+        metadata: {
+          component: 'CartList',
+          action: 'remove',
+          removedQuantity: quantity,
+        },
+      });
+    } catch (err) {
+      console.warn('[Funnel] remove_from_cart tracking failed:', err);
+    }
+    if (onRemove) {
+      onRemove(productDetails._id);
     }
   };
 
@@ -137,9 +187,7 @@ const CartItem = ({ item, onRemove, readonly = false }) => {
             className={styles.removeBtn} 
             onClick={(e) => {
               e.stopPropagation();
-              if (onRemove) {
-                onRemove(productDetails._id);
-              }
+              handleRemoveItem();
             }}
             type="button"
             title={readonly ? 'Remove from cart' : 'Remove from cart'}
@@ -247,6 +295,14 @@ export default function CartList({ cartItems, onRemove, readonly = false, sectio
     setSimilarityContext({ designGroupIds, nameTokens });
     capturedRef.current = true;
   }, [cartItems]);
+
+  // Create cart snapshot for remove_from_cart tracking
+  const cartSnapshot = useMemo(() => ({
+    totalItems: cartItems?.length || 0,
+    totalQuantity: cartItems?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0,
+    itemIds: cartItems?.map(item => item.productDetails?._id).filter(Boolean) || []
+  }), [cartItems]);
+
   return (
     <div className={styles.cartList}>
       {sectionTitle && (
@@ -262,6 +318,7 @@ export default function CartList({ cartItems, onRemove, readonly = false, sectio
             item={item} 
             onRemove={onRemove} 
             readonly={readonly}
+            cartSnapshot={cartSnapshot}
           />
         ))}
       </AnimatePresence>
