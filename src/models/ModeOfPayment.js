@@ -40,6 +40,25 @@ const ModeOfPaymentSchema = new mongoose.Schema(
       min: 0,
     },
 
+    // Label for extra charges
+    // Example: "Convenience Fee"
+    extraChargeLabel: {
+      type: String,
+      maxlength: 100,
+      trim: true,
+    },
+
+    // isRecommended indicates if this payment mode is recommended to users
+    isRecommended: {
+      type: Boolean,
+      default: false,
+    },
+    // >= 1, lower means higher priority
+    displayOrder: {
+      type: Number,
+      default: 5,
+    },
+
     // Configuration details for custom payment modes
     // For example, percentages for online and COD
     configuration: {

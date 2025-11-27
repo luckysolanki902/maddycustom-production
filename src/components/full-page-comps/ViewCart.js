@@ -1054,7 +1054,7 @@ export default function ViewCart({ isDrawer = false }) {
                 extraCharge={extraCharge}
                 totalMrp={MrpTotal}
                 originalTotal={originalTotal}
-
+                hideCouponButton={couponState.couponApplied && !nowCoupon}
               />
 
 

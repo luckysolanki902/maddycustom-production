@@ -34,7 +34,7 @@ const CartItem = ({ item, onRemove, readonly = false }) => {
     || null;
 
   const productHref = rawSlug
-    ? (rawSlug.startsWith('/') || rawSlug.startsWith('http') ? rawSlug : `/shop/${rawSlug}`)
+    ? (rawSlug.startsWith('/shop') || rawSlug.startsWith('http') ? rawSlug : `/shop/${rawSlug}`)
     : null;
   
   // Format category name for display

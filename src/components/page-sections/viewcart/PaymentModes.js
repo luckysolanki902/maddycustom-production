@@ -11,10 +11,10 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { motion } from 'framer-motion';
 
 // Payment method icons
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import LocalAtmIcon from '@mui/icons-material/LocalAtm';
 
@@ -23,9 +23,8 @@ const getPaymentIcon = (type) => {
     case 'online':
       return <CreditCardIcon className={styles.paymentTypeIcon} />;
     case 'cod':
+    case 'ten':
       return <LocalAtmIcon className={styles.paymentTypeIcon} />;
-    case 'bank':
-      return <AccountBalanceIcon className={styles.paymentTypeIcon} />;
     default:
       return <PaymentIcon className={styles.paymentTypeIcon} />;
   }
@@ -39,7 +38,6 @@ const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange, 
     return (
       <div className={styles.loadingContainer}>
         <CircularProgress size={24} />
-        <p className={styles.loadingText}>Loading payment options...</p>
       </div>
     );
   }
@@ -47,6 +45,19 @@ const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange, 
   if (!paymentModes || paymentModes.length === 0) {
     return null;
   }
+
+  // Sort by displayOrder if available (recommended options first)
+  const sortedModes = [...paymentModes].sort((a, b) => 
+    (a.displayOrder || 99) - (b.displayOrder || 99)
+  );
+
+  // Calculate amounts for display (online portion and COD portion for split payments)
+  const calculateAmounts = (mode) => {
+    const onlinePct = mode.configuration?.onlinePercentage || 100;
+    const online = Math.round((totalAmount * onlinePct) / 100);
+    const cod = totalAmount - online + (mode.extraCharge || 0);
+    return { online, cod, total: online + cod };
+  };
 
   return (
     <motion.div
@@ -67,8 +78,13 @@ const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange, 
           value={selectedPaymentMode?.name || ''}
           onChange={onChange}
         >
-          {paymentModes.map((mode) => {
+          {sortedModes.map((mode) => {
+            const amounts = calculateAmounts(mode);
+            const isSelected = selectedPaymentMode?.name === mode.name;
+            const isSplit = (mode.configuration?.onlinePercentage || 100) < 100;
             const hasCharge = mode.extraCharge > 0;
+            
+            // COD limit check
             const isCod = (mode?.name || '').toLowerCase() === 'cod';
             const isCodDisabled = isCod && totalAmount > maxOrderValueForCOD;
 
@@ -77,46 +93,71 @@ const PaymentModes = ({ paymentModes, isLoading, selectedPaymentMode, onChange, 
                 key={mode.name}
                 className={`
                   ${styles.paymentOption}
-                  ${selectedPaymentMode?.name === mode.name ? styles.selected : ''}
+                  ${isSelected ? styles.selected : ''}
                   ${isCodDisabled ? styles.disabled : ''}
                 `}
-                whileHover={{ scale: 1.01 }}
+                whileHover={{ scale: isCodDisabled ? 1 : 1.01 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 10 }}
               >
                 <FormControlLabel
                   value={mode.name}
-                  control={<Radio sx={{ color: '#2d2d2d', '&.Mui-checked': { color: '#2d2d2d' } }} size="small" disabled={isCodDisabled} />}
                   disabled={isCodDisabled}
+                  control={
+                    <Radio 
+                      sx={{ 
+                        color: '#2d2d2d', 
+                        '&.Mui-checked': { color: '#2d2d2d' } 
+                      }} 
+                      size="small" 
+                    />
+                  }
                   label={
                     <div className={styles.paymentOptionContent}>
                       <div className={styles.paymentOptionLeft}>
-                        {getPaymentIcon(mode.name)}
+                        {/* {getPaymentIcon(mode.name)}  */}
                         <div className={styles.paymentOptionInfo}>
-                          <span className={styles.paymentOptionName}>
-                            {mode?.caption?.toUpperCase() || mode?.caption?.toUpperCase()}
-                          </span>
-                          {mode.description && (
-                            <span className={styles.paymentOptionDescription}>
-                              {mode.description.split(/\.\s/).map((s, i) => (
-                                <React.Fragment key={i}>
-                                  {s}
-                                  <br />
-                                </React.Fragment>
-                              ))}
+                          {/* Caption + Amount Header */}
+                          <div className={styles.paymentOptionHeader}>
+                            <span className={styles.paymentOptionName}>
+                              {mode.caption?.toUpperCase() || mode.name?.toUpperCase()}
+                              {' '}
+                              <span className={styles.amountInline}>
+                                ₹{isSplit ? amounts.online.toLocaleString('en-IN') : totalAmount.toLocaleString('en-IN')}
+                              </span>
                             </span>
-                          )}
+                            
+                            {/* Recommended Badge */}
+                            {mode.isRecommended && (
+                              <span className={styles.recommendedBadge}>
+                                <CheckCircleIcon sx={{ fontSize: 12 }} />
+                                Best Price
+                              </span>
+                            )}
+                            
+                            {/* Extra Charge Badge */}
+                            {hasCharge && (
+                              <span className={styles.extraChargeBadge}>
+                                +₹{mode.extraCharge}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Description */}
+                          <span className={styles.paymentOptionDescription}>
+                            {isSplit 
+                              ? `₹${amounts.cod.toLocaleString('en-IN')} on delivery`
+                              : mode.description
+                            }
+                          </span>
+                          
+                          {/* COD Unavailable Message */}
                           {isCodDisabled && (
                             <span className={styles.codUnavailable}>
-                              Cash on Delivery isn’t available for orders above ₹{maxOrderValueForCOD}.
-                              Please choose Online or Split Payment.
+                              Not available for orders above ₹{maxOrderValueForCOD.toLocaleString('en-IN')}
                             </span>
                           )}
                         </div>
                       </div>
-
-                      {hasCharge && (
-                        <span className={styles.extraCharge}>+₹{mode.extraCharge}</span>
-                      )}
                     </div>
                   }
                   className={styles.formControlLabel}
