@@ -2433,30 +2433,34 @@ const OrderForm = ({
                           />
                         </Grid>
                       </Grid>
-                      <Controller
-                        name="addressLine1"
-                        control={control}
-                        rules={{ required: 'Address is required' }}
-                        render={({ field }) => (
-                          <StyledTextField
-                            field={field}
-                            label="Flat/House no/Building name"
-                            error={errors.addressLine1}
-                            helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
-                            disabled={isLoading || isPaymentProcessing}
-                            onChange={(e) => {
-                              field.onChange(e);
-                            }}
-                            onBlur={(e) => {
-                              const base = e.target.value;
-                              const floor = getValues('floorInput');
-                              const composed = [base, formatFloorForAddress(floor)].filter(Boolean).join(', ');
-                              dispatch(setAddressDetails({ addressLine1: composed }));
-                            }}
-                            InputProps={{ style: { textTransform: 'capitalize' } }}
+                      <Grid container spacing={1.5} sx={{ width: '100%', mb: 0.5 }}>
+                        <Grid item xs={12}>
+                          <Controller
+                            name="addressLine1"
+                            control={control}
+                            rules={{ required: 'Address is required' }}
+                            render={({ field }) => (
+                              <StyledTextField
+                                field={field}
+                                label="Flat/House no/Building name"
+                                error={errors.addressLine1}
+                                helperText={errors.addressLine1 ? errors.addressLine1.message : ''}
+                                disabled={isLoading || isPaymentProcessing}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                }}
+                                onBlur={(e) => {
+                                  const base = e.target.value;
+                                  const floor = getValues('floorInput');
+                                  const composed = [base, formatFloorForAddress(floor)].filter(Boolean).join(', ');
+                                  dispatch(setAddressDetails({ addressLine1: composed }));
+                                }}
+                                InputProps={{ style: { textTransform: 'capitalize' } }}
+                              />
+                            )}
                           />
-                        )}
-                      />
+                        </Grid>
+                      </Grid>
 
                       {/* Floor (optional) - not required for now */}
                       {/* <Controller
@@ -2776,74 +2780,112 @@ const OrderForm = ({
 
                       {/* Payment Buttons */}
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                          <Button
-                            variant="outlined"
-                            onClick={handlePayWithUPI}
-                            disabled={isPaymentProcessing || upiPaymentState === 'waiting'}
-                            sx={{
-                              width: '100%',
-                              borderRadius: '20px',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              textTransform: 'none',
-                              px: 2.2,
-                              py: 1.8,
-                              borderWidth: 2,
-                              borderColor: upiSelected ? accentColor : alpha(accentColor, 0.2),
-                              bgcolor: upiSelected ? alpha(accentColor, 0.08) : '#fff',
-                              color: accentColor,
-                              '&:hover': {
-                                borderColor: accentColor,
-                                bgcolor: alpha(accentColor, 0.08),
-                              },
-                              '&:disabled': {
-                                borderColor: alpha('#aaa', 0.5),
-                                color: '#b3b3b3',
-                                bgcolor: '#f7f7f7',
-                              },
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', gap: 1.2, alignItems: 'center' }}>
-                              <Box
-                                sx={{
-                                  width: 42,
-                                  height: 42,
-                                  borderRadius: '14px',
-                                  bgcolor: alpha(accentColor, 0.08),
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  overflow: 'hidden',
-                                }}
-                              >
-                                <Box sx={{ position: 'relative', width: 48, height: 24 }}>
-                                  <Image
-                                    src="/images/payments/upi_logo.png"
-                                    alt="UPI"
-                                    fill
-                                    sizes="48px"
-                                    style={{ objectFit: 'contain' }}
-                                  />
+                        {/* UPI Button - Primary/Recommended */}
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                          <Box sx={{ position: 'relative' }}>
+                            {/* "Fastest" Badge */}
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                top: -10,
+                                right: 16,
+                                bgcolor: '#4CAF50',
+                                color: '#fff',
+                                px: 1.2,
+                                py: 0.3,
+                                borderRadius: '8px',
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                fontFamily: 'Jost, sans-serif',
+                                letterSpacing: '0.04em',
+                                textTransform: 'uppercase',
+                                boxShadow: '0 2px 8px rgba(76, 175, 80, 0.4)',
+                                zIndex: 1,
+                              }}
+                            >
+                              ⚡ Fastest
+                            </Box>
+                            <Button
+                              variant="contained"
+                              onClick={handlePayWithUPI}
+                              disabled={isPaymentProcessing || upiPaymentState === 'waiting'}
+                              sx={{
+                                width: '100%',
+                                borderRadius: '20px',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                textTransform: 'none',
+                                px: 2.2,
+                                py: 2,
+                                bgcolor: upiSelected ? accentColor : '#fff',
+                                color: upiSelected ? '#fff' : accentColor,
+                                border: `2px solid ${accentColor}`,
+                                boxShadow: upiSelected 
+                                  ? '0 6px 20px rgba(0,0,0,0.15)' 
+                                  : '0 4px 15px rgba(0,0,0,0.08)',
+                                '&:hover': {
+                                  bgcolor: upiSelected ? accentColor : alpha(accentColor, 0.06),
+                                  boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+                                },
+                                '&:disabled': {
+                                  borderColor: alpha('#aaa', 0.5),
+                                  color: '#b3b3b3',
+                                  bgcolor: '#f7f7f7',
+                                },
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', gap: 1.2, alignItems: 'center' }}>
+                                <Box
+                                  sx={{
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: '14px',
+                                    bgcolor: upiSelected ? 'rgba(255,255,255,0.2)' : alpha(accentColor, 0.08),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    overflow: 'hidden',
+                                  }}
+                                >
+                                  <Box sx={{ position: 'relative', width: 48, height: 24 }}>
+                                    <Image
+                                      src="/images/payments/upi_logo.png"
+                                      alt="UPI"
+                                      fill
+                                      sizes="48px"
+                                      style={{ objectFit: 'contain' }}
+                                    />
+                                  </Box>
+                                </Box>
+                                <Box sx={{ textAlign: 'left' }}>
+                                  <Typography
+                                    variant="subtitle1"
+                                    sx={{ fontFamily: 'Jost, sans-serif', fontWeight: 600, fontSize: '1rem' }}
+                                  >
+                                    {upiPaymentState === 'processing'
+                                      ? 'Opening your UPI app…'
+                                      : upiPaymentState === 'waiting'
+                                        ? 'Waiting for approval…'
+                                        : 'Pay instantly with UPI'}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ 
+                                      fontFamily: 'Jost, sans-serif', 
+                                      color: upiSelected ? 'rgba(255,255,255,0.8)' : '#888',
+                                      fontSize: '0.72rem',
+                                    }}
+                                  >
+                                    GPay, PhonePe, Paytm & more
+                                  </Typography>
                                 </Box>
                               </Box>
-                              <Box sx={{ textAlign: 'left' }}>
-                                <Typography
-                                  variant="subtitle1"
-                                  sx={{ fontFamily: 'Jost, sans-serif', fontWeight: 600, fontSize: '0.98rem' }}
-                                >
-                                  {upiPaymentState === 'processing'
-                                    ? 'Opening your UPI app…'
-                                    : upiPaymentState === 'waiting'
-                                      ? 'Waiting for approval…'
-                                      : 'Pay instantly with UPI'}
-                                </Typography>
-                              </Box>
-                            </Box>
-                            <KeyboardArrowRightIcon sx={{ color: accentColor }} />
-                          </Button>
+                              <KeyboardArrowRightIcon sx={{ color: upiSelected ? '#fff' : accentColor }} />
+                            </Button>
+                          </Box>
                         </motion.div>
 
+                        {/* Other Payment Methods - Secondary */}
                         <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
                           <Button
                             variant="outlined"
@@ -2856,17 +2898,18 @@ const OrderForm = ({
                               alignItems: 'center',
                               textTransform: 'none',
                               px: 2.2,
-                              py: 1.8,
-                              borderWidth: 2,
-                              borderColor: otherSelected ? accentColor : alpha(accentColor, 0.2),
-                              bgcolor: otherSelected ? alpha(accentColor, 0.08) : '#fff',
-                              color: accentColor,
+                              py: 1.5,
+                              borderWidth: 1.5,
+                              borderColor: otherSelected ? alpha(accentColor, 0.6) : alpha('#999', 0.25),
+                              bgcolor: otherSelected ? alpha(accentColor, 0.05) : '#fafafa',
+                              color: otherSelected ? accentColor : '#666',
+                              boxShadow: 'none',
                               '&:hover': {
-                                borderColor: accentColor,
-                                bgcolor: alpha(accentColor, 0.08),
+                                borderColor: alpha(accentColor, 0.4),
+                                bgcolor: alpha(accentColor, 0.04),
                               },
                               '&:disabled': {
-                                borderColor: alpha('#aaa', 0.5),
+                                borderColor: alpha('#aaa', 0.3),
                                 color: '#b3b3b3',
                                 bgcolor: '#f7f7f7',
                               },
@@ -2875,28 +2918,27 @@ const OrderForm = ({
                             <Box sx={{ display: 'flex', gap: 1.2, alignItems: 'center' }}>
                               <Box
                                 sx={{
-                                  width: 42,
-                                  height: 42,
-                                  borderRadius: '14px',
-                                  bgcolor: alpha(accentColor, 0.08),
+                                  width: 38,
+                                  height: 38,
+                                  borderRadius: '12px',
+                                  bgcolor: otherSelected ? alpha(accentColor, 0.08) : alpha('#999', 0.08),
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                 }}
                               >
-                                <CreditCardIcon sx={{ fontSize: 20 }} />
+                                <CreditCardIcon sx={{ fontSize: 18, color: otherSelected ? accentColor : '#888' }} />
                               </Box>
                               <Box sx={{ textAlign: 'left' }}>
                                 <Typography
                                   variant="subtitle1"
-                                  sx={{ fontFamily: 'Jost, sans-serif', fontWeight: 600, fontSize: '0.98rem' }}
+                                  sx={{ fontFamily: 'Jost, sans-serif', fontWeight: 500, fontSize: '0.9rem' }}
                                 >
                                   Card, Wallet & More
                                 </Typography>
-                              
                               </Box>
                             </Box>
-                            <KeyboardArrowRightIcon sx={{ color: accentColor }} />
+                            <KeyboardArrowRightIcon sx={{ color: otherSelected ? accentColor : '#aaa', fontSize: 20 }} />
                           </Button>
                         </motion.div>
                       </Box>
