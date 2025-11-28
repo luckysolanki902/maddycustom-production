@@ -25,7 +25,7 @@ const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = 
   // CTA text with amount
   const ctaText = isSplitPayment 
     ? `PAY ₹${onlineAmount.toLocaleString('en-IN')} NOW`
-    : `PAY ₹${totalCost.toLocaleString('en-IN')} SECURELY`;
+    : `PAY ₹${totalCost.toLocaleString('en-IN')} NOW`;
 
   return (
     <div className={styles.footerContainer}>
