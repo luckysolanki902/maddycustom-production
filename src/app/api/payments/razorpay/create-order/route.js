@@ -5,6 +5,31 @@ import Order from '@/models/Order';
 import Razorpay from 'razorpay';
 import shortid from 'shortid';
 
+/**
+ * Calculate total amountDueOnline from all linked orders (for split orders)
+ * @param {Object} order - The main order document
+ * @returns {Promise<number>} - Total amount due online across all linked orders
+ */
+async function getTotalAmountDueOnline(order) {
+  // If no linked orders, return this order's amount
+  if (!order.linkedOrderIds || order.linkedOrderIds.length === 0) {
+    return order.paymentDetails?.amountDueOnline || order.totalAmount;
+  }
+
+  // Fetch all linked orders and sum their amountDueOnline
+  const linkedOrders = await Order.find({ _id: { $in: order.linkedOrderIds } })
+    .select('paymentDetails.amountDueOnline totalAmount')
+    .lean();
+
+  const thisOrderAmount = order.paymentDetails?.amountDueOnline || order.totalAmount;
+  const totalAmount = thisOrderAmount + 
+    linkedOrders.reduce((sum, linkedOrder) => {
+      return sum + (linkedOrder.paymentDetails?.amountDueOnline || linkedOrder.totalAmount || 0);
+    }, 0);
+
+  return totalAmount;
+}
+
 const razorpayInstance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY,
   key_secret: process.env.RAZORPAY_SECRET,
@@ -33,18 +58,21 @@ export async function POST(request) {
       );
     }
 
+    // Calculate total amount across all linked orders (for split orders)
+    const totalAmountDueOnline = await getTotalAmountDueOnline(order);
+
     // Check if Razorpay order already exists
     if (order.paymentDetails?.razorpayDetails?.orderId) {
       return NextResponse.json({
         success: true,
         razorpayOrderId: order.paymentDetails.razorpayDetails.orderId,
-        amount: order.paymentDetails.amountDueOnline,
+        amount: totalAmountDueOnline,
         existing: true,
       });
     }
 
     // Create new Razorpay order
-    const amountDueOnline = order.paymentDetails?.amountDueOnline || order.totalAmount;
+    const amountDueOnline = totalAmountDueOnline;
     const amountInPaise = Math.floor(amountDueOnline * 100);
     const receiptId = shortid.generate();
 
@@ -72,7 +100,7 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       razorpayOrderId: razorpayOrderResponse.id,
-      amount: amountDueOnline,
+      amount: totalAmountDueOnline,
       existing: false,
     });
 

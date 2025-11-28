@@ -6,6 +6,28 @@ import { buildPayuFormPayload } from '@/lib/payments/payu/payload';
 import { DEFAULT_PAYU_METHOD, PAYU_NETBANKING_BANKS } from '@/lib/payments/payu/constants';
 import { initiatePayuPayment } from '@/lib/payments/payu/api';
 
+/**
+ * Calculate total amountDueOnline from all linked orders (for split orders)
+ * @param {Object} order - The main order document
+ * @returns {Promise<number>} - Total amount due online across all linked orders
+ */
+async function getTotalAmountDueOnline(order) {
+  // If no linked orders, return this order's amount
+  if (!order.linkedOrderIds || order.linkedOrderIds.length === 0) {
+    return order.paymentDetails.amountDueOnline;
+  }
+
+  // Fetch all linked orders and sum their amountDueOnline
+  const linkedOrders = await Order.find({ _id: { $in: order.linkedOrderIds } })
+    .select('paymentDetails.amountDueOnline')
+    .lean();
+
+  const totalAmount = order.paymentDetails.amountDueOnline + 
+    linkedOrders.reduce((sum, linkedOrder) => sum + (linkedOrder.paymentDetails?.amountDueOnline || 0), 0);
+
+  return totalAmount;
+}
+
 const PAYU_UPI_INTENT_BANKCODE = process.env.PAYU_UPI_INTENT_BANKCODE || 'UPI_INTENT';
 const PAYU_FORCE_GENERIC_UPI = process.env.PAYU_FORCE_GENERIC_UPI === 'true';
 
@@ -188,12 +210,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No online amount due for this order.' }, { status: 400 });
     }
 
+    // Calculate total amount across all linked orders (for split orders)
+    const totalAmountDueOnline = await getTotalAmountDueOnline(order);
+
     const userDoc = order.user || {};
     const methodConfig = METHOD_CONFIG[normalizedMethod]({ bankCode });
 
     const formPayload = buildPayuFormPayload({
       txnid: order.paymentDetails.payuDetails.txnId,
-      amount: order.paymentDetails.amountDueOnline,
+      amount: totalAmountDueOnline,
       productinfo: `Order ${order._id}`,
       customer: {
         firstname: order.address?.receiverName || userDoc.name || 'Customer',
