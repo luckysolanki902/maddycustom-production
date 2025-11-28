@@ -82,6 +82,8 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   // Track background check and existing notification state
   const [checkingNotification, setCheckingNotification] = useState(false);
   const [hasNotification, setHasNotification] = useState(false);
+  // Matching products count for recommendation button
+  const [matchingCount, setMatchingCount] = useState(0);
 
   // React Spring animation for quantity display
   const props = useSpring({
@@ -368,6 +370,25 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     // cartItem &&
      product?.designGroupId);
 
+  // Fetch matching products count when button should show
+  useEffect(() => {
+    if (showRecoButton && product?.designGroupId && matchingCount === 0) {
+      const fetchMatchingCount = async () => {
+        try {
+          const response = await fetch(`/api/products/by-design-group/${product.designGroupId}`);
+          const data = await response.json();
+          if (data.success && data.products) {
+            const count = data.products.filter(p => p._id !== product._id).length;
+            setMatchingCount(Math.min(count, 9));
+          }
+        } catch (error) {
+          console.error("Error fetching matching count:", error);
+        }
+      };
+      fetchMatchingCount();
+    }
+  }, [showRecoButton, product?.designGroupId, product?._id, matchingCount]);
+
   // Derived: already subscribed either via redux selector or server check
   const alreadySubscribed = isSubscribedToNotification || hasNotification;
 
@@ -392,8 +413,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
             onClick={(e) => { e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
             className={styles.recoButtonMobile}
           >
-            <AutoAwesomeIcon style={{ fontSize: '0.85rem', color: '#7b4bff' }} />
-            <span style={{ fontWeight: 600 }}>See Matching Picks</span>
+            <span style={{ fontSize: '0.6rem', color: '#8b7355', lineHeight: 1 }}>◆</span>
+            <span>{matchingCount > 0 ? `+${matchingCount} More in Set` : 'View Set'}</span>
+            <span style={{ fontSize: '0.65rem', color: '#999' }}>›</span>
           </button>
         )}
         <div className={styles.primaryActionsRow}>
@@ -486,8 +508,9 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
             onClick={(e) => { e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
             className={styles.recoButtonDesktop}
           >
-            <AutoAwesomeIcon style={{ fontSize: '0.9rem', color: '#7b4bff' }} />
-            <span style={{ fontWeight: 600 }}>See Matching Picks</span>
+            <span style={{ fontSize: '0.6rem', color: '#8b7355', lineHeight: 1 }}>◆</span>
+            <span>{matchingCount > 0 ? `+${matchingCount} More in Set` : 'View Set'}</span>
+            <span style={{ fontSize: '0.65rem', color: '#999' }}>›</span>
           </button>
         )}
       </div>
