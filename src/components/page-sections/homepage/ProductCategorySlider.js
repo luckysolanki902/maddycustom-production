@@ -1,70 +1,36 @@
-"use client";
-
-import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import styles from "./styles/ProductCategorySlider.module.css";
 import Image from "next/image";
 
 const ProductCategorySlider = ({ position = "default" }) => {
-  const [isMobile, setIsMobile] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    // Set client flag to prevent hydration mismatch
-    setIsClient(true);
-    
-    const checkScreenSize = () => {
-      setIsMobile(window.innerWidth <= 500);
-    };
-    
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
-
-  const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
-
-  // Don't conditionally render until client is ready to prevent hydration mismatch
-  if (!isClient) {
-    return (
-      <div className={styles.cardContainer} style={{ opacity: 0 }}>
-        <div className={styles.cardRow}></div>
-      </div>
-    );
-  }
-
-  // If position is "aboveHero" and screen is 500px or below, hide this instance.
-  if (position === "aboveHero" && isMobile) return null;
-  // If position is "belowHero" and screen is above 500px, hide this instance.
-  if (position === "belowHero" && !isMobile) return null;
-
   const cardData = [
-    { name: "Pillar Wraps", link: "/shop/wraps/car-wraps/window-pillar-wraps/win-wraps" ,image:"/assets/icons/half_helmet.png" },
-    // { name: "Key Chains", link: "/shop/accessories/minimal-personalization/keychains/realistic-functional-keychains" },
+    { name: "Pillar Wraps", link: "/shop/wraps/car-wraps/window-pillar-wraps/win-wraps", image: "/assets/icons/half_helmet.png" },
     { name: "Air Freshener", link: "/shop/accessories/car-care/car-air-freshners/hanging-bottle-car-fresheners" },
     { name: "Tank Wraps", link: "/shop/wraps/bike-wraps/tank-wraps/slim-tank-wraps" },
     { name: "Bonnet Wraps", link: "/shop/wraps/car-wraps/bonnet-wraps/bonnet-strip-wraps" },
   ];
 
-  // Calculate image height based on mobile breakpoint (matches CSS)
-  const imgHeight = isMobile ? 35 : 40;
+  // Determine CSS class based on position for CSS-based show/hide
+  const positionClass = position === "aboveHero" 
+    ? styles.aboveHero 
+    : position === "belowHero" 
+      ? styles.belowHero 
+      : "";
 
   return (
-    <div className={styles.cardContainer}>
+    <div className={`${styles.cardContainer} ${positionClass}`}>
       <div className={styles.cardRow}>
         {cardData.map((item, index) => (
           <Link href={item.link} key={index} className={styles.cardLink}>
-            <div className={styles.card} style={{paddingLeft: item.image ? 0 : undefined}}>
+            <div className={styles.card} style={{ paddingLeft: item.image ? 0 : undefined }}>
               {item.image && (
                 <Image 
-                  src={`${baseImageUrl}${item.image}`} 
+                  src={`https://d26w01jhwuuxpo.cloudfront.net${item.image}`} 
                   alt={item.name} 
-                  width={imgHeight} 
-                  height={imgHeight} 
+                  width={40} 
+                  height={40} 
                   className={styles.cardImg}
                   priority
-                  style={{ width: 'auto', height: imgHeight }}
                 />
               )}
               <span className={styles.cardText}>{item.name}</span>
