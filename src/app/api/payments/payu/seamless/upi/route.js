@@ -6,6 +6,28 @@ import { validatePayuCredentials } from '@/lib/payments/payu/config';
 import { formatPayuAmount, generatePayuRequestHash } from '@/lib/payments/payu/hash';
 import User from '@/models/User';
 
+/**
+ * Calculate total amountDueOnline from all linked orders (for split orders)
+ * @param {Object} order - The main order document
+ * @returns {Promise<number>} - Total amount due online across all linked orders
+ */
+async function getTotalAmountDueOnline(order) {
+  // If no linked orders, return this order's amount
+  if (!order.linkedOrderIds || order.linkedOrderIds.length === 0) {
+    return order.paymentDetails.amountDueOnline;
+  }
+
+  // Fetch all linked orders and sum their amountDueOnline
+  const linkedOrders = await Order.find({ _id: { $in: order.linkedOrderIds } })
+    .select('paymentDetails.amountDueOnline')
+    .lean();
+
+  const totalAmount = order.paymentDetails.amountDueOnline + 
+    linkedOrders.reduce((sum, linkedOrder) => sum + (linkedOrder.paymentDetails?.amountDueOnline || 0), 0);
+
+  return totalAmount;
+}
+
 
 const getOrigin = (request) =>
   request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '';
@@ -138,6 +160,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No online amount due for this order.' }, { status: 400 });
     }
 
+    // Calculate total amount across all linked orders (for split orders)
+    const totalAmountDueOnline = await getTotalAmountDueOnline(order);
+
     const userDoc = order.user || {};
     const { key, salt } = validatePayuCredentials();
     const origin = getOrigin(request);
@@ -145,7 +170,7 @@ export async function POST(request) {
     const basePayload = {
       key,
       txnid: order.paymentDetails.payuDetails.txnId,
-      amount: formatPayuAmount(order.paymentDetails.amountDueOnline),
+      amount: formatPayuAmount(totalAmountDueOnline),
       productinfo: `Order ${order._id}`,
       firstname: order.address?.receiverName || userDoc.name || 'Customer',
       email: userDoc.email || 'noemail@maddycustom.com',
