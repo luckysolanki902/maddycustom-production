@@ -369,7 +369,7 @@ export default function ProductIdPage({
           utm: utmDetails,
         });
       } catch (error) {
-        console.error('[Funnel] view_product tracking failed', error);
+        // view_product tracking failed
       }
       hasTracked.current = true;
     }

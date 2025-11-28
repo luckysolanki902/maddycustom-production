@@ -175,7 +175,6 @@ export default function AddToCartButton({
         currency: 'INR',
       };
     } catch (error) {
-      console.error('[Funnel] cart snapshot failed', error);
       return undefined;
     }
   };
@@ -452,7 +451,7 @@ export default function AddToCartButton({
         utm: utmDetails,
       });
     } catch (error) {
-      console.error('[Funnel] add_to_cart event failed', error);
+      // add_to_cart event failed
     }
   };
 
@@ -514,7 +513,7 @@ export default function AddToCartButton({
         utm: utmDetails,
       });
     } catch (error) {
-      console.error('[Funnel] add_to_cart increment event failed', error);
+      // add_to_cart increment event failed
     }
   };
 
@@ -547,7 +546,7 @@ export default function AddToCartButton({
         utm: utmDetails,
       });
     } catch (error) {
-      console.error('[Funnel] remove_from_cart event failed', error);
+      // remove_from_cart event failed
     }
   };
 

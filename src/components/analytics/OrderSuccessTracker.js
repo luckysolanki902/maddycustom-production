@@ -73,7 +73,7 @@ export default function OrderSuccessTracker({ trackingData }) {
       funnelClient.track('purchase', payload);
       void funnelClient.flush('purchase-success');
     } catch (error) {
-      console.warn('[Funnel] Order success purchase tracking failed', error);
+      // Order success purchase tracking failed
     }
   }, [trackingData]);
 

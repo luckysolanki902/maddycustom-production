@@ -95,7 +95,7 @@ const CartItem = ({ item, onRemove, readonly = false, cartSnapshot }) => {
             },
           });
         } catch (err) {
-          console.warn('[Funnel] remove_from_cart tracking failed:', err);
+          // Tracking failed
         }
       }
       dispatch(updateQuantity({
@@ -124,7 +124,7 @@ const CartItem = ({ item, onRemove, readonly = false, cartSnapshot }) => {
         },
       });
     } catch (err) {
-      console.warn('[Funnel] remove_from_cart tracking failed:', err);
+      // Tracking failed
     }
     if (onRemove) {
       onRemove(productDetails._id);
