@@ -112,3 +112,23 @@ display: none;
   align-items: center;
 }
 }
+
+/* Position-based visibility using CSS media queries */
+/* aboveHero: show on screens > 500px, hide on mobile */
+.aboveHero {
+  display: flex;
+}
+
+/* belowHero: hide on screens > 500px, show on mobile */
+.belowHero {
+  display: none;
+}
+
+@media (max-width: 500px) {
+  .aboveHero {
+    display: none;
+  }
+  .belowHero {
+    display: flex;
+  }
+}
