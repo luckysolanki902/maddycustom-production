@@ -9,7 +9,6 @@ export async function POST(request) {
   try {
     payload = await request.json();
   } catch (error) {
-    console.error('[Funnel] Invalid JSON payload', error);
     return NextResponse.json(
       {
         success: false,
@@ -21,12 +20,6 @@ export async function POST(request) {
 
   const validationResult = validateEventsPayload(payload);
   if (!validationResult.success) {
-    const flattened = validationResult.error?.flatten?.();
-    console.error('[Funnel] Validation failed', flattened);
-    if (process.env.NODE_ENV !== 'production') {
-      const sample = Array.isArray(payload?.events) ? payload.events.slice(0, 3) : payload;
-      console.error('[Funnel] Validation payload sample', sample);
-    }
     return NextResponse.json(
       {
         success: false,
@@ -39,7 +32,6 @@ export async function POST(request) {
 
   const { events } = validationResult.data;
   if (events.length > MAX_EVENTS_PER_REQUEST) {
-    console.warn('[Funnel] Payload exceeded max events', events.length);
     events.length = MAX_EVENTS_PER_REQUEST;
   }
 
@@ -47,7 +39,6 @@ export async function POST(request) {
   try {
     await connectToDatabase();
   } catch (error) {
-    console.error('[Funnel] Database connection failed', error);
     return NextResponse.json(
       {
         success: false,

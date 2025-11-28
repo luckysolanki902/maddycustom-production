@@ -40,7 +40,7 @@ const CartDrawer = () => {
           },
         });
       } catch (error) {
-        console.error('[Funnel] view_cart_drawer tracking failed:', error);
+        // view_cart_drawer tracking failed
       }
     } else if (!isCartDrawerOpen) {
       // Reset tracking flag when drawer closes

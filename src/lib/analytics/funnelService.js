@@ -437,10 +437,6 @@ export async function saveFunnelEvents(rawEvents = []) {
           event: rawEvent,
           reason: 'Failed to create or retrieve session',
         });
-        console.error('[Funnel] Session upsert failed', {
-          visitorId: enrichedEvent.visitorId,
-          sessionId: enrichedEvent.sessionId,
-        });
         continue;
       }
       
@@ -456,14 +452,8 @@ export async function saveFunnelEvents(rawEvents = []) {
           event: rawEvent,
           reason: result.reason || 'Unknown persistence error',
         });
-        console.error('[Funnel] Event persistence failed', {
-          step,
-          code: result.code,
-          reason: result.reason,
-        });
       }
     } catch (error) {
-      console.error('[Funnel] Failed to persist event', error);
       outcome.errors.push({
         event: rawEvent,
         reason: error?.message || 'Unhandled error',

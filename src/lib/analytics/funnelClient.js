@@ -52,7 +52,6 @@ function generateEventId(step, visitorId, sessionId, timestamp, payload = {}) {
     // Return format: step_timestamp_hash
     return `${step}_${roundedTimestamp}_${hashHex}`;
   } catch (error) {
-    console.warn('[Funnel] Failed to generate deterministic eventId', error);
     // Fallback to UUID
     return uuidv4();
   }
@@ -85,7 +84,6 @@ function generateEventHash(event) {
     
     return Math.abs(hash).toString(36);
   } catch (error) {
-    console.warn('[Funnel] Failed to generate eventHash', error);
     return null;
   }
 }
@@ -157,7 +155,6 @@ function safeLocalStorage() {
     if (typeof window === 'undefined') return null;
     return window.localStorage ?? null;
   } catch (error) {
-    console.warn('[Funnel] localStorage unavailable', error);
     return null;
   }
 }
@@ -167,7 +164,6 @@ function safeSessionStorage() {
     if (typeof window === 'undefined') return null;
     return window.sessionStorage ?? null;
   } catch (error) {
-    console.warn('[Funnel] sessionStorage unavailable', error);
     return null;
   }
 }
@@ -256,13 +252,6 @@ class FunnelClient {
 
     this.refreshDebugFlag();
     this.initialized = true;
-    
-    if (this.debug) {
-      console.info('[Funnel] Client initialized', {
-        visitorId: this.visitorId,
-        sessionId: this.sessionId,
-      });
-    }
   }
 
   buildDeviceSnapshot() {
@@ -293,7 +282,7 @@ class FunnelClient {
     try {
       this.storage?.setItem(STORAGE_KEYS.VISITOR, id);
     } catch (error) {
-      console.warn('[Funnel] Failed to persist visitorId', error);
+      // Failed to persist visitorId
     }
     return id;
   }
@@ -326,7 +315,7 @@ class FunnelClient {
       this.storage?.setItem(STORAGE_KEYS.SESSION, this.sessionId);
       this.storage?.setItem(STORAGE_KEYS.SESSION_EXP, expiresAt);
     } catch (error) {
-      console.warn('[Funnel] Failed to persist session', error);
+      // Failed to persist session
     }
 
     if (previousSession && previousSession !== this.sessionId) {
@@ -343,7 +332,6 @@ class FunnelClient {
       const params = new URLSearchParams(window.location.search);
       return isDev || params.has(DEBUG_PARAM);
     } catch (error) {
-      console.warn('[Funnel] Debug flag evaluation failed', error);
       return isDev;
     }
   }
@@ -374,14 +362,9 @@ class FunnelClient {
           STORAGE_KEYS.BACKUP_QUEUE,
           JSON.stringify(importantEvents)
         );
-        if (this.debug) {
-          console.info('[Funnel] Backed up queue', {
-            count: importantEvents.length,
-          });
-        }
       }
     } catch (error) {
-      console.warn('[Funnel] Failed to backup queue', error);
+      // Failed to backup queue
     }
   }
 
@@ -406,18 +389,11 @@ class FunnelClient {
           this.queue = restoredEvents;
           this.storage.removeItem(STORAGE_KEYS.BACKUP_QUEUE);
           
-          if (this.debug) {
-            console.info('[Funnel] Restored backup queue', {
-              count: restoredEvents.length,
-            });
-          }
-          
           // Schedule immediate flush
           this.scheduleFlush(1000);
         }
       }
     } catch (error) {
-      console.warn('[Funnel] Failed to restore backup queue', error);
       // Clear corrupted backup
       try {
         this.storage.removeItem(STORAGE_KEYS.BACKUP_QUEUE);
@@ -444,14 +420,6 @@ class FunnelClient {
     const dedupeWindow = criticalSteps.includes(entry.step) ? 5000 : DEDUPE_TTL_MS;
 
     if (now - entry.timestamp <= dedupeWindow) {
-      if (this.debug) {
-        console.info('[Funnel] dedupe skipped event', {
-          key,
-          step: entry.step,
-          sessionId,
-          ageMs: now - entry.timestamp,
-        });
-      }
       return true;
     }
 
@@ -625,11 +593,6 @@ class FunnelClient {
 
     const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
     if (isApiPath(normalizedPath)) {
-      if (this.debug) {
-        console.info('[Funnel] Skipping visit tracking for API route', {
-          path: normalizedPath,
-        });
-      }
       this.cancelPendingVisit(normalizedPath);
       return;
     }
@@ -664,9 +627,6 @@ class FunnelClient {
     if (typeof window === 'undefined') return;
 
     if (isApiPath(path)) {
-      if (this.debug) {
-        console.info('[Funnel] visit scheduling skipped for API route', { path });
-      }
       this.cancelPendingVisit(path);
       return;
     }
@@ -720,13 +680,11 @@ class FunnelClient {
       this.sessionId = uuidv4();
     }
     if (!this.visitorId || !this.sessionId) {
-      console.warn('[Funnel] Skipping event due to missing identifiers', { step, payload });
       return;
     }
     
     // Validate step
     if (!step || typeof step !== 'string' || step.trim().length === 0) {
-      console.warn('[Funnel] Skipping event due to invalid step', { step, payload });
       return;
     }
 
@@ -742,12 +700,6 @@ class FunnelClient {
         this.queue.shift();
         this.droppedEvents++;
       }
-      
-      if (this.debug) {
-        console.warn('[Funnel] Queue overflow, dropped event', {
-          totalDropped: this.droppedEvents,
-        });
-      }
     }
 
     const timestamp = Date.now();
@@ -762,12 +714,6 @@ class FunnelClient {
 
       const apiPath = candidatePaths.find((candidate) => isApiPath(candidate));
       if (apiPath) {
-        if (this.debug) {
-          console.info('[Funnel] Dropped visit event targeting API route', {
-            path: apiPath,
-            payload,
-          });
-        }
         this.cancelPendingVisit(apiPath);
         return;
       }
@@ -870,35 +816,8 @@ class FunnelClient {
       }
     }
 
-    if (this.debug) {
-      try {
-        console.info('[Funnel] queued event', {
-          step: normalizedStep,
-          eventId: event.eventId,
-          eventHash: event.eventHash,
-          dedupeKey,
-          page: event.page?.path,
-          product: event.product?.id,
-          cartItems: event.cart?.items,
-          cartValue: event.cart?.value,
-          orderId: event.order?.orderId,
-          metadata: event.metadata,
-          queueSize: this.queue.length,
-        });
-      } catch (error) {
-        console.info('[Funnel] queued event', normalizedStep);
-      }
-    }
-
     // Check dedupe before queueing
     if (dedupeKey && this.shouldSkipDueToDedupe(dedupeKey, event.sessionId, timestamp)) {
-      if (this.debug) {
-        console.info('[Funnel] Event skipped due to deduplication', {
-          step: normalizedStep,
-          dedupeKey,
-          eventId: event.eventId,
-        });
-      }
       return;
     }
 
@@ -984,7 +903,6 @@ class FunnelClient {
       const hasIds = typeof event?.visitorId === 'string' && event.visitorId.length > 0 && typeof event?.sessionId === 'string' && event.sessionId.length > 0;
       const hasStep = typeof event?.step === 'string' && event.step.length > 0;
       if (!hasIds || !hasStep) {
-        console.warn('[Funnel] Dropping invalid event before flush', { event, reason });
         return false;
       }
       return true;
@@ -998,28 +916,7 @@ class FunnelClient {
       return;
     }
 
-    if (this.debug) {
-      try {
-        console.info('[Funnel] flushing events', {
-          reason,
-          count: batch.length,
-          steps: batch.map((event) => event.step),
-          retry: this.flushRetries,
-        });
-      } catch (error) {
-        console.info('[Funnel] flush debug failed', error);
-      }
-    } else if (process.env.NODE_ENV !== 'production') {
-      try {
-        console.debug('[Funnel] Flushing events', {
-          reason,
-          count: batch.length,
-          sample: batch[0],
-        });
-      } catch (error) {
-        console.debug('[Funnel] Flush debug failed', error);
-      }
-    }
+
 
     const payload = JSON.stringify({ events: batch });
     let success = false;
@@ -1045,20 +942,13 @@ class FunnelClient {
           success = true;
           const result = await response.json().catch(() => ({}));
           
-          if (result.errors && result.errors.length > 0 && this.debug) {
-            console.warn('[Funnel] Server reported errors', {
-              errors: result.errors,
-              accepted: result.accepted,
-              duplicates: result.duplicates,
-            });
-          }
+
         } else {
           errorDetails = `HTTP ${response.status}: ${response.statusText}`;
         }
       }
     } catch (error) {
       errorDetails = error?.message || 'Network error';
-      console.error('[Funnel] Flush failed', reason, error);
       success = false;
     }
 
@@ -1074,26 +964,10 @@ class FunnelClient {
         // Exponential backoff
         const retryDelay = FLUSH_INTERVAL_MS * Math.pow(2, this.flushRetries);
         
-        if (this.debug) {
-          console.warn('[Funnel] Retrying flush', {
-            attempt: this.flushRetries,
-            maxRetries: MAX_FLUSH_RETRIES,
-            retryDelay,
-            error: errorDetails,
-          });
-        }
-        
         this.scheduleFlush(retryDelay);
         return;
       } else {
         // Exceeded max retries, backup to localStorage
-        if (this.debug) {
-          console.error('[Funnel] Max retries exceeded, backing up events', {
-            count: batch.length,
-            error: errorDetails,
-          });
-        }
-        
         this.queue = batch.concat(this.queue);
         this.backupQueue();
         this.queue = [];
@@ -1102,14 +976,6 @@ class FunnelClient {
     } else {
       // Success - reset retry counter
       this.flushRetries = 0;
-      
-      if (this.debug) {
-        console.info('[Funnel] flush success', {
-          reason,
-          count: batch.length,
-          steps: batch.map((event) => event.step),
-        });
-      }
     }
 
     this.sending = false;
