@@ -79,7 +79,11 @@ export default function AddToCartButton({
   disableRecommendationTrigger = false,
   flexResponsiveness = false,
   disableNotifyMe = false, // New prop to disable notify functionality for POD items
-  fuelAddonStyle = false // custom condensed styling for FuelCapWrapAddOns
+  fuelAddonStyle = false, // custom condensed styling for FuelCapWrapAddOns
+  customAddText = null, // Custom text for add button (e.g., "Add to Order")
+  customVariantText = null, // Custom text for variant button (e.g., "Select & Add")
+  drawerPrimary = false, // Larger button for hero card in recommendation drawer
+  drawerSecondary = false, // Smaller button for secondary cards in recommendation drawer
 }) {
   // Use custom hook to classify pageType if not provided
   const pageType = usePageType();
@@ -114,6 +118,9 @@ export default function AddToCartButton({
   // Notify me dialog state
   const [showNotifyDialog, setShowNotifyDialog] = useState(false);
   
+  // Matching products count for recommendation button
+  const [matchingCount, setMatchingCount] = useState(0);
+  
   const router = useRouter();
   
   // Debug log for notify dialog state
@@ -138,8 +145,16 @@ export default function AddToCartButton({
     },
   });
   useEffect(() => {
-    dispatch(setDefaultWrapFinish());
-  }, [dispatch]);
+    // Only run once on mount, and only if there are cart items that need default wrap finish
+    const hasWrapsWithoutFinish = cartItems.some(item => {
+      const categoryName = item.productDetails?.category?.name?.toLowerCase();
+      return (categoryName?.includes('wrap') || categoryName?.includes('Wrap')) && !item.productDetails?.wrapFinish;
+    });
+    if (hasWrapsWithoutFinish) {
+      dispatch(setDefaultWrapFinish());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
 
   const getCartSnapshot = (quantityDelta = 0, valueDelta = 0) => {
@@ -280,6 +295,26 @@ export default function AddToCartButton({
     !hideRecommendationPopup &&
     !disableRecommendationTrigger
   );
+
+  // Fetch matching products count when button should show
+  useEffect(() => {
+    if (showRecoButton && product?.designGroupId && matchingCount === 0) {
+      const fetchMatchingCount = async () => {
+        try {
+          const response = await fetch(`/api/products/by-design-group/${product.designGroupId}`);
+          const data = await response.json();
+          if (data.success && data.products) {
+            // Exclude current product from count
+            const count = data.products.filter(p => p._id !== product._id).length;
+            setMatchingCount(Math.min(count, 9)); // Cap at 9 for display
+          }
+        } catch (error) {
+          console.error("Error fetching matching count:", error);
+        }
+      };
+      fetchMatchingCount();
+    }
+  }, [showRecoButton, product?.designGroupId, product?._id, matchingCount]);
 
   // Function to navigate to cart or show cart drawer
   const goToCart = () => {
@@ -522,7 +557,9 @@ export default function AddToCartButton({
     isBlackButton ? styles.blackButton : "",
     isLarge ? styles.largeButton : "",
     smaller ? styles.smaller : "",
-    fuelAddonStyle ? styles.fuelAddonButton : ""
+    fuelAddonStyle ? styles.fuelAddonButton : "",
+    drawerPrimary ? styles.drawerPrimary : "",
+    drawerSecondary ? styles.drawerSecondary : ""
   ].join(" ").trim();
 
   if (showOnlyChooseVariants && isLoadingVariants) return null;
@@ -621,25 +658,25 @@ export default function AddToCartButton({
             type="button"
             onClick={(e) => { e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
             style={{
-              background: 'linear-gradient(90deg,#f5f5f7,#ffffff)',
-              border: '1px solid #e2e2e2',
-              color: '#222',
+              background: 'linear-gradient(135deg, #faf8f5 0%, #fff 100%)',
+              border: '1px solid #e8e4df',
+              color: '#2d2d2d',
               fontFamily: 'Jost, sans-serif',
-              fontSize: '.68rem',
-              padding: '.45rem .75rem',
-              borderRadius: '999px',
+              fontSize: '.78rem',
+              padding: '.55rem 1rem',
+              borderRadius: '10px',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '.4rem',
               cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-              transition: 'all .25s ease',
-              letterSpacing: '.5px'
+              boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+              transition: 'all .2s ease',
             }}
             className="mc-reco-trigger-btn"
           >
-            <AutoAwesomeIcon style={{ fontSize: '0.9rem', color: '#7b4bff' }} />
-            <span style={{ fontWeight: 600 }}>See Matching Picks</span>
+            <span style={{ fontSize: '0.6rem', color: '#8b7355', lineHeight: 1 }}>◆</span>
+            <span style={{ fontWeight: 500 }}>{matchingCount > 0 ? `+${matchingCount} More in Set` : 'View Set'}</span>
+            <span style={{ fontSize: '0.65rem', color: '#999', marginLeft: '2px' }}>›</span>
           </button>
         )}
       </div>
@@ -652,7 +689,9 @@ export default function AddToCartButton({
     styles.addToCart,
     isBlackButton ? styles.blackButton : "",
     isLarge ? styles.largeButton : "",
-    fuelAddonStyle ? styles.fuelAddonButton : ""
+    fuelAddonStyle ? styles.fuelAddonButton : "",
+    drawerPrimary ? styles.drawerPrimary : "",
+    drawerSecondary ? styles.drawerSecondary : ""
   ].join(" ").trim();
 
   if (showOnlyChooseVariants && (!enableVariantSelection || !hasVariants)) return null;
@@ -709,7 +748,9 @@ export default function AddToCartButton({
             style={{ outline: "none", border: "none" }}
             disabled={isLimited && currentQuantity + 1 > maxAllowed}
           >
-            <span>{enableVariantSelection && hasVariants ? "Choose Variant" : "Add to cart"}</span>
+            <span>{enableVariantSelection && hasVariants 
+              ? (customVariantText || "Select & Add") 
+              : (customAddText || "Add to cart")}</span>
           </button>
         )}
 
@@ -719,25 +760,25 @@ export default function AddToCartButton({
             data-clarity="see-matching-picks"
             onClick={(e) => { e.stopPropagation(); dispatch(openRecommendationDrawer({ product })); }}
             style={{
-              background: 'linear-gradient(90deg,#f5f5f7,#ffffff)',
-              border: '1px solid #e2e2e2',
-              color: '#222',
+              background: 'linear-gradient(135deg, #faf8f5 0%, #fff 100%)',
+              border: '1px solid #e8e4df',
+              color: '#2d2d2d',
               fontFamily: 'Jost, sans-serif',
-              fontSize: '.68rem',
-              padding: '.45rem .75rem',
-              borderRadius: '999px',
+              fontSize: '.78rem',
+              padding: '.55rem 1rem',
+              borderRadius: '10px',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '.4rem',
               cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-              transition: 'all .25s ease',
-              letterSpacing: '.5px'
+              boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+              transition: 'all .2s ease',
             }}
             className="mc-reco-trigger-btn"
           >
-            <AutoAwesomeIcon style={{ fontSize: '0.9rem', color: '#7b4bff' }} />
-            <span style={{ fontWeight: 600 }}>See Matching Picks</span>
+            <span style={{ fontSize: '0.6rem', color: '#8b7355', lineHeight: 1 }}>◆</span>
+            <span style={{ fontWeight: 500 }}>{matchingCount > 0 ? `+${matchingCount} More in Set` : 'View Set'}</span>
+            <span style={{ fontSize: '0.65rem', color: '#999', marginLeft: '2px' }}>›</span>
           </button>
         )}
       </div>

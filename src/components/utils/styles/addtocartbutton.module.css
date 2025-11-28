@@ -59,6 +59,28 @@
   color: white;
 }
 
+/* Drawer primary button - larger, prominent for hero card */
+.drawerPrimary {
+  font-size: 0.95rem;
+  height: 2.2rem;
+  padding: 0.4rem 1rem;
+  width: 100%;
+  min-width: 140px;
+  border-radius: 0.4rem;
+  font-weight: 600;
+}
+
+/* Drawer secondary button - compact for secondary cards */
+.drawerSecondary {
+  font-size: 0.8rem !important;
+  height: 1.65rem !important;
+  padding: 0.2rem 0.7rem !important;
+  width: auto !important;
+  min-width: 70px !important;
+  border-radius: 0.3rem !important;
+  font-weight: 500 !important;
+}
+
 /* New class for large button */
 .largeButton {
   width: 180px;

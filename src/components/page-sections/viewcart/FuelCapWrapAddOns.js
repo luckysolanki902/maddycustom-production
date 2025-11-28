@@ -240,7 +240,10 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
   })();
 
   // Prefetch page 1 as soon as cart has items so users never see skeletons
-  const cartQty = useSelector(s => (s.cart?.items || []).reduce((n, it) => n + (it.quantity || 0), 0));
+  const cartItems = useSelector(s => s.cart?.items || []);
+  const cartQty = cartItems.reduce((n, it) => n + (it.quantity || 0), 0);
+  // Get first cart item name for personalized subtitle
+  const firstCartItemName = cartItems[0]?.name?.split(' ')[0] || 'your';
   useEffect(() => {
     if (cartQty > 0) {
       // Try to hydrate from session cache first; otherwise fetch immediately
@@ -269,7 +272,7 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
   return (
   <Box sx={{ mt: 4, position: 'relative' }}>
   <Typography variant="h6" sx={{ mb: .5, fontFamily: 'Jost, sans-serif', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', scrollMarginTop: '80px' }}>
-        Fuel Cap Wrap Add‑Ons
+        Finish Your Setup — Fuel Cap Wraps
         {!mappingConfirmed && (
           <Button size="small" variant="outlined" onClick={openMapping} sx={{ textTransform: 'none', borderRadius: '1rem', lineHeight: 1.1 }}>Choose Type</Button>
         )}
@@ -281,7 +284,7 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
         )}
       </Typography>
       <Typography variant="caption" sx={{ mb: 1.5, color: '#555', display: 'block' }}>
-        {mappingConfirmed ? 'Personalized suggestions based on your selection.' : 'Pick your shape & fuel type to tailor suggestions.'}
+        {mappingConfirmed ? `These match your ${firstCartItemName} design ✓` : 'Pick your shape & fuel type to tailor suggestions.'}
       </Typography>
 
       {/* Slider wrapper */}
