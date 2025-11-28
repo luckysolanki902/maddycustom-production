@@ -91,10 +91,12 @@ const cardSx = {
   width: 200,
   flexShrink: 0,
   scrollSnapAlign: "start",
-  borderRadius: 3,
-  transition: "transform .2s",
+  borderRadius: '16px',
+  transition: "transform .2s, box-shadow .2s",
   cursor: "pointer",
-  "&:hover": { transform: "translateY(-6px)", boxShadow: 6 },
+  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+  border: '1px solid rgba(0,0,0,0.04)',
+  "&:hover": { transform: "translateY(-4px)", boxShadow: '0 8px 24px rgba(0,0,0,0.12)' },
 };
 
 // Helper to get display image (same as TopBoughtProducts)
@@ -230,7 +232,15 @@ function SimilarProductsBase({ currentProduct, variant, category }) {
 
   return (
     <SimilarProductsContext.Provider value={{ insertionDetails }}>
-      <Box sx={{ width: "100%", px: 1, mt: 4, m: 'auto', mb: 2 }}>
+      <Box sx={{ 
+        width: "100%", 
+        px: { xs: 1, sm: 2 },
+        py: 2.5,
+        my: 3,
+        bgcolor: 'rgba(0,0,0,0.02)',
+        borderRadius: '20px',
+        border: '1px solid rgba(0,0,0,0.04)',
+      }}>
         {/* Header with skeleton */}
         {loadingInit && !isInitialized && !sectionTitle ? (
           <Skeleton variant="text" width={200} height={26} sx={{ mb: 1, mt: 3 }} />
@@ -388,9 +398,36 @@ const ProductCard = memo(function ProductCard({ product }) {
         <Typography variant="subtitle2" sx={{ fontFamily: "Jost", fontWeight: 500 }} noWrap>
           {product.name}
         </Typography>
-        <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
-          ₹{product.price}
-        </Typography>
+        {/* Price with MRP and discount */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5, flexWrap: 'wrap' }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            ₹{product.price}
+          </Typography>
+          {product.MRP && product.MRP > product.price && (
+            <>
+              <Typography
+                variant="caption"
+                sx={{ 
+                  textDecoration: 'line-through', 
+                  color: 'text.secondary',
+                  fontWeight: 400
+                }}
+              >
+                ₹{product.MRP}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{ 
+                  color: '#2e7d32', 
+                  fontWeight: 600,
+                  fontSize: '0.7rem'
+                }}
+              >
+                {Math.round(((product.MRP - product.price) / product.MRP) * 100)}% off
+              </Typography>
+            </>
+          )}
+        </Box>
         {!outOfStock ? (
           <AddToCartButton 
             fullWidth 

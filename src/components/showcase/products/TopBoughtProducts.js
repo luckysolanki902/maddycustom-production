@@ -42,10 +42,12 @@ const cardSx = {
   width: 200,
   flexShrink: 0,
   scrollSnapAlign: 'start',
-  borderRadius: 3,
-  transition: 'transform .2s',
+  borderRadius: '16px',
+  transition: 'transform .2s, box-shadow .2s',
   cursor: 'pointer',
-  '&:hover': { transform: 'translateY(-6px)', boxShadow: 6 },
+  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+  border: '1px solid rgba(0,0,0,0.04)',
+  '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' },
 };
 
 /* ─────────────────── image helper ─────────────────── */
@@ -280,8 +282,8 @@ function TopBoughtProductsBase({
   /* ---------- Section title ---------- */
   const sectionTitle =
     (singleVariantCode || singleCategoryCode) && specCatName
-      ? specCatName
-      : 'Customers also bought';
+      ? `Complete Your Setup — ${specCatName}`
+      : 'Complete Your Setup';
 
   /* ─────────────────── Render ─────────────────── */
   // Don't render anything if we don't have the necessary parameters
@@ -293,7 +295,15 @@ function TopBoughtProductsBase({
     <TopBoughtContext.Provider
     value={{ singleCategoryCode, singleVariantCode, insertionDetails }}
     >
-      <Box sx={{ width: '100%', px: 1 }}>
+      <Box sx={{ 
+        width: '100%', 
+        px: { xs: 1, sm: 2 },
+        py: 2.5,
+        my: 2,
+        bgcolor: 'rgba(0,0,0,0.02)',
+        borderRadius: '20px',
+        border: '1px solid rgba(0,0,0,0.04)',
+      }}>
         {!hideHeading && (
           <>
             {(loadingInit && !isInitialized) && !specCatName ? (
@@ -304,7 +314,17 @@ function TopBoughtProductsBase({
                 sx={{ mb: 1 }}
               />
             ) : (
-              <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+              <Typography 
+                variant="subtitle1" 
+                sx={{ 
+                  mb: 2, 
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  fontSize: { xs: '0.95rem', sm: '1.1rem' }
+                }}
+              >
                 {sectionTitle}
               </Typography>
             )}
@@ -407,12 +427,39 @@ const ProductCard = memo(function ProductCard({ product }) {
             {product.category?.name || product.category}
           </Typography>
         )}
-        <Typography
-          variant="body2"
-          sx={{ fontWeight: 600, mt: 0.5 }}
-        >
-          ₹{product.price}
-        </Typography>
+        {/* Price with MRP and discount */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5, flexWrap: 'wrap' }}>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 600 }}
+          >
+            ₹{product.price}
+          </Typography>
+          {product.MRP && product.MRP > product.price && (
+            <>
+              <Typography
+                variant="caption"
+                sx={{ 
+                  textDecoration: 'line-through', 
+                  color: 'text.secondary',
+                  fontWeight: 400
+                }}
+              >
+                ₹{product.MRP}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{ 
+                  color: '#2e7d32', 
+                  fontWeight: 600,
+                  fontSize: '0.7rem'
+                }}
+              >
+                {Math.round(((product.MRP - product.price) / product.MRP) * 100)}% off
+              </Typography>
+            </>
+          )}
+        </Box>
         <AddToCartButton
           fullWidth
           product={cartPayload}
@@ -443,7 +490,12 @@ const ProductCardSkeleton = memo(function ProductCardSkeleton() {
         {showCategory && (
           <Skeleton variant="text" width="60%" height={18} />
         )}
-        <Skeleton variant="text" width="40%" height={20} />
+        {/* Price row skeleton */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5 }}>
+          <Skeleton variant="text" width="30%" height={20} />
+          <Skeleton variant="text" width="25%" height={16} />
+          <Skeleton variant="text" width="20%" height={16} />
+        </Box>
         <Skeleton
           variant="rectangular"
           width="100%"
