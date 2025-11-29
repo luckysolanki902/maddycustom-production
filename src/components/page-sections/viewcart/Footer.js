@@ -23,9 +23,11 @@ const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = 
   const codAmount = isSplitPayment ? totalCost - onlineAmount : 0;
 
   // CTA text with amount
-  const ctaText = isSplitPayment 
-    ? `PAY ₹${onlineAmount.toLocaleString('en-IN')} NOW`
-    : `PAY ₹${totalCost.toLocaleString('en-IN')} NOW`;
+  const ctaText = 
+  // isSplitPayment 
+  //   ? `PAY ₹${onlineAmount.toLocaleString('en-IN')} NOW`
+  //   : `PAY ₹${totalCost.toLocaleString('en-IN')} NOW`;
+  'Continue to Address'
 
   return (
     <div className={styles.footerContainer}>
@@ -96,7 +98,7 @@ const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = 
           </div>
         ) : (
           <div className={styles.ctaContent}>
-            <BoltIcon className={styles.ctaIcon} />
+            {/* <BoltIcon className={styles.ctaIcon} /> */}
             <span>{ctaText}</span>
           </div>
         )}
