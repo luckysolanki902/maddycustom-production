@@ -83,6 +83,7 @@ const Footer = ({ totalCost, originalTotal, onCheckout, isRevalidatingCoupons = 
       {/* Button - Unchanged as requested */}
       <motion.button
         className={`${styles.checkoutButton} ${styles.shineEffect}`}
+        data-clarity-element="begin-checkout-button"
         onClick={handleCheckout}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
