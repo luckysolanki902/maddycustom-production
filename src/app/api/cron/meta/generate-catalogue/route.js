@@ -1,4 +1,5 @@
 // app/api/cron/meta/generate-catalogue/route.js
+// HIT: /api/cron/meta/generate-catalogue
 
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Product from '@/models/Product';
@@ -35,12 +36,11 @@ export async function GET() {
       await currentCycle.save();
     }
 
-    // 4. Get specific category IDs
-    const specificCategories = await SpecificCategory.find({
-      available: true,
-    }).select('_id').lean();
-
-    const specificCategoryIds = specificCategories.map(cat => cat._id);
+    // 4. Get ALL specific category IDs and track which are available
+    const allSpecificCategories = await SpecificCategory.find({}).select('_id available').lean();
+    const availableCategoryIds = allSpecificCategories.filter(cat => cat.available).map(cat => cat._id);
+    const allCategoryIds = allSpecificCategories.map(cat => cat._id);
+    const availableCategoryIdSet = new Set(availableCategoryIds.map(id => id.toString()));
 
     // 5. Get products that need updating (batch processing for performance)
     const batchSize = 50; // Process 50 products at a time
@@ -50,11 +50,16 @@ export async function GET() {
     let totalUpdated = 0;
     let currentIndex = currentCycle.lastProcessedIndex;
 
+    // Get available variant IDs for filtering
+    const availableVariants = await SpecificCategoryVariant.find({
+      available: true,
+    }).select('_id').lean();
+    const availableVariantIdSet = new Set(availableVariants.map(v => v._id.toString()));
+
     while (Date.now() - startTime < maxProcessingTime) {
-      // Get next batch of products
+      // Get next batch of products (ALL products to properly handle unavailable ones)
       const products = await Product.find({
-        specificCategory: { $in: specificCategoryIds },
-        available: true,
+        specificCategory: { $in: allCategoryIds },
       })
         .populate('specificCategoryVariant')
         .skip(currentIndex)
@@ -86,9 +91,17 @@ export async function GET() {
             shouldUpdate = productUpdateDate > lastFetchDate;
           }
 
+          // Check if category is available
+          const isCategoryAvailable = availableCategoryIdSet.has(product.specificCategory.toString());
+          
+          // Check if product and its variant are both available
+          const isVariantAvailable = !product.specificCategoryVariant || 
+            availableVariantIdSet.has(product.specificCategoryVariant._id?.toString());
+          const isProductFullyAvailable = product.available && isCategoryAvailable && isVariantAvailable;
+
           if (shouldUpdate) {
             // Create/update main product catalogue entry
-            const feedData = createFeedData(product);
+            const feedData = createFeedData(product, isProductFullyAvailable);
             
             await Catalogue.findOneAndUpdate(
               {
@@ -129,7 +142,7 @@ export async function GET() {
               }
 
               if (shouldUpdateOption) {
-                const optionFeedData = createFeedDataForOption(product, option);
+                const optionFeedData = createFeedDataForOption(product, option, isProductFullyAvailable);
                 
                 await Catalogue.findOneAndUpdate(
                   {
@@ -219,8 +232,10 @@ export async function GET() {
 
 /**
  * Create feed data for a main product
+ * @param {Object} product - The product object
+ * @param {boolean} isAvailable - Whether the product (and its variant/category) is fully available
  */
-function createFeedData(product) {
+function createFeedData(product, isAvailable = true) {
   const baseUrl = 'https://www.maddycustom.com';
   const cdnUrl = 'https://d26w01jhwuuxpo.cloudfront.net';
   
@@ -253,7 +268,7 @@ function createFeedData(product) {
     id: product._id.toString(),
     title: (product.title || product.name)?.substring(0,150),
     description: description.substring(0, 500),
-    availability: product.available ? 'in stock' : 'out of stock',
+    availability: isAvailable ? 'in stock' : 'out of stock',
     condition: 'new',
     price: `${product.price} INR`,
     price_amount: product.price,
@@ -280,8 +295,11 @@ function createFeedData(product) {
 
 /**
  * Create feed data for a product option
+ * @param {Object} product - The product object
+ * @param {Object} option - The option object
+ * @param {boolean} isAvailable - Whether the product (and its variant/category) is fully available
  */
-function createFeedDataForOption(product, option) {
+function createFeedDataForOption(product, option, isAvailable = true) {
   const baseUrl = 'https://www.maddycustom.com';
   const cdnUrl = 'https://d26w01jhwuuxpo.cloudfront.net';
   
@@ -316,7 +334,7 @@ function createFeedDataForOption(product, option) {
     id: `${product._id}-${option._id}`,
     title: optionTitle.substring(0, 150),
     description: description.substring(0, 500),
-    availability: product.available ? 'in stock' : 'out of stock',
+    availability: isAvailable ? 'in stock' : 'out of stock',
     condition: 'new',
     price: `${product.price} INR`,
     price_amount: product.price,

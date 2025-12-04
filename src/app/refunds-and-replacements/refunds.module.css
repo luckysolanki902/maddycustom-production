@@ -1,0 +1,330 @@
+/* Refund & Replacement Policy Styles - aligned with About page monochrome aesthetic */
+.page {
+    --bg: #ffffff;
+    --border: #e3e3e3;
+    --text-main: #2d2d2d;
+    --text-soft: #4a4a4a;
+    --accent-soft: #2d2d2d;
+    background: linear-gradient(to bottom, #ffffff 0%, #f8f8f8 55%, #ffffff 100%);
+    min-height: 100vh;
+    padding-bottom: 6rem;
+}
+
+.inner {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: clamp(3rem, 5vw, 5rem) clamp(1.25rem, 2.5vw, 2.75rem) 2rem;
+}
+
+.header {
+    text-align: center;
+    margin: 0 auto 4.5rem;
+    max-width: 980px;
+}
+
+.policyTitle {
+    font-family: 'Krona One', sans-serif;
+    font-size: clamp(1.5rem, 1.2rem + 2vw, 2rem);
+    letter-spacing: .045em;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0 0 1.25rem;
+    line-height: 1.15;
+}
+
+.policyIntro {
+    font-family: 'Jost', sans-serif;
+    font-size: clamp(1rem, 0.95rem + .35vw, 1.15rem);
+    line-height: 1.7;
+    font-weight: 300;
+    color: var(--text-soft);
+    margin: 0 auto;
+}
+
+.grid {
+    display: grid;
+    gap: 2.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    margin-bottom: 4rem;
+}
+
+.card {
+    position: relative;
+    background: linear-gradient(150deg, #fff, #fafafa);
+    border: 1px solid var(--border);
+    padding: 2.3rem 2rem 2.4rem;
+    box-shadow: 0 4px 18px -8px rgba(0, 0, 0, .08);
+    display: flex;
+    flex-direction: column;
+    gap: 1.3rem;
+    transition: border-color .4s ease, transform .45s cubic-bezier(.19, 1, .22, 1), box-shadow .45s ease;
+}
+
+.card:before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 78% 20%, rgba(0, 0, 0, .05), transparent 60%);
+    opacity: 0;
+    transition: opacity .5s ease;
+}
+
+.card:hover {
+    transform: translateY(-8px);
+    border-color: #2d2d2d;
+    box-shadow: 0 22px 44px -18px rgba(0, 0, 0, .25);
+}
+
+.card:hover:before {
+    opacity: 1;
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+}
+
+.cardIcon {
+    width: 54px;
+    height: 54px;
+    border-radius: 10px;
+    background: #2d2d2d;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.65rem;
+    box-shadow: 0 6px 18px -8px rgba(0, 0, 0, .35);
+}
+
+.cardTitle {
+    font-family: 'Jost', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    margin: 0;
+    color: #2d2d2d;
+}
+
+.list {
+    margin: .5rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.itemIndex {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #2d2d2d;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+}
+
+.itemCopy {
+    font-family: 'Jost', sans-serif;
+    margin: 0;
+    font-size: .97rem;
+    line-height: 1.6;
+    font-weight: 400;
+    color: #2f2f2f;
+}
+
+.highlightCost {
+    display: inline-block;
+    background: #2d2d2d;
+    color: #fff;
+    padding: .2rem .55rem;
+    border-radius: 4px;
+    font-weight: 600;
+    letter-spacing: .03em;
+}
+
+.missionPanel {
+    margin: 4rem auto 3.5rem;
+    max-width: 1100px;
+    position: relative;
+    background: linear-gradient(180deg,#2d2d2d,#3a3a3a);
+    padding: 3rem 2rem 2.7rem;
+    overflow: hidden;
+    border: 1px solid #2d2d2d;
+    box-shadow: 0 18px 48px -20px rgba(0,0,0,.4);
+}
+
+.missionPanel:after,
+.missionPanel:before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 82% 18%, rgba(255, 255, 255, .07), transparent 60%);
+    mix-blend-mode: overlay;
+    pointer-events: none;
+}
+
+.missionHeading {
+    margin: 0 0 1.2rem;
+    font-family: 'Krona One', sans-serif;
+    font-size: clamp(1.4rem, 1.1rem + 1.1vw, 2.1rem);
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: #f5f5f5;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5ch;
+}
+
+.missionLead {
+    font-family: 'Jost', sans-serif;
+    font-weight: 300;
+    opacity: .85;
+}
+
+.missionFocus {
+    font-weight: 700;
+    position: relative;
+}
+
+.missionFocus:after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 4px;
+    height: 6px;
+    width: 100%;
+    background: linear-gradient(90deg, #fff, rgba(255, 255, 255, 0));
+    opacity: .2;
+}
+
+.missionCopy {
+    font-family: 'Jost', sans-serif;
+    font-weight: 300;
+    font-size: clamp(.95rem, .9rem + .45vw, 1.15rem);
+    line-height: 1.7;
+    color: #d6d6d6;
+    margin: 0;
+    max-width: 900px;
+}
+
+.contactCard {
+    max-width: 760px;
+    margin: 4.5rem auto 0;
+    text-align: center;
+    border: 1px solid var(--border);
+    background: #fff;
+    padding: 2.4rem 2rem 2.6rem;
+    box-shadow: 0 6px 22px -12px rgba(0, 0, 0, .15);
+}
+
+.contactTitle {
+    margin: 0 0 1rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: .03em;
+    color: #2d2d2d;
+}
+
+.contactCopy {
+    font-family: 'Jost', sans-serif;
+    font-size: 1rem;
+    line-height: 1.65;
+    font-weight: 400;
+    color: #3a3a3a;
+    margin: 0;
+}
+
+.inlineLink {
+    position: relative;
+    font-weight: 500;
+    color: #2d2d2d;
+    text-decoration: none;
+}
+
+.inlineLink:after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 1px;
+    width: 100%;
+    background: #2d2d2d;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform .4s ease;
+}
+
+.inlineLink:hover:after {
+    transform: scaleX(1);
+}
+
+.taglineWrap {
+    margin: 5.5rem auto 0;
+    text-align: center;
+}
+
+.tagline {
+    font-family: 'Krona One', sans-serif;
+    font-size: clamp(1.8rem, 1.4rem + 1.5vw, 3rem);
+    font-weight: 700;
+    letter-spacing: .05em;
+    background: linear-gradient(90deg,#2d2d2d,#5a5a5a);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-style: italic;
+}
+
+@media (max-width:780px) {
+    .grid {
+        gap: 1.8rem;
+    }
+
+    .card {
+        padding: 2rem 1.5rem 2.1rem;
+    }
+
+    .cardIcon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.4rem;
+    }
+
+    .missionPanel {
+        padding: 2.4rem 1.4rem 2.2rem;
+    }
+}
+
+@media (max-width:560px) {
+    .policyTitle {
+        font-size: 1.4rem;
+    }
+
+    .missionHeading {
+        flex-direction: column;
+        gap: .4rem;
+    }
+
+    .missionFocus:after {
+        bottom: 2px;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
