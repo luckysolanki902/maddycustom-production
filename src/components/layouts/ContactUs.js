@@ -50,7 +50,8 @@ const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
                 <div className={styles.tnc}>
                     <Link href={'/about-us'} style={{ color: 'white', textDecoration: 'none' }} className={styles.contactLink}>About Us</Link> | 
-                    <Link href={'/termsandconditions'} style={{ color: 'white', textDecoration: 'none' }} className={styles.contactLink}>Refunds and Replacements</Link>
+                    <Link href={'/termsandconditions'} style={{ color: 'white', textDecoration: 'none' }} className={styles.contactLink}>Terms & Conditions</Link> |
+                    <Link href={'/refunds-and-replacements'} style={{ color: 'white', textDecoration: 'none' }} className={styles.contactLink}>Refunds & Replacements</Link>
                 </div>
             </div>
         </div>

@@ -132,6 +132,12 @@ export default async function sitemap() {
         changeFrequency: 'monthly',
         priority: 0.4,
       },
+      {
+        url: `${baseUrl}/refunds-and-replacements`,
+        lastModified: new Date(),
+        changeFrequency: 'monthly',
+        priority: 0.4,
+      },
     ];
   
     // 4. Dynamic product pages with proper lastModified dates - sorted by latest first
