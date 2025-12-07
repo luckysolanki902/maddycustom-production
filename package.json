@@ -37,7 +37,7 @@
     "moment-timezone": "^0.5.46",
     "mongodb": "^6.10.0",
     "mongoose": "^8.8.2",
-    "next": "15.0.0",
+    "next": "15.0.5",
     "nodemailer": "^6.10.0",
     "openai": "^4.90.0",
     "pdfkit": "^0.15.1",
