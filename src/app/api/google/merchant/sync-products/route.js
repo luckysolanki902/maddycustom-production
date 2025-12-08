@@ -11,22 +11,26 @@ export const maxDuration = 300; // 5 minutes in seconds
 
 export async function GET(request) {
   try {
-    // Check for force resync query param
+    // Check for force resync query param - handle various formats
     const { searchParams } = new URL(request.url);
-    const forceResync = searchParams.get('forceResync') === 'true';
+    const forceResyncParam = (searchParams.get('forceResync') || '').trim().replace(/[^a-z0-9]/gi, '').toLowerCase();
+    const forceResync = forceResyncParam === 'true' || forceResyncParam === '1';
+    
+    console.log(`[Google Merchant Sync] forceResyncParam: "${forceResyncParam}", forceResync: ${forceResync}`);
 
     // 1. Connect to database
     await connectToDatabase();
 
     // 2. Initialize API client(s)
-  const useMerchantApi = true;
+    // Using Content API for Shopping (more stable than new Merchant API)
+  const useMerchantApi = false;
     let contentApi = null;
     if (!useMerchantApi) {
       contentApi = initializeContentApi();
     }
 
   // Constants
-  const BATCH_SIZE = parseInt(process.env.GOOGLE_SYNC_BATCH_SIZE || '50', 10); // dynamic sizing
+  const BATCH_SIZE = parseInt(process.env.GOOGLE_SYNC_BATCH_SIZE || '1150', 10); // dynamic sizing
   const currentTime = new Date();
 
     // 3. Load latest completed catalogue cycle
@@ -40,30 +44,73 @@ export async function GET(request) {
 
     // If force resync, reset the google sync progress for this cycle
     if (forceResync) {
+      console.log('Force resync requested - resetting sync progress...');
       await CatalogueCycle.updateOne({ _id: latestCycle._id }, {
         googleSyncLastId: null,
         googleSyncProcessedCount: 0,
         googleSyncCompleted: false
       });
       // Reset googleSynced flag for all entries in this cycle
-      await Catalogue.updateMany(
+      const resetResult = await Catalogue.updateMany(
         { cycleId: latestCycle._id },
         { googleSynced: false }
       );
-      // Refresh the cycle data
-      latestCycle.googleSyncLastId = null;
-      latestCycle.googleSyncProcessedCount = 0;
-      latestCycle.googleSyncCompleted = false;
+      console.log(`Reset ${resetResult.modifiedCount} catalogue entries to googleSynced: false`);
+      
+      // Refetch the cycle to get updated values
+      const refreshedCycle = await CatalogueCycle.findById(latestCycle._id).lean();
+      Object.assign(latestCycle, refreshedCycle);
     }
 
     // 4. Iterate through unsynced catalogue entries in batches until time budget exhausted
     let lastId = latestCycle.googleSyncLastId; // resume point
+    console.log(`Starting sync from lastId: ${lastId || 'beginning'}, forceResync: ${forceResync}`);
     let processedThisRun = 0;
     let results = [];
     const startTime = Date.now();
     const maxProcessingTime = 4.5 * 60 * 1000; // 4.5 minutes within 5m limit
     let exhausted = false;
     let totalSynced = 0;
+
+    // Debug: Count total entries and unsynced entries in this cycle
+    const totalEntriesInCycle = await Catalogue.countDocuments({ cycleId: latestCycle._id, processed: true });
+    const unsyncedEntriesInCycle = await Catalogue.countDocuments({ cycleId: latestCycle._id, processed: true, googleSynced: false });
+    const inStockEntries = await Catalogue.countDocuments({ cycleId: latestCycle._id, processed: true, 'feedData.availability': 'in stock' });
+    
+    // Also count unsynced entries AFTER the lastId pointer
+    let unsyncedAfterPointer = unsyncedEntriesInCycle;
+    if (lastId) {
+      unsyncedAfterPointer = await Catalogue.countDocuments({ 
+        cycleId: latestCycle._id, 
+        processed: true, 
+        googleSynced: false,
+        _id: { $gt: lastId }
+      });
+    }
+
+    // If no unsynced entries after the pointer, return early with debug info
+    if (unsyncedAfterPointer === 0) {
+      return NextResponse.json({
+        message: 'No unsynced products to sync',
+        debug: {
+          cycleId: latestCycle._id,
+          cycleStartedAt: latestCycle.startedAt,
+          totalEntriesInCycle,
+          unsyncedEntriesInCycle,
+          unsyncedAfterPointer,
+          inStockEntries,
+          googleSyncCompleted: latestCycle.googleSyncCompleted,
+          googleSyncLastId: latestCycle.googleSyncLastId ? latestCycle.googleSyncLastId.toString() : null,
+          hint: totalEntriesInCycle === 0 
+            ? 'No catalogue entries found. Run /api/cron/meta/generate-catalogue first.'
+            : unsyncedEntriesInCycle > 0 && unsyncedAfterPointer === 0
+              ? 'Entries exist but sync pointer is past them. Use ?forceResync=true to re-sync from beginning.'
+              : 'All entries already synced. Use ?forceResync=true to re-sync.',
+        },
+        timestamp: new Date().toISOString(),
+        success: true
+      }, { status: 200 });
+    }
 
     while (Date.now() - startTime < maxProcessingTime) {
       const query = {
@@ -129,6 +176,8 @@ export async function GET(request) {
             totalSynced++;
           }
         } catch (insertError) {
+          const errorMsg = insertError?.message || String(insertError);
+          console.error(`[Sync Error] Product ${offerId}: ${errorMsg.substring(0, 200)}`);
           if (!useMerchantApi && insertError.code === 409) {
             try {
               await contentApi.products.update({
@@ -171,8 +220,16 @@ export async function GET(request) {
   // 8. Return comprehensive summary
   const successfulSyncs = results.filter(r => r.status === 'Inserted' || r.status === 'Updated').length;
   const failedSyncs = results.filter(r => r.status.startsWith('Failed') || r.status === 'Failed').length;
+  
+  // Get sample errors for debugging (first 5 unique errors)
+  const failedResults = results.filter(r => r.error);
+  const uniqueErrors = [...new Set(failedResults.map(r => r.error))].slice(0, 5);
+  const sampleFailures = failedResults.slice(0, 3).map(r => ({ offerId: r.offerId, error: r.error }));
 
     console.info(`Sync completed: ${successfulSyncs} successful, ${failedSyncs} failed`);
+    if (uniqueErrors.length > 0) {
+      console.error('Sample errors:', uniqueErrors);
+    }
 
     return NextResponse.json({
       message: 'Google Merchant sync completed',
@@ -186,6 +243,10 @@ export async function GET(request) {
         batchSize: BATCH_SIZE,
         exhausted,
         forceResync: forceResync || false,
+        ...(failedSyncs > 0 && {
+          sampleFailures,
+          uniqueErrors,
+        }),
       },
       timestamp: new Date().toISOString(),
       success: true
