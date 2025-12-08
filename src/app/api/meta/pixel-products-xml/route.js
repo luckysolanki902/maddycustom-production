@@ -2,6 +2,7 @@
 
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Catalogue from '@/models/meta/Catalogue';
+import CatalogueCycle from '@/models/meta/CatalogueCycle';
 import { NextResponse } from 'next/server';
 import { create } from 'xmlbuilder2';
 
@@ -17,8 +18,18 @@ export async function GET() {
     // Establish a connection to the database
     await connectToDatabase();
 
-    // Fetch only catalogue entries that are in stock
+    // Get the latest completed catalogue cycle
+    const latestCycle = await CatalogueCycle.findOne({ 
+      status: 'completed' 
+    }).sort({ startedAt: -1 }).lean();
+
+    if (!latestCycle) {
+      return new NextResponse('No completed catalogue cycle found.', { status: 400 });
+    }
+
+    // Fetch only catalogue entries from the latest cycle that are in stock
     const catalogueEntries = await Catalogue.find({ 
+      cycleId: latestCycle._id,
       processed: true,
       'feedData.availability': 'in stock'
     }).lean();
@@ -75,6 +86,7 @@ export async function GET() {
       status: 200,
       headers: {
         'Content-Type': 'application/rss+xml',
+        'X-Catalogue-Cycle-ID': latestCycle._id.toString(),
         'X-Total-Products': xmlProducts.length.toString(),
         'X-Generated-At': new Date().toISOString(),
         // Removed 'Content-Disposition' to allow direct fetching by Facebook
