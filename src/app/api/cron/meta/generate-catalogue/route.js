@@ -97,30 +97,41 @@ export async function GET() {
           // Check if category is available
           const isCategoryAvailable = availableCategoryIdSet.has(product.specificCategory.toString());
           
-          // Check if product and its variant are both available
+          // Check if variant is available
           const isVariantAvailable = !product.specificCategoryVariant || 
             availableVariantIdSet.has(product.specificCategoryVariant._id?.toString());
           
+          // Check if product itself is available
+          const isProductAvailable = product.available !== false;
+          
+          // SKIP entirely if category, variant, OR product is unavailable
+          // Don't create catalogue entry at all - these products shouldn't appear in feeds
+          if (!isCategoryAvailable || !isVariantAvailable || !isProductAvailable) {
+            // Skip this product entirely - it's discontinued/unavailable
+            processedInThisCycle++;
+            continue;
+          }
+          
+          // At this point: category, variant, and product are ALL available
           // Get inventory mode for this category (on-demand or inventory)
           const inventoryMode = categoryInventoryModeMap.get(product.specificCategory.toString()) || 'on-demand';
           
           // Determine if product is in stock based on inventory mode
-          let isInStock = true;
+          let isInStock = true; // Default: in stock for on-demand
           if (inventoryMode === 'inventory') {
             // For inventory-based categories, check availableQuantity
             const availableQty = product.inventoryData?.availableQuantity;
+            // Only mark as out of stock if inventory tracking shows 0 or less
             if (typeof availableQty === 'number' && availableQty <= 0) {
               isInStock = false;
             }
           }
-          // For on-demand categories, isInStock stays true (always in stock if available)
-          
-          // Final availability: product available AND category available AND variant available AND in stock
-          const isProductFullyAvailable = product.available && isCategoryAvailable && isVariantAvailable && isInStock;
+          // For on-demand categories, isInStock stays true (always in stock when available)
 
           if (shouldUpdate) {
             // Create/update main product catalogue entry
-            const feedData = createFeedData(product, isProductFullyAvailable);
+            // isInStock is already determined based on inventoryMode
+            const feedData = createFeedData(product, isInStock);
             
             await Catalogue.findOneAndUpdate(
               {
@@ -161,7 +172,9 @@ export async function GET() {
               }
 
               // Determine option availability based on inventory mode
-              let isOptionInStock = true;
+              // Since we already checked product/category/variant availability above,
+              // we know the product is available. Now just check option inventory.
+              let isOptionInStock = true; // Default: in stock for on-demand
               if (inventoryMode === 'inventory') {
                 // For inventory-based categories, check option's availableQuantity
                 const optionAvailableQty = option.inventoryData?.availableQuantity;
@@ -169,11 +182,10 @@ export async function GET() {
                   isOptionInStock = false;
                 }
               }
-              // Option is fully available if product/category/variant are available AND option is in stock
-              const isOptionFullyAvailable = product.available && isCategoryAvailable && isVariantAvailable && isOptionInStock;
+              // For on-demand: isOptionInStock stays true (always in stock)
 
               if (shouldUpdateOption) {
-                const optionFeedData = createFeedDataForOption(product, option, isOptionFullyAvailable);
+                const optionFeedData = createFeedDataForOption(product, option, isOptionInStock);
                 
                 await Catalogue.findOneAndUpdate(
                   {
@@ -283,16 +295,17 @@ function createFeedData(product, isAvailable = true) {
     description = product.specificCategoryVariant.productDescription.replace('{uniqueName}', product.name);
   }
 
-  // Determine google product category (basic mapping similar to sync route)
-  let googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories';
+  // Determine google product category using valid Google taxonomy IDs
+  // See: https://support.google.com/merchants/answer/6324436
+  // Using numeric IDs as recommended by Google
+  let googleProductCategory = '5613'; // Vehicles & Parts > Vehicle Parts & Accessories (default)
+  
   if (product.category === 'Wraps') {
-    if (product.subCategory === 'Car Wraps') {
-      googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories > Motor Vehicle Exterior Accessories';
-    } else if (product.subCategory === 'Bike Wraps') {
-      googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories > Motor Vehicle Exterior Accessories';
-    }
+    // Vehicle Wraps: ID 8202 = Vehicles & Parts > Vehicle Parts & Accessories > Vehicle Maintenance, Care & Decor > Vehicle Decor > Vehicle Wraps
+    googleProductCategory = '8202';
   } else if (product.category === 'Accessories') {
-    googleProductCategory = 'Vehicles & Parts > Vehicle Parts & Accessories > Motor Vehicle Interior Accessories';
+    // Interior fittings: ID 8233 = Vehicles & Parts > Vehicle Parts & Accessories > Motor Vehicle Parts > Motor Vehicle Interior Fittings
+    googleProductCategory = '8233';
   }
 
   const feedData = {
@@ -361,6 +374,14 @@ function createFeedDataForOption(product, option, isAvailable = true) {
     description += ` (${optionValues})`;
   }
 
+  // Determine google product category using valid Google taxonomy IDs (same as base product)
+  let googleProductCategory = '5613'; // Vehicles & Parts > Vehicle Parts & Accessories (default)
+  if (product.category === 'Wraps') {
+    googleProductCategory = '8202'; // Vehicle Wraps
+  } else if (product.category === 'Accessories') {
+    googleProductCategory = '8233'; // Motor Vehicle Interior Fittings
+  }
+
   const feedData = {
     id: `${product._id}-${option._id}`,
     title: optionTitle.substring(0, 150),
@@ -375,7 +396,7 @@ function createFeedDataForOption(product, option, isAvailable = true) {
     link: `${baseUrl}/shop${product.pageSlug}`,
     image_link: imageUrl,
     brand: 'Maddy Custom',
-    google_product_category: undefined, // inherit from base product if needed during sync
+    google_product_category: googleProductCategory,
     additional_image_links: [],
     custom_attributes: [
       { name: 'category', value: product.category },
