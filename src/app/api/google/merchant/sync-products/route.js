@@ -9,13 +9,17 @@ import { insertOrUpdateProductInput } from '@/lib/merchant/googleMerchantApi';
 
 export const maxDuration = 300; // 5 minutes in seconds
 
-export async function GET() {
+export async function GET(request) {
   try {
+    // Check for force resync query param
+    const { searchParams } = new URL(request.url);
+    const forceResync = searchParams.get('forceResync') === 'true';
+
     // 1. Connect to database
     await connectToDatabase();
 
     // 2. Initialize API client(s)
-  const useMerchantApi =true;
+  const useMerchantApi = true;
     let contentApi = null;
     if (!useMerchantApi) {
       contentApi = initializeContentApi();
@@ -32,6 +36,24 @@ export async function GET() {
         success: false,
         message: 'No completed catalogue cycle found. Run catalogue generation first.'
       }, { status: 400 });
+    }
+
+    // If force resync, reset the google sync progress for this cycle
+    if (forceResync) {
+      await CatalogueCycle.updateOne({ _id: latestCycle._id }, {
+        googleSyncLastId: null,
+        googleSyncProcessedCount: 0,
+        googleSyncCompleted: false
+      });
+      // Reset googleSynced flag for all entries in this cycle
+      await Catalogue.updateMany(
+        { cycleId: latestCycle._id },
+        { googleSynced: false }
+      );
+      // Refresh the cycle data
+      latestCycle.googleSyncLastId = null;
+      latestCycle.googleSyncProcessedCount = 0;
+      latestCycle.googleSyncCompleted = false;
     }
 
     // 4. Iterate through unsynced catalogue entries in batches until time budget exhausted
@@ -155,14 +177,15 @@ export async function GET() {
     return NextResponse.json({
       message: 'Google Merchant sync completed',
       summary: {
-  cycleId: latestCycle._id,
-  processedThisRun: results.length,
-  totalSynced: totalSynced,
+        cycleId: latestCycle._id,
+        processedThisRun: results.length,
+        totalSynced: totalSynced,
         successfulSyncs: successfulSyncs,
         failedSyncs: failedSyncs,
         processingTimeMs: Date.now() - startTime,
-  batchSize: BATCH_SIZE,
-  exhausted
+        batchSize: BATCH_SIZE,
+        exhausted,
+        forceResync: forceResync || false,
       },
       timestamp: new Date().toISOString(),
       success: true
