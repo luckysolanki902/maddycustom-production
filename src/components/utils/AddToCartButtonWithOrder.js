@@ -105,7 +105,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
   
   // --- INVENTORY / STOCK MANAGEMENT ---
   // Use shared utility for robust stock logic
-  const { outOfStock } = getStockStatus(product);
+  const { outOfStock } = getStockStatus(product, product.selectedOption);
   const inventoryData = product.inventoryData || (product.selectedOption && product.selectedOption.inventoryData) || null;
   let maxAllowed = Infinity;
   let isLimited = false;
