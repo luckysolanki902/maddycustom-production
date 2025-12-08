@@ -4,7 +4,6 @@
 // Implements productInputs.insert (and patch fallback) via REST calls because official googleapis client may lag.
 
 const { google } = require('googleapis');
-const fetch = require('node-fetch');
 
 const MERCHANT_BASE = 'https://merchantapi.googleapis.com';
 
@@ -75,27 +74,27 @@ async function insertOrUpdateProductInput(merchantAccountId, merchantProduct, op
   const productInput = mapToProductInput(merchantProduct, options);
   const token = await getAccessToken();
 
-  const url = `${MERCHANT_BASE}/products/v1/${parent}/productInputs:insert`;
+  const url = `${MERCHANT_BASE}/products/v1beta/${parent}/productInputs:insert?dataSource=accounts/${merchantAccountId}/dataSources/primaryProductDataSource`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ productInput })
+    body: JSON.stringify(productInput)
   });
 
   if (res.status === 409) {
     // Conflict (already exists) -> patch
-    const name = `accounts/${merchantAccountId}/productInputs/${productInput.channel}/${productInput.contentLanguage}/${productInput.feedLabel}/${productInput.offerId}`;
-    const patchUrl = `${MERCHANT_BASE}/products/v1/${name}`;
+    const name = `accounts/${merchantAccountId}/productInputs/${productInput.channel}~${productInput.contentLanguage}~${productInput.feedLabel}~${productInput.offerId}`;
+    const patchUrl = `${MERCHANT_BASE}/products/v1beta/${name}`;
     const patchRes = await fetch(patchUrl, {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ productInput })
+      body: JSON.stringify(productInput)
     });
     if (!patchRes.ok) {
       const txt = await patchRes.text();
