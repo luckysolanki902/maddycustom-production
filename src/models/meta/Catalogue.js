@@ -59,6 +59,12 @@ const CatalogueSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  // TTL field - documents will be automatically deleted 1 week after creation
+  expiresAt: {
+    type: Date,
+    default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
+    index: { expires: 0 }, // TTL index - MongoDB will delete when expiresAt is reached
+  },
 }, { timestamps: true });
 
 // Optimize queries selecting unsynced entries in a cycle
