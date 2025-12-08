@@ -36,11 +36,13 @@ export async function GET() {
       await currentCycle.save();
     }
 
-    // 4. Get ALL specific category IDs and track which are available
-    const allSpecificCategories = await SpecificCategory.find({}).select('_id available').lean();
+    // 4. Get ALL specific categories with available and inventoryMode fields
+    const allSpecificCategories = await SpecificCategory.find({}).select('_id available inventoryMode').lean();
     const availableCategoryIds = allSpecificCategories.filter(cat => cat.available).map(cat => cat._id);
     const allCategoryIds = allSpecificCategories.map(cat => cat._id);
     const availableCategoryIdSet = new Set(availableCategoryIds.map(id => id.toString()));
+    // Map categoryId -> inventoryMode for quick lookup
+    const categoryInventoryModeMap = new Map(allSpecificCategories.map(cat => [cat._id.toString(), cat.inventoryMode || 'on-demand']));
 
     // 5. Get products that need updating (batch processing for performance)
     const batchSize = 50; // Process 50 products at a time
@@ -62,6 +64,7 @@ export async function GET() {
         specificCategory: { $in: allCategoryIds },
       })
         .populate('specificCategoryVariant')
+        .populate('inventoryData')
         .skip(currentIndex)
         .limit(batchSize)
         .lean();
@@ -97,7 +100,23 @@ export async function GET() {
           // Check if product and its variant are both available
           const isVariantAvailable = !product.specificCategoryVariant || 
             availableVariantIdSet.has(product.specificCategoryVariant._id?.toString());
-          const isProductFullyAvailable = product.available && isCategoryAvailable && isVariantAvailable;
+          
+          // Get inventory mode for this category (on-demand or inventory)
+          const inventoryMode = categoryInventoryModeMap.get(product.specificCategory.toString()) || 'on-demand';
+          
+          // Determine if product is in stock based on inventory mode
+          let isInStock = true;
+          if (inventoryMode === 'inventory') {
+            // For inventory-based categories, check availableQuantity
+            const availableQty = product.inventoryData?.availableQuantity;
+            if (typeof availableQty === 'number' && availableQty <= 0) {
+              isInStock = false;
+            }
+          }
+          // For on-demand categories, isInStock stays true (always in stock if available)
+          
+          // Final availability: product available AND category available AND variant available AND in stock
+          const isProductFullyAvailable = product.available && isCategoryAvailable && isVariantAvailable && isInStock;
 
           if (shouldUpdate) {
             // Create/update main product catalogue entry
@@ -123,7 +142,7 @@ export async function GET() {
 
           // Process product options if they exist
           if (product.optionsAvailable) {
-            const options = await Option.find({ product: product._id }).lean();
+            const options = await Option.find({ product: product._id }).populate('inventoryData').lean();
             
             for (const option of options) {
               const existingOptionEntry = await Catalogue.findOne({
@@ -141,8 +160,20 @@ export async function GET() {
                 shouldUpdateOption = optionUpdateDate > lastFetchDate || productUpdateDate > lastFetchDate;
               }
 
+              // Determine option availability based on inventory mode
+              let isOptionInStock = true;
+              if (inventoryMode === 'inventory') {
+                // For inventory-based categories, check option's availableQuantity
+                const optionAvailableQty = option.inventoryData?.availableQuantity;
+                if (typeof optionAvailableQty === 'number' && optionAvailableQty <= 0) {
+                  isOptionInStock = false;
+                }
+              }
+              // Option is fully available if product/category/variant are available AND option is in stock
+              const isOptionFullyAvailable = product.available && isCategoryAvailable && isVariantAvailable && isOptionInStock;
+
               if (shouldUpdateOption) {
-                const optionFeedData = createFeedDataForOption(product, option, isProductFullyAvailable);
+                const optionFeedData = createFeedDataForOption(product, option, isOptionFullyAvailable);
                 
                 await Catalogue.findOneAndUpdate(
                   {

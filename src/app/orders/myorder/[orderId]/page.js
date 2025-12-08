@@ -10,6 +10,7 @@ import PurchasedProductSlider from '@/components/page-sections/orderSuccess/Purc
 import OrderDetails from '@/components/page-sections/orderSuccess/OrderDetails';
 import CommunityCard from '@/components/page-sections/orderSuccess/CommunityCard';
 import OrderSuccessTracker from '@/components/analytics/OrderSuccessTracker';
+import GoogleCustomerReviews from '@/components/analytics/GoogleCustomerReviews';
 
 const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
 
@@ -154,9 +155,21 @@ export default async function OrderPage({ params }) {
     _orderSource: ord._id // Track which order this item belongs to
   })));
 
+  // Extract customer email for Google Customer Reviews
+  const customerEmail = order.user?.email || null;
+  // Estimate delivery date (7 days from order creation)
+  const estimatedDeliveryDate = new Date(order.createdAt);
+  estimatedDeliveryDate.setDate(estimatedDeliveryDate.getDate() + 7);
+
   return (
     <Box className={styles.main}>
       <OrderSuccessTracker trackingData={trackingData} />
+      <GoogleCustomerReviews
+        orderId={orderId}
+        email={customerEmail}
+        countryCode="IN"
+        estimatedDeliveryDate={estimatedDeliveryDate}
+      />
       {/* Header Section */}
       <Box className={styles.header}>
         <div style={{ backgroundColor: 'black' }}>
