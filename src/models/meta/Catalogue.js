@@ -63,5 +63,7 @@ const CatalogueSchema = new mongoose.Schema({
 
 // Optimize queries selecting unsynced entries in a cycle
 CatalogueSchema.index({ cycleId: 1, processed: 1, googleSynced: 1 });
+// Index for filtering by availability in XML feed
+CatalogueSchema.index({ processed: 1, 'feedData.availability': 1 });
 
 export default mongoose.models.Catalogue || mongoose.model('Catalogue', CatalogueSchema);

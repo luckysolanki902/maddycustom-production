@@ -2,14 +2,13 @@
 
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Catalogue from '@/models/meta/Catalogue';
-import CatalogueCycle from '@/models/meta/CatalogueCycle';
 import { NextResponse } from 'next/server';
 import { create } from 'xmlbuilder2';
 
 /**
  * GET /api/meta/pixel-products-xml
  * 
- * Retrieves products from the latest completed catalogue cycle,
+ * Retrieves only available (in stock) products from the latest completed catalogue cycle,
  * transforms the data into XML format as per Facebook's RSS XML specifications,
  * and returns it as an XML response.
  */
@@ -18,23 +17,14 @@ export async function GET() {
     // Establish a connection to the database
     await connectToDatabase();
 
-    // Get the latest completed catalogue cycle
-    const latestCycle = await CatalogueCycle.findOne({ 
-      status: 'completed' 
-    }).sort({ startedAt: -1 });
-
-    if (!latestCycle) {
-      return new NextResponse('No completed catalogue cycle found. Please run the catalogue generation first.', { status: 400 });
-    }
-
-    // Fetch catalogue entries from the latest completed cycle
+    // Fetch only catalogue entries that are in stock
     const catalogueEntries = await Catalogue.find({ 
-      cycleId: latestCycle._id,
-      processed: true 
+      processed: true,
+      'feedData.availability': 'in stock'
     }).lean();
 
     if (catalogueEntries.length === 0) {
-      return new NextResponse('No processed catalogue entries found in the latest cycle.', { status: 400 });
+      return new NextResponse('No available catalogue entries found.', { status: 400 });
     }
 
     // Transform the catalogue feed data to XML products
@@ -85,7 +75,6 @@ export async function GET() {
       status: 200,
       headers: {
         'Content-Type': 'application/rss+xml',
-        'X-Catalogue-Cycle-ID': latestCycle._id.toString(),
         'X-Total-Products': xmlProducts.length.toString(),
         'X-Generated-At': new Date().toISOString(),
         // Removed 'Content-Disposition' to allow direct fetching by Facebook

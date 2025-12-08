@@ -3,6 +3,7 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
 import Product from '@/models/Product';
 import Option from '@/models/Option';
+import User from '@/models/User';
 
 export async function GET(request, { params }) {
   const { orderId } = await params; // Retrieve orderId from params
@@ -16,6 +17,11 @@ export async function GET(request, { params }) {
     await connectToDatabase();
 
     const order = await Order.findById(orderId)
+      .populate({
+        path: 'user',
+        model: 'User',
+        select: 'email',
+      })
       .populate({
         path: 'items.product',
         model: 'Product',
