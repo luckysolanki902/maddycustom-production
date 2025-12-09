@@ -4,6 +4,7 @@ import { createMetadata } from '@/lib/metadata/create-metadata';
 import styles from './refunds.module.css';
 import SecurityIcon from '@mui/icons-material/Security';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 
 export async function generateMetadata() {
     return createMetadata({
@@ -39,23 +40,54 @@ const RefundsAndReplacementsPage = () => {
           <p className={styles.policyIntro}>At MaddyCustom, we stand behind the quality of our products and the experience we deliver. This policy outlines how we support you in cases of damage, size mismatch, or logistics needs.</p>
         </header>
 
+        {/* Return Policy Summary for Google Merchant Center compliance */}
+        <section className={styles.returnSummary} aria-label="Return Policy Summary">
+          <h2 className={styles.returnSummaryTitle}>Return Policy (India)</h2>
+          <div className={styles.returnSummaryGrid}>
+            <div className={styles.returnSummaryItem}>
+              <strong>Return Window:</strong> 3 days from delivery
+            </div>
+            <div className={styles.returnSummaryItem}>
+              <strong>Return/Replacement Fee:</strong> ₹100 (flat restocking fee)
+            </div>
+            <div className={styles.returnSummaryItem}>
+              <strong>Return Method:</strong> By mail / courier pickup
+            </div>
+            <div className={styles.returnSummaryItem}>
+              <strong>Refund Processing:</strong> Within 10 business days
+            </div>
+          </div>
+          <p className={styles.returnSummaryNote}>
+            <strong>Note:</strong> Custom/personalized products are eligible for returns only if they arrive damaged or defective. Standard (non-custom) products can be returned for any reason within the return window.
+          </p>
+        </section>
+
         <section className={styles.grid} aria-label="Policy Sections">
           <PolicyCard
             title="Damaged Product Protection"
             icon={<SecurityIcon fontSize="inherit" />}
             items={[
               'If your order arrives damaged, we will replace it at no additional cost to you.',
-              'Report the issue within 48 hours of delivery with clear photos of the product and packaging.',
+              'Report the issue within 3 days of delivery with clear photos of the product and packaging.',
               'Once verified by our quality team, we dispatch a replacement within 2-3 business days.'
             ]}
           />
           <PolicyCard
-            title="Size Mismatch Policy"
+            title="Size Mismatch / Exchange Policy"
             icon={<SwapHorizIcon fontSize="inherit" />}
             items={[
               'If an incorrect size is received, we provide a hassle-free replacement.',
-              <>A minimal reshipping charge of <span>₹100</span> applies to cover logistics.</>,
+              'A restocking fee of ₹100 applies to cover logistics and handling.',
               'Requests must be made within 3 days of delivery. The original product must be unused and in pristine condition.'
+            ]}
+          />
+          <PolicyCard
+            title="How Returns Work"
+            icon={<LocalShippingIcon fontSize="inherit" />}
+            items={[
+              'Contact us within 3 days of delivery to initiate a return request.',
+              'We will arrange a courier pickup from your address (by mail). A ₹100 restocking fee applies.',
+              'Once we receive and inspect the returned item, your refund will be processed within 10 business days.'
             ]}
           />
         </section>
