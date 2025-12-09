@@ -42,6 +42,62 @@
     margin: 0 auto;
 }
 
+/* Return Policy Summary - Google Merchant Center compliance */
+.returnSummary {
+    background: linear-gradient(150deg, #f8f9fa, #ffffff);
+    border: 2px solid #2d2d2d;
+    padding: 2rem 2.5rem;
+    margin-bottom: 3rem;
+    box-shadow: 0 4px 20px -8px rgba(0, 0, 0, .12);
+}
+
+.returnSummaryTitle {
+    font-family: 'Krona One', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #2d2d2d;
+    margin: 0 0 1.5rem;
+    letter-spacing: .03em;
+}
+
+.returnSummaryGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.returnSummaryItem {
+    font-family: 'Jost', sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #2d2d2d;
+    padding: 0.75rem 1rem;
+    background: #fff;
+    border-left: 3px solid #2d2d2d;
+}
+
+.returnSummaryItem strong {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: #1a1a1a;
+}
+
+.returnSummaryNote {
+    font-family: 'Jost', sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #4a4a4a;
+    margin: 0;
+    padding-top: 1rem;
+    border-top: 1px solid #e3e3e3;
+}
+
+.returnSummaryNote strong {
+    color: #2d2d2d;
+}
+
 .grid {
     display: grid;
     gap: 2.5rem;
