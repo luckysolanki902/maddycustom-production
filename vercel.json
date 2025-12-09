@@ -18,7 +18,7 @@
     },
     {
       "path": "/api/google/merchant/sync-products",
-      "schedule": "0 * * * *"
+      "schedule": "0 */1 * * *"
     },
     {
       "path": "/api/cron/meta/cleanup-old-catalogues",
