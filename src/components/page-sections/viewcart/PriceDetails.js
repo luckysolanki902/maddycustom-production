@@ -77,7 +77,7 @@ const PriceDetails = ({
           <div className={styles.couponLeft}>
             <LocalOfferOutlinedIcon className={hasCoupon ? styles.couponIconGreen : styles.couponIcon} />
             <span className={hasCoupon ? styles.couponTextGreen : styles.couponText}>
-              {hasCoupon ? `${couponState.couponName} applied` : 'See all available coupons'}
+              {hasCoupon ? `${couponState.couponName} applied` : 'Apply coupons'}
             </span>
           </div>
           {hasCoupon ? (
