@@ -20,6 +20,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { usePathname, useRouter } from "next/navigation";
 import funnelClient from '@/lib/analytics/funnelClient';
+import { useSelector } from 'react-redux';
 
 // Define the links in one place
 const categories = [
@@ -50,16 +51,23 @@ const usefulLinks = [
   { href: "/contact-us", label: "Contact Us" },
 ];
 
-const Footer = () => {
+const MAPS_URL = "https://www.google.com/maps/place/Maddy+Custom/@26.8033211,80.8977335,15z/data=!3m1!4b1!4m6!3m5!1s0x399bfd95dee6ba27:0xbc08f60a46635e84!8m2!3d26.8010803!4d80.9116381!16s%2Fg%2F11jz2q73s6?entry=ttu&g_ep=EgoyMDI1MTAwMS4wIKXMDSoASAFQAw%3D%3D";
+
+const Footer = ({ showHappyCustomersInBrandStrip = false, forceRender = false }) => {
   const baseImageUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
   const isMobile = useMediaQuery("(max-width:600px)");
   const pathname = usePathname();
   const router = useRouter();
+  const isCartDrawerOpen = useSelector((s) => s.ui?.isCartDrawerOpen);
 
   // Subscription state
   const [phoneNumber, setPhoneNumber] = useState("");
   const [subscriptionMessage, setSubscriptionMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // When the cart drawer is open, render this footer only if explicitly forced.
+  // This prevents the global footer (in layout) from duplicating behind the drawer.
+  const shouldHideBecauseCartDrawerOpen = isCartDrawerOpen && !forceRender;
 
   const handleSubscribe = async (e) => {
     e.preventDefault();
@@ -177,6 +185,10 @@ const Footer = () => {
     </div>
   );
 
+  if (shouldHideBecauseCartDrawerOpen) {
+    return null;
+  }
+
   if (pathname === "/viewcart") {
     return null;
   } else {
@@ -185,7 +197,12 @@ const Footer = () => {
         {/* Full-width brand strip */}
         <div className={styles.brandStrip}>
           <div className={styles.brandStripInner}>
-            <span className={styles.brandStripText}>THE BRAND OF INDIAN CAR CULTURE</span>
+            <div className={styles.brandStripTextWrap}>
+              <span className={styles.brandStripText}>THE BRAND OF INDIAN CAR CULTURE</span>
+              {showHappyCustomersInBrandStrip && (
+                <span className={styles.brandStripSubText}>10,000+ happy customers</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -286,7 +303,7 @@ const Footer = () => {
             {isMobile && (
               <Link
                 style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}
-                href=""
+                href={MAPS_URL}
               >
                 <LocationOnIcon
                   sx={{

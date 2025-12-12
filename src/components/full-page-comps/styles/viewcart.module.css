@@ -121,8 +121,8 @@
 .appliedCouponBanner {
   background-color: #ffffff;
   border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 16px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
   border: 1px solid #e6fff0;
@@ -144,8 +144,8 @@
 
 .successIconContainer {
   background-color: #e6fff0;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -156,13 +156,18 @@
 
 .successIcon {
   color: #1bde6a;
-  font-size: 28px !important;
+  font-size: 22px !important;
 }
 
 .appliedCouponContent {
   display: flex;
   flex-direction: column;
   z-index: 1;
+}
+
+.appliedCouponContentOneLine {
+  flex-direction: row;
+  align-items: center;
 }
 
 .appliedCouponHeading {
@@ -175,6 +180,7 @@
 .appliedCouponText {
   font-size: 14px;
   color: #4a4a4a;
+  line-height: 1.2;
 }
 
 /* Available coupon banner */

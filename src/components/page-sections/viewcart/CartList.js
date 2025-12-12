@@ -10,9 +10,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
-import VerifiedIcon from '@mui/icons-material/Verified';
-import LocalShippingIcon from '@mui/icons-material/LocalShipping';
-import PaymentIcon from '@mui/icons-material/Payment';
 import { updateQuantity } from '@/store/slices/cartSlice';
 import funnelClient from '@/lib/analytics/funnelClient';
 // Lazy load add-ons slider to avoid impacting cart TTI
@@ -237,42 +234,6 @@ const CartItem = ({ item, onRemove, readonly = false, cartSnapshot }) => {
   );
 };
 
-export const ProductSpecifications = () => {
-  return (
-    <motion.div 
-      className={styles.specContainer}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-    >
-      <h4 className={styles.specTitle}>Why Customers Choose Us</h4>
-      <div className={styles.specItems}>
-        <div className={styles.specItem}>
-          <div className={styles.specIcon}>
-            <VerifiedIcon fontSize="small" />
-          </div>
-          <h5 className={styles.specName}>Premium Quality</h5>
-          <p className={styles.specDescription}>Crafted with the finest materials</p>
-        </div>
-        <div className={styles.specItem}>
-          <div className={styles.specIcon}>
-            <LocalShippingIcon fontSize="small" />
-          </div>
-          <h5 className={styles.specName}>Fast Delivery</h5>
-          <p className={styles.specDescription}>Shipping nationwide</p>
-        </div>
-        <div className={styles.specItem}>
-          <div className={styles.specIcon}>
-            <PaymentIcon fontSize="small" />
-          </div>
-          <h5 className={styles.specName}>Secure Payment</h5>
-          <p className={styles.specDescription}>100% safe transactions</p>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
 export default function CartList({ cartItems, onRemove, readonly = false, sectionTitle = null, sectionNote = null, showSpecs = false }) {
   const showFuelCapAddOns = !readonly; // further conditions can be added (e.g., only if cart not empty)
 
@@ -329,9 +290,6 @@ export default function CartList({ cartItems, onRemove, readonly = false, sectio
           <FuelCapWrapAddOns similarityContext={similarityContext} />
         </div>
       )}
-      
-      {/* Add the specifications section only when explicitly requested */}
-      {showSpecs && cartItems.length > 0 && !readonly && <ProductSpecifications />}
     </div>
   );
 }

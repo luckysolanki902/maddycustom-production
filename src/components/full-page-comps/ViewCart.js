@@ -22,17 +22,16 @@ import { MAX_ORDER_VALUE_FOR_COD } from '@/lib/constants/payments';
 import styles from './styles/viewcart.module.css';
 import cartListStyles from '../page-sections/viewcart/styles/cartlist.module.css';
 import ViewCartHeader from '../page-sections/viewcart/ViewCartHeader';
-import CartList, { ProductSpecifications } from '../page-sections/viewcart/CartList';
+import CartList from '../page-sections/viewcart/CartList';
 import PriceDetails from '../page-sections/viewcart/PriceDetails';
 import PaymentModes from '../page-sections/viewcart/PaymentModes';
-import Footer from '../page-sections/viewcart/Footer';
+import CheckoutFooter from '../page-sections/viewcart/Footer';
+import ViewCartDialogFooter from '../page-sections/viewcart/ViewCartDialogFooter';
 import ApplyCoupon from '../dialogs/ApplyCoupon';
 import OrderForm from '../dialogs/OrderForm';
 import MinimumCartDialog from '../dialogs/MinimumCartDialog';
 import FuelCapWrapBonusDialog from '../dialogs/FuelCapWrapBonusDialog';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
-import CustomerPhotosSlider from '@/components/page-sections/homepage/CustomerPhotosSlider';
-import { fetchDisplayAssets } from '@/lib/utils/fetchutils';
 import {
   calculateTotalQuantity,
   calculateTotalCostBeforeDiscount,
@@ -735,52 +734,6 @@ export default function ViewCart({ isDrawer = false }) {
     }
   }, [checkoutAwaitingReady, prefetchStatus, totalPay, minPurchaseAmt, inventoryGate?.excludedKeys, inventoryGate?.itemsInfo, cartItems, couponState.couponName]);
 
-  /* ---------- memo for suggestions (unchanged) ---------------------- */
-  // Fetch display assets for Customer Photos slider once (via dedicated API; with client cache + fallbacks)
-  const [customerPhotoAssets, setCustomerPhotoAssets] = useState([]);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const cacheKey = 'mc:customerPhotos:viewcart';
-        const cacheTtl = 60 * 60 * 1000; // 1h
-        try {
-          const raw = localStorage.getItem(cacheKey);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed?.ts && Date.now() - parsed.ts < cacheTtl && Array.isArray(parsed.assets) && parsed.assets.length > 0) {
-              setCustomerPhotoAssets(parsed.assets);
-              return;
-            }
-          }
-        } catch {}
-
-        const tryFetch = async (pageName) => {
-          const params = new URLSearchParams({ limit: '20' });
-          if (pageName) params.set('page', pageName);
-          const resp = await fetch(`/api/display-assets/customer-photos?${params.toString()}`);
-          if (!resp.ok) return [];
-          const data = await resp.json();
-          return Array.isArray(data.assets) ? data.assets : [];
-        };
-
-        // Fallback order: viewcart -> homepage -> no page
-        let assets = await tryFetch('viewcart');
-        if (!assets.length) assets = await tryFetch('homepage');
-        if (!assets.length) assets = await tryFetch(null);
-
-        if (!cancelled) setCustomerPhotoAssets(assets);
-        // Cache only non-empty results for 1h; avoid caching empty to allow future updates
-        if (assets.length > 0) {
-          try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), assets })); } catch {}
-        }
-      } catch (e) {
-        if (!cancelled) setCustomerPhotoAssets([]);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
   const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 ? 99 : 0);
 
   /* -------------------  JSX (UI with fixes)  ------------------------- */
@@ -843,8 +796,6 @@ export default function ViewCart({ isDrawer = false }) {
                   />
                 </div>
               )}
-              {/* Place ProductSpecifications at the end of the cart section */}
-              {availableItems.length > 0 && <ProductSpecifications />}
             </section>
 
             <section className={styles.detailsSection}>
@@ -958,15 +909,14 @@ export default function ViewCart({ isDrawer = false }) {
                     >
                       <CheckCircleIcon className={styles.successIcon} />
                     </motion.div>
-                    <div className={styles.appliedCouponContent}>
-                      <span className={styles.appliedCouponHeading}>Discount Applied!</span>
+                    <div className={`${styles.appliedCouponContent} ${styles.appliedCouponContentOneLine}`}>
                       <motion.span
                         className={styles.appliedCouponText}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1, transition: { delay: 0.3 } }}
                       >
                         {couponState.couponName === 'MATS150' && couponState.discountType === 'bundle'
-                          ? <>Launch Deal Unlocked: <strong>₹{couponState.couponDiscount}</strong> on Your Car Floor Mats!</>
+                          ? <>You saved <strong>₹{couponState.couponDiscount}</strong> on Car Floor Mats</>
                           : <>You saved <strong>₹{couponState.couponDiscount}</strong>{' '}
                             {couponState.discountType === 'bundle'
                               ? 'on your bundle'
@@ -1069,13 +1019,7 @@ export default function ViewCart({ isDrawer = false }) {
               />
             </section>
 
-            {/* Recommended Products */}
-            {customerPhotoAssets.length > 0 && (
-              <section className={styles.recommendedSection}>
-                <h2 className={styles.recommendedTitle}>How others personalized</h2>
-                <CustomerPhotosSlider assets={customerPhotoAssets} />
-              </section>
-            )}
+            <ViewCartDialogFooter />
           </motion.div>
         ) : (
           <motion.div
@@ -1111,7 +1055,7 @@ export default function ViewCart({ isDrawer = false }) {
           animate={{ y: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
-          <Footer
+          <CheckoutFooter
             totalCost={totalPay}
             originalTotal={originalTotal}
             onCheckout={handleCheckout}

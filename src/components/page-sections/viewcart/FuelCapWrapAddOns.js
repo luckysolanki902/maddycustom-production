@@ -270,8 +270,8 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
   }
 
   return (
-  <Box sx={{ mt: 4, position: 'relative' }}>
-  <Typography variant="h6" sx={{ mb: .5, fontFamily: 'Jost, sans-serif', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', scrollMarginTop: '80px' }}>
+  <Box sx={{ mt: 2, position: 'relative' }}>
+  <Typography variant="subtitle1" sx={{ mb: .25, fontFamily: 'Jost, sans-serif', fontWeight: 600, display: 'flex', alignItems: 'center', gap: .75, flexWrap: 'wrap', scrollMarginTop: '80px' }}>
         Finish Your Setup — Fuel Cap Wraps
         {!mappingConfirmed && (
           <Button size="small" variant="outlined" onClick={openMapping} sx={{ textTransform: 'none', borderRadius: '1rem', lineHeight: 1.1 }}>Choose Type</Button>
@@ -283,7 +283,7 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
           </>
         )}
       </Typography>
-      <Typography variant="caption" sx={{ mb: 1.5, color: '#555', display: 'block' }}>
+      <Typography variant="caption" sx={{ mb: .75, color: '#555', display: 'block' }}>
         {mappingConfirmed ? `These match your ${firstCartItemName} design ✓` : 'Pick your shape & fuel type to tailor suggestions.'}
       </Typography>
 
@@ -293,21 +293,30 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
           ref={sliderRef}
             sx={{
             display: 'flex',
-            gap: '0.9rem',
+            gap: '0.65rem',
             overflowX: 'auto',
             scrollSnapType: 'x mandatory',
-            py: 1,
-            px: .5,
+            py: .5,
+            px: .25,
             scrollbarWidth: 'none',
             '&::-webkit-scrollbar': { display: 'none' }
           }}
         >
-          {flatProducts.map(p => (
-            <Card key={p._id} variant="outlined" sx={{ flex: '0 0 180px', scrollSnapAlign: 'start', borderRadius: '0.9rem', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ width: '100%', aspectRatio: '1 / 1', background: '#f5f5f5', overflow: 'hidden' }}>
-                {p.images && p.images[0] && (
+          {flatProducts.map(p => {
+            const rawFirstImage = Array.isArray(p.images) ? p.images[0] : null;
+            const firstImage = typeof rawFirstImage === 'string' ? rawFirstImage.trim() : '';
+            const firstImageSrc = firstImage
+              ? (firstImage.startsWith('http')
+                ? firstImage
+                : (process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '') + (firstImage.startsWith('/') ? firstImage : '/' + firstImage))
+              : '';
+
+            return (
+            <Card key={p._id} variant="outlined" sx={{ flex: '0 0 150px', scrollSnapAlign: 'start', borderRadius: '0.8rem', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ width: '100%', aspectRatio: '4 / 3', background: '#f5f5f5', overflow: 'hidden' }}>
+                {firstImageSrc && (
                   <Image
-                    src={p.images[0].startsWith('http') ? p.images[0] : (process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '') + (p.images[0].startsWith('/') ? p.images[0] : '/' + p.images[0])}
+                    src={firstImageSrc}
                     alt={p.name}
                     width={512}
                     height={512}
@@ -315,8 +324,8 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
                   />
                 )}
               </Box>
-              <CardContent sx={{ p: 1.1, display: 'flex', flexDirection: 'column', gap: '.35rem', flexGrow: 1 }}>
-                <Typography variant="subtitle2" title={p.name} sx={{ lineHeight: 1.15, fontSize: '.8rem', fontWeight: 500 }}>
+              <CardContent sx={{ p: .75, display: 'flex', flexDirection: 'column', gap: '.25rem', flexGrow: 1 }}>
+                <Typography variant="subtitle2" title={p.name} sx={{ lineHeight: 1.15, fontSize: '.75rem', fontWeight: 500 }}>
                   {p.name}
                 </Typography>
                 <Typography variant="caption" sx={{ fontWeight: 600 }}>₹{p.price}</Typography>
@@ -341,7 +350,8 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
                 </Box>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
           {!loading && flatProducts.length === 0 && (
             <Box sx={{ flex: '0 0 80%', textAlign: 'center', py: 4 }}>
               <Typography variant="body2" sx={{ color: '#666' }}>No add‑ons yet. Check back soon.</Typography>

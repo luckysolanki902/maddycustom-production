@@ -13,11 +13,27 @@
   align-items:center;
   justify-content:center;
 }
+
+.brandStripTextWrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+}
 .brandStripText{
   color:#fff;
   letter-spacing:.18em;
   font-weight:700;
   font-size:.9rem;
+  text-transform:uppercase;
+}
+
+.brandStripSubText{
+  color:#fff;
+  font-weight:600;
+  font-size:.8rem;
+  letter-spacing:.08em;
   text-transform:uppercase;
 }
 @media (width < 400px){

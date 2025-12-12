@@ -187,7 +187,7 @@
 
 /* Savings Row - Minimal inline */
 .savingsRow {
-  text-align: center;
+  text-align: left;
   padding: 10px 0 4px;
 }
 
@@ -201,7 +201,7 @@
 .toggleBtn {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 4px;
   width: 100%;
   background: none;
