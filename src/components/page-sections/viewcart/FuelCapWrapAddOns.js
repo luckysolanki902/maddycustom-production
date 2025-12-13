@@ -5,13 +5,11 @@
  * First add-to-cart is intercepted to ensure letter-mapping confirmation.
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Box, Typography, Button, Card, CardContent, IconButton, Fade, Chip, Tooltip } from '@mui/material';
+import { Box, Typography, Button, Chip } from '@mui/material';
 import AddToCartButton from '@/components/utils/AddToCartButton';
 import LetterMappingPopup from '@/components/dialogs/LetterMappingPopup';
 import funnelClient from '@/lib/analytics/funnelClient';
 import Image from 'next/image';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useDispatch, useSelector } from 'react-redux';
 import { setPreferredVariant } from '@/store/slices/variantPreferenceSlice';
 
@@ -270,106 +268,181 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
   }
 
   return (
-  <Box sx={{ mt: 2, position: 'relative' }}>
-  <Typography variant="subtitle1" sx={{ mb: .25, fontFamily: 'Jost, sans-serif', fontWeight: 600, display: 'flex', alignItems: 'center', gap: .75, flexWrap: 'wrap', scrollMarginTop: '80px' }}>
-        Finish Your Setup — Fuel Cap Wraps
-        {!mappingConfirmed && (
-          <Button size="small" variant="outlined" onClick={openMapping} sx={{ textTransform: 'none', borderRadius: '1rem', lineHeight: 1.1 }}>Choose Type</Button>
-        )}
-        {mappingConfirmed && (
+    <Box sx={{ mt: 1.5, mb: 1 }}>
+      {/* Minimal header with variant selector */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5, flexWrap: 'wrap' }}>
+        <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#2d2d2d' }}>
+          Add a matching fuel cap wrap
+        </Typography>
+        {!mappingConfirmed ? (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={openMapping}
+            sx={{ 
+              textTransform: 'none', 
+              fontSize: '0.7rem', 
+              py: 0.25, 
+              px: 1, 
+              borderRadius: '12px',
+              borderColor: '#2d2d2d',
+              color: '#2d2d2d',
+              '&:hover': { borderColor: '#000', background: 'rgba(0,0,0,0.04)' }
+            }}
+          >
+            Choose Type
+          </Button>
+        ) : (
           <>
-            <Tooltip title={variantCode}><Chip size="small" label={readableVariant} /></Tooltip>
-            <Button size="small" variant="text" onClick={openMapping} sx={{ textTransform: 'none' }}>Change</Button>
+            <Chip 
+              size="small" 
+              label={readableVariant} 
+              sx={{ height: '20px', fontSize: '0.65rem', fontWeight: 500 }} 
+            />
+            <Button 
+              size="small" 
+              onClick={openMapping} 
+              sx={{ textTransform: 'none', fontSize: '0.65rem', p: 0, minWidth: 'auto', color: '#6b7280' }}
+            >
+              Change
+            </Button>
           </>
         )}
-      </Typography>
-      <Typography variant="caption" sx={{ mb: .75, color: '#555', display: 'block' }}>
-        {mappingConfirmed ? `These match your ${firstCartItemName} design ✓` : 'Pick your shape & fuel type to tailor suggestions.'}
-      </Typography>
+      </Box>
 
-      {/* Slider wrapper */}
-      <Box sx={{ position: 'relative' }}>
-        <Box
-          ref={sliderRef}
-            sx={{
-            display: 'flex',
-            gap: '0.65rem',
-            overflowX: 'auto',
-            scrollSnapType: 'x mandatory',
-            py: .5,
-            px: .25,
-            scrollbarWidth: 'none',
-            '&::-webkit-scrollbar': { display: 'none' }
-          }}
-        >
-          {flatProducts.map(p => {
-            const rawFirstImage = Array.isArray(p.images) ? p.images[0] : null;
-            const firstImage = typeof rawFirstImage === 'string' ? rawFirstImage.trim() : '';
-            const firstImageSrc = firstImage
-              ? (firstImage.startsWith('http')
-                ? firstImage
-                : (process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '') + (firstImage.startsWith('/') ? firstImage : '/' + firstImage))
-              : '';
+      {/* Horizontal scroll - 2.2 cards visible */}
+      <Box
+        ref={sliderRef}
+        sx={{
+          display: 'flex',
+          gap: '10px',
+          overflowX: 'auto',
+          scrollSnapType: 'x mandatory',
+          pb: 0.5,
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' }
+        }}
+      >
+        {flatProducts.map((p, idx) => {
+          const rawFirstImage = Array.isArray(p.images) ? p.images[0] : null;
+          const firstImage = typeof rawFirstImage === 'string' ? rawFirstImage.trim() : '';
+          const firstImageSrc = firstImage
+            ? (firstImage.startsWith('http')
+              ? firstImage
+              : (process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '') + (firstImage.startsWith('/') ? firstImage : '/' + firstImage))
+            : '';
+          const isBestMatch = idx === 0;
 
-            return (
-            <Card key={p._id} variant="outlined" sx={{ flex: '0 0 150px', scrollSnapAlign: 'start', borderRadius: '0.8rem', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ width: '100%', aspectRatio: '4 / 3', background: '#f5f5f5', overflow: 'hidden' }}>
+          return (
+            <Box
+              key={p._id}
+              sx={{
+                flex: '0 0 130px',
+                scrollSnapAlign: 'start',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                background: '#f8f8f8',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              {/* Image */}
+              <Box sx={{ width: '100%', aspectRatio: '1 / 1', background: '#f8f8f8', overflow: 'hidden', position: 'relative' }}>
                 {firstImageSrc && (
                   <Image
                     src={firstImageSrc}
                     alt={p.name}
-                    width={512}
-                    height={512}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    fill
+                    sizes="130px"
+                    style={{ objectFit: 'cover' }}
                   />
                 )}
+                {/* Best match badge overlay */}
+                {isBestMatch && (
+                  <Box sx={{ position: 'absolute', top: 4, left: 4, background: '#2d2d2d', borderRadius: '4px', px: 0.5, py: 0.15 }}>
+                    <Typography sx={{ fontSize: '0.55rem', color: '#fff', fontWeight: 600 }}>Best match</Typography>
+                  </Box>
+                )}
               </Box>
-              <CardContent sx={{ p: .75, display: 'flex', flexDirection: 'column', gap: '.25rem', flexGrow: 1 }}>
-                <Typography variant="subtitle2" title={p.name} sx={{ lineHeight: 1.15, fontSize: '.75rem', fontWeight: 500 }}>
+
+              {/* Content - compact */}
+              <Box sx={{ p: '6px', display: 'flex', flexDirection: 'column', gap: '1px', background: '#fff' }}>
+                {/* Name - 1 line */}
+                <Typography
+                  sx={{
+                    fontSize: '0.7rem',
+                    fontWeight: 500,
+                    color: '#2d2d2d',
+                    lineHeight: 1.2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={p.name}
+                >
                   {p.name}
                 </Typography>
-                <Typography variant="caption" sx={{ fontWeight: 600 }}>₹{p.price}</Typography>
-                <Box sx={{ mt: 'auto' }}>
+
+                {/* Price */}
+                <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: '#2d2d2d' }}>
+                  ₹{p.price}
+                </Typography>
+
+                {/* Add button */}
+                <Box sx={{ mt: '2px' }}>
                   {mappingConfirmed ? (
-                    <AddToCartButton 
+                    <AddToCartButton
                       product={{
                         ...p,
                         selectedOption: Array.isArray(p.options) && p.options.length > 0 ? p.options[0] : null,
-                      }} 
-                      isBlackButton 
-                      smaller 
-                      fuelAddonStyle 
-                      insertionDetails={{ component: 'FuelCapWrapAddOns', source: 'cart_addons', pageType: 'viewcart' }} 
-                      hideRecommendationPopup 
-                      disableRecommendationTrigger 
-                      disableNotifyMe 
+                      }}
+                      isBlackButton
+                      smaller
+                      fuelAddonStyle
+                      insertionDetails={{ component: 'FuelCapWrapAddOns', source: 'cart_addons', pageType: 'viewcart' }}
+                      hideRecommendationPopup
+                      disableRecommendationTrigger
+                      disableNotifyMe
+                      customLabel="+ Add"
+                      customAddedLabel="✓ Added"
                     />
                   ) : (
-                    <Button variant="contained" size="small" onClick={openMapping} sx={{ textTransform: 'none', background: '#000', fontSize: '.65rem', borderRadius: '0.65rem', '&:hover': { background: '#222' } }}>Add</Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={openMapping}
+                      sx={{
+                        width: '100%',
+                        textTransform: 'none',
+                        background: '#2d2d2d',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        py: 0.5,
+                        borderRadius: '6px',
+                        '&:hover': { background: '#1a1a1a' }
+                      }}
+                    >
+                      + Add
+                    </Button>
                   )}
                 </Box>
-              </CardContent>
-            </Card>
-            );
-          })}
-          {!loading && flatProducts.length === 0 && (
-            <Box sx={{ flex: '0 0 80%', textAlign: 'center', py: 4 }}>
-              <Typography variant="body2" sx={{ color: '#666' }}>No add‑ons yet. Check back soon.</Typography>
+              </Box>
             </Box>
-          )}
-          {/* Sentinel for infinite load */}
-          {hasMore && <Box ref={loadMoreRef} sx={{ flex: '0 0 1px', alignSelf: 'stretch' }} />}
-        </Box>
-      </Box>
+          );
+        })}
 
-
-
-      <Box sx={{ mt: 1, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-        {!mappingConfirmed && (
-          <Typography variant="caption" sx={{ color: '#555' }}>Select your variant to enable Add to Cart.</Typography>
+        {/* Empty state */}
+        {!loading && flatProducts.length === 0 && (
+          <Box sx={{ flex: '0 0 100%', textAlign: 'center', py: 2 }}>
+            <Typography sx={{ fontSize: '0.75rem', color: '#9ca3af' }}>No matching wraps available</Typography>
+          </Box>
         )}
 
+        {/* Sentinel for infinite load */}
+        {hasMore && <Box ref={loadMoreRef} sx={{ flex: '0 0 1px', alignSelf: 'stretch' }} />}
       </Box>
+
+      {/* Mapping popup - only shown when needed */}
       <LetterMappingPopup
         open={showMapping}
         onClose={() => setShowMapping(false)}
