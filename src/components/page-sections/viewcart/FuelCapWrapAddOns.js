@@ -358,11 +358,11 @@ export default function FuelCapWrapAddOns({ initialVariantCode = 'FCP', pageSize
                   />
                 )}
                 {/* Best match badge overlay */}
-                {isBestMatch && (
+                {/* {isBestMatch && (
                   <Box sx={{ position: 'absolute', top: 4, left: 4, background: '#2d2d2d', borderRadius: '4px', px: 0.5, py: 0.15 }}>
                     <Typography sx={{ fontSize: '0.55rem', color: '#fff', fontWeight: 600 }}>Best match</Typography>
                   </Box>
-                )}
+                )} */}
               </Box>
 
               {/* Content - compact */}
