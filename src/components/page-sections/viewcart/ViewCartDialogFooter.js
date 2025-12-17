@@ -96,11 +96,11 @@ export default function ViewCartDialogFooter() {
           <div className={styles.partnerLogos}>
             <span className={styles.partnerLogoWrap}>
               <Image
-                src="/images/assets/partners/shiprocket.png"
+                src="/images/assets/partners/shiprocket_logo.png"
                 alt="Shiprocket"
                 fill
                 sizes="70px"
-                style={{ objectFit: 'contain' }}
+                style={{ objectFit: 'contain', transform: 'scale(1.1)' }}
               />
             </span>
           </div>
