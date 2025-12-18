@@ -1,50 +1,107 @@
-//@/lib/middleware/connectToDb
 import mongoose from 'mongoose';
 
 const { MONGODB_URI } = process.env;
 
 if (!MONGODB_URI) {
-  console.error('MONGODB_URI environment variable not defined.');
-  throw new Error('Please define the MONGODB_URI environment variable.');
+  throw new Error('Please define the MONGODB_URI environment variable');
 }
 
-// Global cache to prevent multiple connections in dev mode
-let cached = global.mongoose;
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
-}
-
-// Use a very small pool size to avoid too many connections per Lambda
-const options = {
-  bufferCommands: false,
-  maxPoolSize: 2,
-  minPoolSize: 0,
-  serverSelectionTimeoutMS: 10000,   // Fail fast if no server is found
-  socketTimeoutMS: 30000,          // Socket idle timeout
-  heartbeatFrequencyMS: 10000,     // Ping server every 10s
-  maxIdleTimeMS: 10000,            // Reap idle connections after 10s
-  waitQueueTimeoutMS: 15000,        // Time to wait in queue for a connection
+/**
+ * Global cache to survive hot reloads and warm lambdas
+ */
+global.mongooseCache = global.mongooseCache || {
+  conn: null,
+  promise: null,
 };
 
-async function connectToDatabase() {
-  // Return existing connection if stable
-  if (cached.conn && cached.conn.readyState === 1) {
+const cached = global.mongooseCache;
+
+/**
+ * Tuned for:
+ * - Next.js on Vercel (serverless)
+ * - MongoDB Atlas M2
+ * - Your observed traffic (~150 peak connections)
+ */
+const options = {
+  bufferCommands: false,
+
+  // Pooling — balanced choice for your usage
+  maxPoolSize: 3,
+  minPoolSize: 0,
+
+  // Timeouts
+  serverSelectionTimeoutMS: 8000,
+  connectTimeoutMS: 10000,
+  socketTimeoutMS: 25000,
+  waitQueueTimeoutMS: 10000,
+
+  // Lifecycle tuning
+  maxIdleTimeMS: 15000,
+  heartbeatFrequencyMS: 20000,
+
+  retryReads: true,
+  retryWrites: true,
+};
+
+/**
+ * Retry helper for connection only
+ */
+async function withRetry(fn, retries = 3, baseDelay = 100) {
+  let lastError;
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+
+      const retryable =
+        err?.name === 'MongoWaitQueueTimeoutError' ||
+        err?.name === 'MongoServerSelectionError' ||
+        err?.message?.includes('connection pool');
+
+      if (!retryable || attempt === retries - 1) {
+        throw err;
+      }
+
+      const delay = baseDelay * 2 ** attempt;
+      console.warn(
+        `MongoDB connect retry ${attempt + 1}/${retries} after ${delay}ms`
+      );
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+
+  throw lastError;
+}
+
+/**
+ * Main connect helper
+ */
+export default async function connectToDatabase() {
+  // Fast path: already connected
+  if (cached.conn?.connection?.readyState === 1) {
     return cached.conn;
   }
 
-  // If a connection is already in progress, await it
+  // Reset broken state
+  if (cached.conn && cached.conn.connection.readyState !== 1) {
+    cached.conn = null;
+    cached.promise = null;
+  }
+
+  // If a connection is already in progress, wait for it
   if (cached.promise) {
     cached.conn = await cached.promise;
     return cached.conn;
   }
 
-  // Create a new connection if none exist
-
-  cached.promise = mongoose.connect(MONGODB_URI, options).then((mongooseInstance) => {
-    return mongooseInstance;
-  }).catch(err => {
-    console.error(`MongoDB: Connection error - ${err.message}`);
+  // Create new connection (with retry)
+  cached.promise = withRetry(async () => {
+    return mongoose.connect(MONGODB_URI, options);
+  }).catch((err) => {
     cached.promise = null;
+    cached.conn = null;
     throw err;
   });
 
@@ -52,4 +109,4 @@ async function connectToDatabase() {
   return cached.conn;
 }
 
-export default connectToDatabase;
+export { withRetry };
