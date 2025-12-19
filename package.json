@@ -19,6 +19,7 @@
     "@mui/icons-material": "^6.1.5",
     "@mui/material": "^6.1.5",
     "@reduxjs/toolkit": "^2.3.0",
+    "@vercel/functions": "^3.3.4",
     "aws-sdk": "^2.1692.0",
     "axios": "^1.7.7",
     "blob-stream": "^0.1.3",
