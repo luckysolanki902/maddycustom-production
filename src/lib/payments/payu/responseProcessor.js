@@ -171,9 +171,10 @@ export async function processPayuGatewayResponse(payload, options = {}) {
   // Start transaction session
   const session = await mongoose.startSession();
   session.startTransaction();
+  let orders = [];
 
   try {
-    const orders = await Order.find({ 'paymentDetails.payuDetails.txnId': txnId }).session(session);
+    orders = await Order.find({ 'paymentDetails.payuDetails.txnId': txnId }).session(session);
     if (!orders || orders.length === 0) {
       logs.push(`[${timestampStr}] ❌ No orders found for txnId: ${txnId}`);
       await session.abortTransaction();
