@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { attachDatabasePool } from '@vercel/functions';
 
 const { MONGODB_URI } = process.env;
 
@@ -26,7 +27,7 @@ const options = {
   bufferCommands: false,
 
   // Pooling — balanced choice for your usage
-  maxPoolSize: 3,
+  maxPoolSize: 4,
   minPoolSize: 0,
 
   // Timeouts
@@ -98,7 +99,16 @@ export default async function connectToDatabase() {
 
   // Create new connection (with retry)
   cached.promise = withRetry(async () => {
-    return mongoose.connect(MONGODB_URI, options);
+    const mongooseInstance = await mongoose.connect(MONGODB_URI, options);
+
+    // Attach to Vercel Fluid Compute
+    try {
+      attachDatabasePool(mongooseInstance.connection.getClient());
+    } catch (e) {
+      // Safe to ignore locally
+    }
+
+    return mongooseInstance;
   }).catch((err) => {
     cached.promise = null;
     cached.conn = null;
