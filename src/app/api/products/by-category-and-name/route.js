@@ -9,6 +9,7 @@ export async function GET(request) {
     const searchParams = request.nextUrl.searchParams;
     const categoryId = searchParams.get('categoryId');
     const productName = searchParams.get('productName');
+    const variantCode = searchParams.get('variantCode'); // Optional filter by variant code
 
     if (!categoryId || !productName) {
       return NextResponse.json(
@@ -19,15 +20,26 @@ export async function GET(request) {
 
     await connectToDatabase();
 
-    // Find products by category and name (case-insensitive)
-    const products = await Product.find({
+    // Build query
+    const query = {
       specificCategory: categoryId,
       name: productName,
       available: true
-    })
+    };
+
+    // Find products by category and name (case-insensitive)
+    let products = await Product.find(query)
     .populate('specificCategory specificCategoryVariant inventoryData')
     .lean()
     .exec();
+
+    // Filter by variantCode if provided (after population)
+    if (variantCode) {
+      products = products.filter(product => {
+        const productVariantCode = product.specificCategoryVariant?.variantCode;
+        return productVariantCode && productVariantCode.toLowerCase() === variantCode.toLowerCase();
+      });
+    }
 
     const enhancedProducts = products.map(product => {
       const newProduct = {
