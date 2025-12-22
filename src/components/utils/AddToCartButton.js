@@ -824,22 +824,38 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick, in
   const [previewProduct, setPreviewProduct] = useState(null);
   const [isMappingFinalized, setIsMappingFinalized] = useState(false);
   const [finalSelections, setFinalSelections] = useState({});
+  const [selectedVariantCode, setSelectedVariantCode] = useState(null);
   const dispatch = useDispatch();
 
   // Check if category uses letter mapping
   useEffect(() => {
+    if (product.category?.useLetterMapping) {
+      setUseMapping(true);
+      setLetterMappingGroups(product.category.letterMappingGroups || []);
+    }
+  }, [product]);
+
+  // Fetch products filtered by selected variant code
+  useEffect(() => {
+    if (!selectedVariantCode) return;
+
     const fetchVariantProducts = async () => {
       setIsLoadingProducts(true);
       try {
-        // Fetch products for each variant category with inventory data
         const productName = product.name;
         const categoryId = product.specificCategory ?? product.category?._id;
 
+        // Fetch products filtered by variantCode like FuelCapWrapAddOns does
         const response = await fetch(
-          `/api/products/by-category-and-name?productName=${productName}&categoryId=${categoryId}&includeInventory=true`
+          `/api/products/by-category-and-name?productName=${productName}&categoryId=${categoryId}&variantCode=${selectedVariantCode}&includeInventory=true`
         );
         const data = await response.json();
-        setVariantProducts(data.products);
+        
+        setVariantProducts(data.products || []);
+        // Set preview to first product if available
+        if (data.products && data.products.length > 0) {
+          setPreviewProduct(data.products[0]);
+        }
       } catch (error) {
         console.error("Error fetching variant products:", error);
       } finally {
@@ -848,14 +864,9 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick, in
     };
 
     fetchVariantProducts();
+  }, [selectedVariantCode, product]);
 
-    if (product.category?.useLetterMapping) {
-      setUseMapping(true);
-      setLetterMappingGroups(product.category.letterMappingGroups || []);
-    }
-  }, [product, variants]);
-
-  // Handle letter-mapping changes
+  // Handle letter-mapping changes (live preview as user selects)
   const handleMappingChange = (groupName, letterCode) => {
     const newSelections = {
       ...mappingSelections,
@@ -863,7 +874,7 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick, in
     };
     setMappingSelections(newSelections);
 
-    // Check if all selections are made and find matching product
+    // Check if all selections are made
     let allSelectionsMade = true;
     let finalCode = product.category.specificCategoryCode || "";
 
@@ -876,19 +887,16 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick, in
       finalCode += chosenLetter;
     }
 
-
+    // If all selections made, update the selected variant code
     if (allSelectionsMade) {
-      // Find the matching product by variantCode
-      const matchingProduct = variantProducts.find(p =>
-        p.variantCode?.toLowerCase() === finalCode.toLowerCase()
-      );
-      setPreviewProduct(matchingProduct || null);
+      setSelectedVariantCode(finalCode);
     } else {
       setPreviewProduct(null);
+      setSelectedVariantCode(null);
     }
   };
 
-  // Build final variant code and navigate for letter-mapping
+  // Build final variant code and trigger product fetch
   const handleMappingSubmit = () => {
     const category = product.category;
     let finalCode = category.specificCategoryCode || "";
@@ -901,19 +909,19 @@ const VariantSelectionDialog = ({ variants, product, onClose, onVariantClick, in
       }
       finalCode += chosenLetter;
     }
+    
+    // Find matching variant from variants array
+    const matchedVariant = variants.find(v => v.variantCode?.toLowerCase() === finalCode.toLowerCase());
 
-    // Find the variant/product with the corresponding variant code
-    const matchedVariant = variants.find(variant => variant.variantCode?.toLowerCase() === finalCode.toLowerCase());
-    const matchedProduct = variantProducts.find(p => p.variant.variantCode?.toLowerCase() === finalCode.toLowerCase());
-
-    if (!matchedVariant || !matchedProduct) {
+    if (!matchedVariant) {
       alert("Variant not found for the selected options.");
       return;
     }
 
-    setPreviewProduct(matchedProduct);
+    // Update selected variant code - this will trigger product fetch
+    setSelectedVariantCode(matchedVariant.variantCode);
     setFinalSelections(mappingSelections);
-    setIsMappingFinalized(true); // Hide mapping UI and show preview card
+    setIsMappingFinalized(true);
   };
 
   const renderSelectedChips = () => (
@@ -1229,10 +1237,11 @@ const SimpleVariantCard = ({ variant, product, onClose, insertionDetails = {} })
   const infoLabel = infoText.includes(":") ? infoText.split(":")[0] : "";
   const infoValue = infoText.includes(":") ? infoText.split(":")[1] : infoText;
 
-  const variantImage = variant?.image
-    ? (variant.image.startsWith("/") ? baseImageUrl + variant.image : baseImageUrl + "/" + variant.image)
-    : (product?.images && product.images[0]
-      ? (product.images[0].startsWith("/") ? baseImageUrl + product.images[0] : baseImageUrl + "/" + product.images[0])
+  // Always use product images, not variant images
+  const variantImage = product?.images && product.images[0]
+    ? (product.images[0].startsWith("/") ? baseImageUrl + product.images[0] : baseImageUrl + "/" + product.images[0])
+    : (variant?.image
+      ? (variant.image.startsWith("/") ? baseImageUrl + variant.image : baseImageUrl + "/" + variant.image)
       : null);
 
   // Determine out-of-stock like ProductCard
