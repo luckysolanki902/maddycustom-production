@@ -16,6 +16,7 @@ import {
   setManualCoupon,
   resetAutoApplyDisabled,
 } from '@/store/slices/orderFormSlice';
+import CustomerPhotosSlider from '../page-sections/homepage/CustomerPhotosSlider';
 
 /* ---------------- UI + util imports (unchanged) ------------------- */
 import { MAX_ORDER_VALUE_FOR_COD } from '@/lib/constants/payments';
@@ -318,6 +319,53 @@ export default function ViewCart({ isDrawer = false }) {
       return sum;
     }, 0);
   }, [cartItems]);
+
+   // Fetch display assets for Customer Photos slider once (via dedicated API; with client cache + fallbacks)
+  const [customerPhotoAssets, setCustomerPhotoAssets] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const cacheKey = 'mc:customerPhotos:viewcart';
+        const cacheTtl = 60 * 60 * 1000; // 1h
+        try {
+          const raw = localStorage.getItem(cacheKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.ts && Date.now() - parsed.ts < cacheTtl && Array.isArray(parsed.assets) && parsed.assets.length > 0) {
+              setCustomerPhotoAssets(parsed.assets);
+              return;
+            }
+          }
+        } catch {}
+
+        const tryFetch = async (pageName) => {
+          const params = new URLSearchParams({ limit: '20' });
+          if (pageName) params.set('page', pageName);
+          const resp = await fetch(`/api/display-assets/customer-photos?${params.toString()}`);
+          if (!resp.ok) return [];
+          const data = await resp.json();
+          return Array.isArray(data.assets) ? data.assets : [];
+        };
+
+        // Fallback order: viewcart -> homepage -> no page
+        let assets = await tryFetch('viewcart');
+        if (!assets.length) assets = await tryFetch('homepage');
+        if (!assets.length) assets = await tryFetch(null);
+
+        if (!cancelled) setCustomerPhotoAssets(assets);
+        // Cache only non-empty results for 1h; avoid caching empty to allow future updates
+        if (assets.length > 0) {
+          try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), assets })); } catch {}
+        }
+      } catch (e) {
+        if (!cancelled) setCustomerPhotoAssets([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+
 
   useEffect(() => {
     if (fuelCapWrapQuantity >= 2) {
@@ -1018,7 +1066,7 @@ export default function ViewCart({ isDrawer = false }) {
                 totalAmount={totalPay}
               />
             </section>
-
+            <CustomerPhotosSlider assets={customerPhotoAssets} />
             <ViewCartDialogFooter />
           </motion.div>
         ) : (
