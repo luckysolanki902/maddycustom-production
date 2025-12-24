@@ -34,7 +34,13 @@ export default function ViewCartDialogFooter() {
         <div className={styles.logoSection}>
           <Image
             className={styles.logo}
-            src={`${baseImageUrl}/assets/logos/maddy_custom3_main_logo.png`}
+            src={(() => {
+              const now = new Date();
+              const month = now.getMonth();
+              const day = now.getDate();
+              const isChristmasSeason = (month === 11 && day >= 20) || (month === 0 && day <= 2);
+              return isChristmasSeason ? '/images/assets/logos/logo_christmas.png' : `${baseUrl}/assets/logos/maddy_custom3_main_logo.png`;
+            })()}
             alt="Maddy Custom"
             width={100}
             height={46}

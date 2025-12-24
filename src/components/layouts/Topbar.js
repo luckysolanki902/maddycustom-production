@@ -29,15 +29,15 @@ function B2BTopbar() {
   const router = useRouter();
   const pathname = usePathname();
   const selection = useReduxSelector(s => s.b2bSelection.items);
-  const dialogOpen = useReduxSelector(s=>s.b2bForm.dialogOpen);
+  const dialogOpen = useReduxSelector(s => s.b2bForm.dialogOpen);
   const totalQty = selection.reduce((a, i) => a + (i.quantity || 0), 0);
   const disabled = totalQty === 0;
   // Close dialog automatically on confirmation pages (prevents reopen due to persisted state)
-  React.useEffect(()=>{
-    if(pathname?.startsWith('/b2b/confirmation') && dialogOpen){
+  React.useEffect(() => {
+    if (pathname?.startsWith('/b2b/confirmation') && dialogOpen) {
       dispatch(setDialogOpen(false));
     }
-  },[pathname, dialogOpen, dispatch]);
+  }, [pathname, dialogOpen, dispatch]);
   const hideDialog = pathname?.startsWith('/b2b/confirmation');
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1 && !pathname.startsWith('/b2b')) {
@@ -54,14 +54,14 @@ function B2BTopbar() {
       <div className={styles.b2bLeftCluster}>
         <button
           type="button"
-            aria-label="Go back"
-            onClick={handleBack}
-            disabled={atB2BHome && (typeof window !== 'undefined' && window.history.length <= 1)}
-            className={`${styles.b2bBackBtn} ${(atB2BHome && (typeof window !== 'undefined' && window.history.length <= 1)) ? styles.b2bBackBtnDisabled : ''}`}
+          aria-label="Go back"
+          onClick={handleBack}
+          disabled={atB2BHome && (typeof window !== 'undefined' && window.history.length <= 1)}
+          className={`${styles.b2bBackBtn} ${(atB2BHome && (typeof window !== 'undefined' && window.history.length <= 1)) ? styles.b2bBackBtnDisabled : ''}`}
         >
           <ArrowBackIosNew fontSize="small" />
         </button>
-        <div className={styles.b2bLogoWrap} onClick={()=>router.push('/b2b')} title="B2B Home">
+        <div className={styles.b2bLogoWrap} onClick={() => router.push('/b2b')} title="B2B Home">
           <Image
             src={(process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL || '') + '/assets/logos/maddy_custom3_main_logo.png'}
             alt='maddycustom'
@@ -112,8 +112,8 @@ const Topbar = () => {
   // Create smooth animation - topbar slides out completely
   const animationProps = useSpring({
     transform: isHidden ? 'translateY(-100%)' : 'translateY(0%)',
-    config: { 
-      tension: 280, 
+    config: {
+      tension: 280,
       friction: 30,
       clamp: true // Prevents overshoot for crisp animation
     }
@@ -145,7 +145,13 @@ const Topbar = () => {
         <div className={styles.logo}>
           <Image
             className={styles.logoImg}
-            src={`${baseUrl}/assets/logos/maddy_custom3_main_logo.png`}
+            src={(() => {
+              const now = new Date();
+              const month = now.getMonth();
+              const day = now.getDate();
+              const isChristmasSeason = (month === 11 && day >= 20) || (month === 0 && day <= 2);
+              return isChristmasSeason ? '/images/assets/logos/logo_christmas.png' : `${baseUrl}/assets/logos/maddy_custom3_main_logo.png`;
+            })()}
             alt="maddylogo"
             title="maddylogo"
             width={150}
@@ -186,7 +192,7 @@ const Topbar = () => {
         )}
         {/* Desktop search box - hidden on mobile */}
         <div className={styles.searchBox}>
-          <Search className={styles.searchIcon}    onClick={() => dispatch(openSearchDialog())}/>          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          <Search className={styles.searchIcon} onClick={() => dispatch(openSearchDialog())} />          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
             {searchText === '' && (
               <div style={{
                 position: 'absolute',
