@@ -60,7 +60,7 @@ export default function Sidebar({ categories = [], variants = [] }) {
       anchor="left"
       open={isSidebarOpen}
       onClose={() => dispatch(closeSidebar())}
-      onOpen={() => {}}
+      onOpen={() => { }}
     >
       <Box
         sx={{
@@ -88,7 +88,13 @@ export default function Sidebar({ categories = [], variants = [] }) {
           onClick={() => router.push('/')}
         >
           <Image
-            src={`${baseUrl}/assets/logos/maddy_custom3_main_logo.png`}
+            src={(() => {
+              const now = new Date();
+              const month = now.getMonth();
+              const day = now.getDate();
+              const isChristmasSeason = (month === 11 && day >= 20) || (month === 0 && day <= 2);
+              return isChristmasSeason ? '/images/assets/logos/logo_christmas.png' : `${baseUrl}/assets/logos/maddy_custom3_main_logo.png`;
+            })()}
             alt="Maddy Logo"
             title="Maddy Logo"
             width={150}

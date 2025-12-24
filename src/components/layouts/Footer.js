@@ -116,8 +116,8 @@ const Footer = ({ showHappyCustomersInBrandStrip = false, forceRender = false })
             content_category: 'subscription',
             lead_type: 'footer_subscribe'
           });
-          try { gaGenerateLead({ value: 1, lead_type: 'footer_subscribe', content_category: 'subscription' }); } catch {}
-        } catch {}
+          try { gaGenerateLead({ value: 1, lead_type: 'footer_subscribe', content_category: 'subscription' }); } catch { }
+        } catch { }
       } else {
         setSubscriptionMessage("Subscription failed. Please try again.");
       }
@@ -214,7 +214,13 @@ const Footer = ({ showHappyCustomersInBrandStrip = false, forceRender = false })
                 <Image
                   onClick={() => router.push("/")}
                   className={styles.logoImg}
-                  src={`${baseImageUrl}/assets/logos/maddy_custom3_main_logo.png`}
+                  src={(() => {
+                    const now = new Date();
+                    const month = now.getMonth();
+                    const day = now.getDate();
+                    const isChristmasSeason = (month === 11 && day >= 20) || (month === 0 && day <= 2);
+                    return isChristmasSeason ? '/images/assets/logos/logo_christmas.png' : `${baseUrl}/assets/logos/maddy_custom3_main_logo.png`;
+                  })()}
                   alt="maddylogo"
                   title="maddylogo"
                   width={150}
