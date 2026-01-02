@@ -88,6 +88,16 @@ export async function GET(request) {
 
     // Combine the user's review with all approved reviews.
     let combined = [...allApproved];
+
+    // Sort: Reviews with images first, then by date
+    combined.sort((a, b) => {
+      const aHasImages = a.images && a.images.length > 0;
+      const bHasImages = b.images && b.images.length > 0;
+      if (aHasImages && !bHasImages) return -1;
+      if (!aHasImages && bHasImages) return 1;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
     if (userReview) {
       const foundIndex = combined.findIndex((r) => r._id.equals(userReview._id));
       if (foundIndex === -1) {

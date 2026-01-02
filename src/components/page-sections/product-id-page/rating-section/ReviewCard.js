@@ -4,13 +4,14 @@ import { Box, Typography, Avatar, Chip } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import PersonIcon from '@mui/icons-material/Person';
 
-const ReviewCard = ({ 
-  rating = 4, 
-  status = 'approved', 
-  name = 'Maddy Singh', 
-  comment = 'Awesome', 
-  date = '16/08/2025', 
-  fullWidth = false 
+const ReviewCard = ({
+  rating = 4,
+  status = 'approved',
+  name = 'Maddy Singh',
+  comment = 'Awesome',
+  date = '16/08/2025',
+  images = [],
+  fullWidth = false
 }) => {
   // Remove any leading CSS-like code from the comment
   let cleanComment = comment;
@@ -21,77 +22,53 @@ const ReviewCard = ({
   }
   // Also trim leading whitespace/semicolon
   cleanComment = cleanComment.replace(/^\s*;?/, "");
+
+  const imageBaseUrl = process.env.NEXT_PUBLIC_CLOUDFRONT_BASEURL;
+
   return (
     <Box sx={{
-      backgroundColor: "#fafafa",
-      borderRadius: "16px",
+      backgroundColor: "white",
+      borderRadius: "20px",
       padding: { xs: "1.5rem", md: "2rem" },
-      border: "1px solid rgba(45, 45, 45, 0.08)",
+      border: "1px solid rgba(45, 45, 45, 0.06)",
       transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
       position: "relative",
+      display: "flex",
+      flexDirection: "column",
+      gap: 2.5,
       "&:hover": {
-        boxShadow: "0 8px 32px rgba(45, 45, 45, 0.12)",
+        boxShadow: "0 12px 40px rgba(0, 0, 0, 0.04)",
         transform: "translateY(-2px)",
-        borderColor: "rgba(45, 45, 45, 0.15)",
+        borderColor: "rgba(45, 45, 45, 0.12)",
       }
     }}>
-      {/* Header with Rating and Date */}
-      <Box sx={{ 
-        display: "flex", 
-        justifyContent: "space-between", 
-        alignItems: "center",
-        marginBottom: 2
-      }}>
-        <Box sx={{ display: "flex", gap: 0.3 }}>
-          {[...Array(5)].map((_, index) => (
-            <StarIcon
-              key={index}
-              sx={{
-                fontSize: "1.2rem",
-                color: index < rating ? "#FFD700" : "rgba(45, 45, 45, 0.2)",
-                transition: "color 0.2s ease",
-              }}
-            />
-          ))}
-        </Box>
-        
-        <Typography sx={{
-          fontSize: "0.85rem",
-          color: "#666",
-          fontFamily: "Jost, sans-serif",
-          fontWeight: "400"
-        }}>
-          {date}
-        </Typography>
-      </Box>
-
       {/* User Info and Status */}
-      <Box sx={{ 
-        display: "flex", 
-        justifyContent: "space-between", 
+      <Box sx={{
+        display: "flex",
+        justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 1.5
       }}>
-        <Box sx={{ 
-          display: "flex", 
-          alignItems: "center", 
-          gap: 1.5
+        <Box sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 2
         }}>
           <Avatar sx={{
-            width: 48,
-            height: 48,
-            backgroundColor: "#2d2d2d",
-            color: "white",
-            fontSize: "1.2rem",
+            width: 44,
+            height: 44,
+            backgroundColor: "#f0f0f0",
+            color: "#2d2d2d",
+            fontSize: "1.1rem",
             fontFamily: "Jost, sans-serif",
-            fontWeight: "600"
+            fontWeight: "600",
+            border: "1px solid rgba(0,0,0,0.05)"
           }}>
             {name.charAt(0).toUpperCase()}
           </Avatar>
-          
+
           <Box>
             <Typography sx={{
-              fontSize: "1rem",
+              fontSize: "1.05rem",
               fontWeight: "600",
               color: "#2d2d2d",
               fontFamily: "Jost, sans-serif",
@@ -100,56 +77,88 @@ const ReviewCard = ({
               {name}
             </Typography>
             <Typography sx={{
-              fontSize: "0.85rem",
-              color: "#666",
+              fontSize: "0.8rem",
+              color: "#888",
               fontFamily: "Jost, sans-serif",
               fontWeight: "400"
             }}>
-              Verified Customer
+              Verified Buyer
             </Typography>
           </Box>
         </Box>
 
-        {/* Status Badge */}
-        {status !== 'approved' && (
-          <Chip
-            label={status.charAt(0).toUpperCase() + status.slice(1)}
-            size="small"
-            sx={{
-              backgroundColor: status === 'rejected' ? "#fee" : "#fef3cd",
-              color: status === 'rejected' ? "#dc3545" : "#856404",
-              fontFamily: "Jost, sans-serif",
-              fontWeight: "500",
-              fontSize: "0.75rem",
-              height: "24px"
-            }}
-          />
-        )}
+
       </Box>
 
+      {/* Review Images */}
+      {images && images.length > 0 && (
+        <Box sx={{
+          display: "flex",
+          gap: 2,
+          overflowX: "auto",
+          pb: 1,
+          "&::-webkit-scrollbar": { display: "none" }
+        }}>
+          {images.map((img, idx) => (
+            <Box
+              key={idx}
+              component="img"
+              src={img.startsWith('http') ? img : `${imageBaseUrl}/${img}`}
+              alt={`Review image ${idx + 1}`}
+              sx={{
+                width: { xs: "100%", sm: "280px", md: "320px" },
+                aspectRatio: "1/1",
+                objectFit: "cover",
+                borderRadius: "16px",
+                flexShrink: 0,
+                boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                border: "1px solid rgba(0,0,0,0.03)"
+              }}
+            />
+          ))}
+        </Box>
+      )}
+
       {/* Comment */}
-      <Typography sx={{
-        fontSize: "0.95rem",
-        color: "#444",
-        fontFamily: "Jost, sans-serif",
-        lineHeight: 1.6,
-        fontWeight: "400",
-        position: "relative",
-        paddingLeft: "1.2rem",
-        minHeight: "1.5em",
-        "&::before": cleanComment ? {
-          content: '"\\201C"', // Unicode left double quote
-          position: "absolute",
-          left: 0,
-          top: "-0.1rem",
-          fontSize: "1.5rem",
-          color: "#2d2d2d",
-          fontWeight: "700",
-          opacity: 0.18
-        } : undefined
-      }}>
-        {cleanComment}
-      </Typography>
+      <Box>
+
+        {/* <Typography sx={{
+          fontSize: "0.75rem",
+          color: "#aaa",
+          fontFamily: "Jost, sans-serif",
+          marginTop: 2,
+          fontWeight: "500",
+          textTransform: "uppercase",
+          letterSpacing: "0.05em"
+        }}>
+          Posted on {date}
+        </Typography> */}
+
+        {/* Rating */}
+        <Box sx={{ display: "flex", gap: 0.2 }}>
+          {[...Array(5)].map((_, index) => (
+            <StarIcon
+              key={index}
+              sx={{
+                fontSize: "1.1rem",
+                color: index < rating ? "#28a745" : "rgba(45, 45, 45, 0.1)",
+              }}
+            />
+          ))}
+        </Box>
+
+        <Typography sx={{
+          fontSize: "1rem",
+          color: "#444",
+          fontFamily: "Jost, sans-serif",
+          lineHeight: 1.7,
+          fontWeight: "400",
+          letterSpacing: "0.01em"
+        }}>
+          {cleanComment}
+        </Typography>
+
+      </Box>
     </Box>
   );
 };

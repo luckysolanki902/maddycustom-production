@@ -10,7 +10,6 @@ import {
   Pagination,
 } from "@mui/material";
 import RatingsOverview from "./rating-section/RatingsOverview";
-import CustomerPhotos from "./rating-section/CustomerPhotos";
 import ReviewCard from "./rating-section/ReviewCard";
 import PaymentShippingPoweredBy from "./rating-section/PaymentShippingPoweredBy";
 import ReviewDialog from "./rating-section/ReviewDialog";
@@ -269,22 +268,13 @@ export default function ReviewFullComp({
       {/* Ratings Overview Card */}
       <Box sx={{
         backgroundColor: "white",
-        borderRadius: "20px",
-        padding: { xs: "1.5rem", md: "2rem" },
+        borderRadius: "24px",
+        padding: { xs: "1.5rem 1rem", md: "3rem" },
         marginBottom: { xs: "2rem", md: "3rem" },
-        boxShadow: "0 8px 32px rgba(45, 45, 45, 0.08)",
-        border: "1px solid rgba(45, 45, 45, 0.05)",
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.04)",
+        border: "1px solid rgba(45, 45, 45, 0.06)",
         position: "relative",
         overflow: "hidden",
-        "&::before": {
-          content: '""',
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: "1px",
-          background: "linear-gradient(90deg, transparent 0%, #2d2d2d 50%, transparent 100%)",
-        }
       }}>
         <RatingsOverview
           averageRating={averageRating}
@@ -295,7 +285,7 @@ export default function ReviewFullComp({
       </Box>
 
       {/* Call-to-Action Section */}
-      <Box
+      {/* <Box
         id="reviews"
         sx={{
           textAlign: "center",
@@ -337,25 +327,7 @@ export default function ReviewFullComp({
         <PrimaryButton onClick={handleOpenReviewDialog}>
           Write a Review
         </PrimaryButton>
-      </Box>
-
-      {/* Customer Photos Section */}
-      <Box sx={{
-        backgroundColor: "white",
-        borderRadius: "20px",
-        padding: { xs: "1.5rem", md: "2rem" },
-        marginBottom: { xs: "2rem", md: "3rem" },
-        boxShadow: "0 8px 32px rgba(45, 45, 45, 0.08)",
-        border: "1px solid rgba(45, 45, 45, 0.05)",
-      }}>
-        <CustomerPhotos
-          fetchReviewSource={fetchReviewSource}
-          productId={productId}
-          variantId={variantId}
-          categoryId={categoryId}
-          userPhoneNumber={userPhoneNumber}
-        />
-      </Box>
+      </Box> */}
 
       {/* Trust Indicators */}
       <Box sx={{ 
@@ -368,11 +340,11 @@ export default function ReviewFullComp({
 
       {/* Recent Reviews Section */}
       <Box sx={{
-        backgroundColor: "white",
-        borderRadius: "20px",
-        padding: { xs: "1.5rem", md: "2rem" },
-        boxShadow: "0 8px 32px rgba(45, 45, 45, 0.08)",
-        border: "1px solid rgba(45, 45, 45, 0.05)",
+        // backgroundColor: "white",
+        // borderRadius: "20px",
+        // padding: { xs: "1.5rem", md: "2rem" },
+        // boxShadow: "0 8px 32px rgba(45, 45, 45, 0.08)",
+        // border: "1px solid rgba(45, 45, 45, 0.05)",
       }}>
         <Typography
           variant="h5"
@@ -396,18 +368,11 @@ export default function ReviewFullComp({
             </Typography>
           </Box>
         )}
-        {/* {error && (
-          <Box sx={{ textAlign: "center", padding: "2rem" }}>
-            <Typography sx={{ color: "#e53e3e", fontFamily: "Jost, sans-serif" }}>
-              {error}
-            </Typography>
-          </Box>
-        )} */}
 
         {/* Review List */}
         <Box sx={{ 
-          display: "flex", 
-          flexDirection: "column", 
+          display: "grid", 
+          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
           gap: { xs: "1rem", md: "1.5rem" } 
         }}>
           {reviews.map((review) => (
@@ -417,6 +382,7 @@ export default function ReviewFullComp({
               name={review.name}
               comment={review.comment}
               status={review.status}
+              images={review.images}
               date={new Date(review.createdAt).toLocaleDateString()}
             />
           ))}

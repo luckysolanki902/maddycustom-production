@@ -31,7 +31,7 @@ export default function StarDistribution({
   return (
     <Box sx={{ 
       width: "100%", 
-      maxWidth: "400px",
+      maxWidth: "450px",
       margin: { xs: "0 auto", md: "0" }
     }}>
       {starCounts.map(({ star, count }) => {
@@ -42,8 +42,8 @@ export default function StarDistribution({
             sx={{ 
               display: "flex", 
               alignItems: "center", 
-              gap: 2,
-              marginBottom: 1.5,
+              gap: { xs: 1, md: 2.5 },
+              marginBottom: { xs: 1, md: 1.8 },
               "&:last-child": { marginBottom: 0 }
             }}
           >
@@ -51,21 +51,21 @@ export default function StarDistribution({
             <Box sx={{ 
               display: "flex", 
               alignItems: "center", 
-              gap: 0.5,
-              minWidth: "60px",
+              gap: 0.3,
+              minWidth: { xs: "35px", md: "55px" },
               justifyContent: "flex-start"
             }}>
               <Typography sx={{
-                fontSize: "0.9rem",
-                fontWeight: "500",
+                fontSize: { xs: "0.8rem", md: "0.95rem" },
+                fontWeight: "600",
                 color: "#2d2d2d",
                 fontFamily: "Jost, sans-serif"
               }}>
                 {star}
               </Typography>
               <StarIcon sx={{ 
-                fontSize: "1rem", 
-                color: "#FFD700" 
+                fontSize: { xs: "0.85rem", md: "1.1rem" }, 
+                color: "#28a745" 
               }} />
             </Box>
 
@@ -73,19 +73,19 @@ export default function StarDistribution({
             <Box sx={{ 
               flex: 1, 
               position: "relative",
-              height: "8px"
+              height: { xs: "6px", md: "8px" }
             }}>
               <LinearProgress
                 variant="determinate"
                 value={percentage}
                 sx={{
-                  height: "8px",
+                  height: { xs: "6px", md: "8px" },
                   borderRadius: "4px",
-                  backgroundColor: "rgba(45, 45, 45, 0.08)",
+                  backgroundColor: "rgba(0, 0, 0, 0.04)",
                   "& .MuiLinearProgress-bar": {
-                    backgroundColor: "#2d2d2d",
+                    backgroundColor: "#28a745",
                     borderRadius: "4px",
-                    transition: "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+                    transition: "transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
                   },
                 }}
               />
@@ -93,11 +93,11 @@ export default function StarDistribution({
 
             {/* Count */}
             <Typography sx={{
-              fontSize: "0.9rem",
-              fontWeight: "600",
-              color: "#2d2d2d",
+              fontSize: { xs: "0.75rem", md: "0.9rem" },
+              fontWeight: "500",
+              color: "#888",
               fontFamily: "Jost, sans-serif",
-              minWidth: "40px",
+              minWidth: { xs: "25px", md: "35px" },
               textAlign: "right"
             }}>
               {count.toLocaleString()}

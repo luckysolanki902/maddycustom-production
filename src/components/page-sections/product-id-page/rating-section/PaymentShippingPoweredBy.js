@@ -53,10 +53,10 @@ const PaymentShippingPoweredBy = () => {
         marginBottom: 0.5,
         lineHeight: 1.3,
       }}>
-        Secure Payments & Reliable Shipping
+        Payment and shipping powered by
       </Typography>
       
-      <Typography sx={{
+      {/* <Typography sx={{
         fontSize: { xs: "0.85rem", md: "0.9rem" },
         fontWeight: "400",
         color: "#666",
@@ -65,7 +65,7 @@ const PaymentShippingPoweredBy = () => {
         lineHeight: 1.4,
       }}>
         Trusted by thousands of customers nationwide
-      </Typography>
+      </Typography> */}
 
       {/* Logos */}
       <Box sx={{
@@ -113,7 +113,7 @@ const PaymentShippingPoweredBy = () => {
       </Box>
 
       {/* Trust Indicators */}
-      <Box sx={{
+      {/* <Box sx={{
         display: "flex",
         gap: { xs: 1, md: 2 },
         marginTop: 2,
@@ -153,7 +153,7 @@ const PaymentShippingPoweredBy = () => {
         }}>
           24/7 Support
         </Typography>
-      </Box>
+      </Box> */}
     </Box>
   );
 };

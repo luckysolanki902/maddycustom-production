@@ -46,6 +46,7 @@
   background-color: #424242;
   color: #fff;
   padding: 40px 20px;
+  padding-bottom: 120px; /* Extra space for fixed bottom bars on mobile */
   font-family: "Roboto", sans-serif;
 }
 
