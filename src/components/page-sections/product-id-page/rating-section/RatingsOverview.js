@@ -22,13 +22,16 @@ export default function RatingsOverview({
   });
 
   const TrackProgress = styled(CircularProgress)(({ theme }) => ({
-    color: "rgba(45, 45, 45, 0.1)",
+    color: "rgba(40, 167, 69, 0.08)",
   }));
 
   const FilledProgress = styled(CircularProgress)(({ theme }) => ({
-    color: "#2d2d2d",
+    color: "#28a745",
     position: "absolute",
     left: 0,
+    "& .MuiCircularProgress-circle": {
+      strokeLinecap: "round",
+    },
   }));
 
   // Loading skeleton
@@ -86,37 +89,45 @@ export default function RatingsOverview({
   return (
     <Box sx={{ 
       display: "flex", 
-      flexDirection: { xs: "column", md: "row" },
-      gap: { xs: 3, md: 4 },
-      alignItems: "center"
+      flexDirection: "row",
+      gap: { xs: 2, sm: 6, md: 10 },
+      alignItems: "center",
+      justifyContent: "center",
+      width: "100%",
+      py: { xs: 1, md: 2 }
     }}>
       {/* Left - Circular Rating Display */}
       <Box sx={{ 
         display: "flex", 
         flexDirection: "column", 
         alignItems: "center",
-        flex: "0 0 auto"
+        flex: "0 0 auto",
       }}>
         <Box sx={{ 
           position: "relative",
-          padding: "1rem",
+          width: { xs: "105px", md: "165px" },
+          height: { xs: "105px", md: "165px" },
           borderRadius: "50%",
-          background: "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)",
-          boxShadow: "0 8px 32px rgba(45, 45, 45, 0.1)",
-          marginBottom: 2
+          background: "radial-gradient(circle, #ffffff 0%, #fcfcfc 100%)",
+          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.05), inset 0 0 0 1px rgba(0,0,0,0.02)",
+          border: "1px solid rgba(0,0,0,0.03)",
+          marginBottom: { xs: 1, md: 2 },
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
         }}>
           <CircularContainer>
             <TrackProgress
               variant="determinate"
               value={100}
-              size={isSmallDevice ? 120 : 160}
-              thickness={3}
+              size={isSmallDevice ? 85 : 135}
+              thickness={4.5}
             />
             <FilledProgress
               variant="determinate"
               value={progressValue}
-              size={isSmallDevice ? 120 : 160}
-              thickness={3}
+              size={isSmallDevice ? 85 : 135}
+              thickness={4.5}
             />
             <Box sx={{
               top: 0,
@@ -128,10 +139,9 @@ export default function RatingsOverview({
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              gap: 0.5
             }}>
               <Typography sx={{
-                fontSize: { xs: "2rem", md: "2.5rem" },
+                fontSize: { xs: "1.6rem", md: "2.5rem" },
                 fontWeight: "700",
                 color: "#2d2d2d",
                 fontFamily: "Jost, sans-serif",
@@ -139,49 +149,31 @@ export default function RatingsOverview({
               }}>
                 {averageRating.toFixed(1)}
               </Typography>
-              <Box sx={{ display: "flex", gap: 0.2 }}>
-                {[...Array(5)].map((_, index) => (
-                  <StarIcon
-                    key={index}
-                    sx={{
-                      fontSize: { xs: "0.8rem", md: "1rem" },
-                      color: index < Math.round(averageRating) ? "#FFD700" : "rgba(45, 45, 45, 0.2)",
-                    }}
-                  />
-                ))}
-              </Box>
             </Box>
           </CircularContainer>
         </Box>
         
         <Typography sx={{
-          fontSize: { xs: "0.9rem", md: "1rem" },
-          color: "#666",
+          fontSize: { xs: "0.8rem", md: "1rem" },
+          fontWeight: "600",
+          color: "#2d2d2d",
           fontFamily: "Jost, sans-serif",
-          textAlign: "center",
-          fontWeight: "500"
+          letterSpacing: "0.02em"
         }}>
-          Based on {totalReviews.toLocaleString()} reviews
+          {totalReviews} Reviews
         </Typography>
       </Box>
 
-      {/* Center Divider */}
-      <Divider 
-        orientation={isSmallDevice ? "horizontal" : "vertical"} 
-        flexItem 
-        sx={{ 
-          display: { xs: "none", md: "block" },
-          borderColor: "rgba(45, 45, 45, 0.1)",
-          margin: { xs: 0, md: "0 1rem" }
-        }} 
-      />
-
       {/* Right - Star Distribution */}
-      <Box sx={{ flex: 1, width: "100%" }}>
-        <StarDistribution
-          starCounts={starCounts}
-          totalReviews={totalReviews}
-          variant={variant}
+      <Box sx={{ 
+        flex: { xs: "1 1 auto", sm: "0 1 400px" }, 
+        width: "100%",
+        maxWidth: { xs: "220px", sm: "450px" }
+      }}>
+        <StarDistribution 
+          starCounts={starCounts} 
+          totalReviews={totalReviews} 
+          loading={loading}
         />
       </Box>
     </Box>

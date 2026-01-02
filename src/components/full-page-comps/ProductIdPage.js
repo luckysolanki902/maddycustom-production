@@ -189,7 +189,7 @@ export default function ProductIdPage({
       }
     }
   }, [options, selectedOption]);
-  useEffect(() => {}, []);
+  useEffect(() => { }, []);
   // Assistant context: product detail
   useEffect(() => {
     try {
@@ -222,7 +222,7 @@ export default function ProductIdPage({
 
   // --- MERGE IMAGES FROM DESCRIPTION TAB AND COMMON GALLERY ---
   const productImages = useMemo(() => product.images || [], [product.images]);
-  
+
   const descriptionImages = useMemo(() => {
     let images = [];
     if (category?.showDescriptionImagesInGallery) {
@@ -241,7 +241,7 @@ export default function ProductIdPage({
 
   // Get common gallery images from category
   const commonGalleryImages = useMemo(() => category?.commonGalleryImages || [], [category?.commonGalleryImages]);
-  
+
   // Robustly get common product card images from variant and category
   const variantCommonCardImages = useMemo(() => {
     try {
@@ -343,7 +343,7 @@ export default function ProductIdPage({
         }];
         const { gaViewItem } = require('@/lib/metadata/googleAds');
         gaViewItem({ value: product.price, items });
-      } catch {}
+      } catch { }
       try {
         const pagePath = typeof window !== 'undefined' ? window.location.pathname : pathname;
         funnelClient.track('view_product', {
@@ -392,16 +392,6 @@ export default function ProductIdPage({
     fetchSoldCount();
   }, [category?._id]);
 
-  const soldByCategoryEl = (
-    <div className={styles.soldByCategory}>
-      <TrendingUpIcon sx={{ color: "green", marginRight: "5px" }} />
-      {soldCount !== null
-        ? soldCount < 20
-          ? "20+ sold in last 10 days"
-          : `${soldCount}+ sold in last 10 days`
-        : "Loading sold count..."}
-    </div>
-  );
 
   // --- MEDIA QUERIES ---
   const isLessThan1000 = useMediaQuery("(max-width: 999px)");
@@ -432,8 +422,8 @@ export default function ProductIdPage({
         opt.optionDetails && opt.optionDetails.color
           ? opt.optionDetails.color
           : opt.optionDetails
-          ? Object.values(opt.optionDetails)[0]
-          : null;
+            ? Object.values(opt.optionDetails)[0]
+            : null;
       if (optionValue) {
         style.backgroundColor = colorMap[optionValue.toLowerCase()] || optionValue.toLowerCase();
       }
@@ -468,7 +458,7 @@ export default function ProductIdPage({
       // Check if product has multiple variants by fetching category variants
       const response = await fetch(`/api/features/get-variants?categoryId=${category._id}`);
       const data = await response.json();
-      
+
       if (data.variants && data.variants.length > 1) {
         // Multiple variants exist, show dialog
         setShowVariantDialog(true);
@@ -476,7 +466,7 @@ export default function ProductIdPage({
         // Only one variant, redirect directly
         const isB2B = pathname?.startsWith('/b2b');
         const base = isB2B ? '/b2b' : '/shop';
-        
+
         // Get the product slug part
         const productSlugPart = product.pageSlug.split('/').pop();
         if (data.variants?.[0] && productSlugPart) {
@@ -554,13 +544,11 @@ export default function ProductIdPage({
                 setIsZoomed={setIsZoomed}
                 restrictWidth={product.category.toLowerCase() !== "wraps"}
               />
-              {isBetween1000And1400 && soldByCategoryEl}
-              
               {/* Choose Variant Button below ImageGallery */}
               {!isZoomed && category && (
                 <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-start", marginLeft: "-1rem" }}>
-                  <ChangeVariantButton 
-                    category={category} 
+                  <ChangeVariantButton
+                    category={category}
                     product={product}
                     onExternalVariantCheck={handleExternalVariantCheck}
                     hideIfSingleVariant={true}
@@ -575,6 +563,20 @@ export default function ProductIdPage({
                 <div className={styles.details}>
                   {/* Here we prepend the selected option's value to the product name */}
                   <h1 className={styles.title}>{getDisplayedTitle()}</h1>
+
+                  {/* Product Sold Count */}
+                  <div className={styles.soldCountContainer}>
+                    <span className={styles.fireEmoji}>🔥</span>
+                    <span className={styles.soldCountText}>
+                      {soldCount !== null
+                        ? soldCount < 20
+                          ? "20+ sold in last 10 days"
+                          : `${soldCount}+ sold in last 10 days`
+                        : "Loading sold count..."}
+
+                    </span>
+                  </div>
+
                   {/* <AddToCartButton
                     product={product}
                     enableVariantSelection
@@ -605,15 +607,15 @@ export default function ProductIdPage({
                     <OptionSelector
                       options={isOnDemand
                         ? options.filter(
-                            opt => opt.optionDetails && Object.keys(opt.optionDetails).length > 0
-                          )
+                          opt => opt.optionDetails && Object.keys(opt.optionDetails).length > 0
+                        )
                         : options.filter(
-                            opt =>
-                              opt.optionDetails &&
-                              Object.keys(opt.optionDetails).length > 0 &&
-                              opt.inventoryData &&
-                              opt.inventoryData.availableQuantity > 0
-                          )}
+                          opt =>
+                            opt.optionDetails &&
+                            Object.keys(opt.optionDetails).length > 0 &&
+                            opt.inventoryData &&
+                            opt.inventoryData.availableQuantity > 0
+                        )}
                       selectedOption={selectedOption}
                       handleOptionChange={handleColorChange}
                       optionLabel={optionLabel}
@@ -671,13 +673,8 @@ export default function ProductIdPage({
 
                 <div className={styles.priceSection}>
                   <span className={styles.currentPrice}>₹{finalPrice}</span>
-                  <div className={styles.priceArrangement}>
-                    <div className={styles.priceRow}>
-                      <span className={styles.mrp}>₹{mrp}</span>
-                      <span className={styles.discountPercentage}>{discountPercent}% off</span>
-                    </div>
-                    <div className={styles.offerSubtitle}>on every order</div>
-                  </div>
+                  <span className={styles.mrp}>₹{mrp}</span>
+                  <span className={styles.discountPercentage}>{discountPercent}% off</span>
                 </div>
 
                 {!isMobile && (
@@ -742,31 +739,37 @@ export default function ProductIdPage({
                     />
                   </div>
                 )}
-                {isGreaterThan1400 && soldByCategoryEl}
-                {isLessThan1000 && soldByCategoryEl}
               </div>
             )}
           </div>
 
 
-          {/* Similar Products Section */}
-          <SimilarProducts currentProduct={product} variant={variant} category={category} />
-
           {/* Product description & additional details */}
-          <MemoizedProductDescription productInfoTabs={productInfoTabs} showProductImageFirst={false} />
-
-          {/* Showcase of top products, reviews, etc. */}
-          <MemoizedTopBoughtProducts
-            subCategories={[category?.subCategory]}
-            excludeProductIds={[product?._id]}
-            pageType="product-id-page"
+          <MemoizedProductDescription
+            productInfoTabs={productInfoTabs}
+            showProductImageFirst={false}
+            showFullDescription={true}
           />
+
+          {/* Collage large image (responsive) */}
+          <Image src={'/images/assets/customer-collage.png'} alt="Happy Customers Collage" width={1000} height={1000} className={styles.collageImage} />
+
           <MemoizedReviewFullComp
             productId={product._id}
             variantId={variant._id}
             categoryId={category._id}
             fetchReviewSource={category.reviewFetchSource}
             variant={variant}
+          />
+
+          {/* Similar Products Section */}
+          <SimilarProducts currentProduct={product} variant={variant} category={category} />
+
+          {/* Showcase of top products, reviews, etc. */}
+          <MemoizedTopBoughtProducts
+            subCategories={[category?.subCategory]}
+            excludeProductIds={[product?._id]}
+            pageType="product-id-page"
           />
         </>
       )}

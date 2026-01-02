@@ -11,12 +11,13 @@ export default function ProductDescription({
   productInfoTabs = [],
   imageUrl = "",
   showProductImageFirst = false,
+  showFullDescription = false,
 }) {
   // Track which tab is active
   const [tabIndex, setTabIndex] = useState(0);
 
   // Track whether the content is collapsed or expanded
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(showFullDescription);
 
   // Refs used to measure tab widths and positions for the underline animation
   const tabRefs = useRef([]);
@@ -143,7 +144,7 @@ export default function ProductDescription({
                   </motion.div>
                 )}
               </AnimatePresence>
-              {hasExtra && (
+              {hasExtra && !showFullDescription && (
                 <button
                   type="button"
                   data-clarity="read-more-prod-desc"
