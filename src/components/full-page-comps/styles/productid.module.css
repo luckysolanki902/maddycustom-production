@@ -1,5 +1,5 @@
 .superContainer {
-    padding-bottom: 2rem;
+    padding-bottom: 0.4rem;
     max-width: 1299px;
     margin: auto;
 }
@@ -27,6 +27,8 @@
     width: 40%;
     padding: 1rem;
     height: fit-content;
+    /* padding-top: 0rem;
+    margin-top: -1rem; */
 }
 
 .orderSpecificationsContainer {
@@ -56,7 +58,7 @@
 .cardCaption {
     margin-top: -0.5rem;
     font-family: Jost;
-    font-weight: 600;
+    font-weight: 400;
     color: #676767;
 }
 
@@ -65,16 +67,17 @@
     align-items: center;
     gap: 0.5rem;
     margin-top: -0.25rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: -0.3rem;
 }
 
 .fireEmoji {
     font-size: 1.2rem;
+    margin-right: -0.2rem;
 }
 
 .soldCountText {
     color: #ff4d4d;
-    font-weight: 600;
+    font-weight: 400;
     font-size: 0.9rem;
 }
 
@@ -83,7 +86,6 @@
     display: flex;
     flex-direction: row;
     gap: 0.75rem;
-    margin-top: 0.5rem;
     align-items: baseline;
 }
 
@@ -97,7 +99,7 @@
 .currentPrice {
     color: #000;
     font-size: 1.5rem;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: 0.05rem;
 }
 
@@ -142,6 +144,7 @@
     margin: 0.5rem 0;
     font-size: 2rem;
     text-transform: capitalize;
+    line-height: 1.1;
 }
 
 .description {
@@ -222,6 +225,8 @@
         width: 100%;
         border: none;
         padding: 1rem;
+        padding-top: 0rem;
+        margin-top: -1rem;
     }
 
     .orderSpecificationsContainer {
@@ -239,9 +244,6 @@
 }
 
 @media (width<600px) {
-    .buttonDiv {
-        margin-top: 2.5rem;
-    }
 
     .soldByCategory {
         margin-top: -1rem;
@@ -254,6 +256,11 @@
     .chatwithus {
         width: 8rem;
         filter: drop-shadow(-5px 3px 3px rgba(0, 0, 0, 0.5));
+
+    }
+
+       .title {
+        font-size: 1.3rem;
 
     }
 

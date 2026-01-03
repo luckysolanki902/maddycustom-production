@@ -83,6 +83,7 @@ function TopBoughtProductsBase({
   singleCategoryCode = '',
   pageType = '', // Added pageType prop
   hideHeading = false,
+  excludeCategory = '', // Category to exclude entirely
 }) {
   const router = useRouter();
   const scrollRef = useRef(null);
@@ -168,6 +169,7 @@ function TopBoughtProductsBase({
         if (singleVariantCode) params.singleVariantCode = singleVariantCode;
         if (singleCategoryCode) params.singleCategoryCode = singleCategoryCode;
         if (currentProductId) params.currentProductId = currentProductId;
+        if (excludeCategory) params.excludeCategory = excludeCategory;
         
         // Add cart-based exclusion parameters
         if (exclusionConstantsRef.current.excludeProductIds) {
@@ -224,13 +226,13 @@ function TopBoughtProductsBase({
         isInitial ? setLoadingInit(false) : setLoadingMore(false);
       }
     },
-    [effectiveSubCats, singleVariantCode, singleCategoryCode, currentProductId]
+    [effectiveSubCats, singleVariantCode, singleCategoryCode, currentProductId, excludeCategory]
   );
 
   /* ---------- Initial load ---------- */
   useEffect(() => {
     // Create stable key for current parameters including cart state
-    const paramsKey = `${effectiveSubCats.join('|')}::${singleVariantCode}::${singleCategoryCode}::${exclusionConstantsRef.current.excludeProductIds}::${exclusionConstantsRef.current.cartDesignIds}`;
+    const paramsKey = `${effectiveSubCats.join('|')}::${singleVariantCode}::${singleCategoryCode}::${excludeCategory}::${exclusionConstantsRef.current.excludeProductIds}::${exclusionConstantsRef.current.cartDesignIds}`;
     
     // Skip if parameters haven't changed and we already have data
     if (currentParams.current === paramsKey && products.length > 0 && isInitialized) {
@@ -257,7 +259,7 @@ function TopBoughtProductsBase({
     // Start fetching
     fetchPage(0, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveSubCats.join('|'), singleVariantCode, singleCategoryCode, fetchPage, exclusionConstantsRef.current.excludeProductIds, exclusionConstantsRef.current.cartDesignIds]);
+  }, [effectiveSubCats.join('|'), singleVariantCode, singleCategoryCode, excludeCategory, fetchPage, exclusionConstantsRef.current.excludeProductIds, exclusionConstantsRef.current.cartDesignIds]);
 
   /* ---------- Infinite‑scroll observer ---------- */
   useEffect(() => {
@@ -298,7 +300,7 @@ function TopBoughtProductsBase({
       <Box sx={{ 
         width: '100%', 
         px: { xs: 1, sm: 2 },
-        py: 2.5,
+        py: 0,
         my: 2,
         bgcolor: 'rgba(0,0,0,0.02)',
         borderRadius: '20px',
@@ -318,6 +320,7 @@ function TopBoughtProductsBase({
                 variant="subtitle1" 
                 sx={{ 
                   mb: 2, 
+                  mt: 1,
                   fontWeight: 600,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
@@ -520,6 +523,7 @@ function propsAreEqual(prev, next) {
     prev.currentProductId === next.currentProductId &&
     prev.singleVariantCode === next.singleVariantCode &&
     prev.singleCategoryCode === next.singleCategoryCode &&
+    prev.excludeCategory === next.excludeCategory &&
     prev.pageType === next.pageType &&
     prev.hideHeading === next.hideHeading
   );

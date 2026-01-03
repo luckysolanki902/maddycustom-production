@@ -29,7 +29,7 @@ const ReviewCard = ({
     <Box sx={{
       backgroundColor: "white",
       borderRadius: "20px",
-      padding: { xs: "1.5rem", md: "2rem" },
+      padding: { xs: "0.5rem", md: "1rem" },
       border: "1px solid rgba(45, 45, 45, 0.06)",
       transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
       position: "relative",

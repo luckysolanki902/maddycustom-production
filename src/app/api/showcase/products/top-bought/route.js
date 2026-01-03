@@ -19,8 +19,8 @@ const cache = new Map();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 const getCacheKey = (params) => {
-  const { subCategories, singleVariantCode, singleCategoryCode, skip, currentProductId, excludeProductIds, cartDesignIds } = params;
-  return `${subCategories || ''}:${singleVariantCode || ''}:${singleCategoryCode || ''}:${skip}:${currentProductId || ''}:${excludeProductIds || ''}:${cartDesignIds || ''}`;
+  const { subCategories, singleVariantCode, singleCategoryCode, skip, currentProductId, excludeProductIds, cartDesignIds, excludeCategory } = params;
+  return `${subCategories || ''}:${singleVariantCode || ''}:${singleCategoryCode || ''}:${skip}:${currentProductId || ''}:${excludeProductIds || ''}:${cartDesignIds || ''}:${excludeCategory || ''}`;
 };
 
 const getCachedData = (key) => {
@@ -101,7 +101,7 @@ async function enrichProducts(products, { specCatDoc, scvMap }) {
 }
 
 /* fetch products with same designGroupId from cart, avoiding duplicates per specific category */
-async function fetchCartDesignGroupProducts(cartDesignIds, excludeProductIds) {
+async function fetchCartDesignGroupProducts(cartDesignIds, excludeProductIds, excludeCategory = '') {
   if (!cartDesignIds || !cartDesignIds.length) return [];
 
   // Convert to ObjectIds
@@ -189,7 +189,14 @@ async function fetchCartDesignGroupProducts(cartDesignIds, excludeProductIds) {
     enriched.push(...enrichedProducts);
   }
 
-  return enriched;
+  // Filter out products from excluded category
+  const filteredEnriched = excludeCategory ? 
+    enriched.filter(product => {
+      const productCategory = product.category?.name || product.category;
+      return productCategory !== excludeCategory;
+    }) : enriched;
+
+  return filteredEnriched;
 }
 
 export async function GET(request) {
@@ -199,6 +206,7 @@ export async function GET(request) {
   const singleVariantCode = (searchParams.get('singleVariantCode') || '').trim();
   const singleCategoryCode = (searchParams.get('singleCategoryCode') || '').trim();
   const currentProductId = (searchParams.get('currentProductId') || '').trim();
+  const excludeCategory = (searchParams.get('excludeCategory') || '').trim();
   
   // New parameters for cart-based exclusions
   const excludeProductIds = searchParams.get('excludeProductIds') || '';
@@ -215,7 +223,8 @@ export async function GET(request) {
     skip, 
     currentProductId,
     excludeProductIds,
-    cartDesignIds
+    cartDesignIds,
+    excludeCategory
   });
   
   const cached = getCachedData(cacheKey);
@@ -241,7 +250,7 @@ export async function GET(request) {
     }
 
     // Get cart design group products first
-    const cartDesignGroupProducts = await fetchCartDesignGroupProducts(cartDesignIdsArray, excludeProductIdsArray);
+    const cartDesignGroupProducts = await fetchCartDesignGroupProducts(cartDesignIdsArray, excludeProductIdsArray, excludeCategory);
 
     const variants = await SpecificCategoryVariant.find({
       specificCategory: sc._id,
@@ -267,8 +276,15 @@ export async function GET(request) {
 
     const enriched = await enrichProducts(allProducts, { specCatDoc: sc, scvMap });
 
+    // Filter out products from excluded category
+    const filteredEnriched = excludeCategory ? 
+      enriched.filter(product => {
+        const productCategory = product.category?.name || product.category;
+        return productCategory !== excludeCategory;
+      }) : enriched;
+
     // Merge cart design group products with category products
-    const combined = [...cartDesignGroupProducts, ...enriched];
+    const combined = [...cartDesignGroupProducts, ...filteredEnriched];
     
     // Remove duplicates by product ID
     const uniqueProducts = combined.filter((product, index, self) => 
@@ -321,7 +337,7 @@ export async function GET(request) {
     const scvMap = { [scv._id.toString()]: scv };
 
     // Get cart design group products first
-    const cartDesignGroupProducts = await fetchCartDesignGroupProducts(cartDesignIdsArray, excludeProductIdsArray);
+    const cartDesignGroupProducts = await fetchCartDesignGroupProducts(cartDesignIdsArray, excludeProductIdsArray, excludeCategory);
 
     const excludeIds = excludeProductIdsArray.length ? 
       excludeProductIdsArray.map(id => new mongoose.Types.ObjectId(id)) : [];
@@ -333,8 +349,16 @@ export async function GET(request) {
     }).populate("inventoryData").lean();
 
     const enriched = await enrichProducts(raw, { specCatDoc: sc, scvMap });
+    
+    // Filter out products from excluded category
+    const filteredEnriched = excludeCategory ? 
+      enriched.filter(product => {
+        const productCategory = product.category?.name || product.category;
+        return productCategory !== excludeCategory;
+      }) : enriched;
+    
     // Merge cart design group products with variant products
-    const combined = [...cartDesignGroupProducts, ...enriched];
+    const combined = [...cartDesignGroupProducts, ...filteredEnriched];
     
     // Remove duplicates by product ID
     const uniqueProducts = combined.filter((product, index, self) => 
@@ -383,7 +407,7 @@ export async function GET(request) {
   }
 
   // Get cart design group products first
-  const cartDesignGroupProducts = await fetchCartDesignGroupProducts(cartDesignIdsArray, excludeProductIdsArray);
+  const cartDesignGroupProducts = await fetchCartDesignGroupProducts(cartDesignIdsArray, excludeProductIdsArray, excludeCategory);
 
   /* ensure consistent subcategories for predictable results */
   if (subCategories.length < 3) {
@@ -445,8 +469,15 @@ export async function GET(request) {
   // Flatten all products from different categories
   const allCategoryProducts = lists.flat();
 
+  // Filter out products from excluded category
+  const filteredCategoryProducts = excludeCategory ? 
+    allCategoryProducts.filter(product => {
+      const productCategory = product.category?.name || product.category;
+      return productCategory !== excludeCategory;
+    }) : allCategoryProducts;
+
   // Merge cart design group products with category products
-  const combined = [...cartDesignGroupProducts, ...allCategoryProducts];
+  const combined = [...cartDesignGroupProducts, ...filteredCategoryProducts];
   
   // Remove duplicates by product ID
   const uniqueProducts = combined.filter((product, index, self) => 

@@ -19,30 +19,20 @@ const PaymentShippingPoweredBy = () => {
       width: "100%",
       textAlign: "center",
       border: "1px solid rgba(45, 45, 45, 0.08)",
-      boxShadow: "0 4px 24px rgba(45, 45, 45, 0.06)",
+      boxShadow: "0 4px 4px rgba(0, 0, 0, 0.1)",
       position: "relative",
-      "&::before": {
-        content: '""',
-        position: "absolute",
-        top: 0,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "60px",
-        height: "3px",
-        background: "linear-gradient(90deg, #2d2d2d 0%, #4a4a4a 100%)",
-        borderRadius: "0 0 4px 4px",
-      }
+      // "&::before": {
+      //   content: '""',
+      //   position: "absolute",
+      //   top: 0,
+      //   left: "50%",
+      //   transform: "translateX(-50%)",
+      //   width: "60px",
+      //   height: "3px",
+      //   background: "linear-gradient(90deg, #2d2d2d 0%, #4a4a4a 100%)",
+      //   borderRadius: "0 0 4px 4px",
+      // }
     }}>
-      {/* Trust Icons */}
-      <Box sx={{
-        display: "flex",
-        gap: 2,
-        marginBottom: 2,
-        opacity: 0.7
-      }}>
-        <SecurityIcon sx={{ fontSize: "1.5rem", color: "#2d2d2d" }} />
-        <LocalShippingIcon sx={{ fontSize: "1.5rem", color: "#2d2d2d" }} />
-      </Box>
 
       {/* Text */}
       <Typography sx={{
@@ -79,10 +69,10 @@ const PaymentShippingPoweredBy = () => {
           display: "flex",
           alignItems: "center",
           gap: 1,
-          padding: "0.5rem 1rem",
-          backgroundColor: "#f8f9fa",
-          borderRadius: "8px",
-          border: "1px solid rgba(45, 45, 45, 0.05)"
+          // padding: "0.5rem 1rem",
+          // backgroundColor: "#f8f9fa",
+          // borderRadius: "8px",
+          // border: "1px solid rgba(45, 45, 45, 0.05)"
         }}>
           <Image
             src={`${baseImageUrl}/assets/icons/shiprocket_logo.svg`}
@@ -97,10 +87,10 @@ const PaymentShippingPoweredBy = () => {
           display: "flex",
           alignItems: "center",
           gap: 1,
-          padding: "0.5rem 1rem",
-          backgroundColor: "#f8f9fa",
-          borderRadius: "8px",
-          border: "1px solid rgba(45, 45, 45, 0.05)"
+          // padding: "0.5rem 1rem",
+          // backgroundColor: "#f8f9fa",
+          // borderRadius: "8px",
+          // border: "1px solid rgba(45, 45, 45, 0.05)"
         }}>
           <Image
             src={`${baseImageUrl}/assets/icons/razorpay_logo.svg`}

@@ -18,6 +18,7 @@ import ProductDescription from "../page-sections/product-id-page/ProductInfoTab"
 import { TopBoughtProducts } from "../showcase/products/TopBoughtProducts";
 import Footer from "../layouts/Footer";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -29,6 +30,7 @@ import AddToCartButton from "../utils/AddToCartButton";
 import ChangeVariantButton from "../page-sections/products-page/ChangeVariantButton";
 import VariantSelectionDialog from "../dialogs/VariantSelectionDialog";
 import { setAssistantContext } from '@/store/slices/assistantContextSlice';
+import PaymentShippingPoweredBy from "../page-sections/product-id-page/rating-section/PaymentShippingPoweredBy";
 
 // Memoize components that do not need to update on option change
 const MemoizedImageGallery = memo(ImageGallery);
@@ -564,6 +566,14 @@ export default function ProductIdPage({
                   {/* Here we prepend the selected option's value to the product name */}
                   <h1 className={styles.title}>{getDisplayedTitle()}</h1>
 
+
+                  {variant?.cardCaptions?.[0] && (
+                    <p style={{ marginTop: "-0.5rem" }} className={styles.cardCaption}>
+                      {variant.cardCaptions[0].slice(0, 1).toUpperCase() + variant.cardCaptions[0].slice(1)}
+                    </p>
+                  )}
+
+
                   {/* Product Sold Count */}
                   <div className={styles.soldCountContainer}>
                     <span className={styles.fireEmoji}>🔥</span>
@@ -577,6 +587,13 @@ export default function ProductIdPage({
                     </span>
                   </div>
 
+                  {/* Price Section */}
+                  <div className={styles.priceSection}>
+                    <span className={styles.currentPrice}>₹{finalPrice}</span>
+                    <span className={styles.mrp}>₹{mrp}</span>
+                    <span className={styles.discountPercentage}>{discountPercent}% off</span>
+                  </div>
+
                   {/* <AddToCartButton
                     product={product}
                     enableVariantSelection
@@ -584,11 +601,7 @@ export default function ProductIdPage({
                     showOnlyChooseVariants
                     size="small"
                   /> */}
-                  {variant?.cardCaptions?.[0] && (
-                    <p style={{ marginTop: "-0.5rem", marginLeft: "0.3rem" }} className={styles.cardCaption}>
-                      {variant.cardCaptions[0]}
-                    </p>
-                  )}
+
                 </div>
 
                 {/* Render options using OptionSelector */}
@@ -665,17 +678,13 @@ export default function ProductIdPage({
                         />
                       </Link>
                     )}
-                    <div className={styles.orderSpecificationsContainer}>
+                    {/* <div className={styles.orderSpecificationsContainer}>
                       <MemoizedOrderSpecifications features={variant.features} justContStart={true} />
-                    </div>
+                    </div> */}
                   </>
                 )}
 
-                <div className={styles.priceSection}>
-                  <span className={styles.currentPrice}>₹{finalPrice}</span>
-                  <span className={styles.mrp}>₹{mrp}</span>
-                  <span className={styles.discountPercentage}>{discountPercent}% off</span>
-                </div>
+
 
                 {!isMobile && (
                   <>
@@ -754,6 +763,11 @@ export default function ProductIdPage({
           {/* Collage large image (responsive) */}
           <Image src={'/images/assets/customer-collage.png'} alt="Happy Customers Collage" width={1000} height={1000} className={styles.collageImage} />
 
+
+          {/*  Payment and shipping powered by  */}
+          <div style={{width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0 2rem'}}>
+          <PaymentShippingPoweredBy />
+          </div>
           <MemoizedReviewFullComp
             productId={product._id}
             variantId={variant._id}
@@ -769,6 +783,7 @@ export default function ProductIdPage({
           <MemoizedTopBoughtProducts
             subCategories={[category?.subCategory]}
             excludeProductIds={[product?._id]}
+            excludeCategory={category?.name || product?.category}
             pageType="product-id-page"
           />
         </>
@@ -782,6 +797,37 @@ export default function ProductIdPage({
         product={product}
         mode="search" // Use search mode for product description page redirection
       />
+
+      {/* Fixed WhatsApp Icon - Mobile Only */}
+      {isMobile && (
+        <Link href="/faqs" style={{ textDecoration: 'none' }}>
+          <Box
+            sx={{
+              position: 'fixed',
+              bottom: '100px',
+              right: '20px',
+              zIndex: 1000,
+              backgroundColor: '#2d2d2d',
+              color: 'white',
+              borderRadius: '50%',
+              width: '50px',
+              height: '50px',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'scale(1.1)',
+                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.4)',
+              }
+            }}
+          >
+            <WhatsAppIcon sx={{ fontSize: '24px' }} />
+          </Box>
+        </Link>
+      )}
     </div>
   );
 }

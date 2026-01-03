@@ -405,7 +405,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
     <div className={mainClasses}>
       <div className={styles.subContainer}>
         {/* Mobile: Recommendation button on top-left */}
-        {showRecoButton && isSmallDevice && (
+        {/* {showRecoButton && isSmallDevice && (
           <button
             data-clarity="see-matching-picks"
             type="button"
@@ -416,7 +416,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
             <span>{matchingCount > 0 ? `+${matchingCount} More in Set` : 'View Set'}</span>
             <span style={{ fontSize: '0.65rem', color: '#999' }}>›</span>
           </button>
-        )}
+        )} */}
         <div className={styles.primaryActionsRow}>
           <div className={styles.addToCartSection}>
             {outOfStock ? (
@@ -500,7 +500,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
           </div>
         </div>
         {/* Desktop: Recommendation button full width below */}
-        {showRecoButton && !isSmallDevice && (
+        {/* {showRecoButton && !isSmallDevice && (
           <button
             data-clarity="see-matching-picks"
             type="button"
@@ -511,7 +511,7 @@ export default function AddToCartButton({ product, isBlackButton = false, isLarg
             <span>{matchingCount > 0 ? `+${matchingCount} More in Set` : 'View Set'}</span>
             <span style={{ fontSize: '0.65rem', color: '#999' }}>›</span>
           </button>
-        )}
+        )} */}
       </div>
       {!isSmallDevice && (
         <div className={styles.chatwithusMain}>
