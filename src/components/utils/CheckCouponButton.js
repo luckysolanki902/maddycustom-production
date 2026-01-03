@@ -19,7 +19,7 @@ const CouponButton = styled(Button)({
     },
 });
 
-export default function CheckCouponButton() {
+export default function CheckCouponButton({ couponState, setIsCouponDialogOpen }) {
   return (
     <CouponButton onClick={() => {
         if (couponState.couponApplied === false) {

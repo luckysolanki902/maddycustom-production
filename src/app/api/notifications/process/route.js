@@ -10,10 +10,11 @@ import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
+  let body = {};
   try {
     await connectToDatabase();
     
-    const body = await request.json();
+    body = await request.json();
     const { notificationId, channel } = body;
 
     if (!notificationId || !channel) {

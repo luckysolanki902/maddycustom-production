@@ -72,7 +72,7 @@ export const useVariantHandler = () => {
     } finally {
       setLoading(false);
     }
-  }, [router, dispatch, pathname]);
+  }, [router, dispatch]);
 
   /**
    * Build URL based on context (B2B vs normal)
