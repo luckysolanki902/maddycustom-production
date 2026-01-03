@@ -36,12 +36,15 @@ const HalfBikes = () => {
 
         const observer = new IntersectionObserver(observerCallback, observerOptions);
 
-        if (refHalfImage1.current) observer.observe(refHalfImage1.current);
-        if (refHalfImage2.current) observer.observe(refHalfImage2.current);
+        const currentRef1 = refHalfImage1.current;
+        const currentRef2 = refHalfImage2.current;
+
+        if (currentRef1) observer.observe(currentRef1);
+        if (currentRef2) observer.observe(currentRef2);
 
         return () => {
-            if (refHalfImage1.current) observer.unobserve(refHalfImage1.current);
-            if (refHalfImage2.current) observer.unobserve(refHalfImage2.current);
+            if (currentRef1) observer.unobserve(currentRef1);
+            if (currentRef2) observer.unobserve(currentRef2);
         };
     }, []);
 

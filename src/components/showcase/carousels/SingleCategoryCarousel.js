@@ -110,6 +110,7 @@ export default function SingleCategoryCarousel({ products = [] }) {
             <button
               key={i}
               type="button"
+              role="tab"
               className={`${styles.paginationBox} ${activeIdx === i ? styles.activeBox : ""}`}
               onClick={() => swiperRef.current?.slideToLoop(i)}
               aria-selected={activeIdx === i}

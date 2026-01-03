@@ -3,12 +3,16 @@
   "version": "4.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo --port 3002",
+    "dev": "next lint && next dev --turbo --port 3002",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": "eslint --fix"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.740.0",
@@ -70,6 +74,8 @@
   "devDependencies": {
     "@playwright/test": "^1.56.1",
     "eslint": "^8",
-    "eslint-config-next": "15.0.0"
+    "eslint-config-next": "15.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7"
   }
 }

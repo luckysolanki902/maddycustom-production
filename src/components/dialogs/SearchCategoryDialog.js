@@ -435,8 +435,12 @@ export default function SearchCategoryDialog() {
       inputRef.current.focus();
     }
     // Trigger search immediately
-    debouncedSearch(suggestionText);
-  }, []);
+    const lower = suggestionText.toLowerCase();
+    const catFiltered = categories
+      .filter((cat) => cat.name.toLowerCase().includes(lower))
+      .map((c) => c.name);
+    setSuggestions(catFiltered.slice(0, 10));
+  }, [categories]);
 
   // Handle product click with variant checking
   const handleProductClick = useCallback(async (product) => {
