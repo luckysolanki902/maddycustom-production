@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import RatingsOverview from "./rating-section/RatingsOverview";
 import ReviewCard from "./rating-section/ReviewCard";
-import PaymentShippingPoweredBy from "./rating-section/PaymentShippingPoweredBy";
+// import PaymentShippingPoweredBy from "./rating-section/PaymentShippingPoweredBy";
 import ReviewDialog from "./rating-section/ReviewDialog";
 import { useSelector } from "react-redux";
 import { useSpring } from "@react-spring/web";
@@ -241,27 +241,14 @@ export default function ReviewFullComp({
             fontWeight: "700",
             color: "#2d2d2d",
             fontFamily: "Jost, sans-serif",
-            marginBottom: "0.5rem",
+            // marginBottom: "0.5rem",
             background: "linear-gradient(135deg, #2d2d2d 0%, #4a4a4a 100%)",
             backgroundClip: "text",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
           }}
         >
-          What Our Customers Say
-        </Typography>
-        <Typography 
-          variant="body1" 
-          sx={{
-            fontSize: { xs: "1rem", md: "1.1rem" },
-            color: "#666",
-            fontFamily: "Jost, sans-serif",
-            maxWidth: "600px",
-            margin: "0 auto",
-            lineHeight: 1.6,
-          }}
-        >
-          Real feedback from customers who love our products
+          Customer Reviews
         </Typography>
       </Box>
 
@@ -269,8 +256,8 @@ export default function ReviewFullComp({
       <Box sx={{
         backgroundColor: "white",
         borderRadius: "24px",
-        padding: { xs: "1.5rem 1rem", md: "3rem" },
-        marginBottom: { xs: "2rem", md: "3rem" },
+        padding: { xs: "0rem 0rem", md: "0rem" },
+        // marginBottom: { xs: "2rem", md: "3rem" },
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.04)",
         border: "1px solid rgba(45, 45, 45, 0.06)",
         position: "relative",
@@ -335,7 +322,7 @@ export default function ReviewFullComp({
         justifyContent: "center", 
         marginBottom: { xs: "2rem", md: "3rem" }
       }}>
-        <PaymentShippingPoweredBy />
+        {/* <PaymentShippingPoweredBy /> */}
       </Box>
 
       {/* Recent Reviews Section */}
@@ -346,19 +333,19 @@ export default function ReviewFullComp({
         // boxShadow: "0 8px 32px rgba(45, 45, 45, 0.08)",
         // border: "1px solid rgba(45, 45, 45, 0.05)",
       }}>
-        <Typography
+        {/* <Typography
           variant="h5"
           sx={{
             fontSize: { xs: "1.3rem", md: "1.5rem" },
             fontWeight: "600",
             color: "#2d2d2d",
             fontFamily: "Jost, sans-serif",
-            marginBottom: { xs: "1.5rem", md: "2rem" },
+            marginBottom: { xs: "0.5rem", md: "1rem" },
             textAlign: "center",
           }}
         >
           Recent Reviews
-        </Typography>
+        </Typography> */}
 
         {/* Loading and Error States */}
         {loading && (

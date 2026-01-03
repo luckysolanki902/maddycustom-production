@@ -235,7 +235,7 @@ function SimilarProductsBase({ currentProduct, variant, category }) {
       <Box sx={{ 
         width: "100%", 
         px: { xs: 1, sm: 2 },
-        py: 2.5,
+        py: 0,
         my: 3,
         bgcolor: 'rgba(0,0,0,0.02)',
         borderRadius: '20px',
@@ -245,7 +245,8 @@ function SimilarProductsBase({ currentProduct, variant, category }) {
         {loadingInit && !isInitialized && !sectionTitle ? (
           <Skeleton variant="text" width={200} height={26} sx={{ mb: 1, mt: 3 }} />
         ) : (
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, mt: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, mt: 1,  fontSize: { xs: '0.95rem', sm: '1.1rem' }
+           }}>
             {sectionTitle}
           </Typography>
         )}
