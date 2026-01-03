@@ -219,7 +219,7 @@ const Footer = ({ showHappyCustomersInBrandStrip = false, forceRender = false })
                     const month = now.getMonth();
                     const day = now.getDate();
                     const isChristmasSeason = (month === 11 && day >= 20) || (month === 0 && day <= 2);
-                    return isChristmasSeason ? '/images/assets/logos/logo_christmas.png' : `${baseUrl}/assets/logos/maddy_custom3_main_logo.png`;
+                    return isChristmasSeason ? '/images/assets/logos/logo_christmas.png' : `${baseImageUrl}/assets/logos/maddy_custom3_main_logo.png`;
                   })()}
                   alt="maddylogo"
                   title="maddylogo"
