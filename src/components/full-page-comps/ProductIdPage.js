@@ -722,7 +722,7 @@ export default function ProductIdPage({
                       </Link>
                     )}
                     <div className={styles.orderSpecificationsContainer}>
-                      <MemoizedOrderSpecifications features={variant.features} justContStart={true} />
+                      {/* <MemoizedOrderSpecifications features={variant.features} justContStart={true} /> */}
                     </div>
                   </>
                 )}
