@@ -3,11 +3,24 @@ import React from 'react';
 /* eslint-disable @next/next/no-img-element */
 import { motion } from 'framer-motion';
 
-export default function CategoryGridMessage({ title = 'Browse Categories', items = [], hint }) {
+// Simple markdown bold renderer
+function renderMarkdown(text) {
+  if (!text) return null;
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
+export default function CategoryGridMessage({ title = 'Browse Categories', items = [], hint, summary }) {
   const safeItems = Array.isArray(items) ? items.slice(0, 12) : [];
   return (
     <div style={wrap}>
       <div style={heading}>{title}</div>
+      {summary && <div style={summaryText}>{renderMarkdown(summary)}</div>}
       {safeItems.length === 0 ? (
         <div style={empty}>No categories available right now.</div>
       ) : (
@@ -36,3 +49,4 @@ const imgSkeleton = { width: '100%', height: '100%', background: 'linear-gradien
 const meta = { padding: '8px 10px' };
 const name = { fontSize: 12, fontWeight: 600, lineHeight: 1.25 };
 const footerHint = { marginTop: 10, fontSize: 12, color: 'rgba(45,45,45,0.7)' };
+const summaryText = { fontSize: 13, color: 'rgba(45,45,45,0.85)', marginBottom: 10, lineHeight: 1.4 };

@@ -32,7 +32,7 @@ export async function POST(req) {
         const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         const context = `User messages (latest last):\n${userChats.slice(-6).join('\n')}\nAssistant reply:\n${(aiResponse||'').slice(0, 400)}`;
         const resp = await client.chat.completions.create({
-          model: 'gpt-4.1-mini',
+          model: 'gpt-4.1-nano',
           temperature: 0,
           messages: [
             { role: 'system', content: 'Summarize the user’s problem as a crisp single sentence (max 28 words). No extra text.' },

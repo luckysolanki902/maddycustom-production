@@ -13,10 +13,16 @@ import useBackButtonToClose from './useBackButtonToClose';
 export default function SupportChatProvider() {
   const orderUserId = useSelector(s => s.orderForm.userDetails?.userId);
   const [open, setOpen] = useState(false);
+  const [initialQuery, setInitialQuery] = useState(null);
 
   // Allow other components to open the chat dialog
   useEffect(() => {
-    const handleOpen = () => setOpen(true);
+    const handleOpen = (e) => {
+      // Check if event has a query parameter (from search dialog)
+      const query = e?.detail?.query || null;
+      setInitialQuery(query);
+      setOpen(true);
+    };
 
     window.addEventListener('mc-open-chat-dialog', handleOpen);
     document.addEventListener('mc-open-chat-dialog', handleOpen);
@@ -29,7 +35,12 @@ export default function SupportChatProvider() {
 
   useBackButtonToClose(open, () => setOpen(false));
 
+  const handleClose = () => {
+    setOpen(false);
+    setInitialQuery(null);
+  };
+
   return (
-    <SupportChatDialog open={open} onClose={() => setOpen(false)} userId={orderUserId} />
+    <SupportChatDialog open={open} onClose={handleClose} userId={orderUserId} initialQuery={initialQuery} />
   );
 }

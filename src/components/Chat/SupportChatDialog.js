@@ -26,25 +26,35 @@ const LoaderGlow = () => (
 	/>
 );
 
+// Skeleton component for chat bubbles
+const SkeletonBubble = ({ align = 'left', width = '60%', delay = 0 }) => (
+	<motion.div
+		initial={{ opacity: 0, y: 8 }}
+		animate={{ opacity: 1, y: 0 }}
+		transition={{ delay, duration: 0.3 }}
+		style={{ display: 'flex', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', marginBottom: 14 }}
+	>
+		<motion.div
+			animate={{ opacity: [0.3, 0.6, 0.3] }}
+			transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut', delay }}
+			style={{
+				width,
+				height: 48,
+				borderRadius: 22,
+				background: align === 'right' 
+					? 'linear-gradient(90deg, rgba(45,45,45,0.15), rgba(45,45,45,0.08))' 
+					: 'linear-gradient(90deg, rgba(45,45,45,0.08), rgba(45,45,45,0.04))',
+				borderBottomRightRadius: align === 'right' ? 8 : 22,
+				borderBottomLeftRadius: align === 'left' ? 8 : 22,
+			}}
+		/>
+	</motion.div>
+);
+
 const ResetOverlay = ({ visible, phrase }) => {
 	if (!visible) return null;
 	return (
-		<motion.div
-			initial={{ opacity: 0 }}
-			animate={{ opacity: 1 }}
-			exit={{ opacity: 0 }}
-			style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3010 }}
-		>
-			<motion.div
-				initial={{ scale: 0.92, opacity: 0 }}
-				animate={{ scale: 1, opacity: 1 }}
-				transition={{ type: 'spring', stiffness: 240, damping: 24 }}
-				style={{ background: 'rgba(255,255,255,0.96)', border: '1px solid rgba(45,45,45,0.16)', borderRadius: 20, padding: '18px 20px', boxShadow: '0 18px 48px -12px rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', gap: 14 }}
-			>
-				<LoaderSpinner size={20} />
-				<div style={{ fontSize: 13, color: '#2d2d2d', fontWeight: 600 }}>{phrase || 'Starting a fresh chat…'}</div>
-			</motion.div>
-		</motion.div>
+<></>
 	);
 };
 
@@ -72,7 +82,7 @@ const templateSets = {
 	home: [
 		'My car is red and my budget is 1000',
 		'Find some stylish wraps for my bike',
-		'Track my order with my order id',
+		'Track my order with my phone number',
 		'Suggest something for car interiors',
 		'Show anime-inspired pillar wraps'
 	],
@@ -82,7 +92,7 @@ const templateSets = {
 		'Is there any return policy?',
 		'My car is red and my budget is 1000',
 		'Find some stylish wraps for my bike',
-		'Track my order with my order id',
+		'Track my order with my phone number',
 		'Suggest something for car interiors',
 		'Show anime-inspired pillar wraps'
 	],
@@ -104,7 +114,7 @@ const templateSets = {
 	]
 };
 
-export default function SupportChatDialog({ open, onClose }) {
+export default function SupportChatDialog({ open, onClose, initialQuery }) {
 	const pathname = usePathname();
 	const { isCartDrawerOpen, isSidebarOpen, isSearchDialogOpen } = useSelector(s => s.ui);
 	const hidden = isCartDrawerOpen || isSidebarOpen || isSearchDialogOpen;
@@ -115,6 +125,7 @@ export default function SupportChatDialog({ open, onClose }) {
 	const [showTemplates, setShowTemplates] = useState(true);
 	const [loaderPhrase, setLoaderPhrase] = useState('');
 	const [resetPhrase, setResetPhrase] = useState(loadingPhrases.reset[0]);
+	const initialQueryHandledRef = useRef(false);
 	const routeType = useMemo(() => {
 		if (!pathname) return 'fallback';
 		if (pathname === '/') return 'home';
@@ -129,6 +140,22 @@ export default function SupportChatDialog({ open, onClose }) {
 		return 'fallback';
 	}, [pathname]);
 	const initialTemplates = templateSets[routeType] || templateSets.fallback;
+
+	// Handle initial query from search dialog
+	useEffect(() => {
+		if (open && initialQuery && !initialQueryHandledRef.current && sendMessage && !loadingHistory) {
+			initialQueryHandledRef.current = true;
+			setShowTemplates(false);
+			// Small delay to let the dialog open animation complete
+			setTimeout(() => {
+				sendMessage(initialQuery);
+			}, 300);
+		}
+		// Reset the flag when dialog closes
+		if (!open) {
+			initialQueryHandledRef.current = false;
+		}
+	}, [open, initialQuery, sendMessage, loadingHistory]);
 
 	// Broadcast open/close so other UI (e.g., FloatingActionBar) can hide while dialog is open
 	useEffect(() => {
@@ -184,25 +211,10 @@ export default function SupportChatDialog({ open, onClose }) {
 	}, [input, sendMessage]);
 	const handleTemplate = t => { sendMessage(t); setShowTemplates(false); };
 
-	const [confirmOpen, setConfirmOpen] = useState(false);
-	const [confirmResetInProgress, setConfirmResetInProgress] = useState(false);
+	// Instant new chat - no confirmation dialog, immediately clear and show skeletons
 	const handleNewChatClick = () => {
-		if (!messages || messages.length < 1) { resetChat?.(); setShowTemplates(true); return; }
-		setConfirmOpen(true);
-	};
-	// When reset completes (after being initiated from the confirm dialog), auto-close it
-	useEffect(() => {
-		if (confirmOpen && confirmResetInProgress && !isResetting) {
-			setConfirmOpen(false);
-			setConfirmResetInProgress(false);
-			setShowTemplates(true);
-		}
-	}, [confirmOpen, confirmResetInProgress, isResetting]);
-
-	const handleConfirmReset = () => {
-		// Trigger reset; the dialog will morph into a loading state (isResetting) and auto-close when done
-		setConfirmResetInProgress(true);
-		resetChat();
+		resetChat?.();
+		setShowTemplates(true);
 	};
 
 	if (!open || hidden) return null;
@@ -250,7 +262,7 @@ export default function SupportChatDialog({ open, onClose }) {
 						if (m.type === 'category_grid') {
 							return (
 								<div key={m.id} style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 14 }}>
-									<CategoryGridMessage title={m.title} items={m.items} hint={m.hint} />
+									<CategoryGridMessage title={m.title} items={m.items} hint={m.hint} summary={m.summary} />
 								</div>
 							);
 						}
@@ -267,7 +279,11 @@ export default function SupportChatDialog({ open, onClose }) {
 											maxPrice: m.queryEcho?.maxPrice,
 											minPrice: m.queryEcho?.minPrice,
 											keywords: m.queryEcho?.keywords,
-											page: (m.page || 1) + 1,
+											categoryTitle: m.queryEcho?.categoryTitle,
+											classificationTags: m.queryEcho?.classificationTags,
+											excludeTags: m.queryEcho?.excludeTags,
+											diversifyCategories: m.queryEcho?.diversifyCategories,
+											page: (m.queryEcho?.page || 1) + 1,
 											limit: m.limit || 6
 										})}
 									/>
@@ -275,9 +291,37 @@ export default function SupportChatDialog({ open, onClose }) {
 							);
 						}
 						if (m.type === 'order_status') {
+							// Check if this is the last order_status message and needs resolution check
+							const isLastOrderStatus = needsResolutionCheck && 
+								messages.filter(msg => msg.type === 'order_status').slice(-1)[0]?.id === m.id;
 							return (
-								<div key={m.id} style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 14 }}>
-									<OrderStatusMessage orderId={m.orderId} status={m.status} eta={m.eta} trackUrl={m.trackUrl} steps={m.steps} orderedAt={m.orderedAt} contactName={m.contactName} contactPhone={m.contactPhone} deliveryAddress={m.deliveryAddress} />
+								<div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginBottom: 14 }}>
+									<OrderStatusMessage 
+										orderId={m.orderId} 
+										status={m.status} 
+										eta={m.eta} 
+										trackUrl={m.trackUrl} 
+										steps={m.steps} 
+										orderedAt={m.orderedAt} 
+										contactName={m.contactName} 
+										contactPhone={m.contactPhone} 
+										deliveryAddress={m.deliveryAddress}
+										payment={m.payment}
+										items={m.items}
+										paymentFailed={m.paymentFailed}
+										paymentPending={m.paymentPending}
+										isMultiOrder={m.isMultiOrder}
+										linkedOrders={m.linkedOrders}
+									/>
+									{isLastOrderStatus && (
+										<div style={{ ...botBubbleStyle, marginTop: 10, maxWidth: 280 }}>
+											<div style={{ fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Did this resolve your query?</div>
+											<div style={{ display: 'flex', gap: 8 }}>
+												<button onClick={() => submitResolution(true)} style={templateBtnStyle}>Yes</button>
+												<button onClick={() => submitResolution(false)} style={templateBtnStyle}>No</button>
+											</div>
+										</div>
+									)}
 								</div>
 							);
 						}
@@ -305,18 +349,6 @@ export default function SupportChatDialog({ open, onClose }) {
 								<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 									<LoaderSpinner size={16} />
 									<LoaderGlow />
-								</div>
-							</div>
-						</div>
-					)}
-					{/* Resolution check prompt */}
-					{needsResolutionCheck && (
-						<div style={{ display: 'flex', justifyContent: 'flex-start', margin: '8px 0 0' }}>
-							<div style={botBubbleStyle}>
-								<div style={{ fontWeight: 600, marginBottom: 6 }}>Did this resolve your query?</div>
-								<div style={{ display: 'flex', gap: 8 }}>
-									<button onClick={() => submitResolution(true)} style={templateBtnStyle}>Yes</button>
-									<button onClick={() => submitResolution(false)} style={templateBtnStyle}>No</button>
 								</div>
 							</div>
 						</div>
@@ -353,29 +385,8 @@ export default function SupportChatDialog({ open, onClose }) {
 					)}
 				</div>
 			</motion.div>
-			{confirmOpen && (
-				<motion.div key="confirm-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={confirmOverlayWrap}>
-					<motion.div initial={{ scale: 0.9, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 10 }} transition={{ type: 'spring', stiffness: 240, damping: 22 }} style={confirmCard}>
-						{!isResetting && !confirmResetInProgress ? (
-							<>
-								<div style={{ fontSize: 18, fontWeight: 600, color: '#2d2d2d', marginBottom: 10 }}>Start New Chat?</div>
-								<div style={{ fontSize: 13, lineHeight: 1.55, color: 'rgba(45,45,45,0.70)', fontWeight: 500, marginBottom: 18 }}>This clears only local messages. Server history stays for quality. Proceed?</div>
-								<div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-									<button onClick={() => setConfirmOpen(false)} style={{ ...overlayBtnSecondary }}>Cancel</button>
-									<button onClick={handleConfirmReset} style={{ ...overlayBtnPrimary }}>Start Fresh</button>
-								</div>
-							</>
-						) : (
-							<div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', padding: '10px 0' }}>
-								<LoaderSpinner size={18} />
-								<div style={{ fontSize: 13, color: '#2d2d2d', fontWeight: 600 }}>{resetPhrase || 'Starting a new chat…'}</div>
-							</div>
-						)}
-					</motion.div>
-				</motion.div>
-			)}
-			{/* Full overlay while resetting, but hide it when confirm dialog is open (we morph that dialog instead) */}
-			<ResetOverlay visible={isResetting && !confirmOpen} phrase={resetPhrase} />
+			{/* Beautiful skeleton loading overlay while resetting */}
+			<ResetOverlay visible={isResetting} phrase={resetPhrase} />
 		</AnimatePresence>
 	);
 }
@@ -462,7 +473,3 @@ function formatText(txt, isUser = false) {
 	};
 	return <span onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />;
 }
-const confirmOverlayWrap = { position: 'fixed', bottom: 90, right: 24, zIndex: 3100, width: 'min(420px, 92vw)', height: 'min(640px, 86vh)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' };
-const confirmCard = { background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(8px)', border: '1px solid rgba(45,45,45,0.15)', boxShadow: '0 18px 48px -8px rgba(0,0,0,0.35)', borderRadius: 26, padding: '28px 26px 24px', width: '84%', maxWidth: 360, textAlign: 'center', pointerEvents: 'auto', fontFamily: 'Jost, sans-serif' };
-const overlayBtnPrimary = { background: '#2d2d2d', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 18, cursor: 'pointer', fontWeight: 600, fontSize: 13, letterSpacing: 0.3, boxShadow: '0 6px 20px -6px rgba(0,0,0,0.4)' };
-const overlayBtnSecondary = { background: 'rgba(45,45,45,0.08)', color: '#2d2d2d', border: '1px solid rgba(45,45,45,0.25)', padding: '10px 20px', borderRadius: 18, cursor: 'pointer', fontWeight: 600, fontSize: 13 };

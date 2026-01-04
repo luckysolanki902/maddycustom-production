@@ -8,7 +8,7 @@ import CategoryGridMessage from './CategoryGridMessage';
 import { v4 as uuidv4 } from 'uuid';
 
 export default function FullPageSupportChat() {
-	const { messages, loading, pendingAssistant, loadingHistory, isResetting, sendMessage, resetChat, retryLast, invokeProductSearch } = useChatSession() || {};
+	const { messages, loading, pendingAssistant, loadingHistory, isResetting, sendMessage, resetChat, retryLast, invokeProductSearch, needsResolutionCheck, submitResolution } = useChatSession() || {};
 	const [input, setInput] = useState('');
 	const [showTemplates, setShowTemplates] = useState(messages?.length === 0);
 	const containerRef = useRef(null);
@@ -28,8 +28,8 @@ export default function FullPageSupportChat() {
 	const handleTemplate = t => { sendMessage(t); setShowTemplates(false); };
 
 	const [confirmOpen, setConfirmOpen] = useState(false);
-	const openReset = () => { if (!messages) return; if (messages.length < 1) { resetChat(); setShowTemplates(true); } else setConfirmOpen(true); };
-	const doReset = async () => { await resetChat(); setShowTemplates(true); setConfirmOpen(false); };
+	// Instant new chat - no confirmation dialog, immediately clear and show skeletons
+	const openReset = () => { resetChat(); setShowTemplates(true); };
 
 	if (!messages) return null;
 
@@ -63,7 +63,7 @@ export default function FullPageSupportChat() {
 						if (m.type === 'category_grid') {
 							return (
 								<div key={m.id} style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 20 }}>
-									<CategoryGridMessage title={m.title} items={m.items} hint={m.hint} />
+									<CategoryGridMessage title={m.title} items={m.items} hint={m.hint} summary={m.summary} />
 								</div>
 							);
 						}
@@ -79,7 +79,11 @@ export default function FullPageSupportChat() {
 											maxPrice: m.queryEcho?.maxPrice,
 											minPrice: m.queryEcho?.minPrice,
 											keywords: m.queryEcho?.keywords,
-											page: (m.page || 1) + 1,
+											categoryTitle: m.queryEcho?.categoryTitle,
+											classificationTags: m.queryEcho?.classificationTags,
+											excludeTags: m.queryEcho?.excludeTags,
+											diversifyCategories: m.queryEcho?.diversifyCategories,
+											page: (m.queryEcho?.page || 1) + 1,
 											limit: m.limit || 8
 										})}
 									/>
@@ -87,9 +91,37 @@ export default function FullPageSupportChat() {
 							);
 						}
 						if (m.type === 'order_status') {
+							// Check if this is the last order_status message and needs resolution check
+							const isLastOrderStatus = needsResolutionCheck && 
+								messages.filter(msg => msg.type === 'order_status').slice(-1)[0]?.id === m.id;
 							return (
-								<div key={m.id} style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 20 }}>
-									<OrderStatusMessage orderId={m.orderId} status={m.status} eta={m.eta} trackUrl={m.trackUrl} steps={m.steps} orderedAt={m.orderedAt} contactName={m.contactName} contactPhone={m.contactPhone} deliveryAddress={m.deliveryAddress} />
+								<div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginBottom: 20 }}>
+									<OrderStatusMessage 
+										orderId={m.orderId} 
+										status={m.status} 
+										eta={m.eta} 
+										trackUrl={m.trackUrl} 
+										steps={m.steps} 
+										orderedAt={m.orderedAt} 
+										contactName={m.contactName} 
+										contactPhone={m.contactPhone} 
+										deliveryAddress={m.deliveryAddress}
+										payment={m.payment}
+										items={m.items}
+										paymentFailed={m.paymentFailed}
+										paymentPending={m.paymentPending}
+										isMultiOrder={m.isMultiOrder}
+										linkedOrders={m.linkedOrders}
+									/>
+									{isLastOrderStatus && (
+										<div style={{ ...botBubble, marginTop: 12, maxWidth: 300 }}>
+											<div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>Did this resolve your query?</div>
+											<div style={{ display: 'flex', gap: 10 }}>
+												<button onClick={() => submitResolution(true)} style={resolutionBtn}>Yes</button>
+												<button onClick={() => submitResolution(false)} style={resolutionBtn}>No</button>
+											</div>
+										</div>
+									)}
 								</div>
 							);
 						}
@@ -123,29 +155,7 @@ export default function FullPageSupportChat() {
 					)}
 				</div>
 			</div>
-			{confirmOpen && (
-				<div style={overlayWrap}>
-					<div style={overlayCard}>
-						<div style={{ fontSize: 20, fontWeight: 600, color: '#2d2d2d', marginBottom: 12 }}>Start New Chat?</div>
-						<div style={{ fontSize: 14, lineHeight: 1.55, color: 'rgba(45,45,45,0.70)', fontWeight: 500, marginBottom: 22 }}>This clears only local messages. Server history is retained for quality.</div>
-						<div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
-							<button onClick={() => setConfirmOpen(false)} style={{...overlayBtnSecondary, opacity: isResetting ? 0.6 : 1}} disabled={isResetting}>Cancel</button>
-							<button onClick={doReset} style={{...overlayBtnPrimary, opacity: isResetting ? 0.6 : 1}} disabled={isResetting}>{isResetting ? 'Starting…' : 'Start Fresh'}</button>
-						</div>
-					</div>
-					{isResetting && (
-						<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3500 }}>
-							<motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }} style={{ background: 'rgba(255,255,255,0.96)', border: '1px solid rgba(45,45,45,0.16)', borderRadius: 24, padding: '20px 22px', boxShadow: '0 26px 72px -14px rgba(0,0,0,0.35)' }}>
-								<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-									<motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }} style={{ width: 22, height: 22, border: '2px solid rgba(45,45,45,0.35)', borderTopColor: '#2d2d2d', borderRadius: '50%' }} />
-									<div style={{ fontSize: 14, color: '#2d2d2d', fontWeight: 600 }}>Starting a new chat…</div>
-								</div>
-								<motion.div initial={{ width: '10%' }} animate={{ width: '100%' }} transition={{ repeat: Infinity, repeatType: 'mirror', duration: 1.6 }} style={{ height: 3, background: '#2d2d2d', marginTop: 10, borderRadius: 2 }} />
-							</motion.div>
-						</motion.div>
-					)}
-				</div>
-			)}
+
 		</div>
 	);
 }
@@ -173,6 +183,7 @@ const overlayWrap = { position: 'fixed', inset: 0, background: 'rgba(255,255,255
 const overlayCard = { background: 'rgba(255,255,255,0.96)', border: '1px solid rgba(45,45,45,0.15)', borderRadius: 34, padding: '34px 38px 30px', width: 'min(480px,92vw)', boxShadow: '0 26px 72px -14px rgba(0,0,0,0.45)', textAlign: 'center', fontFamily: 'Jost, sans-serif' };
 const overlayBtnPrimary = { background: '#2d2d2d', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: 20, cursor: 'pointer', fontWeight: 600, fontSize: 14, letterSpacing: 0.4, boxShadow: '0 8px 26px -8px rgba(0,0,0,0.5)' };
 const overlayBtnSecondary = { background: 'rgba(45,45,45,0.08)', color: '#2d2d2d', border: '1px solid rgba(45,45,45,0.25)', padding: '12px 24px', borderRadius: 20, cursor: 'pointer', fontWeight: 600, fontSize: 14 };
+const resolutionBtn = { background: '#fff', border: '1px solid rgba(45,45,45,0.2)', padding: '8px 18px', borderRadius: 16, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: '#2d2d2d' };
 
 // Regex formatter shared with dialog
 function formatText(txt) {

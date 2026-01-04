@@ -5,6 +5,10 @@ const MessageSchema = new mongoose.Schema(
 		role: { type: String, required: true, enum: ['user', 'assistant', 'system', 'tool'] },
 		kind: { type: String, default: 'text' },
 		text: { type: String, default: '' },
+		// Structured message type: text, product_gallery, category_grid, order_status
+		messageType: { type: String, default: 'text' },
+		// Structured data for special message types
+		structuredData: { type: mongoose.Schema.Types.Mixed, default: null },
 		toolName: { type: String },
 		toolArgs: mongoose.Schema.Types.Mixed,
 		toolSummary: mongoose.Schema.Types.Mixed,

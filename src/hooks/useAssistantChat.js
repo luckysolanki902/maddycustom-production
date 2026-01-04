@@ -230,6 +230,7 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 						title: data.data.title,
 						items: data.data.items || [],
 						hint: data.data.hint,
+						summary: data.reply || null,
 						created_at: new Date().toISOString()
 					};
 					setMessages(prev => [...prev, gridMsg]);
@@ -239,10 +240,10 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 					const assistantMsg = { id: 'assist-' + Date.now(), role: 'assistant', text: data.reply, created_at: new Date().toISOString() };
 					setMessages(prev => [...prev, assistantMsg]);
 				}
-				// Update classification flags
+				// Update classification flags - only show resolution check when explicitly requested
 				if (data.classification) {
 					setClassification(data.classification);
-					const shouldAsk = !!(data.classification.needsResolutionCheck || data.classification.type === 'query');
+					const shouldAsk = !!data.classification.needsResolutionCheck;
 					setNeedsResolutionCheck(shouldAsk);
 				}
 			} catch (e) {
@@ -294,12 +295,16 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 						contactName: payload?.contactName || payload?.customer?.name || null,
 						contactPhone: payload?.contactPhone || payload?.customer?.phone || null,
 						lookup: payload?.lookup || null,
+						payment: payload?.payment || null,
+						items: payload?.items || [],
+						paymentFailed: payload?.paymentFailed || false,
+						paymentPending: payload?.paymentPending || false,
 						created_at: new Date().toISOString()
 					};
 					setMessages(prev => [...prev, statusMsg]);
 					if (data.classification) {
 						setClassification(data.classification);
-						const shouldAsk = !!(data.classification.needsResolutionCheck || data.classification.type === 'query');
+						const shouldAsk = !!data.classification.needsResolutionCheck;
 						setNeedsResolutionCheck(shouldAsk);
 					}
 				} catch (e) {
@@ -389,13 +394,17 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 				const resp = await fetch(API_BASE, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ userId, message: content })
+					body: JSON.stringify({ 
+						userId, 
+						message: content,
+						pageContext: assistantContext?.categoryTitle ? { categoryTitle: assistantContext.categoryTitle } : null
+					})
 				});
 				if (!resp.ok) throw new Error('Send failed');
 				const data = await resp.json();
 				// Planner may return a tool result directly
 				if (data.tool === 'browse_categories' && data.data) {
-					const gridMsg = { id: 'cats-' + Date.now(), role: 'assistant', type: 'category_grid', title: data.data.title, items: data.data.items, hint: data.data.hint, created_at: new Date().toISOString() };
+					const gridMsg = { id: 'cats-' + Date.now(), role: 'assistant', type: 'category_grid', title: data.data.title, items: data.data.items, hint: data.data.hint, summary: data.reply || null, created_at: new Date().toISOString() };
 					setMessages(prev => [...prev, gridMsg]);
 				} else if (data.tool === 'search_products' && data.data) {
 					const galleryMsg = { id: 'gallery-' + Date.now(), role: 'assistant', type: 'product_gallery', products: data.data.products || [], queryEcho: data.data.queryEcho, hasMore: !!data.data.hasMore, continuation: data.data.continuation || null, created_at: new Date().toISOString() };
@@ -404,7 +413,25 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 					setMessages(prev => [...prev, galleryMsg]);
 				} else if (data.tool === 'get_order_status' && data.data) {
 					const payload = data.data;
-					const statusMsg = { id: 'order-' + Date.now(), role: 'assistant', type: 'order_status', orderId: payload?.orderId, status: payload?.status, eta: payload?.expectedDelivery || null, trackUrl: payload?.trackUrl || null, steps: Array.isArray(payload?.steps) ? payload.steps : [], orderedAt: payload?.orderedAt || payload?.order?.orderedAt || null, deliveryAddress: payload?.deliveryAddress || payload?.customer?.address || null, contactName: payload?.contactName || payload?.customer?.name || null, contactPhone: payload?.contactPhone || payload?.customer?.phone || null, created_at: new Date().toISOString() };
+					const statusMsg = { 
+						id: 'order-' + Date.now(), 
+						role: 'assistant', 
+						type: 'order_status', 
+						orderId: payload?.orderId, 
+						status: payload?.status, 
+						eta: payload?.expectedDelivery || null, 
+						trackUrl: payload?.trackUrl || null, 
+						steps: Array.isArray(payload?.steps) ? payload.steps : [], 
+						orderedAt: payload?.orderedAt || payload?.order?.orderedAt || null, 
+						deliveryAddress: payload?.deliveryAddress || payload?.customer?.address || null, 
+						contactName: payload?.contactName || payload?.customer?.name || null, 
+						contactPhone: payload?.contactPhone || payload?.customer?.phone || null,
+						payment: payload?.payment || null,
+						items: payload?.items || [],
+						paymentFailed: payload?.paymentFailed || false,
+						paymentPending: payload?.paymentPending || false,
+						created_at: new Date().toISOString() 
+					};
 					setMessages(prev => [...prev, statusMsg]);
 				} else if (data.reply) {
 					const assistantMsg = {
@@ -418,7 +445,7 @@ export default function useAssistantChat({ userId: providedUserId } = {}) {
 				// Update classification flags on any path
 				if (data.classification) {
 					setClassification(data.classification);
-					const shouldAsk = !!(data.classification.needsResolutionCheck || data.classification.type === 'query');
+					const shouldAsk = !!data.classification.needsResolutionCheck;
 					setNeedsResolutionCheck(shouldAsk);
 				}
 				if (data.threadId) setThreadId(data.threadId);

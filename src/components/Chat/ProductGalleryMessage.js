@@ -2,6 +2,19 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
+// Simple markdown bold renderer
+function renderMarkdown(text) {
+  if (!text) return null;
+  // Split by **text** pattern and render bold
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
 export default function ProductGalleryMessage({
 	products = [],
 	summary,
@@ -17,7 +30,7 @@ export default function ProductGalleryMessage({
   return (
     <div style={wrapperStyle}>
       <div style={titleRow}>Suggested Products</div>
-      <div style={summaryStyle}>{"Here are the best picks for you! To make your choice easier, we've curated a list of products that match your preferences."}  </div>
+      {summary && <div style={summaryStyle}>{renderMarkdown(summary)}</div>}
       <div style={gridStyle}>
         {products.map(p => (
           <motion.a

@@ -1,9 +1,9 @@
 // Agent V2 Configuration Constants
 
 export const MODELS = {
-  CLASSIFIER: process.env.OPENAI_AGENT_MODEL_CLASSIFIER || 'gpt-4.1-mini',
-  DATA_QUERY: process.env.OPENAI_AGENT_MODEL_DATA || 'gpt-4.1',
-  VECTOR_STORE: process.env.OPENAI_AGENT_MODEL_VECTOR || 'gpt-4.1-mini',
+  CLASSIFIER: process.env.OPENAI_AGENT_MODEL_CLASSIFIER || 'gpt-4.1-nano',
+  DATA_QUERY: process.env.OPENAI_AGENT_MODEL_DATA || 'gpt-4.1-nano',
+  VECTOR_STORE: process.env.OPENAI_AGENT_MODEL_VECTOR || 'gpt-4.1-nano',
   DIRECT_ANSWER: process.env.OPENAI_AGENT_MODEL_DIRECT || 'gpt-4.1-nano',
   HANDOFF: process.env.OPENAI_AGENT_MODEL_DIRECT || 'gpt-4.1-nano',
 };
