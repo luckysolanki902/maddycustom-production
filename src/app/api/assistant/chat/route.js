@@ -40,6 +40,7 @@ function setCached(key, data, ttlMs) {
 }
 
 const GPT_REPLY_CHAR_LIMIT = 200;
+const HISTORY_CHAR_LIMIT = 2000; // Higher limit for conversation history (needs to include full product lists)
 
 const truncateText = (value, limit = GPT_REPLY_CHAR_LIMIT) => {
   if (value === undefined || value === null) return '';
@@ -100,32 +101,12 @@ const summarizeToolResult = (tool, result = {}) => {
   return undefined;
 };
 
-const SIMPLE_GREETING_TOKENS = new Set([
-  'hi', 'hii', 'hiii', 'hello', 'helo', 'hey', 'heyy', 'heyyy', 'hola', 'namaste', 'yo', 'sup', 'hai', 'hlo', 'hloo', 'hola', 'hey there', 'hi there', 'hello there'
-]);
-
-const normalizeGreetingCandidate = (text) => {
-  if (!text || typeof text !== 'string') return '';
-  const trimmed = text.trim().toLowerCase();
-  if (!trimmed) return '';
-  return trimmed.replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
-};
-
-const detectGreetingReply = (text) => {
-  const normalized = normalizeGreetingCandidate(text);
-  if (!normalized) return null;
-  if (SIMPLE_GREETING_TOKENS.has(normalized)) {
-    return 'Hey! I can help with wraps, fragrances, accessories, or order updates—just let me know what you need.';
-  }
-  if (normalized.length <= 6 && /^(hi+|hey+|h?ello|yo)$/.test(normalized.replace(/\s+/g, ''))) {
-    return 'Hey! I can help with wraps, fragrances, accessories, or order updates—just let me know what you need.';
-  }
-  return null;
-};
+// All message handling (including greetings) goes through GPT - no regex shortcuts
 
 const makeUserEntry = (text) => ({
   role: 'user',
   kind: 'text',
+  messageType: 'text',
   text: truncateText(text, 500),
   timestamp: new Date()
 });
@@ -133,7 +114,9 @@ const makeUserEntry = (text) => ({
 const makeAssistantEntry = (text, extras = {}) => ({
   role: 'assistant',
   kind: extras.kind || 'text',
-  text: truncateText(text, GPT_REPLY_CHAR_LIMIT),
+  messageType: extras.messageType || 'text',
+  text: truncateText(text, HISTORY_CHAR_LIMIT), // Use higher limit for history storage
+  structuredData: extras.structuredData || null,
   handoff: extras.handoff || undefined,
   meta: extras.meta,
   timestamp: new Date()
@@ -201,230 +184,7 @@ const classificationForTool = (tool) => {
   return { ...preset };
 };
 
-const COLOR_KEYWORDS = new Set([
-  'red', 'maroon', 'blue', 'navy', 'purple', 'violet', 'pink', 'magenta', 'green', 'lime', 'teal', 'cyan',
-  'black', 'white', 'silver', 'gold', 'yellow', 'orange', 'bronze', 'gray', 'grey', 'brown', 'cream', 'beige',
-  'matte', 'gloss', 'chrome', 'carbon', 'pearlescent', 'neon'
-]);
-
-const RELATION_KEYWORDS = new Set([
-  'dad', 'father', 'mom', 'mother', 'brother', 'sister', 'husband', 'wife', 'boyfriend', 'girlfriend',
-  'friend', 'partner', 'son', 'daughter', 'uncle', 'aunt', 'boss'
-]);
-
-const PRODUCT_INTENT_KEYWORDS = new Set([
-  'wrap', 'wraps', 'design', 'designs', 'sticker', 'stickers', 'decal', 'decals', 'skin', 'skins', 'fragrance',
-  'fragrances', 'perfume', 'perfumes', 'freshener', 'fresheners', 'keychain', 'keychains', 'accessory',
-  'accessories', 'helmet', 'bonnet', 'roof', 'pillar', 'tank', 'hood', 'bike', 'car', 'scooter', 'scooty',
-  'motorcycle', 'automotive', 'vinyl', 'graphics', 'gift', 'present', 'theme', 'variant', 'collection'
-]);
-
-const PRODUCT_STOP_WORDS = new Set([
-  'my', 'for', 'the', 'and', 'with', 'that', 'this', 'have', 'some', 'show', 'give', 'need', 'want', 'your',
-  'from', 'please', 'kindly', 'just', 'about', 'what', 'something', 'like', 'can', 'you', 'me', 'our', 'his',
-  'her', 'their', 'its', 'any', 'more', 'also', 'make', 'into', 'looking', 'budget', 'under', 'less', 'than',
-  'below', 'within', 'help', 'idea', 'ideas', 'options', 'option', 'maybe', 'would', 'could', 'there', 'available',
-  'good', 'best', 'tell', 'suggest', 'recommend', 'price', 'range', 'color', 'colour', 'colors', 'colours', 'on',
-  'is', 'in', 'it', 'of', 'a', 'to', 'wow', 'awesome', 'nice', 'cool', 'unique', 'need', 'budget'
-]);
-
-const PRODUCT_DOMAIN_HINTS = [
-  { word: 'car', category: null, diversify: true, keyword: 'car' },
-  { word: 'bike', category: 'bike wrap', diversify: false, keyword: 'bike' },
-  { word: 'motorcycle', category: 'bike wrap', diversify: false, keyword: 'bike' },
-  { word: 'scooter', category: 'bike wrap', diversify: false, keyword: 'scooter' },
-  { word: 'scooty', category: 'bike wrap', diversify: false, keyword: 'scooty' },
-  { word: 'helmet', category: 'helmet wrap', diversify: false, keyword: 'helmet' },
-  { word: 'bonnet', category: 'bonnet wrap', diversify: false, keyword: 'bonnet' },
-  { word: 'hood', category: 'bonnet wrap', diversify: false, keyword: 'hood' },
-  { word: 'roof', category: 'roof wrap', diversify: false, keyword: 'roof' },
-  { word: 'pillar', category: 'window pillar wrap', diversify: false, keyword: 'pillar' },
-  { word: 'window', category: 'window pillar wrap', diversify: false, keyword: 'window' },
-  { word: 'tank', category: 'tank wrap', diversify: false, keyword: 'tank' },
-  { word: 'interior', category: 'car interiors', diversify: false, keyword: 'interior' },
-  { word: 'dashboard', category: 'car interiors', diversify: false, keyword: 'dashboard' },
-  { word: 'fragrance', category: 'car fragrance', diversify: false, keyword: 'fragrance' },
-  { word: 'freshener', category: 'car fragrance', diversify: false, keyword: 'freshener' },
-  { word: 'perfume', category: 'car fragrance', diversify: false, keyword: 'perfume' },
-  { word: 'keychain', category: null, diversify: false, keyword: 'keychain' },
-  { word: 'sticker', category: null, diversify: false, keyword: 'sticker' },
-  { word: 'decal', category: null, diversify: false, keyword: 'decal' },
-  { word: 'jdm', category: null, diversify: true, keyword: 'jdm' }
-];
-
-const PRODUCT_NEGATION_PATTERNS = [
-  /how long/i,
-  /how much time/i,
-  /\bmaterial\b/i,
-  /\bdurability\b/i,
-  /\binstall/i,
-  /\binstallation\b/i,
-  /\bcare\b/i,
-  /\bmaintenance\b/i,
-  /\bwarranty\b/i,
-  /\breturn\b/i,
-  /\brefund\b/i,
-  /\bexchange\b/i,
-  /\bpolicy\b/i,
-  /\bwhere is my order\b/i,
-  /\border status\b/i,
-  /\btrack (?:my )?order\b/i,
-  /\btracking (?:my )?order\b/i,
-  /\bshipping time\b/i,
-  /\bdelivery time\b/i,
-  /\bhow soon\b/i
-];
-
-const sanitizeToken = (value) => {
-  if (!value || typeof value !== 'string') return '';
-  return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
-};
-
-const extractSearchHints = (text) => {
-  if (!text || typeof text !== 'string') return null;
-  const lowered = text.toLowerCase();
-  if (!lowered.trim()) return null;
-  if (PRODUCT_NEGATION_PATTERNS.some(rx => rx.test(lowered))) return null;
-
-  const tokens = lowered.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
-  if (!tokens.length) return null;
-
-  const keywordSet = new Set();
-  let categoryTitle = null;
-  let hasDomain = false;
-  let diversify = false;
-
-  for (const hint of PRODUCT_DOMAIN_HINTS) {
-    if (lowered.includes(hint.word)) {
-      hasDomain = true;
-      if (hint.keyword) keywordSet.add(hint.keyword);
-      if (!categoryTitle && hint.category) categoryTitle = hint.category;
-      if (hint.diversify) diversify = true;
-    }
-  }
-
-  const colorMatches = tokens.filter(word => COLOR_KEYWORDS.has(word));
-  colorMatches.forEach(word => keywordSet.add(word));
-
-  const relationMatches = tokens.filter(word => RELATION_KEYWORDS.has(word));
-  relationMatches.forEach(word => keywordSet.add(word));
-
-  const productIntentMatches = tokens.filter(word => PRODUCT_INTENT_KEYWORDS.has(word));
-  productIntentMatches.forEach(word => keywordSet.add(word));
-
-  const hasGift = lowered.includes('gift') || lowered.includes('present');
-  if (hasGift) {
-    keywordSet.add('gift');
-  }
-
-  let maxPrice = null;
-  const budgetPattern = /\b(?:budget(?: is| of|=)?|under|less than|below|within|upto|up to)\s*(?:rs\.?|₹|rupees?)?\s*(\d{2,6})/i;
-  const currencyPattern = /(?:₹|rs\.?|rupees?)\s*(\d{2,6})/i;
-  const reverseCurrencyPattern = /(\d{2,6})\s*(?:₹|rs\.?|rupees?)/i;
-  let match = budgetPattern.exec(lowered);
-  if (match) {
-    maxPrice = Number(match[1]);
-  } else {
-    match = currencyPattern.exec(lowered);
-    if (match) {
-      maxPrice = Number(match[1]);
-    } else {
-      match = reverseCurrencyPattern.exec(lowered);
-      if (match) {
-        maxPrice = Number(match[1]);
-      }
-    }
-  }
-  if (!maxPrice && /\b(?:budget|under|less than|below|within|upto|up to)\b/.test(lowered)) {
-    const numberMatch = lowered.match(/\b\d{2,6}\b/);
-    if (numberMatch) {
-      const candidate = Number(numberMatch[0]);
-      if (candidate > 10 && candidate <= 200000) {
-        maxPrice = candidate;
-      }
-    }
-  }
-
-  if (!hasDomain && productIntentMatches.length === 0 && colorMatches.length === 0 && !hasGift) {
-    return null;
-  }
-
-  const significantTokens = tokens
-    .map(sanitizeToken)
-    .filter(token => token && !PRODUCT_STOP_WORDS.has(token));
-  for (const token of significantTokens) {
-  if (keywordSet.size >= 8) break;
-  if (/^\d+$/.test(token)) continue;
-    keywordSet.add(token);
-  }
-
-  const keywords = Array.from(keywordSet).filter(Boolean).slice(0, 8);
-  const args = {};
-  if (categoryTitle) args.categoryTitle = categoryTitle;
-  if (typeof maxPrice === 'number') args.maxPrice = maxPrice;
-  if (keywords.length) args.keywords = keywords;
-  if (!categoryTitle && (diversify || hasDomain)) {
-    args.diversifyCategories = true;
-    args.limit = 10;
-  }
-  if (!args.limit) {
-    args.limit = categoryTitle ? 6 : 10;
-  }
-
-  if (!args.categoryTitle && !args.keywords && typeof args.maxPrice !== 'number') {
-    return null;
-  }
-
-  return {
-    shouldForce: hasDomain || productIntentMatches.length > 0 || colorMatches.length > 0 || hasGift,
-    args
-  };
-};
-
-const mergeSearchArgs = (existingArgs = {}, extraArgs = {}) => {
-  if (!extraArgs || typeof extraArgs !== 'object') {
-    return { ...existingArgs };
-  }
-  const merged = { ...existingArgs };
-  if (extraArgs.categoryTitle && !merged.categoryTitle) {
-    merged.categoryTitle = extraArgs.categoryTitle;
-  }
-  if (typeof extraArgs.maxPrice === 'number') {
-    if (merged.maxPrice === undefined || extraArgs.maxPrice < merged.maxPrice) {
-      merged.maxPrice = extraArgs.maxPrice;
-    }
-  }
-  const keywordSet = new Set();
-  if (Array.isArray(existingArgs.keywords)) {
-    existingArgs.keywords.forEach(keyword => {
-      if (keyword) keywordSet.add(String(keyword));
-    });
-  }
-  if (Array.isArray(extraArgs.keywords)) {
-    extraArgs.keywords.forEach(keyword => {
-      if (keyword) keywordSet.add(String(keyword));
-    });
-  }
-  if (keywordSet.size) {
-    merged.keywords = Array.from(keywordSet).slice(0, 8);
-  }
-  if (extraArgs.diversifyCategories) {
-    merged.diversifyCategories = true;
-  }
-  if (extraArgs.limit) {
-    const capped = Math.min(10, Math.max(1, Number(extraArgs.limit) || 0));
-    if (!merged.limit || capped > merged.limit) {
-      merged.limit = capped;
-    }
-  }
-  if (!merged.limit) {
-    merged.limit = 6;
-  }
-  if (extraArgs.query && !merged.query) {
-    merged.query = extraArgs.query;
-  }
-  return merged;
-};
+// All search argument building handled by GPT planner - no manual heuristics
 
 const createTimeline = () => {
   const start = performance.now();
@@ -483,200 +243,32 @@ const formatINR = (value) => {
 };
 
 const summarizeProducts = ({ input = {}, output = {} }) => {
-  const products = Array.isArray(output?.products) ? output.products : [];
-  if (!products.length) return '';
-
-  const limit = typeof input?.limit === 'number' ? input.limit : (typeof output?.limit === 'number' ? output.limit : 6);
-
-  const highlights = products.slice(0, Math.min(products.length, 2)).map(item => {
-    const price = typeof item.price === 'number' ? formatINR(item.price) : null;
-    return price ? `${item.title || 'Option'} (${price})` : (item.title || 'Option');
-  });
-
-  const prices = products
-    .map(p => (typeof p.price === 'number' && !Number.isNaN(p.price) ? p.price : null))
-    .filter(v => v !== null);
-  const minPrice = prices.length ? Math.min(...prices) : null;
-  const maxPrice = prices.length ? Math.max(...prices) : null;
-  const budgetCap = typeof input?.maxPrice === 'number'
-    ? input.maxPrice
-    : (typeof output?.queryEcho?.maxPrice === 'number' ? output.queryEcho.maxPrice : null);
-
-  const keywordPool = new Set();
-  const appendKeywords = (values) => {
-    if (!values) return;
-    const arr = Array.isArray(values) ? values : [values];
-    arr.forEach(val => {
-      if (typeof val === 'string' && val.trim()) {
-        keywordPool.add(val.trim().toLowerCase());
-      }
-    });
-  };
-  appendKeywords(input?.keywords);
-  appendKeywords(output?.queryEcho?.keywords);
-  const queryText = typeof input?.query === 'string' && input.query.trim()
-    ? input.query
-    : (typeof output?.queryEcho?.query === 'string' ? output.queryEcho.query : '');
-  if (queryText) {
-    queryText.toLowerCase().split(/[^a-z0-9]+/g).forEach(tok => tok && keywordPool.add(tok));
-  }
-
-  const FINISH_KEYWORDS = new Set(['matte', 'gloss', 'chrome', 'carbon', 'pearlescent', 'neon']);
-  let dominantColor = null;
-  for (const word of keywordPool) {
-    if (COLOR_KEYWORDS.has(word) && !FINISH_KEYWORDS.has(word)) {
-      dominantColor = word;
-      break;
-    }
-  }
-  let dominantFinish = null;
-  if (!dominantColor) {
-    for (const word of keywordPool) {
-      if (FINISH_KEYWORDS.has(word)) {
-        dominantFinish = word;
-        break;
-      }
-    }
-  }
-
-  const ACCENT_SUGGESTIONS = {
-    red: 'black',
-    blue: 'black',
-    black: 'silver',
-    white: 'black',
-    green: 'black',
-    orange: 'black',
-    yellow: 'black',
-    pink: 'white',
-    purple: 'black',
-    maroon: 'black'
-  };
-
-  const rideContext = /\bbike\b/i.test(queryText) ? 'bike' : (/\bcar\b/i.test(queryText) ? 'car' : 'ride');
-
-  const listToSentence = (items = []) => {
-    if (!items.length) return '';
-    if (items.length === 1) return items[0];
-    if (items.length === 2) return `${items[0]} and ${items[1]}`;
-    const head = items.slice(0, -1).join(', ');
-    return `${head}, and ${items[items.length - 1]}`;
-  };
-
-  const GENERIC_KEYWORDS = new Set(['wrap', 'wraps', 'design', 'designs', 'product', 'products', 'something', 'show', 'suggest', 'need', 'want', 'theme', 'option', 'options', 'bike', 'car', 'ride']);
-  const orderedKeywords = Array.from(keywordPool);
-  const primaryKeyword = orderedKeywords.find(word => !GENERIC_KEYWORDS.has(word) && !COLOR_KEYWORDS.has(word) && !RELATION_KEYWORDS.has(word));
-
-  const normalizedCategory = String(input?.categoryTitle || output?.queryEcho?.categoryTitle || '').toLowerCase();
-  const categoryContext = (() => {
-    if (/interior/.test(normalizedCategory) || orderedKeywords.includes('interior')) return 'interior';
-    if (/fragrance|perfume|scent/.test(normalizedCategory) || orderedKeywords.some(k => /fragrance|perfume|scent/.test(k))) return 'fragrance';
-    if (rideContext === 'bike') return 'bike';
-    return 'car';
-  })();
-
-  const pairingSuggestions = {
-    car: ['bonnet wrap', 'window pillar wrap', 'fuel cap wrap'],
-    bike: ['tank wrap', 'helmet wrap', 'visor strip wrap'],
-    interior: ['dashboard trim overlay', 'console accent kit', 'door handle sleeves'],
-    fragrance: ['vent perfume pods', 'hanging diffuser', 'underseat sachet'],
-    default: ['bonnet wrap', 'window pillar wrap', 'boot garnish wrap']
-  };
-  const basePairings = pairingSuggestions[categoryContext] || pairingSuggestions.default;
-  const withArticle = (phrase = '') => {
-    if (/^(?:an?|the)\s/i.test(phrase)) return phrase;
-    const trimmed = phrase.trim();
-    if (!trimmed) return phrase;
-    const startsVowel = /^[aeiou]/i.test(trimmed);
-    return `${startsVowel ? 'an' : 'a'} ${trimmed}`;
-  };
-  const pairingWithArticles = basePairings.slice(0, 3).map(withArticle);
-  const pairingSentence = 
-  // let's use static sentence for now
-  "Here are the best picks for you"
-  // listToSentence(pairingWithArticles);
-
-  const currencyRange = (() => {
-    if (budgetCap) return formatINR(budgetCap);
-    if (maxPrice && minPrice && maxPrice !== minPrice) return `${formatINR(minPrice)}–${formatINR(maxPrice)}`;
-    if (minPrice) return formatINR(minPrice);
-    if (maxPrice) return formatINR(maxPrice);
-    return null;
-  })();
-
-  const pieces = [];
-  if (highlights.length) {
-    const leadDescriptor = products.length >= limit ? `top ${limit}` : `${products.length}`;
-    pieces.push(`Pulled ${leadDescriptor} options like ${highlights.join(' and ')}.`);
-  }
-
-  if (budgetCap) {
-    const budgetText = formatINR(budgetCap);
-    const floorText = minPrice && minPrice !== budgetCap ? `, opening near ${formatINR(minPrice)}` : '';
-    pieces.push(`Everything stays within ${budgetText}${floorText}.`);
-  } else if (minPrice && maxPrice && minPrice !== maxPrice) {
-    pieces.push(`Pricing hovers roughly between ${formatINR(minPrice)} and ${formatINR(maxPrice)}.`);
-  } else if (minPrice) {
-    pieces.push(`Pricing starts close to ${formatINR(minPrice)}.`);
-  }
-
-  if (pairingSentence) {
-    const budgetNote = currencyRange ? ` while staying around ${currencyRange}` : '';
-    pieces.push(`Think about layering ${pairingSentence}${budgetNote} to round out the look.`);
-  }
-
-  if (dominantColor) {
-    pieces.push(`Most picks weave in ${dominantColor} accents so they echo your ${rideContext} instead of feeling tacked on.`);
-    const accent = ACCENT_SUGGESTIONS[dominantColor];
-    if (accent) {
-      pieces.push(`${accent.charAt(0).toUpperCase() + accent.slice(1)} touches add contrast without overpowering the theme if you ever want to dial it up.`);
-    }
-  } else if (dominantFinish) {
-    pieces.push(`There’s a ${dominantFinish} surface running through these picks, keeping glare low and the finish feeling intentional.`);
-  }
-
-  const followUpBase = (() => {
-    if (primaryKeyword) {
-      return `Want me to queue up more ${primaryKeyword} ideas or shift the vibe altogether?`;
-    }
-    if (dominantColor) {
-      return `Should I explore more in this ${dominantColor} lane or add a contrasting accent?`;
-    }
-    if (budgetCap) {
-      return 'Need me to stretch or tighten that budget window?';
-    }
-    return 'Happy to explore another theme or tweak the budget—just say the word.';
-  })();
-
-  if (output?.hasMore) {
-    pieces.push(`${followUpBase} I can also line up to 10 more options if you want a broader shortlist.`);
-  } else {
-    pieces.push(followUpBase);
-  }
-
-  return pieces.join(' ');
+  // Return empty - let GPT generate contextual summaries based on the search
+  return '';
 };
 
 const summarizeCategories = ({ output = {} }) => {
-  const items = Array.isArray(output?.items) ? output.items : [];
-  if (!items.length) return '';
-  const names = items.slice(0, 3).map(item => item.title || 'Category');
-  return `Here are categories like ${names.join(', ')}. Tell me which one to open.`;
+  // Return empty - let GPT generate contextual summaries
+  return '';
 };
 
 const summarizeOrderStatus = ({ output = {} }) => {
   if (!output) return '';
+  // If payment pending or failed, error is already set
+  if (output.paymentPending) {
+    return 'No confirmed order found. The payment may not have been completed. Please share your order ID, phone number, or email used to place the order so I can check.';
+  }
+  if (output.paymentFailed) {
+    return 'Payment for this order failed. Please try placing the order again or contact support.';
+  }
+  // If no order found
   if (output.ok === false) {
-    return output.error || 'I couldn’t find that order. Could you double-check the ID or phone number?';
+    return 'I could not find an order with those details. Please share your order ID, phone number, or email used to place the order.';
   }
   const status = output.status || 'Processing';
-  const eta = output.expectedDelivery ? ` ETA ${output.expectedDelivery}.` : '';
+  const eta = output.expectedDelivery ? ` ETA: ${output.expectedDelivery}.` : '';
   const track = output.trackUrl ? ` Track it here: ${output.trackUrl}` : '';
-  const base = `Latest update: ${status}.${eta}${track ? ` ${track}` : ''}`;
-  const needsTransitNote = !/delivered/i.test(status || '');
-  const transitNote = needsTransitNote
-    ? ' Orders typically process in 2-3 business days and reach you within 7-10 business days once dispatched. Couriers attempt delivery up to 3 times with OTP.'
-    : '';
-  return `${base}${transitNote ? ` ${transitNote}` : ''} Let me know if you need anything else.`;
+  return `Your order status: ${status}.${eta}${track} Let me know if you need anything else.`;
 };
 
 // Small helper: compose a concise, user-facing reply for tool outputs without an extra model hop
@@ -710,7 +302,7 @@ Return JSON with keys: type ('browse'|'query'), needsResolutionCheck (boolean), 
 - If the user asks for a human agent, WhatsApp support, real person, or any handoff to a teammate, set needsResolutionCheck to false, category to customer_support, and subcategory to human_handoff.
 - Keep needsResolutionCheck false for chit-chat or acknowledgements.`;
     const resp = await client.chat.completions.create({
-      model: 'gpt-5-nano',
+      model: 'gpt-4.1-nano',
       max_completion_tokens: 500,
       messages: [
         { role: 'system', content: system },
@@ -780,9 +372,17 @@ async function fetchCategoriesInfoCached() {
 
 const INSTRUCTIONS_TTL_MS = 30 * 60 * 1000;
 
-const buildInstructionString = (helpingData) => `You are the official support assistant for MaddyCustom. Use the following domain knowledge about products, wraps, installation, shipping, durability, fragrance variants, JDM keychains, ordering & tracking. Never fabricate policies. If unsure, ask the user for clarification. ALWAYS be concise, friendly, respectful and avoid markdown formatting. When the user asks for a human agent, real person, WhatsApp support, or similar handoff, do NOT drop a link immediately. Instead say: "I can redirect you to our human team on WhatsApp (${HUMAN_HANDOFF_PHONE}). Would you like me to open it?" and wait for a clear Yes before sharing ${HUMAN_HANDOFF_LINK}. Domain Knowledge:\n\n${helpingData}`;
+const buildInstructionString = (helpingData) => `You are the official support assistant for MaddyCustom. Use the following domain knowledge about products, wraps, installation, shipping, durability, fragrance variants, JDM keychains, ordering & tracking.
 
-const FALLBACK_INSTRUCTIONS = `You are the official support assistant for MaddyCustom. Use your knowledge about products, wraps, installation, shipping, durability, fragrance variants, JDM keychains, ordering & tracking. Never fabricate policies. If unsure, ask the user for clarification. ALWAYS be concise, friendly, respectful and avoid markdown formatting. When the user asks for a human agent, real person, WhatsApp support, or similar handoff, do NOT drop a link immediately. Instead say: "I can redirect you to our human team on WhatsApp (${HUMAN_HANDOFF_PHONE}). Would you like me to open it?" and wait for a clear Yes before sharing ${HUMAN_HANDOFF_LINK}.`;
+CRITICAL: NEVER fabricate or make up prices, product names, or availability. If asked about specific products or prices, say you need to look them up (the system will use search tools). Only state prices that were provided by the actual product search results shown in the conversation.
+
+Be concise, friendly, respectful and avoid markdown formatting. When the user asks for a human agent, real person, WhatsApp support, or similar handoff, do NOT drop a link immediately. Instead say: "I can redirect you to our human team on WhatsApp (${HUMAN_HANDOFF_PHONE}). Would you like me to open it?" and wait for a clear Yes before sharing ${HUMAN_HANDOFF_LINK}. Domain Knowledge:\n\n${helpingData}`;
+
+const FALLBACK_INSTRUCTIONS = `You are the official support assistant for MaddyCustom. Use your knowledge about products, wraps, installation, shipping, durability, fragrance variants, JDM keychains, ordering & tracking.
+
+CRITICAL: NEVER fabricate or make up prices, product names, or availability. If asked about specific products or prices, say you need to look them up. Only state prices from actual product search results.
+
+Be concise, friendly, respectful and avoid markdown formatting. When the user asks for a human agent, real person, WhatsApp support, or similar handoff, do NOT drop a link immediately. Instead say: "I can redirect you to our human team on WhatsApp (${HUMAN_HANDOFF_PHONE}). Would you like me to open it?" and wait for a clear Yes before sharing ${HUMAN_HANDOFF_LINK}.`;
 
 async function getAssistantInstructions() {
   const now = Date.now();
@@ -847,14 +447,68 @@ export async function GET(request) {
       const bt = new Date(b.timestamp || 0).getTime();
       return at - bt;
     });
+    
+    // Restore both text messages and structured messages (product_gallery, category_grid, order_status)
     const messages = ordered
-      .filter(entry => (entry.role === 'user' || entry.role === 'assistant') && entry.text)
-      .map(entry => ({
-        id: `${entry.role}-${new Date(entry.timestamp || Date.now()).getTime()}`,
-        role: entry.role,
-        text: entry.text || '',
-        created_at: new Date(entry.timestamp || Date.now()).toISOString(),
-      }));
+      .filter(entry => (entry.role === 'user' || entry.role === 'assistant'))
+      .map(entry => {
+        const baseMsg = {
+          id: `${entry.role}-${new Date(entry.timestamp || Date.now()).getTime()}`,
+          role: entry.role,
+          created_at: new Date(entry.timestamp || Date.now()).toISOString(),
+        };
+        
+        // Check for structured message types
+        if (entry.messageType && entry.messageType !== 'text' && entry.structuredData) {
+          const data = entry.structuredData;
+          if (entry.messageType === 'product_gallery') {
+            return {
+              ...baseMsg,
+              type: 'product_gallery',
+              products: data.products || [],
+              queryEcho: data.queryEcho || null,
+              hasMore: data.hasMore || false,
+              summary: data.summary || entry.text || null,
+            };
+          }
+          if (entry.messageType === 'category_grid') {
+            return {
+              ...baseMsg,
+              type: 'category_grid',
+              title: data.title || 'Shop by Category',
+              items: data.items || [],
+              hint: data.hint || null,
+              summary: data.summary || entry.text || null,
+            };
+          }
+          if (entry.messageType === 'order_status') {
+            return {
+              ...baseMsg,
+              type: 'order_status',
+              orderId: data.orderId,
+              status: data.status,
+              eta: data.eta || data.expectedDelivery,
+              trackUrl: data.trackUrl,
+              steps: data.steps || [],
+              orderedAt: data.orderedAt,
+              contactName: data.contactName,
+              contactPhone: data.contactPhone,
+              deliveryAddress: data.deliveryAddress,
+              payment: data.payment,
+              items: data.items || [],
+              isMultiOrder: data.isMultiOrder,
+              linkedOrders: data.linkedOrders || [],
+              paymentFailed: data.paymentFailed,
+              paymentPending: data.paymentPending,
+            };
+          }
+        }
+        
+        // Default text message
+        if (!entry.text) return null;
+        return { ...baseMsg, text: entry.text || '' };
+      })
+      .filter(Boolean);
 
     return NextResponse.json({ messages, threadId });
   } catch (err) {
@@ -873,7 +527,7 @@ export async function POST(request) {
     const timeline = createTimeline();
     const body = await request.json().catch(() => ({}));
     timeline.mark('body_parsed');
-    const { action, message, userId, toolInvocation } = body || {};
+    const { action, message, userId, toolInvocation, pageContext } = body || {};
 
     await connectToDb();
     timeline.mark('db_connected');
@@ -946,146 +600,112 @@ export async function POST(request) {
     const { doc: sessionDoc, threadId, previousResponseId, newSession } = await ensureAssistantSession(userId);
     timeline.mark('session_ready', { newSession });
 
+    // Load conversation history for context (last 20 messages)
+    let conversationHistory = [];
+    try {
+      const chatLog = await AssistantChatLog.findOne({ userId, threadId }).lean();
+      if (chatLog?.messages?.length) {
+        const recent = chatLog.messages
+          .filter(m => (m.role === 'user' || m.role === 'assistant') && m.text)
+          .slice(-20)
+          .map(m => ({ role: m.role, content: m.text }));
+        conversationHistory = recent;
+      }
+    } catch (e) {
+      console.error('Failed to load conversation history', e);
+    }
+    console.log('[DEBUG] Conversation history loaded:', conversationHistory.map(m => ({ role: m.role, preview: m.content?.substring(0, 100) })));
+    timeline.mark('history_loaded', { messageCount: conversationHistory.length });
+
     // Deprecated explicit tool endpoints removed; the synthesized plannerMessage above ensures single-path flow
 
     // Single-path flow: do not short-circuit; planner handles order status too
 
-  // 1) Ask GPT (planner) whether to call a function or answer directly
-  const plannerMode = request.headers.get('x-planner-mode') || 'llm'; // 'llm' | 'rule'
-  const dryRun = request.headers.get('x-dry-run') === 'true'; // when true return only plan
-  const plannerInput = (plannerMessage && typeof plannerMessage === 'string' && plannerMessage.trim()) ? plannerMessage.trim() : '';
-  const messageForThread = plannerInput || 'Help';
+    // 1) Ask GPT (planner) whether to call a function or answer directly
+    const plannerMode = request.headers.get('x-planner-mode') || 'llm'; // 'llm' | 'rule'
+    const dryRun = request.headers.get('x-dry-run') === 'true'; // when true return only plan
+    const plannerInput = (plannerMessage && typeof plannerMessage === 'string' && plannerMessage.trim()) ? plannerMessage.trim() : '';
+    const messageForThread = plannerInput || 'Help';
 
-  const baseEntries = [];
-  const userLogText = (typeof message === 'string' && message.trim()) ? message.trim() : plannerInput;
-  if (userLogText) {
-    baseEntries.push(makeUserEntry(userLogText));
-  }
-  if (typeof message === 'string' && message.trim()) {
-    UserMessage.create({ userId, message: message.trim() }).catch(err => console.error('Failed to save user message', err));
-  }
-  const greetingReply = detectGreetingReply(plannerInput);
-  if (greetingReply) {
-    timeline.mark('greeting_shortcut');
-    const classification = { type: 'browse', needsResolutionCheck: false, category: 'general', subcategory: 'greeting' };
-    const entries = baseEntries.map(entry => ({ ...entry }));
-    const assistantEntry = makeAssistantEntry(greetingReply);
-    assistantEntry.meta = { timings: timeline.summary() };
-    entries.push(assistantEntry);
-    entries.push(makeClassificationEntry(classification));
-    await recordChatLog({ userId, threadId, entries });
-    timeline.mark('log_recorded');
-    timeline.mark('response_ready');
-    const timings = timeline.summary();
-    logTimings({ userId, threadId, plannerMode: 'shortcut' }, timings);
-    return NextResponse.json({ reply: greetingReply, classification, threadId, shortcut: 'greeting', timings });
-  }
+    const baseEntries = [];
+    const userLogText = (typeof message === 'string' && message.trim()) ? message.trim() : plannerInput;
+    if (userLogText) {
+      baseEntries.push(makeUserEntry(userLogText));
+    }
+    if (typeof message === 'string' && message.trim()) {
+      UserMessage.create({ userId, message: message.trim() }).catch(err => console.error('Failed to save user message', err));
+    }
 
     // Provide categories overview to the planner for robust category selection
     let categoriesSummary = 'CATEGORIES:\n';
     try {
       const catInfo = await fetchCategoriesInfoCached();
-      const lines = (catInfo.categories || []).slice(0, 80).map(c => `- ${c.title}${c.subCategory ? ' ['+c.subCategory+']' : ''}${c.classificationTags?.length ? ' #' + c.classificationTags.join(',') : ''}`);
+      const lines = (catInfo.categories || []).slice(0, 80).map(c => `- ${c.title}${c.subCategory ? ' [' + c.subCategory + ']' : ''}${c.classificationTags?.length ? ' #' + c.classificationTags.join(',') : ''}`);
       categoriesSummary += lines.join('\n');
     } catch {
       categoriesSummary += '- wraps (bike, car, pillar, roof, tank)\n- fragrances\n- accessories (keychain, stickers)';
     }
 
     const functionDocs = `
-You can decide to CALL ONE of these functions or ANSWER DIRECTLY. Output STRICT JSON only, no markdown.
+**CRITICAL: You MUST output ONLY a valid JSON object. No plain text. No markdown. No explanations outside JSON.**
 
-Functions:
-- search_products(args): Find products matching a query and hints.
-  args: {
-    query?: string; // user query
-    maxPrice?: number; minPrice?: number;
-    categoryTitle?: string; // pick one closest from the categories list below (e.g., 'window pillar wrap', 'tank wrap', 'bike wrap', 'car wrap', 'car fragrance', 'keychain')
-    diversifyCategories?: boolean; // set true for generic domain-only queries (e.g., "something for my red car") to return a mix from different specific categories (pillar wraps, bonnet wraps, roof wraps, etc.)
-    page?: number; limit?: number; // limit max 10 (use 10 when diversifyCategories is true)
-    keywords?: string[]; // optional extra terms
-    sortBy?: 'orders' | 'price_asc' | 'price_desc'
-  }
-  returns: { products: Array<{ title, image, slug, price, mrp, discountPercent }>, hasMore, page, limit, queryEcho, continuation }
+Tools:
+- search_products: { query?, maxPrice?, minPrice?, categoryTitle?, classificationTags?[], excludeTags?[], diversifyCategories?, limit?(max 10), keywords?[], sortBy?('orders'|'price_asc'|'price_desc'), selectBest?:number }
+- get_order_status: { orderId? | phone? | email? }
+- browse_categories: {} (show all category cards)
 
-- get_order_status(args): Get order tracking snapshot.
-  args: { orderId?: string; phone?: string }
-  returns: { ok, orderId, status, expectedDelivery, trackUrl, steps, orderedAt, deliveryAddress, contactName, contactPhone }
+Classification Tags (use in classificationTags/excludeTags arrays):
+- "car-interiors" - car interior products (pillar wraps, seat covers, etc.)
+- "car-exteriors" - car exterior products (bonnet wraps, roof wraps, etc.)
+- "bike-personalisation" - bike personalization (tank wraps, bike stickers)
+- "bike-accessories" - bike accessories
 
-- browse_categories(args): Show category cards so user can pick a section.
-  args: {} // no args needed
-  returns: { title: string, items: Array<{ title, image, link }>, hint: string }
+CRITICAL RULES:
+1. For NEW product requests → call search_products immediately
+2. For FOLLOW-UP questions about previous results (e.g., "what did you show", "list them", "name them", "which ones", "how many") → use direct_answer and respond from conversation context
+3. NEVER say "I will search" - just call the tool directly or answer
+4. browse_categories ONLY for: "show all categories", "what do you sell"
+5. CAR vs BIKE EXCLUSION:
+   - If user mentions "car" → use classificationTags:["car-interiors","car-exteriors"] AND excludeTags:["bike-personalisation","bike-accessories"]
+   - If user mentions "bike" → use classificationTags:["bike-personalisation","bike-accessories"] AND excludeTags:["car-interiors","car-exteriors"]
+   - If user doesn't specify vehicle type → don't add excludeTags
+6. Colors (red, blue, yellow, etc.) → search_products with keywords:["color"]
+7. Budget/price → search_products with maxPrice/minPrice
+8. NEVER fabricate prices or product info
+9. USE categoryTitle for product type searches - this is the PRIMARY filter for product categories
+   - When user asks for a specific product type (cushions, wraps, fresheners, etc.), use categoryTitle
+   - categoryTitle takes priority over keyword extraction
+10. If user says "not X" or "no X", do NOT include X in the search - just search for what they DO want
+11. ONLY use product names and prices that are EXPLICITLY listed in the conversation history. NEVER invent or guess product names.
 
-- customer_support(args): Send info to customer support.
-  args: { phoneNumber: string }
-  returns: { ok: boolean, message: string }
+Key examples:
+- "hi" → {"action":"direct_answer","reason":"greeting","directReply":"Hi! How can I help you today?"}
+- "what products did you show" → {"action":"direct_answer","reason":"follow-up about previous results","directReply":"Based on the products I just showed you..."}
+- "list them" or "name them" → {"action":"direct_answer","reason":"follow-up","directReply":"Here are the products from the last search..."}
+- "give names and prices" or "table of products" → {"action":"direct_answer","reason":"follow-up","directReply":"Here are the products with prices:\n• Product Name 1 - ₹499\n• Product Name 2 - ₹599"}
+- "my car is red and budget is 1000" → {"action":"call_tool","tool":"search_products","args":{"keywords":["red"],"maxPrice":1000,"classificationTags":["car-interiors","car-exteriors"],"excludeTags":["bike-personalisation","bike-accessories"],"diversifyCategories":true,"limit":10}}
+- "something for my bike" → {"action":"call_tool","tool":"search_products","args":{"classificationTags":["bike-personalisation","bike-accessories"],"excludeTags":["car-interiors","car-exteriors"],"diversifyCategories":true,"limit":10}}
+- "red products" → {"action":"call_tool","tool":"search_products","args":{"keywords":["red"],"diversifyCategories":true,"limit":6}}
+- "pillar wraps under 600" → {"action":"call_tool","tool":"search_products","args":{"categoryTitle":"pillar wrap","maxPrice":600,"limit":6}}
+- "cushions" → {"action":"call_tool","tool":"search_products","args":{"categoryTitle":"cushion","limit":6}}
+- "cushions and not wraps" → {"action":"call_tool","tool":"search_products","args":{"categoryTitle":"cushion","limit":6}}
+- "seat cushions" → {"action":"call_tool","tool":"search_products","args":{"categoryTitle":"seat cushion","limit":6}}
+- "bonnet wraps" → {"action":"call_tool","tool":"search_products","args":{"categoryTitle":"bonnet wrap","limit":6}}
+- "neck rest" → {"action":"call_tool","tool":"search_products","args":{"categoryTitle":"neck rest","limit":6}}
+- "car fresheners" → {"action":"call_tool","tool":"search_products","args":{"categoryTitle":"freshener","limit":6}}
+- "track my order" → {"action":"direct_answer","reason":"need order details","directReply":"Please share your order ID or phone number."}
+- "track order 64abc" → {"action":"call_tool","tool":"get_order_status","args":{"orderId":"64abc"}}
 
-Decision policy:
-- If the user is generically browsing (e.g., "show me products", "show me all products", "browse products", "everything", "all items"), choose browse_categories. 
-- Choose search_products when the user specifies a concrete product concept, keywords, or category (e.g., "window pillar wrap", "perfume under 500", "most ordered pillar wraps"). When the user mentions a domain like bike/car/interior/exterior: 
-  - If they ALSO mention a specific structure/category (e.g., pillar/tank/roof/bonnet/window), set categoryTitle accordingly (e.g., "window pillar wrap"). 
-  - If they ONLY mention the domain without a specific category (e.g., "show me something for my red car"), DO NOT set categoryTitle. Instead set args.keywords with the domain (e.g., ["car"]) and set diversifyCategories=true with limit=10 so results are a diverse mix across different specific categories (pillar, roof, bonnet, etc.). 
-- Choose get_order_status only if the user asks to track an order or provides a valid order id or 10-digit phone number tied to the order. 
-- Keep args minimal and relevant; do not invent values. Never exceed limit 10. 
-- If user says something like window pillar wrap material or finish or something like that don't call a tool; answer directly about material; don't blindly call search_products for every message just because there is a keyword.
-- If the user asks for a human agent, real person, customer support number, or WhatsApp support, do not call any tool. Return { action: 'direct_answer', handoff: true }. The direct answer must politely ask "Would you like me to open our human team on WhatsApp (${HUMAN_HANDOFF_PHONE})?" and wait for a clear Yes before sharing ${HUMAN_HANDOFF_LINK}.
+Schema: {"action":"call_tool"|"direct_answer","tool"?:string,"args"?:object,"reason":string,"directReply"?:string}
 
-Examples:
-1) User: "show me all products" → { "action": "call_tool", "tool": "browse_categories", "args": {}, "reason": "Generic browse", "classification": { "type": "browse", "needsResolutionCheck": false, "category": "browse", "subcategory": "category_browse" } }
-2) User: "What products do you sell?" → { "action": "call_tool", "tool": "browse_categories", "args": {}, "reason": "Generic browse", "classification": { "type": "browse", "needsResolutionCheck": false, "category": "browse", "subcategory": "category_browse" } }
-3) User: "See all product categories" → { "action": "call_tool", "tool": "browse_categories", "args": {}, "reason": "Explicit category request", "classification": { "type": "browse", "needsResolutionCheck": false, "category": "browse", "subcategory": "category_browse" } }
-4) User: "show me window pillar wraps" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "window pillar wrap", "keywords": ["pillar","wrap"], "limit": 6 }, "reason": "Specific category", "classification": { "type": "browse", "needsResolutionCheck": false, "category": "browse", "subcategory": "product_search" } }
-5) User: "most ordered pillar wraps under 600" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "pillar wrap", "maxPrice": 600, "sortBy": "orders", "limit": 10 }, "reason": "Popularity sort with budget", "classification": { "type": "browse", "needsResolutionCheck": false, "category": "browse", "subcategory": "product_search" } }
-6) User: "Suggest some red designs" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["red"], "limit": 6 }, "reason": "Color-based search" }
-7) User: "Show me anime-themed wraps" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["anime"], "limit": 6 }, "reason": "Theme-based search" }
-8) User: "track 64abc...ef" → { "action": "call_tool", "tool": "get_order_status", "args": { "orderId": "64abc...ef" }, "reason": "Order tracking", "classification": { "type": "query", "needsResolutionCheck": true, "category": "order_status", "subcategory": "tracking" } }
-9) User: "Track my order with phone 1234567890" → { "action": "call_tool", "tool": "get_order_status", "args": { "phone": "9436151594" }, "reason": "Phone-based order lookup", "classification": { "type": "query", "needsResolutionCheck": true, "category": "order_status", "subcategory": "tracking" } }
-10) User: "Where is my order?" → { "action": "direct_answer", "reason": "Ask for order ID or phone", "classification": { "type": "query", "needsResolutionCheck": true, "category": "order_status", "subcategory": "tracking" } }
-11) User: "Track my new order" → { "action": "direct_answer", "reason": "Ask for order ID or phone", "classification": { "type": "query", "needsResolutionCheck": true, "category": "order_status", "subcategory": "tracking" } }
-12) User: "show something for bike" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "bike wrap", "keywords": ["bike"], "limit": 6 }, "reason": "User mentioned bike; choose closest category from list", "classification": { "type": "browse", "needsResolutionCheck": false, "category": "browse", "subcategory": "product_search" } }
-13) User: "Do you have something for my bike?" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "bike wrap", "keywords": ["bike"], "limit": 6 }, "reason": "Bike-related query", "classification": { "type": "browse", "needsResolutionCheck": false, "category": "browse", "subcategory": "product_search" } }
-13) User: "Show me something for my car" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["car"], "diversifyCategories": true, "limit": 10 }, "reason": "Generic car domain; diversify across categories" }
-14) User: "show something for car interiors" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "car interiors", "keywords": ["car","interior"], "limit": 6 }, "reason": "User mentioned car interiors" }
-15) User: "car roof" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "roof wrap", "limit": 6 }, "reason": "Roof wraps for car" }
-16) User: "Show me something for my car roof" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "roof wrap", "keywords": ["car","roof"], "limit": 6 }, "reason": "Car roof specific" }
-17) User: "show me something for my red car" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["car","red"], "diversifyCategories": true, "limit": 10 }, "reason": "Generic car domain with color; diversify across categories" }
-18) User: "Suggest a car freshener I can gift my dad" → { "action": "call_tool", "tool": "search_products", "args": { "categoryTitle": "car fragrance", "keywords": ["fragrance","freshener"], "limit": 6 }, "reason": "Car fragrance/freshener query", "classification": { "type": "browse", "needsResolutionCheck": false, "category": "browse", "subcategory": "product_search" } }
-19) User: "Do you ship across India?" → { "action": "direct_answer", "reason": "Shipping policy question", "classification": { "type": "query", "needsResolutionCheck": false, "category": "shipping_time", "subcategory": "shipping_policy" } }
-20) User: "What material is used?" → { "action": "direct_answer", "reason": "Material question; answer from knowledge base", "classification": { "type": "query", "needsResolutionCheck": false, "category": "product_quality", "subcategory": "materials" } }
-21) User: "How long does the product last?" → { "action": "direct_answer", "reason": "Durability question", "classification": { "type": "query", "needsResolutionCheck": false, "category": "product_quality", "subcategory": "durability" } }
-22) User: "Wrap durability and care" → { "action": "direct_answer", "reason": "Care instructions question", "classification": { "type": "query", "needsResolutionCheck": false, "category": "product_quality", "subcategory": "care" } }
-23) User: "How long does shipping take?" → { "action": "direct_answer", "reason": "Shipping time question", "classification": { "type": "query", "needsResolutionCheck": false, "category": "shipping_time", "subcategory": "eta" } }
-24) User: "Shipping time details" → { "action": "direct_answer", "reason": "Shipping policy question", "classification": { "type": "query", "needsResolutionCheck": false, "category": "shipping_time", "subcategory": "policy" } }
-25) User: "Can I change the shipping address?" → { "action": "direct_answer", "reason": "Order modification question", "classification": { "type": "query", "needsResolutionCheck": false, "category": "order_status", "subcategory": "modification" } }
-26) User: "How long until delivery?" → { "action": "direct_answer", "reason": "Delivery time question", "classification": { "type": "query", "needsResolutionCheck": false, "category": "shipping_time", "subcategory": "eta" } }
-27) User: "When will packaging start?" → { "action": "direct_answer", "reason": "Order processing question", "classification": { "type": "query", "needsResolutionCheck": false, "category": "order_status", "subcategory": "processing" } }
-28) User: "Order tracking support" → { "action": "direct_answer", "reason": "Ask for order ID or phone for tracking", "classification": { "type": "query", "needsResolutionCheck": true, "category": "order_status", "subcategory": "tracking" } } 
-29) User: "I want to talk to a real person" → { "action": "direct_answer", "handoff": true, "reason": "Offer WhatsApp human support", "classification": { "type": "query", "needsResolutionCheck": false, "category": "customer_support", "subcategory": "human_handoff" } }
-30) User: "My car is red and my budget is 500" → { "action": "call_tool", "tool": "search_products", "args": { "keywords": ["car","red", "black"], "maxPrice": 500, "diversifyCategories": true, "limit": 10 }, "reason": "Generic car domain with color and budget; diversify across categories" } // black here because black will look good with red car
-Also set classification for the current user message:
-classification: {
-  type: 'browse' | 'query' | 'general',
-  needsResolutionCheck: boolean,
-  category: 'order_status' | 'shipping_time' | 'product_quality' | 'sizing_help' | 'returns_policy' | 'payment_issue' | 'general' | 'browse' | 'customer_support' | 'other',
-  subcategory?: string
-}
-If you propose a WhatsApp handoff, set category to customer_support and subcategory to human_handoff.
-
-Decision JSON schema:
-{ "action": "call_tool" | "direct_answer", "tool"?: "search_products"|"get_order_status"|"browse_categories", "args"?: object, "reason": string, "handoff"?: boolean, "classification"?: { ... } }
+REMINDER: Output ONLY the JSON object. directReply value must be a plain text string. NEVER output anything outside the JSON.
 `;
-  const searchHint = extractSearchHints(plannerMessage);
-    // If client explicitly invoked a tool, honor it to avoid planner overriding color/style searches
+    // Let GPT planner handle all routing decisions
     let plan = null;
-    if (!action && plannerMode !== 'rule' && searchHint?.shouldForce) {
-      plan = {
-        action: 'call_tool',
-        tool: 'search_products',
-        args: mergeSearchArgs({}, searchHint.args || {}),
-        reason: 'Detected strong product intent (pre-planner)',
-        classification: classificationForTool('search_products')
-      };
-    }
-    if (!plan && (action === 'tool:search_products' || action === 'tool:get_order_status' || action === 'tool:browse_categories')) {
+    console.log('\n========== CHAT REQUEST ==========');
+    console.log('[STEP 1] Input received:', { userId, message, action, pageContext });
+    
+    if (action === 'tool:search_products' || action === 'tool:get_order_status' || action === 'tool:browse_categories') {
       const map = { 'tool:search_products': 'search_products', 'tool:get_order_status': 'get_order_status', 'tool:browse_categories': 'browse_categories' };
       const toolName = map[action];
       plan = {
@@ -1095,26 +715,80 @@ Decision JSON schema:
         reason: 'client-requested tool',
         classification: classificationForTool(toolName)
       };
+      console.log('[STEP 2] Client-requested tool (pagination/direct):', { tool: toolName, args: toolInvocation });
     }
     if (!plan) {
       let rawPlan = '{}';
       if (plannerMode === 'rule') {
         const p = ruleBasedPlan(plannerMessage || '');
         rawPlan = JSON.stringify(p);
+        console.log('[STEP 2] Rule-based planner output:', rawPlan);
       } else {
+        // Build messages array with conversation history
+        const contextInfo = pageContext?.categoryTitle 
+          ? `\n\nCURRENT PAGE CONTEXT: User is currently viewing "${pageContext.categoryTitle}" products. When user asks for colors, themes, or modifications without specifying a product type, apply their request to this category.`
+          : '';
+        const plannerMessages = [
+          { role: 'system', content: `You are MaddyCustom's assistant planner. ${functionDocs}\n\n${categoriesSummary}${contextInfo}` },
+        ];
+        // Add conversation history for context (only last 10 turns to stay within token limit)
+        const historyForPlanner = conversationHistory.slice(-10);
+        historyForPlanner.forEach(msg => {
+          plannerMessages.push({ role: msg.role, content: msg.content });
+        });
+        // Add current message
+        plannerMessages.push({ role: 'user', content: plannerMessage || '' });
+        
+        console.log('[STEP 2] Calling GPT planner with message:', plannerMessage);
+        console.log('[STEP 2] Conversation history length:', historyForPlanner.length);
+        // Log full history content so we can verify products are being passed
+        console.log('[DEBUG] History content being sent to planner:', historyForPlanner.map(m => ({ role: m.role, content: m.content })));
+        
         const planner = await client.chat.completions.create({
-          model: 'gpt-5-nano',
-          max_completion_tokens:500,
-          messages: [
-            { role: 'system', content: 'You are a careful planner. Decide the best next step and return STRICT JSON matching the schema.' },
-            { role: 'system', content: categoriesSummary },
-            { role: 'system', content: functionDocs },
-            { role: 'user', content: plannerMessage || '' }
-          ]
+          model: 'gpt-4o-mini',
+          max_completion_tokens: 400,
+          temperature: 0,
+          messages: plannerMessages
         });
         rawPlan = planner.choices?.[0]?.message?.content || '{}';
+        console.log('[STEP 2] GPT planner raw output:', rawPlan);
+        
+        // Try to extract JSON if GPT wrapped it in markdown or other text
+        const jsonMatch = rawPlan.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          rawPlan = jsonMatch[0];
+          // Fix common JSON errors like double closing braces
+          rawPlan = rawPlan.replace(/\}\}+$/, '}').replace(/^\{\{+/, '{');
+        }
       }
-      try { plan = JSON.parse(rawPlan); } catch { plan = { action: 'direct_answer', reason: 'fallback-parse' }; }
+      try { 
+        plan = JSON.parse(rawPlan); 
+      } catch (parseError) { 
+        // Try to fix and re-parse common issues
+        console.log('[STEP 2] JSON parse failed, attempting repair:', parseError.message);
+        try {
+          // Remove trailing garbage, fix unclosed strings
+          let fixedPlan = rawPlan.trim();
+          // Balance braces
+          const openBraces = (fixedPlan.match(/\{/g) || []).length;
+          const closeBraces = (fixedPlan.match(/\}/g) || []).length;
+          if (closeBraces > openBraces) {
+            // Too many closing braces, remove extras from end
+            for (let i = 0; i < closeBraces - openBraces; i++) {
+              fixedPlan = fixedPlan.replace(/\}([^}]*)$/, '$1');
+            }
+          } else if (openBraces > closeBraces) {
+            // Missing closing braces
+            fixedPlan += '}'.repeat(openBraces - closeBraces);
+          }
+          plan = JSON.parse(fixedPlan);
+          console.log('[STEP 2] JSON repair successful');
+        } catch (retryError) {
+          // Still failed - use raw output as directReply
+          console.log('[STEP 2] JSON repair failed:', retryError.message);
+          plan = { action: 'direct_answer', reason: 'fallback-parse-text', directReply: rawPlan.trim() };
+        }
+      }
     }
     // Normalize planner action if it returned an unexpected value but provided a tool
     if (plan && typeof plan === 'object') {
@@ -1124,60 +798,12 @@ Decision JSON schema:
         plan.action = 'call_tool';
       }
     }
-
-    if (plan?.action === 'call_tool' && plan.tool === 'search_products') {
-      plan.args = mergeSearchArgs(plan.args || {}, searchHint?.args || {});
-    } else if (plan?.action === 'call_tool' && plan.tool === 'browse_categories' && searchHint?.shouldForce) {
-      plan.tool = 'search_products';
-      plan.args = mergeSearchArgs({}, searchHint.args || {});
-      plan.reason = `${plan.reason || 'browse request'} (escalated to targeted search)`;
-      plan.classification = classificationForTool('search_products');
-    } else if (!plan?.handoff && plan?.action === 'direct_answer' && searchHint?.shouldForce) {
-      plan = {
-        action: 'call_tool',
-        tool: 'search_products',
-        args: mergeSearchArgs({}, searchHint.args || {}),
-        reason: `${plan.reason || 'direct answer'} (product search override)`,
-        classification: classificationForTool('search_products')
-      };
-    }
+    
+    console.log('[STEP 3] Final plan:', JSON.stringify(plan, null, 2));
 
     let planClassification = normalizeClassification(plan?.classification);
     if (planClassification) {
       plan.classification = planClassification;
-    }
-
-    if (searchHint?.shouldForce) {
-      if (!plan || plan.action === 'direct_answer') {
-        plan = {
-          action: 'call_tool',
-          tool: 'search_products',
-          args: mergeSearchArgs(plan?.args || {}, searchHint.args || {}),
-          reason: `${plan?.reason || 'product intent detected'} (forced product search)`,
-          classification: classificationForTool('search_products')
-        };
-      } else if (plan.action === 'call_tool' && plan.tool === 'browse_categories') {
-        plan = {
-          ...plan,
-          tool: 'search_products',
-          args: mergeSearchArgs(plan.args || {}, searchHint.args || {}),
-          reason: `${plan.reason || 'category browse'} (upgraded to product search)`,
-          classification: classificationForTool('search_products')
-        };
-      } else if (plan.action === 'call_tool' && plan.tool === 'search_products') {
-        plan = {
-          ...plan,
-          args: mergeSearchArgs(plan.args || {}, searchHint.args || {})
-        };
-      }
-
-      if (plan?.classification) {
-        const ensured = normalizeClassification(plan.classification) || classificationForTool('search_products');
-        if (ensured) {
-          plan.classification = ensured;
-        }
-      }
-      planClassification = normalizeClassification(plan?.classification);
     }
 
     if (dryRun) {
@@ -1210,8 +836,28 @@ Decision JSON schema:
           )
         );
         let assistantEntry = null;
-        if (composed) {
-          assistantEntry = makeAssistantEntry(composed);
+        if (composed || result) {
+          // Store as structured order_status message for UI persistence
+          assistantEntry = makeAssistantEntry(composed || '', {
+            messageType: 'order_status',
+            structuredData: {
+              orderId: result?.orderId,
+              status: result?.status,
+              eta: result?.expectedDelivery,
+              trackUrl: result?.trackUrl,
+              steps: result?.steps || [],
+              orderedAt: result?.orderedAt,
+              contactName: result?.contactName,
+              contactPhone: result?.contactPhone,
+              deliveryAddress: result?.deliveryAddress,
+              payment: result?.payment,
+              items: result?.items || [],
+              isMultiOrder: result?.isMultiOrder,
+              linkedOrders: result?.linkedOrders || [],
+              paymentFailed: result?.paymentFailed,
+              paymentPending: result?.paymentPending,
+            }
+          });
           entries.push(assistantEntry);
         }
         if (classification) {
@@ -1228,9 +874,10 @@ Decision JSON schema:
         return NextResponse.json({ tool: 'get_order_status', data: result, reply: composed, classification, threadId, timings });
       }
       if (tool === 'search_products') {
-        // Reuse sanitize + search logic from explicit tool path
-        let pageContext = null;
-        try { pageContext = store.getState().assistantContext; } catch {}
+        console.log('[STEP 4] Executing search_products tool');
+        console.log('[STEP 4] Planner args:', JSON.stringify(args, null, 2));
+        
+        // pageContext is already extracted from request body at the top
         const sanitizeText = (txt) => {
           if (!txt || typeof txt !== 'string') return undefined;
           return txt.replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 120);
@@ -1243,6 +890,12 @@ Decision JSON schema:
         if (safeMax !== undefined && safeMin !== undefined && safeMin > safeMax) { const tmp = safeMin; safeMin = safeMax; safeMax = tmp; }
         const safeKeywords = Array.isArray(args.keywords) ? args.keywords.slice(0, 8).map(sanitizeText).filter(Boolean) : undefined;
         const safeDiversify = args.diversifyCategories === true;
+        // Handle classificationTags from planner
+        const safeClassificationTags = Array.isArray(args.classificationTags) ? args.classificationTags.slice(0, 5).map(sanitizeText).filter(Boolean) : undefined;
+        // Handle excludeTags from planner (for car/bike exclusion)
+        const safeExcludeTags = Array.isArray(args.excludeTags) ? args.excludeTags.slice(0, 5).map(sanitizeText).filter(Boolean) : undefined;
+        // Handle selectBest for server-side filtering
+        const safeSelectBest = numberOrUndefined(args.selectBest);
         // If diversification requested and no explicit limit, force 10 per requirement
         const explicitLimit = Number(args.limit);
         const effectiveLimit = safeDiversify && (isNaN(explicitLimit) || explicitLimit <= 0) ? 10 : explicitLimit;
@@ -1252,57 +905,52 @@ Decision JSON schema:
           minPrice: safeMin,
           categoryTitle: sanitizeText(args.categoryTitle) || pageContext?.categoryTitle,
           keywords: safeKeywords,
+          classificationTags: safeClassificationTags,
+          excludeTags: safeExcludeTags,
           page: Math.max(1, Number(args.page) || 1),
           limit: Math.min(10, Math.max(1, Number(effectiveLimit) || 6)),
           diversifyCategories: safeDiversify,
           sortBy: typeof args.sortBy === 'string' ? args.sortBy : undefined,
+          selectBest: safeSelectBest,
           pageContext
         };
-        const result = searchPayload.query || searchPayload.maxPrice !== undefined || searchPayload.minPrice !== undefined || searchPayload.keywords?.length || searchPayload.categoryTitle
+        
+        console.log('[STEP 5] Search payload to productSearch:', JSON.stringify(searchPayload, null, 2));
+        
+        const result = searchPayload.query || searchPayload.maxPrice !== undefined || searchPayload.minPrice !== undefined || searchPayload.keywords?.length || searchPayload.categoryTitle || searchPayload.classificationTags?.length || searchPayload.excludeTags?.length
           ? await searchProducts(searchPayload)
           : await categoryFirstSuggestions({ limit: searchPayload.limit });
+        
+        console.log('[STEP 6] Search result:', {
+          productCount: result?.products?.length || 0,
+          hasMore: result?.hasMore,
+          queryEcho: result?.queryEcho,
+          productTitles: result?.products?.slice(0, 5).map(p => p.title)
+        });
+        console.log('========== END REQUEST ==========\n');
+        
         timeline.mark('tool_execution_done', { tool });
-        if (!result?.products?.length && result?.fallback === 'browse_categories') {
-          const toRelativeLink = (link) => { if (!link) return link; try { if (/^https?:\/\//i.test(link)) { const u = new URL(link); return (u.pathname||'/')+(u.search||'')+(u.hash||''); } if (/^\/\//.test(link)) { const u = new URL('https:'+link); return (u.pathname||'/')+(u.search||'')+(u.hash||''); } return link.startsWith('/')?link:'/'+link; } catch { return link.startsWith('/')?link:'/'+link; } };
-          const { assets = [] } = await fetchDisplayAssets('homepage');
-          const cats = (assets || []).filter(a => a?.isActive && (a?.componentName === 'category-grid' || a?.componentName === 'category-slider'));
-          const items = cats.map(a => ({ title: a?.content || a?.title || 'Category', image: a?.media?.desktop || a?.media?.mobile || null, link: toRelativeLink(a?.link || '#') }));
-          const hint = 'Couldn’t find items that match. Want to browse by category? For example, say “Window Pillar Wrap”.';
-          const composed = await composeToolReply({ kind: 'browse_categories', input: args, output: { title: 'Shop by Category', items, hint } });
-          timeline.mark('compose_reply_done', { tool: 'browse_categories' });
-          const classification = classificationForTool('browse_categories') || planClassification || await classifyUserMessage({ text: plannerMessage, tool: 'browse_categories' });
-          if (classification) {
-            const usedPlanClassification = classification === planClassification;
-            timeline.mark('classification_done', { via: usedPlanClassification ? 'plan' : 'tool-fallback', type: classification?.type });
-          }
-          timeline.mark('tool_fallback', { from: tool, to: 'browse_categories' });
-          const entries = baseEntries.map(entry => ({ ...entry }));
-          entries.push(
-            makeToolEntry(
-              tool,
-              pruneToolArgs(tool, args),
-              summarizeToolResult(tool, result)
-            )
-          );
-          let assistantEntry = null;
-          if (composed) {
-            assistantEntry = makeAssistantEntry(composed);
-            entries.push(assistantEntry);
-          }
-          if (classification) {
-            entries.push(makeClassificationEntry(classification));
-          }
-          if (assistantEntry) {
-            assistantEntry.meta = { timings: timeline.summary() };
-          }
-          await recordChatLog({ userId, threadId, entries });
-          timeline.mark('log_recorded');
-          timeline.mark('response_ready');
-          const timings = timeline.summary();
-          logTimings({ userId, threadId, plannerMode }, timings);
-          return NextResponse.json({ tool: 'browse_categories', data: { title: 'Shop by Category', items, hint }, reply: composed, classification, threadId, timings });
+        
+        // Generate a short contextual summary based on ACTUAL products found
+        // Include product names so follow-up questions can reference them
+        let composed = '';
+        let historyText = ''; // Full text for conversation history (includes product names)
+        if (result?.products?.length) {
+          const count = result.products.length;
+          const prices = result.products.map(p => p.price).filter(p => typeof p === 'number');
+          const minPrice = prices.length ? Math.min(...prices) : null;
+          const priceInfo = minPrice ? formatINR(minPrice) : '';
+          
+          // Simple, short summary for UI display
+          composed = `Found ${count} options for you${priceInfo ? ` starting at ${priceInfo}` : ''}.${result.hasMore ? ' More available!' : ''}`;
+          
+          // Build full product list for conversation history (so GPT can reference them in follow-ups)
+          const productList = result.products.map(p => `- ${p.title} (${p.slug || 'no-slug'}) - ₹${p.price}`).join('\n');
+          historyText = `[SEARCH RESULTS] Found ${count} products:\n${productList}`;
+        } else {
+          composed = 'No matching products found. Try a different search?';
+          historyText = '[SEARCH RESULTS] No products found.';
         }
-        const composed = await composeToolReply({ kind: 'search_products', input: args, output: result });
         timeline.mark('compose_reply_done', { tool });
         const classification = planClassification || classificationForTool('search_products') || await classifyUserMessage({ text: plannerMessage, tool: 'search_products' });
         if (classification) {
@@ -1318,8 +966,18 @@ Decision JSON schema:
           )
         );
         let assistantEntry = null;
-        if (composed) {
-          assistantEntry = makeAssistantEntry(composed);
+        if (composed || result?.products?.length) {
+          // Store with historyText (includes product names) for conversation context
+          // But keep composed as display summary
+          assistantEntry = makeAssistantEntry(historyText || composed || '', {
+            messageType: 'product_gallery',
+            structuredData: {
+              products: result?.products || [],
+              queryEcho: result?.queryEcho || null,
+              hasMore: result?.hasMore || false,
+              summary: composed, // UI shows this shorter summary
+            }
+          });
           entries.push(assistantEntry);
         }
         if (classification) {
@@ -1366,8 +1024,12 @@ Decision JSON schema:
           )
         );
         let assistantEntry = null;
+        const categoryGridData = { title: 'Shop by Category', items, hint, summary: composed };
         if (composed) {
-          assistantEntry = makeAssistantEntry(composed);
+          assistantEntry = makeAssistantEntry(composed, {
+            messageType: 'category_grid',
+            structuredData: categoryGridData
+          });
           entries.push(assistantEntry);
         }
         if (classification) {
@@ -1381,32 +1043,61 @@ Decision JSON schema:
         timeline.mark('response_ready');
         const timings = timeline.summary();
         logTimings({ userId, threadId, plannerMode }, timings);
-        return NextResponse.json({ tool: 'browse_categories', data: { title: 'Shop by Category', items, hint }, reply: composed, classification, threadId, timings });
+        return NextResponse.json({ tool: 'browse_categories', data: categoryGridData, reply: composed, classification, threadId, timings });
       }
     }
 
-    // 3) Direct answer path: invoke Responses API for the reply
-    timeline.mark('instructions_fetch_start');
-    const instructions = await getAssistantInstructions();
-    timeline.mark('instructions_ready');
-    timeline.mark('assistant_invoke_start');
-    const response = await client.responses.create({
-      model: 'gpt-5-nano',
-      instructions,
-      input: [
-        {
-          role: 'user',
-          content: messageForThread,
-        },
-      ],
-      previous_response_id: previousResponseId || undefined,
-    });
-    timeline.mark('assistant_invoke_done');
+    // 3) Direct answer path: use planner's directReply if available, otherwise invoke Responses API
+    let reply;
+    let directReplyText = plan?.directReply;
+    
+    // Handle if GPT returned directReply as an array or object (e.g., for tables)
+    if (directReplyText && typeof directReplyText !== 'string') {
+      if (Array.isArray(directReplyText)) {
+        // Format array of products as a nice table
+        directReplyText = directReplyText.map(item => {
+          if (typeof item === 'object' && item.name) {
+            return `• ${item.name} - ${item.price || 'Price N/A'}`;
+          }
+          return typeof item === 'string' ? item : JSON.stringify(item);
+        }).join('\n');
+      } else {
+        directReplyText = JSON.stringify(directReplyText, null, 2);
+      }
+    }
+    
+    if (directReplyText && typeof directReplyText === 'string' && directReplyText.trim()) {
+      // Use planner's direct reply (for greetings, context recall, simple Q&A)
+      reply = directReplyText.trim();
+      timeline.mark('direct_reply_from_planner');
+    } else {
+      timeline.mark('instructions_fetch_start');
+      const instructions = await getAssistantInstructions();
+      timeline.mark('instructions_ready');
+      timeline.mark('assistant_invoke_start');
+      
+      // Build input with conversation history for context
+      const inputItems = [];
+      // Add recent history for context
+      conversationHistory.slice(-6).forEach(msg => {
+        inputItems.push({ role: msg.role, content: msg.content });
+      });
+      // Add current message
+      inputItems.push({ role: 'user', content: messageForThread });
+      
+      const response = await client.responses.create({
+        model: 'gpt-4.1-nano',
+        instructions,
+        input: inputItems,
+        previous_response_id: previousResponseId || undefined,
+      });
+      timeline.mark('assistant_invoke_done');
 
-    const reply = response.output_text?.trim() || 'No reply from assistant';
-    sessionDoc.responseId = response.id;
-    await sessionDoc.save();
-    timeline.mark('session_persisted');
+      reply = response.output_text?.trim() || 'No reply from assistant';
+      sessionDoc.responseId = response.id;
+      await sessionDoc.save();
+      timeline.mark('session_persisted');
+    }
 
     let classification = planClassification || null;
     if (plan?.handoff) {

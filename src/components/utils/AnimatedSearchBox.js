@@ -7,7 +7,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 const placeholderTexts = [
 		'My car is red and my budget is 1000',
 		'Find some stylish wraps for my bike',
-		'Track my order with my order id',
+		'Track my order with my phone number',
 		'Suggest something for car interiors',
 		'Show anime-inspired pillar wraps'
 ];

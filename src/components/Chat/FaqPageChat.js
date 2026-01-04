@@ -36,17 +36,10 @@ export default function FaqPageChat() {
   };
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Instant new chat - no confirmation dialog, immediately clear and show skeletons
   const openReset = () => {
-    if (!messages) return;
-    if (messages.length < 1) {
-      resetChat();
-      setShowTemplates(true);
-    } else setConfirmOpen(true);
-  };
-  const doReset = async () => {
-    await resetChat();
+    resetChat();
     setShowTemplates(true);
-    setConfirmOpen(false);
   };
 
   if (!messages) return null; // session not ready
@@ -91,7 +84,11 @@ export default function FaqPageChat() {
                       maxPrice: m.queryEcho?.maxPrice,
                       minPrice: m.queryEcho?.minPrice,
                       keywords: m.queryEcho?.keywords,
-                      page: (m.page || 1) + 1,
+                      categoryTitle: m.queryEcho?.categoryTitle,
+                      classificationTags: m.queryEcho?.classificationTags,
+                      excludeTags: m.queryEcho?.excludeTags,
+                      diversifyCategories: m.queryEcho?.diversifyCategories,
+                      page: (m.queryEcho?.page || 1) + 1,
                       limit: m.limit || 6
                     })}
                   />
@@ -128,29 +125,6 @@ export default function FaqPageChat() {
           )}
         </div>
       </div>
-      {confirmOpen && (
-        <div style={inlineOverlayWrap}>
-          <div style={inlineOverlayCard}>
-            <div style={{ fontSize: 18, fontWeight: 600, color: '#2d2d2d', marginBottom: 10 }}>Start New Chat?</div>
-            <div style={{ fontSize: 13, lineHeight: 1.55, color: 'rgba(45,45,45,0.70)', fontWeight: 500, marginBottom: 18 }}>This clears only local messages. Server history remains for quality improvement.</div>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <button onClick={() => setConfirmOpen(false)} style={{...overlayBtnSecondary, opacity: isResetting ? 0.6 : 1}} disabled={isResetting}>Cancel</button>
-              <button onClick={doReset} style={{...overlayBtnPrimary, opacity: isResetting ? 0.6 : 1}} disabled={isResetting}>{isResetting ? 'Starting…' : 'Start Fresh'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {isResetting && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3500 }}>
-          <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }} style={{ background: 'rgba(255,255,255,0.96)', border: '1px solid rgba(45,45,45,0.16)', borderRadius: 24, padding: '20px 22px', boxShadow: '0 26px 72px -14px rgba(0,0,0,0.35)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }} style={{ width: 22, height: 22, border: '2px solid rgba(45,45,45,0.35)', borderTopColor: '#2d2d2d', borderRadius: '50%' }} />
-              <div style={{ fontSize: 14, color: '#2d2d2d', fontWeight: 600 }}>Starting a new chat…</div>
-            </div>
-            <motion.div initial={{ width: '10%' }} animate={{ width: '100%' }} transition={{ repeat: Infinity, repeatType: 'mirror', duration: 1.6 }} style={{ height: 3, background: '#2d2d2d', marginTop: 10, borderRadius: 2 }} />
-          </motion.div>
-        </motion.div>
-      )}
     </section>
   );
 }

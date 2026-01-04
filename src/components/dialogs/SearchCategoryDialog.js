@@ -328,12 +328,17 @@ export default function SearchCategoryDialog() {
 
     fetchData();
 
-    // Focus input after dialog opens
+    // Focus input after dialog opens with improved timing
     const focusTimeout = setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, 100);
+      requestAnimationFrame(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          // Move cursor to end if there's any text
+          const len = inputRef.current.value.length;
+          inputRef.current.setSelectionRange(len, len);
+        }
+      });
+    }, 150);
 
     // Handle mobile back button
     if (isMobile) {
@@ -388,9 +393,16 @@ export default function SearchCategoryDialog() {
   // Also try to focus using another useEffect (as a backup)
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      setTimeout(() => {
-        inputRef.current.focus();
-      }, 100);
+      // Multiple attempts to ensure focus works on all devices
+      const attempts = [50, 200, 400];
+      const timeouts = attempts.map(delay => 
+        setTimeout(() => {
+          if (inputRef.current && document.activeElement !== inputRef.current) {
+            inputRef.current.focus();
+          }
+        }, delay)
+      );
+      return () => timeouts.forEach(clearTimeout);
     }
   }, [isOpen]);
 
@@ -505,7 +517,10 @@ export default function SearchCategoryDialog() {
   // Restore Enter key suggestion logic
   const handleKeyDown = useCallback(
     (e) => {
+      //prevent default enter behavior
       if (e.key === 'Enter' && suggestions.length) {
+        e.preventDefault();
+        
         handleSuggestionClick(suggestions[0]);
       }
     },
@@ -738,7 +753,13 @@ export default function SearchCategoryDialog() {
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
+                autoFocus
                 onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                  }
+                }}
                 className={`${searchStyles.inputField} ${searchStyles.dialogInputField}`}
                 value={searchText}
                 placeholder=""
@@ -756,6 +777,85 @@ export default function SearchCategoryDialog() {
                 }}
               />
             </div>
+            {/* Ask AI Button */}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ 
+                opacity: 1, 
+                scale: 1,
+              }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              whileHover={{ 
+                scale: 1.05,
+                boxShadow: '0 8px 24px rgba(139, 92, 246, 0.4), 0 0 20px rgba(139, 92, 246, 0.3)'
+              }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                const query = searchText.trim();
+                handleClose(true);
+                // Dispatch custom event to open chat dialog with optional query
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('mc-open-chat-dialog', { detail: { query } }));
+                }, 100);
+              }}
+              style={{
+                marginLeft: 10,
+                padding: '10px 18px',
+                background: '#2d2d2d',
+                backgroundSize: '200% 100%',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 24,
+                fontSize: '0.9rem',
+                fontWeight: 700,
+                fontFamily: 'Jost, sans-serif',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+                whiteSpace: 'nowrap',
+                boxShadow: '0 6px 20px rgba(139, 92, 246, 0.35), 0 0 0 1px rgba(255,255,255,0.2) inset',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              <motion.span 
+                animate={{ 
+                  rotate: [0, 10, -10, 10, 0],
+                  scale: [1, 1.1, 1, 1.1, 1]
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Infinity,
+                  repeatDelay: 1
+                }}
+                style={{ fontSize: '1.1rem', lineHeight: 1 }}
+              >
+                ✨
+              </motion.span>
+              <span style={{ position: 'relative', zIndex: 1 }}>Ask AI</span>
+              <motion.div
+                animate={{
+                  x: ['-100%', '200%'],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  repeatDelay: 3,
+                  ease: 'easeInOut'
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '30%',
+                  height: '100%',
+                  background: '#2d2d2d',
+                  transform: 'skewX(-20deg)',
+                }}
+              />
+            </motion.button>
+
           </Box>
         </motion.div>
 

@@ -64,6 +64,19 @@ export async function GET(request) {
       return NextResponse.json({ message: notFoundMessage }, { status: 404 });
     }
 
+    // Check payment status first - if pending, don't show order details
+    const paymentStatus = order.paymentStatus || 'pending';
+    if (paymentStatus === 'pending') {
+      return NextResponse.json({
+        message: 'No confirmed order found. The payment may not have been completed.',
+        paymentPending: true,
+        trackingData: null
+      }, { status: 200 });
+    }
+
+    // If payment failed, show limited info with failure message
+    const paymentFailed = paymentStatus === 'failed';
+
     const orderId = order._id?.toString();
     const lookup = lookupMode ? { mode: lookupMode, value: lookupValue } : null;
 
@@ -104,6 +117,44 @@ export async function GET(request) {
     const allOrders = [order, ...(order.linkedOrderIds || [])];
     const hasShippedOrder = allOrders.some((o) => o.deliveryStatus !== 'pending');
 
+    // Calculate payment info - include paid/due amounts from paymentDetails
+    const pd = order.paymentDetails || {};
+    const paymentInfo = {
+      status: paymentStatus,
+      statusLabel: paymentStatus === 'allPaid' ? 'Paid' : 
+                   paymentStatus === 'allToBePaidCod' ? 'Cash on Delivery' :
+                   paymentStatus === 'paidPartially' ? 'Partially Paid' :
+                   paymentStatus === 'failed' ? 'Payment Failed' : 'Pending',
+      itemsTotal: order.itemsTotal || 0,
+      finalAmount: order.totalAmount || order.finalAmount || order.itemsTotal || 0,
+      couponDiscount: order.couponDiscount || order.couponsApplied?.discountAmount || 0,
+      walletUsed: order.walletUsed || 0,
+      codCharges: order.codCharges || 0,
+      shippingCharges: order.shippingCharges || 0,
+      // Paid/Due breakdown
+      amountPaidOnline: pd.amountPaidOnline || 0,
+      amountDueOnline: pd.amountDueOnline || 0,
+      amountPaidCod: pd.amountPaidCod || 0,
+      amountDueCod: pd.amountDueCod || 0,
+    };
+
+    // If payment failed, return with failure info
+    if (paymentFailed) {
+      return NextResponse.json({
+        message: 'Payment for this order failed. Please try placing a new order.',
+        paymentFailed: true,
+        trackingData: {
+          orderId,
+          lookup,
+          name: order.address?.receiverName || 'Customer',
+          phoneNumber: order.address?.receiverPhoneNumber || null,
+          createdAt: order.createdAt,
+          payment: paymentInfo,
+          items: buildOrderItems(order),
+        }
+      }, { status: 200 });
+    }
+
     // If nothing shipped yet or no Shiprocket data, return only Processing/basic info (no status/steps from order schema)
     if (!hasShippedOrder) {
       return NextResponse.json(
@@ -124,6 +175,7 @@ export async function GET(request) {
             expectedDelivery: 'Estimated 5-7 business days from shipping',
             isMultiOrder: allOrders.length > 1,
             orderCount: allOrders.length,
+            payment: paymentInfo,
             coupon: order.couponApplied
               ? { applied: true, name: order.couponName || null, discount: order.couponDiscount || 0 }
               : { applied: false },
@@ -160,6 +212,7 @@ export async function GET(request) {
         orderId,
         isMultiOrder: trackingResults.length > 1,
         orderCount: allOrders.length,
+        payment: paymentInfo,
         orders: trackingResults.map((result) => {
           if (result.error) {
             return {
@@ -235,6 +288,7 @@ export async function GET(request) {
         phoneNumber: order.address?.receiverPhoneNumber || null,
         email: userEmail || null,
         createdAt: order.createdAt,
+        payment: paymentInfo,
         coupon: order.couponApplied
           ? { applied: true, name: order.couponName || null, discount: order.couponDiscount || 0 }
           : { applied: false },
@@ -254,26 +308,34 @@ export async function GET(request) {
       return NextResponse.json({ message: 'Tracking information found!', trackUrl, trackingData: enhancedTrackingData }, { status: 200 });
     }
 
-    // Last resort if shiprocket has no data: only show Processing/basic info, no status/steps
+    // Last resort if shiprocket has no data: use actualDeliveryStatus/deliveryStatus from order
+    const fallbackStatus = order.actualDeliveryStatus || order.deliveryStatus || 'Processing';
+    const statusMessage = fallbackStatus.toLowerCase() === 'delivered' 
+      ? 'Your order has been delivered!'
+      : fallbackStatus.toLowerCase() === 'pending' 
+        ? 'Your order will be shipped soon! Check back for tracking updates.'
+        : `Your order status: ${fallbackStatus}`;
+    
     return NextResponse.json(
       {
-        message: 'Your order will be shipped soon! Check back for tracking updates.',
+        message: statusMessage,
         trackingData: {
           orderId,
           lookup,
+          status: fallbackStatus,
           name: order.address?.receiverName || 'Customer',
           address: formatAddress(order),
           phoneNumber: order.address?.receiverPhoneNumber || null,
           email: userEmail || null,
-          shipmentDate: 'Processing',
-          expectedDelivery: 'Estimated 5-7 business days from shipping',
+          shipmentDate: order.deliveryStatus !== 'pending' ? order.updatedAt : 'Processing',
+          expectedDelivery: fallbackStatus.toLowerCase() === 'delivered' ? 'Delivered' : 'Estimated 5-7 business days from shipping',
           createdAt: order.createdAt,
+          payment: paymentInfo,
           coupon: order.couponApplied
             ? { applied: true, name: order.couponName || null, discount: order.couponDiscount || 0 }
             : { applied: false },
           items: buildOrderItems(order),
           mainTrackUrl: null,
-          // No status or trackingSteps
         },
       },
       { status: 200 }

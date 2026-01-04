@@ -1,14 +1,16 @@
 // Main Agent Orchestrator - Routes messages through the agent pipeline
+// NO regex shortcuts - everything goes through the classifier LLM
 import { classifyMessage } from './agents/classifier.js';
 import { runDataQueryAgent } from './agents/dataQuery.js';
 import { runVectorStoreAgent } from './agents/vectorStore.js';
-import { runDirectAnswerAgent, getQuickResponse } from './agents/directAnswer.js';
+import { runDirectAnswerAgent } from './agents/directAnswer.js';
 import { runHumanHandoffAgent } from './agents/humanHandoff.js';
 import { getOrCreateSession, MongoSession } from './session/MongoSession.js';
 import { CLASSIFICATION_CATEGORIES, LIMITS } from './config/constants.js';
 
 /**
  * Main orchestrator that handles the full chat pipeline
+ * ALL messages go through the classifier - no shortcuts
  * @param {object} request - Chat request with userId, message, sessionId, metadata
  * @param {object} options - Options like debug mode
  * @returns {Promise<object>} Chat response
@@ -42,37 +44,7 @@ export async function orchestrateChat(request, options = {}) {
   }
   
   try {
-    // Step 1: Quick response check (no LLM needed)
-    const quickResponse = getQuickResponse(request.message);
-    if (quickResponse) {
-      agentPath.push('quick_response');
-      
-      // Save to session
-      await session.addItems([
-        createUserItem(request.message),
-        createAssistantItem(quickResponse),
-      ]);
-      
-      return {
-        success: true,
-        sessionId,
-        message: {
-          text: quickResponse,
-          type: 'text',
-        },
-        classification: {
-          category: CLASSIFICATION_CATEGORIES.DIRECT_ANSWER,
-          confidence: 1.0,
-        },
-        debug: options.debug ? {
-          tokensUsed: 0,
-          latencyMs: Date.now() - startTime,
-          agentPath,
-        } : undefined,
-      };
-    }
-    
-    // Step 2: Classify the message
+    // Step 1: Classify the message through LLM (no quick shortcuts)
     agentPath.push('classifier');
     const classification = await classifyMessage(request.message, {
       previousClassification: metadata.lastClassification,
@@ -84,7 +56,7 @@ export async function orchestrateChat(request, options = {}) {
       lastClassification: classification.category,
     });
     
-    // Step 3: Route to appropriate agent
+    // Step 2: Route to appropriate agent based on classification
     let result;
     
     switch (classification.category) {
@@ -114,7 +86,7 @@ export async function orchestrateChat(request, options = {}) {
         break;
     }
     
-    // Step 4: Save conversation to session
+    // Step 3: Save conversation to session
     await session.addItems([
       createUserItem(request.message),
       createAssistantItem(result.text),
@@ -125,7 +97,7 @@ export async function orchestrateChat(request, options = {}) {
       await session.setPaginationState(context.paginationState);
     }
     
-    // Step 5: Build response
+    // Step 4: Build response
     const messageType = result.products?.length 
       ? 'product_list' 
       : result.orderStatus 

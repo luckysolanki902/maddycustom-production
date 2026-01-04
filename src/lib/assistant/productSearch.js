@@ -39,23 +39,30 @@ const STOPWORDS = new Set([
   'popular','best','top','bestselling','selling','trending','hot',
   'product','products','item','items',
   // Style noise
-  'theme','themed'
+  'theme','themed','inspired','style','styled','type'
 ]);
+// Structural tokens - product category types that shouldn't be keywords when categoryTitle is set
+const STRUCTURAL_STOPWORDS = new Set(['wrap','wraps','pillar','pillars','tank','tanks','roof','bonnet','freshener','fresheners','cushion','cushions','keychain','keychains','sticker','stickers','decal','decals','cover','covers','rest','rests']);
 // Words we consider too generic in automotive context (optionally removable)
-const GENERIC_DOMAIN = new Set(['car','bike','window','vehicle','model','size','sizes']);
+const GENERIC_DOMAIN = new Set([]);
 
-function extractKeywords(q) {
+function extractKeywords(q, skipStructural = false) {
   if (!q) return [];
-  // Normalize common plurals for better DB matching
+  // Normalize: remove hyphens, common plurals
   const normalized = q
     .toLowerCase()
-    .replace(/\bwraps\b/g, 'wrap');
+    .replace(/-/g, ' ')  // split hyphenated words
+    .replace(/\bwraps\b/g, 'wrap')
+    .replace(/\bpillars\b/g, 'pillar')
+    .replace(/\bcushions\b/g, 'cushion');
   const raw = normalized.split(/[^a-z0-9]+/).filter(Boolean);
   const filtered = raw.filter(w => {
     if (w.length <= 1) return false;
     if (STOPWORDS.has(w)) return false;
     if (GENERIC_DOMAIN.has(w)) return false;
-    return true; // keep color words like 'red', 'blue'
+    // When categoryTitle is set, skip structural words since category handles them
+    if (skipStructural && STRUCTURAL_STOPWORDS.has(w)) return false;
+    return true; // keep color words like 'red', 'blue', theme words like 'anime'
   });
   return [...new Set(filtered)];
 }
@@ -130,58 +137,83 @@ export async function searchProducts({
   minPrice,
   categoryTitle,
   keywords,
+  classificationTags, // NEW: array of tags like ['car-interiors', 'car-exteriors']
+  excludeTags, // NEW: array of tags to EXCLUDE like ['bike-personalisation', 'bike-accessories']
   page = 1,
   limit,
   sortBy,
   pageContext,
   diversifyCategories,
+  selectBest, // NEW: if set, return only top N products after scoring
 }) {
   await connectToDb();
+  
+  console.log('\n--- productSearch called ---');
+  console.log('Input params:', { query, categoryTitle, keywords, classificationTags, excludeTags, maxPrice, minPrice, page, limit, diversifyCategories });
+  
   // If limit isn't explicitly provided, try to derive from query text
   const hints = parseQueryHints(query);
   const appliedLimit = limit ?? hints.limit;
   const clampedLimit = clampLimit(appliedLimit);
   const skip = (Math.max(1, page) - 1) * clampedLimit;
 
-  const kwFromQuery = extractKeywords(query);
+  // IMPORTANT: If categoryTitle is provided by planner, extract keywords but skip structural tokens
+  // (categoryTitle handles the product type, we want theme/color keywords)
+  const kwFromQuery = extractKeywords(query, !!categoryTitle);
   const explicitKeywords = normalizeArray(keywords).map(k => k.toLowerCase()).filter(k => !STOPWORDS.has(k));
   let allKeywords = [...new Set([...kwFromQuery, ...explicitKeywords])];
   // Cap to first 3 to avoid over-constraining AND clauses
   if (allKeywords.length > 3) allKeywords = allKeywords.slice(0,3);
 
-  // Domain intent detection: consider raw text AND explicit keywords
+  console.log('Keywords extracted:', { kwFromQuery, explicitKeywords, allKeywords, categoryTitle });
+
+  // Handle classificationTags from planner (e.g., ["car-interiors", "car-exteriors"])
+  const explicitClassificationTags = normalizeArray(classificationTags).map(t => t.toLowerCase());
+  
+  // Handle excludeTags from planner (e.g., ["bike-personalisation", "bike-accessories"])
+  const explicitExcludeTags = normalizeArray(excludeTags).map(t => t.toLowerCase());
+  
+  // Derive domain exclusion from excludeTags (if planner says exclude bike tags, we want to exclude bike products)
+  const excludeBike = explicitExcludeTags.some(t => t.includes('bike'));
+  const excludeCar = explicitExcludeTags.some(t => t.includes('car'));
+  
+  // Domain intent detection: consider raw text AND explicit keywords AND classificationTags
   // Note: extractKeywords removes generic tokens like 'car'/'bike', so rely on explicitKeywords too
   const rawText = `${query || ''} ${categoryTitle || ''}`.toLowerCase();
-  const wantsBike = /\bbike(s)?\b/.test(rawText) || explicitKeywords.includes('bike');
-  const wantsCar = /\bcar(s)?\b/.test(rawText) || explicitKeywords.includes('car');
-  const wantsInterior = /\binterior(s)?\b/.test(rawText) || explicitKeywords.includes('interior');
-  const wantsExterior = /\bexterior(s)?\b/.test(rawText) || explicitKeywords.includes('exterior');
+  const wantsBike = !excludeBike && (/\bbike(s)?\b/.test(rawText) || explicitKeywords.includes('bike') || explicitClassificationTags.some(t => t.includes('bike')));
+  const wantsCar = !excludeCar && (/\bcar(s)?\b/.test(rawText) || explicitKeywords.includes('car') || explicitClassificationTags.some(t => t.includes('car')));
+  const wantsInterior = /\binterior(s)?\b/.test(rawText) || explicitKeywords.includes('interior') || explicitClassificationTags.includes('car-interiors');
+  const wantsExterior = /\bexterior(s)?\b/.test(rawText) || explicitKeywords.includes('exterior') || explicitClassificationTags.includes('car-exteriors');
+
+  console.log('Domain detection:', { wantsCar, wantsBike, excludeCar, excludeBike, wantsInterior, wantsExterior });
 
   // Identify structural (category-like) tokens that we want to enforce strictly
-  const STRUCTURAL_TOKENS = new Set(['wrap','wraps','pillar','tank','roof','bonnet','fragrance','perfume','scent','keychain','sticker','decal']);
+  // Only use these when planner didn't provide categoryTitle
+  const STRUCTURAL_TOKENS = new Set(['wrap','wraps','pillar','tank','roof','bonnet','fragrance','perfume','scent','keychain','sticker','decal','cushion','cushions']);
   const DOMAIN_TOKENS = new Set(['car','bike','interior','exterior']);
-  const structural = allKeywords.filter(w => STRUCTURAL_TOKENS.has(w));
+  const structural = categoryTitle ? [] : allKeywords.filter(w => STRUCTURAL_TOKENS.has(w));
   const theme = allKeywords.filter(w => !STRUCTURAL_TOKENS.has(w));
   // When diversifying and no explicit category, avoid forcing domain words like 'car'/'bike' as required; prefer actual theme (e.g., colors)
   const themeNoDomain = (diversifyCategories && !categoryTitle)
     ? theme.filter(w => !DOMAIN_TOKENS.has(w))
     : theme;
 
-  // Prefer narrowing by one theme (e.g., 'anime' or a color) + one structural (e.g., 'pillar') when available
+  // Build effectiveRequired based on what planner provided
+  // If categoryTitle is set, let categoryTitle filter handle it - don't add keyword requirements
   let effectiveRequired = [];
-  if (themeNoDomain.length) {
-    // pick first theme keyword (non-domain when diversifying)
-    const preferredTheme = themeNoDomain[0];
-    // prefer 'pillar' when present, else first structural token
-    let preferredStructural = null;
-    if (structural.includes('pillar')) preferredStructural = 'pillar';
-    else if (structural.length) preferredStructural = structural[0];
-    effectiveRequired = [preferredTheme, preferredStructural].filter(Boolean);
-  } else if (!diversifyCategories && structural.length) {
-    // Only use structural as required when not diversifying; during diversify we keep structural optional to widen category pool
-    effectiveRequired = structural.slice(0, 2);
-  } else if (!diversifyCategories && allKeywords.length) {
-    effectiveRequired = [allKeywords[0]];
+  if (!categoryTitle) {
+    if (themeNoDomain.length) {
+      // pick first theme keyword (non-domain when diversifying)
+      const preferredTheme = themeNoDomain[0];
+      // use first structural token if present (no hardcoded preference)
+      const preferredStructural = structural.length ? structural[0] : null;
+      effectiveRequired = [preferredTheme, preferredStructural].filter(Boolean);
+    } else if (!diversifyCategories && structural.length) {
+      // Only use structural as required when not diversifying; during diversify we keep structural optional to widen category pool
+      effectiveRequired = structural.slice(0, 2);
+    } else if (!diversifyCategories && allKeywords.length) {
+      effectiveRequired = [allKeywords[0]];
+    }
   }
   const optionalWords = allKeywords.filter(w => !effectiveRequired.includes(w));
 
@@ -242,6 +274,20 @@ export async function searchProducts({
     if (ors.length) andClauses.push({ $or: ors });
   }
 
+  // NEW: Filter by explicit classificationTags from planner (e.g., ["car-interiors", "car-exteriors"])
+  let classificationTagMatchedCatIds = [];
+  if (explicitClassificationTags.length) {
+    const tagRegexes = explicitClassificationTags.map(t => new RegExp(t.replace(/-/g, '[-\\s]?'), 'i'));
+    const tagMatchedCats = await SpecificCategory.find({
+      classificationTags: { $in: tagRegexes },
+      available: { $ne: false }
+    }).select('_id classificationTags').lean();
+    classificationTagMatchedCatIds = tagMatchedCats.map(c => c._id);
+    if (classificationTagMatchedCatIds.length) {
+      andClauses.push({ specificCategory: { $in: classificationTagMatchedCatIds } });
+    }
+  }
+
   // Category context assistance: if categoryTitle provided use that to filter/bias result.
   let categoryTitleMatchedIds = [];
   if (categoryTitle) {
@@ -259,8 +305,16 @@ export async function searchProducts({
     const catDocs = await SpecificCategory.find({
       $or: orConds,
       available: { $ne: false }
-    }).select('_id subCategory classificationTags').lean();
+    }).select('_id name title subCategory classificationTags').lean();
     categoryTitleMatchedIds = catDocs.map(c => c._id);
+    
+    console.log('categoryTitle filter:', {
+      categoryTitle,
+      tokens,
+      matchedCategories: catDocs.map(c => ({ name: c.name, title: c.title, subCategory: c.subCategory })),
+      matchedCount: categoryTitleMatchedIds.length
+    });
+    
     if (categoryTitleMatchedIds.length) {
       andClauses.push({ specificCategory: { $in: categoryTitleMatchedIds } });
     }
@@ -275,17 +329,19 @@ export async function searchProducts({
     }
   }
 
-  // Domain filter: if user clearly asked for bike vs car and not both
-  if (wantsBike && !wantsCar) {
+  // Domain filter: if user clearly asked for bike vs car and not both, OR if planner explicitly excludes one domain
+  if ((wantsBike && !wantsCar) || excludeCar) {
     // Include bike signals and exclude car signals
-    andClauses.push({ $or: [
-      { subCategory: { $regex: /bike/i } },
-      { vehicles: { $regex: /bike/i } },
-      { mainTags: { $regex: /bike/i } },
-      { searchKeywords: { $regex: /bike/i } },
-      { title: { $regex: /bike/i } },
-      { pageSlug: { $regex: /bike/i } },
-    ]});
+    if (wantsBike) {
+      andClauses.push({ $or: [
+        { subCategory: { $regex: /bike/i } },
+        { vehicles: { $regex: /bike/i } },
+        { mainTags: { $regex: /bike/i } },
+        { searchKeywords: { $regex: /bike/i } },
+        { title: { $regex: /bike/i } },
+        { pageSlug: { $regex: /bike/i } },
+      ]});
+    }
     andClauses.push({ $nor: [
       { subCategory: { $regex: /car/i } },
       { vehicles: { $regex: /car/i } },
@@ -294,16 +350,18 @@ export async function searchProducts({
       { title: { $regex: /car/i } },
       { pageSlug: { $regex: /car/i } },
     ]});
-  } else if (wantsCar && !wantsBike) {
+  } else if ((wantsCar && !wantsBike) || excludeBike) {
     // Include car signals and exclude bike signals
-    andClauses.push({ $or: [
-      { subCategory: { $regex: /car/i } },
-      { vehicles: { $regex: /car/i } },
-      { mainTags: { $regex: /car/i } },
-      { searchKeywords: { $regex: /car/i } },
-      { title: { $regex: /car/i } },
-      { pageSlug: { $regex: /car/i } },
-    ]});
+    if (wantsCar) {
+      andClauses.push({ $or: [
+        { subCategory: { $regex: /car/i } },
+        { vehicles: { $regex: /car/i } },
+        { mainTags: { $regex: /car/i } },
+        { searchKeywords: { $regex: /car/i } },
+        { title: { $regex: /car/i } },
+        { pageSlug: { $regex: /car/i } },
+      ]});
+    }
     andClauses.push({ $nor: [
       { subCategory: { $regex: /bike/i } },
       { vehicles: { $regex: /bike/i } },
@@ -312,6 +370,19 @@ export async function searchProducts({
       { title: { $regex: /bike/i } },
       { pageSlug: { $regex: /bike/i } },
     ]});
+  }
+
+  // NEW: Apply excludeTags to filter out categories with those tags
+  if (explicitExcludeTags.length) {
+    const excludeTagRegexes = explicitExcludeTags.map(t => new RegExp(t.replace(/-/g, '[-\\s]?'), 'i'));
+    const excludedCats = await SpecificCategory.find({
+      classificationTags: { $in: excludeTagRegexes },
+      available: { $ne: false }
+    }).select('_id').lean();
+    const excludedCatIds = excludedCats.map(c => c._id);
+    if (excludedCatIds.length) {
+      andClauses.push({ specificCategory: { $nin: excludedCatIds } });
+    }
   }
 
   // Category classificationTags discovery (broad, influences scoring not filtering)
@@ -327,16 +398,16 @@ export async function searchProducts({
       available: { $ne: false }
     }).select('_id classificationTags name title').lean();
   }
-  const classificationTagMatchedCatIds = new Set(classificationTagMatchedCats.map(c => c._id.toString()));
+  const classificationTagMatchedCatIdSet = new Set(classificationTagMatchedCats.map(c => c._id.toString()));
 
-  // Domain-based category exclusions: if the user explicitly wants car (and not bike), exclude categories tagged as bike, and vice versa
-  if (wantsCar && !wantsBike) {
+  // Domain-based category exclusions: if the user explicitly wants car (and not bike), or if excludeBike is set, exclude bike categories
+  if ((wantsCar && !wantsBike) || excludeBike) {
     const bikeCats = await SpecificCategory.find({ classificationTags: { $in: [/bike/i] }, available: { $ne: false } }).select('_id').lean();
     const bikeCatIds = bikeCats.map(c => c._id);
     if (bikeCatIds.length) {
       andClauses.push({ $or: [ { specificCategory: { $nin: bikeCatIds } }, { specificCategory: { $exists: false } } ] });
     }
-  } else if (wantsBike && !wantsCar) {
+  } else if ((wantsBike && !wantsCar) || excludeCar) {
     const carCats = await SpecificCategory.find({ classificationTags: { $in: [/car/i] }, available: { $ne: false } }).select('_id').lean();
     const carCatIds = carCats.map(c => c._id);
     if (carCatIds.length) {
@@ -346,6 +417,9 @@ export async function searchProducts({
 
   const queryMatch = andClauses.length ? { $and: andClauses } : {};
 
+  console.log('Query clauses count:', andClauses.length);
+  console.log('Effective filters:', { effectiveRequired, structural, theme });
+
   // Base product find (limit + extra for post-filter)
   // Over-fetch more aggressively when diversifying to ensure we have enough categories to sample from
   const overFetchFactor = (diversifyCategories && !categoryTitle) ? 8 : 2;
@@ -354,6 +428,9 @@ export async function searchProducts({
     .lean()
     .skip(skip)
     .limit(clampedLimit * overFetchFactor); // over-fetch to allow post filtering and diversification
+
+  console.log('Raw products found:', raw.length, 'titles:', raw.slice(0, 5).map(p => p.title));
+  console.log('--- productSearch end ---\n');
 
   const catIds = [...new Set(raw.filter(p => p.specificCategory).map(p => p.specificCategory))];
   const varIds = [...new Set(raw.filter(p => p.specificCategoryVariant).map(p => p.specificCategoryVariant))];
@@ -444,7 +521,7 @@ export async function searchProducts({
     // Category classificationTags relevance boost
     if (p.specificCategory) {
       const catId = p.specificCategory.toString();
-      if (classificationTagMatchedCatIds.has(catId)) {
+      if (classificationTagMatchedCatIdSet.has(catId)) {
         score += 2; // base boost for matching category by any classificationTag
         const catTags = catClassificationTagsMap[catId] || [];
         allKeywords.forEach(w => { if (catTags.includes(w)) score += 0.75; });
@@ -524,7 +601,12 @@ export async function searchProducts({
     scored = diversified;
   }
 
-  scored = scored.slice(0, diversifyCategories ? Math.min(10, clampedLimit) : clampedLimit);
+  // Apply selectBest to return only top N products (server-side filtering for "show best 2" type requests)
+  let finalLimit = diversifyCategories ? Math.min(10, clampedLimit) : clampedLimit;
+  if (typeof selectBest === 'number' && selectBest > 0 && selectBest <= 10) {
+    finalLimit = selectBest;
+  }
+  scored = scored.slice(0, finalLimit);
 
   const products = scored.map(({ p }) => {
     const firstImage = Array.isArray(p.images) && p.images.length ? buildImageUrl(p.images[0]) : null;
@@ -544,7 +626,7 @@ export async function searchProducts({
   });
 
   // hasMore: if we over-fetched more than page size after gating, there's more to show
-  const hasMore = effectiveList.length > clampedLimit;
+  const hasMore = effectiveList.length > finalLimit;
 
   // Fallback broadening: if no products but we had keywords, retry without keyword AND constraints once
   if (!products.length && (kwFromQuery.length || explicitKeywords.length)) {
@@ -665,15 +747,29 @@ export async function searchProducts({
     products,
     hasMore,
     totalApprox: filtered.length,
-  queryEcho: { query, maxPrice: effMax, minPrice: effMin, keywords: allKeywords, sortBy: requestedSort, relaxedInventoryUsed: usedRelaxedInventory, diversifyCategories: !!diversifyCategories },
+    queryEcho: {
+      query,
+      maxPrice: effMax,
+      minPrice: effMin,
+      keywords: allKeywords,
+      categoryTitle: categoryTitle || null,
+      classificationTags: explicitClassificationTags.length ? explicitClassificationTags : null,
+      excludeTags: explicitExcludeTags.length ? explicitExcludeTags : null,
+      sortBy: requestedSort,
+      diversifyCategories: !!diversifyCategories,
+      page: Math.max(1, page),
+    },
     continuation: {
       page: Math.max(1, page),
       limit: diversifyCategories ? Math.min(10, clampedLimit) : clampedLimit,
       filters: {
+        query: query || null,
         keywords: allKeywords,
         maxPrice: effMax ?? null,
         minPrice: effMin ?? null,
         categoryTitle: categoryTitle || null,
+        classificationTags: explicitClassificationTags.length ? explicitClassificationTags : null,
+        excludeTags: explicitExcludeTags.length ? explicitExcludeTags : null,
         sortBy: requestedSort || null,
         diversifyCategories: !!diversifyCategories,
       },
