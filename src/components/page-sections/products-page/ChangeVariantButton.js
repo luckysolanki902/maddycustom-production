@@ -507,10 +507,10 @@ export default function ChangeVariantButton({
       >
         {variantCheckLoading ? 'Loading...' : (
           useMapping
-            ? (isB2B ? 'Customize Variant' : 'Customize Variant')
+            ? (isB2B ? 'Change Size' : 'Change Size')
             : category.name === "Tank Wraps"
-            ? (isB2B ? 'Change Tank Size' : 'Change Tank Size')
-            : (isB2B ? 'Change Variant' : 'Change Variant')
+            ? (isB2B ? 'Change Size' : 'Change Size')
+            : (isB2B ? 'Change Size' : 'Change Size')
         )}
       </div>
 
