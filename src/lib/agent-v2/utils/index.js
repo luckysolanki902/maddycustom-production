@@ -3,16 +3,21 @@
 /**
  * Estimate token count for a string (rough approximation)
  * Based on ~4 characters per token for English text
+ * @param {string} text
+ * @returns {number}
  */
-export function estimateTokens(text: string): number {
+export function estimateTokens(text) {
   if (!text) return 0;
   return Math.ceil(text.length / 4);
 }
 
 /**
  * Truncate text to fit within token budget
+ * @param {string} text
+ * @param {number} maxTokens
+ * @returns {string}
  */
-export function truncateToTokens(text: string, maxTokens: number): string {
+export function truncateToTokens(text, maxTokens) {
   const currentTokens = estimateTokens(text);
   if (currentTokens <= maxTokens) return text;
   
@@ -23,8 +28,10 @@ export function truncateToTokens(text: string, maxTokens: number): string {
 
 /**
  * Format price in Indian Rupees
+ * @param {number} price
+ * @returns {string}
  */
-export function formatPrice(price: number): string {
+export function formatPrice(price) {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
@@ -35,8 +42,10 @@ export function formatPrice(price: number): string {
 
 /**
  * Sanitize user input
+ * @param {string} input
+ * @returns {string}
  */
-export function sanitizeInput(input: string): string {
+export function sanitizeInput(input) {
   if (!input) return '';
   return input
     .trim()
@@ -46,8 +55,10 @@ export function sanitizeInput(input: string): string {
 
 /**
  * Extract phone number from text
+ * @param {string} text
+ * @returns {string|null}
  */
-export function extractPhone(text: string): string | null {
+export function extractPhone(text) {
   if (!text) return null;
   
   // Remove all non-digits
@@ -69,8 +80,10 @@ export function extractPhone(text: string): string | null {
 
 /**
  * Extract order ID from text (MongoDB ObjectId format)
+ * @param {string} text
+ * @returns {string|null}
  */
-export function extractOrderId(text: string): string | null {
+export function extractOrderId(text) {
   if (!text) return null;
   
   // Look for MongoDB ObjectId pattern (24 hex characters)
@@ -80,8 +93,10 @@ export function extractOrderId(text: string): string | null {
 
 /**
  * Parse price from natural language
+ * @param {string} text
+ * @returns {number|null}
  */
-export function parsePrice(text: string): number | null {
+export function parsePrice(text) {
   if (!text) return null;
   
   const normalizedText = text.toLowerCase();
@@ -103,8 +118,10 @@ export function parsePrice(text: string): number | null {
 
 /**
  * Generate a simple hash for deduplication
+ * @param {string} str
+ * @returns {string}
  */
-export function simpleHash(str: string): string {
+export function simpleHash(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -116,13 +133,13 @@ export function simpleHash(str: string): string {
 
 /**
  * Debounce function for rate limiting
+ * @param {Function} fn
+ * @param {number} delay
+ * @returns {Function}
  */
-export function debounce<T extends (...args: any[]) => any>(
-  fn: T,
-  delay: number
-): (...args: Parameters<T>) => void {
-  let timeoutId: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
+export function debounce(fn, delay) {
+  let timeoutId;
+  return (...args) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), delay);
   };
@@ -130,19 +147,19 @@ export function debounce<T extends (...args: any[]) => any>(
 
 /**
  * Retry with exponential backoff
+ * @param {Function} fn
+ * @param {number} maxRetries
+ * @param {number} baseDelay
+ * @returns {Promise}
  */
-export async function retryWithBackoff<T>(
-  fn: () => Promise<T>,
-  maxRetries: number = 3,
-  baseDelay: number = 1000
-): Promise<T> {
-  let lastError: Error | undefined;
+export async function retryWithBackoff(fn, maxRetries = 3, baseDelay = 1000) {
+  let lastError;
   
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await fn();
     } catch (error) {
-      lastError = error as Error;
+      lastError = error;
       if (i < maxRetries - 1) {
         const delay = baseDelay * Math.pow(2, i);
         await new Promise(resolve => setTimeout(resolve, delay));

@@ -1,7 +1,6 @@
 // Agent V2 Chat API Route
-import { NextRequest, NextResponse } from 'next/server';
-import { orchestrateChat } from '@/lib/agent-v2';
-import type { ChatRequest } from '@/lib/agent-v2';
+import { NextResponse } from 'next/server';
+import { orchestrateChat } from '@/lib/agent-v2/index.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * 
  * New agent-based chat endpoint using OpenAI Agents SDK
  */
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   const startTime = Date.now();
   
   try {
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Build chat request
-    const chatRequest: ChatRequest = {
+    const chatRequest = {
       userId: body.userId,
       message,
       sessionId: body.sessionId,

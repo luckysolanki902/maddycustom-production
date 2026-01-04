@@ -1,12 +1,11 @@
 // Direct Answer Agent - Handles greetings, simple queries, chitchat
 import { Agent } from '@openai/agents';
-import { PROMPTS } from '../config/prompts';
-import { MODEL_CONFIGS } from '../config/models';
-import { GREETING_TOKENS } from '../config/constants';
-import type { AgentContext } from '../types';
+import { PROMPTS } from '../config/prompts.js';
+import { MODEL_CONFIGS } from '../config/models.js';
+import { GREETING_TOKENS } from '../config/constants.js';
 
 // Pre-defined responses for common greetings (no LLM needed)
-const GREETING_RESPONSES: Record<string, string[]> = {
+const GREETING_RESPONSES = {
   default: [
     "Hey! 👋 I'm Maddy, your shopping assistant. Looking for something cool for your ride?",
     "Hi there! I can help you find wraps, fragrances, accessories, or track your orders. What are you looking for?",
@@ -26,8 +25,10 @@ const GREETING_RESPONSES: Record<string, string[]> = {
 
 /**
  * Get a quick response for simple messages without calling LLM
+ * @param {string} message
+ * @returns {string|null}
  */
-export function getQuickResponse(message: string): string | null {
+export function getQuickResponse(message) {
   const trimmed = message.trim().toLowerCase();
   
   // Check for greetings
@@ -54,9 +55,10 @@ export function getQuickResponse(message: string): string | null {
 
 /**
  * Create the Direct Answer Agent
+ * @returns {Agent}
  */
 export function createDirectAnswerAgent() {
-  return new Agent<AgentContext>({
+  return new Agent({
     name: 'DirectAnswerAgent',
     instructions: PROMPTS.DIRECT_ANSWER_AGENT,
     model: MODEL_CONFIGS.directAnswer.name,
@@ -71,11 +73,11 @@ export function createDirectAnswerAgent() {
 
 /**
  * Run the Direct Answer Agent
+ * @param {string} message
+ * @param {object} context
+ * @returns {Promise<object>}
  */
-export async function runDirectAnswerAgent(
-  message: string,
-  context: AgentContext
-): Promise<{ text: string }> {
+export async function runDirectAnswerAgent(message, context) {
   // Try quick response first
   const quickResponse = getQuickResponse(message);
   if (quickResponse) {

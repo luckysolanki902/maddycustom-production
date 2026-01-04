@@ -1,15 +1,8 @@
 // Model configurations for agents
 
-import { MODELS } from './constants';
+import { MODELS } from './constants.js';
 
-export interface ModelConfig {
-  name: string;
-  temperature?: number;
-  maxTokens?: number;
-  topP?: number;
-}
-
-export const MODEL_CONFIGS: Record<string, ModelConfig> = {
+export const MODEL_CONFIGS = {
   classifier: {
     name: MODELS.CLASSIFIER,
     temperature: 0.1, // Low temperature for consistent classification

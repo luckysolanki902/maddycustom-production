@@ -1,6 +1,6 @@
 // System prompts for all agents
 
-import { HUMAN_HANDOFF } from './constants';
+import { HUMAN_HANDOFF } from './constants.js';
 
 export const PROMPTS = {
   CLASSIFIER: `You are a message classifier for MaddyCustom, an e-commerce store specializing in automotive wraps, fragrances, and accessories.

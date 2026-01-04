@@ -1,26 +1,21 @@
 // Main Agent Orchestrator - Routes messages through the agent pipeline
-import { classifyMessage, type ClassifierOutput } from './agents/classifier';
-import { runDataQueryAgent } from './agents/dataQuery';
-import { runVectorStoreAgent } from './agents/vectorStore';
-import { runDirectAnswerAgent, getQuickResponse } from './agents/directAnswer';
-import { runHumanHandoffAgent } from './agents/humanHandoff';
-import { getOrCreateSession, MongoSession } from './session/MongoSession';
-import { CLASSIFICATION_CATEGORIES, LIMITS } from './config/constants';
-import type { AgentContext, ChatRequest, ChatResponse, AgentInputItem } from './types';
-
-interface OrchestratorOptions {
-  debug?: boolean;
-}
+import { classifyMessage } from './agents/classifier.js';
+import { runDataQueryAgent } from './agents/dataQuery.js';
+import { runVectorStoreAgent } from './agents/vectorStore.js';
+import { runDirectAnswerAgent, getQuickResponse } from './agents/directAnswer.js';
+import { runHumanHandoffAgent } from './agents/humanHandoff.js';
+import { getOrCreateSession, MongoSession } from './session/MongoSession.js';
+import { CLASSIFICATION_CATEGORIES, LIMITS } from './config/constants.js';
 
 /**
  * Main orchestrator that handles the full chat pipeline
+ * @param {object} request - Chat request with userId, message, sessionId, metadata
+ * @param {object} options - Options like debug mode
+ * @returns {Promise<object>} Chat response
  */
-export async function orchestrateChat(
-  request: ChatRequest,
-  options: OrchestratorOptions = {}
-): Promise<ChatResponse> {
+export async function orchestrateChat(request, options = {}) {
   const startTime = Date.now();
-  const agentPath: string[] = [];
+  const agentPath = [];
   
   // Initialize session
   const session = await getOrCreateSession({
@@ -32,7 +27,7 @@ export async function orchestrateChat(
   const metadata = await session.getMetadata();
   
   // Build context
-  const context: AgentContext = {
+  const context = {
     userId: request.userId,
     sessionId,
     pageContext: request.metadata?.pageContext,
@@ -80,7 +75,7 @@ export async function orchestrateChat(
     // Step 2: Classify the message
     agentPath.push('classifier');
     const classification = await classifyMessage(request.message, {
-      previousClassification: metadata.lastClassification as any,
+      previousClassification: metadata.lastClassification,
       conversationLength: metadata.totalMessages,
     });
     
@@ -90,7 +85,7 @@ export async function orchestrateChat(
     });
     
     // Step 3: Route to appropriate agent
-    let result: { text: string; products?: any[]; orderStatus?: any; handoff?: any; hasMore?: boolean };
+    let result;
     
     switch (classification.category) {
       case CLASSIFICATION_CATEGORIES.DATA_QUERY:
@@ -191,32 +186,35 @@ export async function orchestrateChat(
 
 /**
  * Create a user message item
+ * @param {string} text
+ * @returns {object}
  */
-function createUserItem(text: string): AgentInputItem {
+function createUserItem(text) {
   return {
     type: 'message',
     role: 'user',
     content: [{ type: 'input_text', text }],
-  } as AgentInputItem;
+  };
 }
 
 /**
  * Create an assistant message item
+ * @param {string} text
+ * @returns {object}
  */
-function createAssistantItem(text: string): AgentInputItem {
+function createAssistantItem(text) {
   return {
     type: 'message',
     role: 'assistant',
     content: [{ type: 'output_text', text }],
-  } as AgentInputItem;
+  };
 }
 
 // Export everything
-export { classifyMessage } from './agents/classifier';
-export { runDataQueryAgent } from './agents/dataQuery';
-export { runVectorStoreAgent } from './agents/vectorStore';
-export { runDirectAnswerAgent } from './agents/directAnswer';
-export { runHumanHandoffAgent } from './agents/humanHandoff';
-export { getOrCreateSession, MongoSession } from './session/MongoSession';
-export * from './config/constants';
-export * from './types';
+export { classifyMessage } from './agents/classifier.js';
+export { runDataQueryAgent } from './agents/dataQuery.js';
+export { runVectorStoreAgent } from './agents/vectorStore.js';
+export { runDirectAnswerAgent } from './agents/directAnswer.js';
+export { runHumanHandoffAgent } from './agents/humanHandoff.js';
+export { getOrCreateSession, MongoSession } from './session/MongoSession.js';
+export * from './config/constants.js';

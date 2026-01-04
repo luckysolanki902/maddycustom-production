@@ -1,10 +1,9 @@
 // Data Query Agent - Handles product search, order tracking, category browsing
-import { Agent, tool, RunContext } from '@openai/agents';
+import { Agent, tool } from '@openai/agents';
 import { z } from 'zod';
-import { PROMPTS, TOOL_DESCRIPTIONS } from '../config/prompts';
-import { MODEL_CONFIGS } from '../config/models';
-import { LIMITS } from '../config/constants';
-import type { AgentContext } from '../types';
+import { PROMPTS, TOOL_DESCRIPTIONS } from '../config/prompts.js';
+import { MODEL_CONFIGS } from '../config/models.js';
+import { LIMITS } from '../config/constants.js';
 
 // Tool parameter schemas
 const SearchProductsParams = z.object({
@@ -33,7 +32,7 @@ const searchProductsTool = tool({
   name: 'search_products',
   description: TOOL_DESCRIPTIONS.SEARCH_PRODUCTS,
   parameters: SearchProductsParams,
-  async execute(params, runContext?: RunContext<AgentContext>) {
+  async execute(params, runContext) {
     try {
       // Dynamic import to avoid SSR issues
       const { searchProducts } = await import('@/lib/assistant/productSearch');
@@ -79,7 +78,7 @@ const searchProductsTool = tool({
       }
       
       // Simplified product format for LLM
-      const simplified = products.map((p: any) => ({
+      const simplified = products.map((p) => ({
         id: p._id || p.id,
         name: p.title || p.name,
         price: p.price,
@@ -188,9 +187,10 @@ const browseCategoriesTool = tool({
 
 /**
  * Create the Data Query Agent
+ * @returns {Agent}
  */
 export function createDataQueryAgent() {
-  return new Agent<AgentContext>({
+  return new Agent({
     name: 'DataQueryAgent',
     instructions: PROMPTS.DATA_QUERY_AGENT,
     model: MODEL_CONFIGS.dataQuery.name,
@@ -203,11 +203,11 @@ export function createDataQueryAgent() {
 
 /**
  * Run the Data Query Agent
+ * @param {string} message
+ * @param {object} context
+ * @returns {Promise<object>}
  */
-export async function runDataQueryAgent(
-  message: string,
-  context: AgentContext
-): Promise<{ text: string; products?: any[]; orderStatus?: any; hasMore?: boolean }> {
+export async function runDataQueryAgent(message, context) {
   const { run } = await import('@openai/agents');
   const agent = createDataQueryAgent();
   
@@ -216,8 +216,8 @@ export async function runDataQueryAgent(
   });
   
   // Extract structured data from tool results if available
-  let products: any[] | undefined;
-  let orderStatus: any | undefined;
+  let products;
+  let orderStatus;
   let hasMore = false;
   
   // Parse final output or tool results
