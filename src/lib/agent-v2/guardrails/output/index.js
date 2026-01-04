@@ -1,13 +1,11 @@
 // Output Guardrails for Agent V2
-import type { OutputGuardrail } from '@openai/agents';
-import { LIMITS } from '../config/constants';
-import type { AgentContext } from '../types';
+import { LIMITS } from '../config/constants.js';
 
 /**
  * Response Validator Guardrail
  * Ensures response quality and safety
  */
-export const responseValidatorGuardrail: OutputGuardrail<AgentContext> = {
+export const responseValidatorGuardrail = {
   name: 'Response Validator',
   execute: async ({ output }) => {
     const text = typeof output === 'string' ? output : JSON.stringify(output);
@@ -54,7 +52,7 @@ export const responseValidatorGuardrail: OutputGuardrail<AgentContext> = {
  * PII Filter Guardrail
  * Removes accidentally exposed personal information
  */
-export const piiFilterGuardrail: OutputGuardrail<AgentContext> = {
+export const piiFilterGuardrail = {
   name: 'PII Filter',
   execute: async ({ output }) => {
     const text = typeof output === 'string' ? output : JSON.stringify(output);
@@ -87,7 +85,7 @@ export const piiFilterGuardrail: OutputGuardrail<AgentContext> = {
  * Brand Safety Guardrail
  * Ensures responses align with brand guidelines
  */
-export const brandSafetyGuardrail: OutputGuardrail<AgentContext> = {
+export const brandSafetyGuardrail = {
   name: 'Brand Safety',
   execute: async ({ output }) => {
     const text = typeof output === 'string' ? output.toLowerCase() : '';
@@ -115,7 +113,7 @@ export const brandSafetyGuardrail: OutputGuardrail<AgentContext> = {
 /**
  * All output guardrails
  */
-export const outputGuardrails: OutputGuardrail<AgentContext>[] = [
+export const outputGuardrails = [
   responseValidatorGuardrail,
   piiFilterGuardrail,
   brandSafetyGuardrail,

@@ -53,9 +53,7 @@ export const CLASSIFICATION_CATEGORIES = {
   VECTOR_STORE: 'VECTOR_STORE',
   DIRECT_ANSWER: 'DIRECT_ANSWER',
   HUMAN_HANDOFF: 'HUMAN_HANDOFF',
-} as const;
-
-export type ClassificationCategory = typeof CLASSIFICATION_CATEGORIES[keyof typeof CLASSIFICATION_CATEGORIES];
+};
 
 // Greeting tokens for fast-path detection
 export const GREETING_TOKENS = new Set([

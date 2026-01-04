@@ -1,19 +1,19 @@
 // Vector Store Agent - Handles FAQs, policies, company info using file search
 import { Agent, fileSearchTool } from '@openai/agents';
-import { PROMPTS } from '../config/prompts';
-import { MODEL_CONFIGS } from '../config/models';
-import { VECTOR_STORE_ID } from '../config/constants';
-import type { AgentContext } from '../types';
+import { PROMPTS } from '../config/prompts.js';
+import { MODEL_CONFIGS } from '../config/models.js';
+import { VECTOR_STORE_ID } from '../config/constants.js';
 
 /**
  * Create the Vector Store Agent
  * Uses OpenAI's hosted file_search tool with our knowledge base
+ * @returns {Agent}
  */
 export function createVectorStoreAgent() {
   // Only add file search tool if vector store ID is configured
   const tools = VECTOR_STORE_ID ? [fileSearchTool(VECTOR_STORE_ID)] : [];
   
-  return new Agent<AgentContext>({
+  return new Agent({
     name: 'VectorStoreAgent',
     instructions: PROMPTS.VECTOR_STORE_AGENT,
     model: MODEL_CONFIGS.vectorStore.name,
@@ -26,11 +26,11 @@ export function createVectorStoreAgent() {
 
 /**
  * Run the Vector Store Agent
+ * @param {string} message
+ * @param {object} context
+ * @returns {Promise<object>}
  */
-export async function runVectorStoreAgent(
-  message: string,
-  context: AgentContext
-): Promise<{ text: string; sources?: string[] }> {
+export async function runVectorStoreAgent(message, context) {
   const { run } = await import('@openai/agents');
   const agent = createVectorStoreAgent();
   

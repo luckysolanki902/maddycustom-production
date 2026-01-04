@@ -1,11 +1,9 @@
 // MongoDB Session Implementation for Agent V2
-import type { AgentInputItem, Session } from '@openai/agents-core';
 import { randomUUID } from 'crypto';
-import type { SessionMetadata, PaginationState } from '../types';
-import { LIMITS } from '../config/constants';
+import { LIMITS } from '../config/constants.js';
 
 // We'll use dynamic import for MongoDB to work in Next.js
-let AssistantSessionV2Model: any = null;
+let AssistantSessionV2Model = null;
 
 async function getSessionModel() {
   if (!AssistantSessionV2Model) {
@@ -54,29 +52,21 @@ async function getSessionModel() {
 
 /**
  * Clone an AgentInputItem to avoid mutations
+ * @param {object} item
+ * @returns {object}
  */
-function cloneAgentItem(item: AgentInputItem): AgentInputItem {
+function cloneAgentItem(item) {
   return JSON.parse(JSON.stringify(item));
 }
 
 /**
  * MongoDB-backed Session implementation for the Agents SDK
  */
-export class MongoSession implements Session {
-  private sessionId: string;
-  private userId: string;
-  private items: AgentInputItem[] = [];
-  private metadata: SessionMetadata;
-  private paginationState?: PaginationState;
-  private loaded = false;
-  
-  constructor(options: {
-    sessionId?: string;
-    userId: string;
-    threadId?: string;
-  }) {
+export class MongoSession {
+  constructor(options = {}) {
     this.sessionId = options.sessionId || randomUUID();
     this.userId = options.userId;
+    this.items = [];
     this.metadata = {
       userId: options.userId,
       sessionId: this.sessionId,
@@ -86,12 +76,14 @@ export class MongoSession implements Session {
       totalMessages: 0,
       totalTokensUsed: 0,
     };
+    this.paginationState = null;
+    this.loaded = false;
   }
   
   /**
    * Load session from database if exists
    */
-  private async load(): Promise<void> {
+  async load() {
     if (this.loaded) return;
     
     try {
@@ -99,7 +91,7 @@ export class MongoSession implements Session {
       const doc = await Model.findOne({ sessionId: this.sessionId }).lean();
       
       if (doc) {
-        this.items = (doc.items || []).map((item: any) => ({
+        this.items = (doc.items || []).map((item) => ({
           type: item.type || 'message',
           role: item.role,
           content: item.content,
@@ -125,7 +117,7 @@ export class MongoSession implements Session {
   /**
    * Save session to database
    */
-  private async save(): Promise<void> {
+  async save() {
     try {
       const Model = await getSessionModel();
       
@@ -137,8 +129,8 @@ export class MongoSession implements Session {
             threadId: this.metadata.threadId,
             items: this.items.map(item => ({
               type: item.type || 'message',
-              role: (item as any).role,
-              content: (item as any).content,
+              role: item.role,
+              content: item.content,
               timestamp: new Date(),
             })),
             metadata: {
@@ -160,11 +152,11 @@ export class MongoSession implements Session {
   
   // Session interface implementation
   
-  async getSessionId(): Promise<string> {
+  async getSessionId() {
     return this.sessionId;
   }
   
-  async getItems(limit?: number): Promise<AgentInputItem[]> {
+  async getItems(limit) {
     await this.load();
     
     if (limit === undefined || limit <= 0) {
@@ -176,7 +168,7 @@ export class MongoSession implements Session {
     return this.items.slice(start).map(cloneAgentItem);
   }
   
-  async addItems(items: AgentInputItem[]): Promise<void> {
+  async addItems(items) {
     await this.load();
     
     if (items.length === 0) return;
@@ -194,7 +186,7 @@ export class MongoSession implements Session {
     await this.save();
   }
   
-  async popItem(): Promise<AgentInputItem | undefined> {
+  async popItem() {
     await this.load();
     
     if (this.items.length === 0) return undefined;
@@ -207,54 +199,52 @@ export class MongoSession implements Session {
     return cloneAgentItem(item);
   }
   
-  async clearSession(): Promise<void> {
+  async clearSession() {
     this.items = [];
     this.metadata.totalMessages = 0;
     this.metadata.conversationSummary = undefined;
-    this.paginationState = undefined;
+    this.paginationState = null;
     
     await this.save();
   }
   
   // Custom extensions
   
-  async getMetadata(): Promise<SessionMetadata> {
+  async getMetadata() {
     await this.load();
     return { ...this.metadata };
   }
   
-  async updateMetadata(updates: Partial<SessionMetadata>): Promise<void> {
+  async updateMetadata(updates) {
     await this.load();
     this.metadata = { ...this.metadata, ...updates };
     await this.save();
   }
   
-  async getPaginationState(): Promise<PaginationState | undefined> {
+  async getPaginationState() {
     await this.load();
     return this.paginationState ? { ...this.paginationState } : undefined;
   }
   
-  async setPaginationState(state: PaginationState): Promise<void> {
+  async setPaginationState(state) {
     await this.load();
     this.paginationState = { ...state };
     await this.save();
   }
   
-  async clearPaginationState(): Promise<void> {
+  async clearPaginationState() {
     await this.load();
-    this.paginationState = undefined;
+    this.paginationState = null;
     await this.save();
   }
 }
 
 /**
  * Create or retrieve a session
+ * @param {object} options
+ * @returns {Promise<MongoSession>}
  */
-export async function getOrCreateSession(options: {
-  sessionId?: string;
-  userId: string;
-  threadId?: string;
-}): Promise<MongoSession> {
+export async function getOrCreateSession(options) {
   const session = new MongoSession(options);
   return session;
 }

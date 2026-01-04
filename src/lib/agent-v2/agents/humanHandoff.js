@@ -1,14 +1,15 @@
 // Human Handoff Agent - Gracefully redirects to human support
 import { Agent } from '@openai/agents';
-import { PROMPTS } from '../config/prompts';
-import { MODEL_CONFIGS } from '../config/models';
-import { HUMAN_HANDOFF } from '../config/constants';
-import type { AgentContext } from '../types';
+import { PROMPTS } from '../config/prompts.js';
+import { MODEL_CONFIGS } from '../config/models.js';
+import { HUMAN_HANDOFF } from '../config/constants.js';
 
 /**
  * Generate a handoff response
+ * @param {string} reason
+ * @returns {string}
  */
-function generateHandoffResponse(reason?: string): string {
+function generateHandoffResponse(reason) {
   const baseMessage = `I understand this is important to you, and I want to make sure you get the best help possible.
 
 Please reach out to our support team directly:
@@ -22,9 +23,10 @@ Our team is available to assist you personally and will resolve your concern as 
 
 /**
  * Create the Human Handoff Agent
+ * @returns {Agent}
  */
 export function createHumanHandoffAgent() {
-  return new Agent<AgentContext>({
+  return new Agent({
     name: 'HumanHandoffAgent',
     instructions: PROMPTS.HUMAN_HANDOFF_AGENT,
     model: MODEL_CONFIGS.handoff.name,
@@ -39,18 +41,18 @@ export function createHumanHandoffAgent() {
 
 /**
  * Run the Human Handoff Agent
+ * @param {string} message
+ * @param {object} context
+ * @param {string} reason
+ * @returns {Promise<object>}
  */
-export async function runHumanHandoffAgent(
-  message: string,
-  context: AgentContext,
-  reason?: string
-): Promise<{ text: string; handoff: { link: string; phone: string; reason: string } }> {
+export async function runHumanHandoffAgent(message, context, reason) {
   // For handoff, we can use a template response most of the time
   // Only use LLM for complex emotional situations
   
   const isEmotional = /\b(angry|frustrated|disappointed|upset|furious)\b/i.test(message);
   
-  let responseText: string;
+  let responseText;
   
   if (isEmotional) {
     // Use LLM for empathetic response

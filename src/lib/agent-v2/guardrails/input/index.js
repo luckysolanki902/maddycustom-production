@@ -1,16 +1,14 @@
 // Input Guardrails for Agent V2
-import type { InputGuardrail, RunContext } from '@openai/agents';
-import { LIMITS } from '../config/constants';
-import type { AgentContext } from '../types';
+import { LIMITS } from '../config/constants.js';
 
 // Rate limit tracking (in-memory, would use Redis in production)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const rateLimitMap = new Map();
 
 /**
  * Content Filter Guardrail
  * Blocks inappropriate or malicious content
  */
-export const contentFilterGuardrail: InputGuardrail<AgentContext> = {
+export const contentFilterGuardrail = {
   name: 'Content Filter',
   runInParallel: false, // Block before processing
   execute: async ({ input }) => {
@@ -65,7 +63,7 @@ export const contentFilterGuardrail: InputGuardrail<AgentContext> = {
  * Prompt Injection Detector Guardrail
  * Detects attempts to manipulate the AI
  */
-export const injectionDetectorGuardrail: InputGuardrail<AgentContext> = {
+export const injectionDetectorGuardrail = {
   name: 'Injection Detector',
   runInParallel: true, // Can run alongside other checks
   execute: async ({ input }) => {
@@ -106,7 +104,7 @@ export const injectionDetectorGuardrail: InputGuardrail<AgentContext> = {
  * Rate Limiter Guardrail
  * Prevents abuse by limiting request frequency
  */
-export const rateLimiterGuardrail: InputGuardrail<AgentContext> = {
+export const rateLimiterGuardrail = {
   name: 'Rate Limiter',
   runInParallel: false, // Must check before processing
   execute: async ({ context }) => {
@@ -144,7 +142,7 @@ export const rateLimiterGuardrail: InputGuardrail<AgentContext> = {
 /**
  * All input guardrails
  */
-export const inputGuardrails: InputGuardrail<AgentContext>[] = [
+export const inputGuardrails = [
   contentFilterGuardrail,
   injectionDetectorGuardrail,
   rateLimiterGuardrail,
