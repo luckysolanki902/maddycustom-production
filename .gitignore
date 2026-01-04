@@ -46,3 +46,6 @@ next-env.d.ts
 /private/
 /src/local-functions
 cloudflared.txt
+
+# personal docs
+/agentOpenai
