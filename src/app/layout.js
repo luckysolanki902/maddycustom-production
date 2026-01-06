@@ -1,6 +1,7 @@
 // src/app/layout.js
 
 import '@/styles/globals.css';
+import '@/styles/shiprocket-checkout.css';
 import { Suspense } from 'react';
 import { createMetadata } from '@/lib/metadata/create-metadata';
 import { generateWebsiteSchema, generateOrganizationSchema } from '@/lib/metadata/json-lds';
