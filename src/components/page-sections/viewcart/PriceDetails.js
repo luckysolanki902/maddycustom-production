@@ -18,7 +18,6 @@ const PriceDetails = ({
   totalCostWithDelivery,
   onOpenCoupon,
   onRemoveCoupon,
-  extraCharge,
   totalMrp,
   originalTotal,
   standardDeliveryCost,
@@ -28,7 +27,6 @@ const PriceDetails = ({
   
   const hasCoupon = couponState?.couponApplied;
   const hasDiscount = discountAmount > 0;
-  const hasExtraCharge = extraCharge > 0;
   const isFreeDelivery = deliveryCost === 0;
 
   // Calculate total savings
@@ -116,14 +114,6 @@ const PriceDetails = ({
                 <span className={styles.discountValue}>-₹{discountAmount.toLocaleString('en-IN')}</span>
               </div>
             )}
-
-            {/* Extra Charge */}
-            {hasExtraCharge && (
-              <div className={styles.priceRow}>
-                <span className={styles.priceLabel}>Convenience Fee</span>
-                <span className={styles.priceValue}>₹{extraCharge.toLocaleString('en-IN')}</span>
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -149,7 +139,7 @@ const PriceDetails = ({
       )}
 
       {/* Toggle Details - only show if there's breakdown content */}
-      {(hasDiscount || hasExtraCharge) && (
+      {hasDiscount && (
         <button 
           className={styles.toggleBtn}
           onClick={() => setShowDetails(!showDetails)}

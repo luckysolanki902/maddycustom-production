@@ -25,11 +25,10 @@ import cartListStyles from '../page-sections/viewcart/styles/cartlist.module.css
 import ViewCartHeader from '../page-sections/viewcart/ViewCartHeader';
 import CartList from '../page-sections/viewcart/CartList';
 import PriceDetails from '../page-sections/viewcart/PriceDetails';
-import PaymentModes from '../page-sections/viewcart/PaymentModes';
 import CheckoutFooter from '../page-sections/viewcart/Footer';
 import ViewCartDialogFooter from '../page-sections/viewcart/ViewCartDialogFooter';
 import ApplyCoupon from '../dialogs/ApplyCoupon';
-import OrderForm from '../dialogs/OrderForm';
+import useMagicCheckout from '@/hooks/useMagicCheckout';
 import MinimumCartDialog from '../dialogs/MinimumCartDialog';
 import FuelCapWrapBonusDialog from '../dialogs/FuelCapWrapBonusDialog';
 import CustomSnackbar from '@/components/notifications/CustomSnackbar';
@@ -168,9 +167,6 @@ export default function ViewCart({ isDrawer = false }) {
   /* ---------- misc ui / state ---------------------------------------- */
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [dlgCoupon, setDlgCoupon] = useState(false);
-  const [paymentModes, setPaymentModes] = useState([]);
-  const [selectedPM, setSelectedPM] = useState(null);
-  const [loadingPM, setLoadingPM] = useState(true);
   const [dlgOrder, setDlgOrder] = useState(false);
   const [dlgMinimumCart, setDlgMinimumCart] = useState(false);
   const [dlgOOS, setDlgOOS] = useState(false);
@@ -301,8 +297,7 @@ export default function ViewCart({ isDrawer = false }) {
 
   const deliveryCost = 0; // If delivery is free
   const standardDeliveryCost = 100; // Standard delivery fee that is being waived
-  const extraCharge = selectedPM?.extraCharge || 0;
-  const totalPay = grand + deliveryCost + extraCharge;
+  const totalPay = grand + deliveryCost;
 
   const userDetails = orderForm.userDetails || {};
 
@@ -388,24 +383,21 @@ export default function ViewCart({ isDrawer = false }) {
   // Ensure browser back closes the OOS dialog instead of navigating away
   useHistoryState(dlgOOS, () => setDlgOOS(false), 'oosDialog', 9);
 
-  // If COD becomes unavailable due to order value, auto-deselect it
-  useEffect(() => {
-    if ((selectedPM?.name || '').toLowerCase() === 'cod' && totalPay > MAX_ORDER_VALUE_FOR_COD) {
-      setSelectedPM(null);
-    }
-  }, [selectedPM?.name, totalPay]);
-
-  // Determine if this is a split payment based on payment mode configuration, 
-  const isSplitPayment = selectedPM?.name === 'split' ||
-    (selectedPM?.configuration?.onlinePercentage > 0 &&
-      selectedPM?.configuration?.onlinePercentage < 100);
-
-  // Calculate split amounts if applicable
-  const onlineAmount = isSplitPayment ?
-    Math.round((totalPay * (selectedPM?.configuration?.onlinePercentage || 50)) / 100) : 0;
-  const codAmount = isSplitPayment ? totalPay - onlineAmount : 0;
   const snack = useCallback((m, s = 'success') => setSnackbar({ open: true, message: m, severity: s }), []);
   const dispatchCoupon = p => dispatch(setCouponApplied({ ...p }));
+
+  // Initialize Magic Checkout hook
+  const { 
+    launchCheckout, 
+    isPreparing: isMagicCheckoutPreparing,
+    isFailed: isMagicCheckoutFailed,
+    error: magicCheckoutError,
+    reset: resetMagicCheckout 
+  } = useMagicCheckout({
+    onError: (err) => {
+      snack(err.message || 'Checkout failed. Please try again.', 'error');
+    },
+  });
 
   const lastAutoOpenIdRef = useRef(null);
 
@@ -415,9 +407,8 @@ export default function ViewCart({ isDrawer = false }) {
     if (lastAutoOpenIdRef.current === currentId) return;
     lastAutoOpenIdRef.current = currentId;
 
-    if (!dlgOrder) {
-      setDlgOrder(true);
-    }
+    // Magic Checkout auto-open: directly trigger checkout
+    handleCheckout();
 
     const payload = autoOpenRequest.snackbar;
     if (payload?.message) {
@@ -487,19 +478,6 @@ export default function ViewCart({ isDrawer = false }) {
   const handleBackClick = () => {
     dispatch(closeCartDrawer());
   };
-
-  /* ---------- payment modes fetch (unchanged) ----------------------- */
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await axios.get('/api/checkout/modeofpayments');
-        setPaymentModes(data.data);
-        setSelectedPM(data.data.find(m => m.name === 'online') || data.data[0]);
-      } catch {
-        snack('Failed to fetch payment modes', 'error');
-      } finally { setLoadingPM(false); }
-    })();
-  }, [snack]);
 
   /* ---------- locked / now banner (updated for card offers) ----------------------- */
   useEffect(() => {
@@ -707,15 +685,26 @@ export default function ViewCart({ isDrawer = false }) {
     };
   }, [availableItems, subTot, revalidateCoupon, couponState.couponApplied, couponState.couponName]);
 
-  /* ---------- validate before checkout (fast path with background prefetch) ------------------ */
-  const handleCheckout = () => {
+  // Generate cart signature for deduplication
+  const generateCartSignature = useCallback(() => {
+    const sig = availableItems.map(item => {
+      const productId = item.productDetails?._id || item.productId;
+      const optionId = item.productDetails?.selectedOption?._id || null;
+      return `${productId}:${optionId || 'none'}:${item.quantity}`;
+    }).sort().join('|');
+    return `cart-${btoa(sig).slice(0, 20)}-${Date.now()}`;
+  }, [availableItems]);
+
+  /* ---------- validate before checkout and launch Magic Checkout ------------------ */
+  const handleCheckout = useCallback((event) => {
     setCheckoutClicked(true);
+    
     // Block until background prepare is complete
     if (prefetchStatus !== 'ready') {
-      // set flag to auto-open once ready
       setCheckoutAwaitingReady(true);
       return;
     }
+    
     // Enforce minimum purchase amount
     if (totalPay < minPurchaseAmt) {
       setDlgMinimumCart(true);
@@ -745,14 +734,44 @@ export default function ViewCart({ isDrawer = false }) {
       return;
     }
 
-    // Open the order form (Meta InitiateCheckout will fire when user submits contact info)
-    setDlgOrder(true);
-  };
+    // Launch Shiprocket Magic Checkout
+    const payload = {
+      cartSignature: generateCartSignature(),
+      items: availableItems.map(item => ({
+        productId: item.productDetails?._id || item.productId,
+        optionId: item.productDetails?.selectedOption?._id || null,
+        quantity: item.quantity,
+        unitPrice: item.price || item.productDetails?.price || 0,
+        mrp: item.productDetails?.MRP || item.price || 0,
+      })),
+      totals: {
+        subtotal: subTot,
+        discount: disc,
+        payable: totalPay,
+      },
+      coupon: couponState.couponApplied ? {
+        code: couponState.couponName,
+        amount: couponState.couponDiscount,
+        type: couponState.discountType,
+      } : null,
+      user: userDetails.id ? {
+        id: userDetails.id,
+        name: userDetails.name,
+        phoneNumber: userDetails.phoneNumber,
+        email: userDetails.email,
+      } : null,
+    };
+
+    launchCheckout({ payload, event });
+  }, [
+    prefetchStatus, totalPay, minPurchaseAmt, inventoryGate, cartItems, 
+    couponState, availableItems, subTot, disc, userDetails, 
+    generateCartSignature, launchCheckout
+  ]);
 
   // Auto-open once prefetch becomes ready after user clicked
   useEffect(() => {
     if (checkoutAwaitingReady && prefetchStatus === 'ready') {
-      // Re-run the handleCheckout path but now it will pass the ready check
       setCheckoutAwaitingReady(false);
       // enforce min amount and OOS gate as in handleCheckout
       if (totalPay < minPurchaseAmt) {
@@ -778,11 +797,12 @@ export default function ViewCart({ isDrawer = false }) {
         setDlgOOS(true);
         return;
       }
-      setDlgOrder(true);
+      // Launch Magic Checkout directly
+      handleCheckout();
     }
-  }, [checkoutAwaitingReady, prefetchStatus, totalPay, minPurchaseAmt, inventoryGate?.excludedKeys, inventoryGate?.itemsInfo, cartItems, couponState.couponName]);
+  }, [checkoutAwaitingReady, prefetchStatus, totalPay, minPurchaseAmt, inventoryGate?.excludedKeys, inventoryGate?.itemsInfo, cartItems, couponState.couponName, handleCheckout]);
 
-  const originalTotal = subTot + deliveryCost + extraCharge + (deliveryCost === 0 ? 99 : 0);
+  const originalTotal = subTot + deliveryCost + (deliveryCost === 0 ? 99 : 0);
 
   /* -------------------  JSX (UI with fixes)  ------------------------- */
   return (
@@ -1049,22 +1069,11 @@ export default function ViewCart({ isDrawer = false }) {
                 totalCostWithDelivery={totalPay}
                 onOpenCoupon={() => setDlgCoupon(true)}
                 onRemoveCoupon={removeCoupon}
-                extraCharge={extraCharge}
                 totalMrp={MrpTotal}
                 originalTotal={originalTotal}
                 hideCouponButton={couponState.couponApplied && !nowCoupon}
               />
 
-
-
-              {/* Payment Modes */}
-              <PaymentModes
-                paymentModes={paymentModes}
-                isLoading={loadingPM}
-                selectedPaymentMode={selectedPM}
-                onChange={e => setSelectedPM(paymentModes.find(m => m.name === e.target.value))}
-                totalAmount={totalPay}
-              />
             </section>
             <CustomerPhotosSlider assets={customerPhotoAssets} />
             <ViewCartDialogFooter />
@@ -1107,11 +1116,9 @@ export default function ViewCart({ isDrawer = false }) {
             totalCost={totalPay}
             originalTotal={originalTotal}
             onCheckout={handleCheckout}
-            onlinePercentage={selectedPM?.configuration?.onlinePercentage || 0}
-            codPercentage={selectedPM?.configuration?.codPercentage || 0}
             // Keep disabled until ready; only show spinner after user clicked
-            isRevalidatingCoupons={prefetchStatus !== 'ready'}
-            showPreparingUi={checkoutClicked && prefetchStatus !== 'ready'}
+            isRevalidatingCoupons={prefetchStatus !== 'ready' || isMagicCheckoutPreparing}
+            showPreparingUi={(checkoutClicked && prefetchStatus !== 'ready') || isMagicCheckoutPreparing}
             discount={disc}
           />
         </motion.div>)
@@ -1129,18 +1136,6 @@ export default function ViewCart({ isDrawer = false }) {
         isFirstOrder={isFirstOrder}
         cartItems={cartItems}
         appliedCoupon={couponState.couponName}
-      />
-      <OrderForm
-        open={dlgOrder}
-        onClose={() => setDlgOrder(false)}
-        paymentModeConfig={selectedPM}
-        couponCode={couponState.couponApplied ? couponState.couponName : null}
-        totalCost={totalPay}
-        couponsDetails={couponRedux}
-        deliveryCost={deliveryCost}
-        discountAmountFinal={disc}
-        items={availableItems}
-        subTotal={subTot}
       />
 
       {/* Out of Stock / Restock Dialog - styled like CartList */}
