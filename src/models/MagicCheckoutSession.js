@@ -71,12 +71,9 @@ const MagicCheckoutSessionSchema = new mongoose.Schema(
     },
 
     coupon: {
-      type: {
-        code: String,
-        amount: Number,
-        type: String,
-      },
-      default: null,
+      code: String,
+      amount: Number,
+      discountType: String,
     },
 
     user: {

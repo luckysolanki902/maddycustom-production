@@ -134,7 +134,12 @@ function MagicCheckoutResultContent() {
   };
 
   const handleViewOrders = () => {
-    router.push('/orders');
+    const orderId = searchParams.get('oid');
+    if (orderId) {
+      router.push(`/orders/myorder/${orderId}`);
+    } else {
+      router.push('/orders');
+    }
   };
 
   const handleRetry = () => {
