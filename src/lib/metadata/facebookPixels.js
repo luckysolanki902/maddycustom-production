@@ -179,6 +179,16 @@ const hashEmailIdentifier = async (email) => hashIdentifier(email, { forceLowerc
  */
 const sendToServer = async (eventName, options) => {
   if (StopFacebookPixels) return;
+
+  // Only send to CAPI if on maddycustom.com domain
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    console.log('[Meta CAPI] hostname is:', hostname);
+    if (hostname !== 'maddycustom.com' && hostname !== 'www.maddycustom.com') {
+      console.debug('[Meta CAPI] Skipping event - not on production domain:', hostname);
+      return;
+    }
+  }
   
   // Use event queue for non-blocking, reliable delivery
   if (typeof window !== 'undefined') {
