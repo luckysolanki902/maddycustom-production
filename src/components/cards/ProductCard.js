@@ -111,9 +111,10 @@ const ProductCard = ({ product, isLoading, showLayout2, hideCartButton = false, 
           className={`${styles.image} ${isSquareLayout ? styles.squareImage : ''}`}
           src={finalSrc}
           alt={product.name}
-          width={isSquareLayout ? 1080 : 1076}
-          height={isSquareLayout ? 1080 : 683}
+          width={isSquareLayout ? 540 : 538}
+          height={isSquareLayout ? 540 : 342}
           loading="lazy"
+          unoptimized // CloudFront images are pre-optimized - skip Vercel processing
           title={product.title}
           style={{ 
             filter: outOfStock ? 'grayscale(30%)' : 'none',

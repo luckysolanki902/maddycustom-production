@@ -179,10 +179,11 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                   <Image
                     src={url}
                     alt={`${alt}-${index}`}
-                    loading="eager"
+                    loading={index === 0 ? "eager" : "lazy"}
                     width={isSmallDevice ? 600 : undefined}
                     height={isSmallDevice ? 400 : undefined}
                     fill={!isSmallDevice}
+                    unoptimized // CloudFront images are pre-optimized - skip Vercel processing
                     style={isSmallDevice ? {
                       width: '100%',
                       height: 'auto',
@@ -192,9 +193,7 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                     className={styles.mainImage}
                     onClick={() => handleOpenFullView(index)}
                     priority={index === 0}
-                    sizes="(max-width: 600px) 100vw, (max-width: 1024px) 80vw, 60vw"
-                    placeholder="blur"
-                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                    sizes="(max-width: 600px) 100vw, 80vw"
                   />
                 </div>
               </SwiperSlide>
@@ -224,8 +223,10 @@ export default function ImageGallery({ images, alt, restrictWidth }) {
                       src={url}
                       alt={`thumb-${index}`}
                       fill
+                      unoptimized // CloudFront images are pre-optimized
+                      loading="lazy"
                       className={styles.thumbnailImage}
-                      sizes="(max-width: 600px) 100px, 150px"
+                      sizes="100px"
                     />
                   </div>
                 </SwiperSlide>

@@ -16,7 +16,8 @@ import SingleCategorySlider from '@/components/showcase/carousels/SingleCategory
 import VoiceOfOurCustomers from '@/components/page-sections/homepage/VoiceOfCustomers';
 import CustomerPhotosSlider from '@/components/page-sections/homepage/CustomerPhotosSlider';
 
-export const dynamic = 'force-dynamic';
+// ISR: Revalidate every 10 minutes (reduces function invocations)
+export const revalidate = 600;
 
 export async function generateMetadata() {
   return createMetadata({

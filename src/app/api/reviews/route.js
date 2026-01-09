@@ -8,7 +8,8 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 
 const includeDummyReviewCount = true; // Toggle this to enable/disable dummy reviews
 
-export const dynamic = 'force-dynamic';
+// ISR: Cache reviews for 30 minutes to reduce function invocations
+export const revalidate = 1800;
 
 export async function GET(request) {
   try {

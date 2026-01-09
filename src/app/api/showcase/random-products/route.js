@@ -4,7 +4,8 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
+// ISR: Cache for 1 hour to reduce function invocations
+export const revalidate = 3600;
 
 export async function GET(request) {
   const searchParams = request.nextUrl.searchParams;

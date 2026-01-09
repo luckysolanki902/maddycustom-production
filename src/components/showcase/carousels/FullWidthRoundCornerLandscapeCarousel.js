@@ -27,11 +27,12 @@ const FullWidthRoundCornerLandscapeCarousel = ({
     const SlideContent = ({ slide, index }) => (
       <Image
         priority={index === 0} // Only prioritize first image
-        unoptimized={process.env.NODE_ENV === "development"}
+        loading={index === 0 ? "eager" : "lazy"} // Lazy load non-first images
+        unoptimized // Skip Vercel image optimization - images from CloudFront are already optimized
         src={slide.url}
         alt={slide.alt || `carousel-image-${index}`}
-        width={1242 * 2}
-        height={547 * 2}
+        width={1242}
+        height={547}
         style={{ width: "100%", height: "auto", cursor: slide.link ? "pointer" : "default" }}
       />
     );

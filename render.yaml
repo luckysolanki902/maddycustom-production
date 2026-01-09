@@ -1,0 +1,82 @@
+# render.yaml - Render Blueprint Specification
+# This file defines the infrastructure for deploying on Render
+# Cron jobs are handled via external cron services or Render's cron job feature
+
+services:
+  # Main Web Service
+  - type: web
+    name: maddycustom
+    runtime: node
+    region: oregon # or your preferred region
+    plan: starter # or your preferred plan
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_BASE_URL
+        sync: false # Set this in Render dashboard
+      - key: MONGODB_URI
+        sync: false
+      - key: CRON_SECRET
+        generateValue: true
+
+# Cron Jobs - Using Render's cron job feature
+# Note: Render cron jobs are separate services that make HTTP requests
+# Configure these in Render dashboard or use an external service like cron-job.org
+
+# For Render, cron jobs need to be configured in the dashboard
+# or you can use an external cron service to hit these endpoints:
+#
+# Abandoned Cart Campaigns (every 10 minutes) - KEEP AS IS:
+#   - GET/POST https://your-domain.com/api/cron/aisensy/abandoned-cart-first-campaign
+#   - GET/POST https://your-domain.com/api/cron/aisensy/abandoned-cart-second-campaign
+#
+# Review Campaign (monthly on 28th at 13:30):
+#   - GET/POST https://your-domain.com/api/cron/aisensy/review-campaign
+#
+# Meta Catalogue Generation (every 3 hours):
+#   - GET/POST https://your-domain.com/api/cron/meta/generate-catalogue
+#
+# Google Merchant Sync (every 6 hours):
+#   - GET/POST https://your-domain.com/api/google/merchant/sync-products
+#
+# Cleanup Old Catalogues (daily at 3 AM):
+#   - GET/POST https://your-domain.com/api/cron/meta/cleanup-old-catalogues
+
+# If using Render's cron job feature (requires paid plan), uncomment below:
+# - type: cron
+#   name: abandoned-cart-first
+#   runtime: node
+#   schedule: "*/10 * * * *"
+#   buildCommand: echo "Cron job runner"
+#   startCommand: curl -X GET "$RENDER_EXTERNAL_URL/api/cron/aisensy/abandoned-cart-first-campaign" -H "Authorization: Bearer $CRON_SECRET"
+#
+# - type: cron
+#   name: abandoned-cart-second
+#   runtime: node
+#   schedule: "*/10 * * * *"
+#   buildCommand: echo "Cron job runner"
+#   startCommand: curl -X GET "$RENDER_EXTERNAL_URL/api/cron/aisensy/abandoned-cart-second-campaign" -H "Authorization: Bearer $CRON_SECRET"
+#
+# - type: cron
+#   name: meta-catalogue-generation
+#   runtime: node
+#   schedule: "0 */3 * * *"
+#   buildCommand: echo "Cron job runner"
+#   startCommand: curl -X GET "$RENDER_EXTERNAL_URL/api/cron/meta/generate-catalogue" -H "Authorization: Bearer $CRON_SECRET"
+#
+# - type: cron
+#   name: google-merchant-sync
+#   runtime: node
+#   schedule: "0 */6 * * *"
+#   buildCommand: echo "Cron job runner"
+#   startCommand: curl -X GET "$RENDER_EXTERNAL_URL/api/google/merchant/sync-products" -H "Authorization: Bearer $CRON_SECRET"
+#
+# - type: cron
+#   name: cleanup-old-catalogues
+#   runtime: node
+#   schedule: "0 3 * * *"
+#   buildCommand: echo "Cron job runner"
+#   startCommand: curl -X GET "$RENDER_EXTERNAL_URL/api/cron/meta/cleanup-old-catalogues" -H "Authorization: Bearer $CRON_SECRET"

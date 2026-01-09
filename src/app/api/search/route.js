@@ -7,7 +7,8 @@ import SpecificCategory from '@/models/SpecificCategory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Option from '@/models/Option';
 
-export const dynamic = 'force-dynamic';
+// ISR: Cache search results for 5 minutes to reduce function invocations
+export const revalidate = 300;
 
 export async function GET(req) {
   try {

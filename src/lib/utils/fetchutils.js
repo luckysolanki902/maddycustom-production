@@ -6,17 +6,29 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
 /**
  * Fetch products based on slug, pagination, filtering, and sorting.
- * Uses Next.js revalidation to cache responses for 60 seconds.
+ * Uses GET with query params for better compatibility across hosting platforms.
+ * Uses Next.js revalidation to cache responses for 600 seconds.
  */
 export async function fetchProducts(slug, page = 1, limit = ITEMS_PER_PAGE, tagFilter = null, sortBy = 'default') {
-  const apiUrl = `${BASE_URL}/api/shop/products`;
   const fullSlug = Array.isArray(slug) ? slug.join('/') : slug;
+  
+  // Build URL with query parameters (GET method for Render compatibility)
+  const params = new URLSearchParams({
+    slug: fullSlug,
+    page: String(page),
+    limit: String(limit),
+    sortBy: sortBy
+  });
+  if (tagFilter) {
+    params.set('tagFilter', tagFilter);
+  }
+  
+  const apiUrl = `${BASE_URL}/api/shop/products?${params.toString()}`;
 
   try {
     const res = await fetch(apiUrl, {
-      method: 'POST',
+      method: 'GET',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug: fullSlug, page, limit, tagFilter, sortBy }),
       // Use revalidation to balance cache storage and data freshness
       next: { revalidate: 600 },
     });
@@ -37,17 +49,17 @@ export async function fetchProducts(slug, page = 1, limit = ITEMS_PER_PAGE, tagF
 
 /**
  * Fetch details for a single product.
- * Data is revalidated every 60 seconds.
+ * Uses GET with query params for better compatibility.
+ * Data is revalidated every 600 seconds.
  */
 export async function fetchProductDetails(slug) {
-  const apiUrl = `${BASE_URL}/api/shop/product-details`;
   const fullSlug = Array.isArray(slug) ? slug.join('/') : slug;
+  const apiUrl = `${BASE_URL}/api/shop/products?slug=${encodeURIComponent(fullSlug)}`;
 
   try {
     const res = await fetch(apiUrl, {
-      method: 'POST',
+      method: 'GET',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug: fullSlug }),
       next: { revalidate: 600 },
     });
 

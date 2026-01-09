@@ -3,7 +3,8 @@ import ProductInfoTab from '@/models/ProductInfoTab';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 // import { ObjectId } from 'mongodb';
 
-export const dynamic = 'force-dynamic';
+// ISR: Cache product info for 1 hour - content is relatively static
+export const revalidate = 3600;
 
 /**
  * GET /api/productinfo?type=...&id=...

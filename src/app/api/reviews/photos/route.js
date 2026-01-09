@@ -5,7 +5,8 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Review from '@/models/Review';
 import User from '@/models/User';
 
-export const dynamic = 'force-dynamic';
+// ISR: Cache review photos for 30 minutes
+export const revalidate = 1800;
 
 export async function GET(req) {
   try {
