@@ -19,13 +19,22 @@ import {
 } from '@/lib/utils/orderSplitting';
 import { PAYMENT_PROVIDERS, decidePaymentProvider } from '@/lib/payments/providers';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 const SMALL_TEST_PAYMENT_ENABLED = process.env.SMALL_TEST_PAYMENT === 'true';
 
-// Initialize Razorpay instance outside the handler for reuse
-const razorpayInstance = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY,
-  key_secret: process.env.RAZORPAY_SECRET,
-});
+// Lazy initialization of Razorpay instance
+let razorpayInstance = null;
+const getRazorpayInstance = () => {
+  if (!razorpayInstance && process.env.RAZORPAY_KEY && process.env.RAZORPAY_SECRET) {
+    razorpayInstance = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY,
+      key_secret: process.env.RAZORPAY_SECRET,
+    });
+  }
+  return razorpayInstance;
+};
 
 export async function POST(request) {
   try {
@@ -482,7 +491,11 @@ export async function POST(request) {
         };
 
         try {
-          razorpayOrderResponse = await razorpayInstance.orders.create(razorpayOptions);
+          const razorpay = getRazorpayInstance();
+          if (!razorpay) {
+            throw new Error('Razorpay is not configured');
+          }
+          razorpayOrderResponse = await razorpay.orders.create(razorpayOptions);
           
           // Update Razorpay details for all orders with online payments
           for (const order of orders) {

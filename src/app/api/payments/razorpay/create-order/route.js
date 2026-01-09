@@ -5,6 +5,9 @@ import Order from '@/models/Order';
 import Razorpay from 'razorpay';
 import shortid from 'shortid';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * Calculate total amountDueOnline from all linked orders (for split orders)
  * @param {Object} order - The main order document
@@ -30,10 +33,17 @@ async function getTotalAmountDueOnline(order) {
   return totalAmount;
 }
 
-const razorpayInstance = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY,
-  key_secret: process.env.RAZORPAY_SECRET,
-});
+// Lazy initialization of Razorpay instance
+let razorpayInstance = null;
+const getRazorpayInstance = () => {
+  if (!razorpayInstance && process.env.RAZORPAY_KEY && process.env.RAZORPAY_SECRET) {
+    razorpayInstance = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY,
+      key_secret: process.env.RAZORPAY_SECRET,
+    });
+  }
+  return razorpayInstance;
+};
 
 export async function POST(request) {
   try {
@@ -87,7 +97,11 @@ export async function POST(request) {
       },
     };
 
-    const razorpayOrderResponse = await razorpayInstance.orders.create(razorpayOptions);
+    const razorpay = getRazorpayInstance();
+    if (!razorpay) {
+      throw new Error('Razorpay is not configured');
+    }
+    const razorpayOrderResponse = await razorpay.orders.create(razorpayOptions);
 
     // Update order with Razorpay details
     if (!order.paymentDetails.razorpayDetails) {

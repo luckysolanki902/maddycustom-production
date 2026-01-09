@@ -8,12 +8,16 @@ import {
 } from 'facebook-nodejs-business-sdk';
 import crypto from 'crypto';
 
-const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
 const pixel_id = '887502090050413'; // Hardcoded in original file, keeping it same
 
-if (access_token) {
-  FacebookAdsApi.init(access_token);
-}
+// Lazy initialization of Facebook API
+let isInitialized = false;
+const initializeFacebookAPI = () => {
+  if (!isInitialized && process.env.FB_PIXEL_ACCESS_TOKEN) {
+    FacebookAdsApi.init(process.env.FB_PIXEL_ACCESS_TOKEN);
+    isInitialized = true;
+  }
+};
 
 const hashData = (data) => {
   return crypto.createHash('sha256').update(data).digest('hex');
@@ -39,10 +43,14 @@ const normalizePhoneNumber = (phone) => {
 };
 
 export const sendPurchaseEvent = async (order, analyticsInfo = {}) => {
+  const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
   if (!access_token) {
     console.error('FB_PIXEL_ACCESS_TOKEN is not defined');
     return;
   }
+
+  // Initialize Facebook API
+  initializeFacebookAPI();
 
   try {
     const { fbp, fbc, userAgent, ip } = analyticsInfo;

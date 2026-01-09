@@ -10,15 +10,22 @@ import {
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // Initialize Facebook Ads API
-const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
 const pixel_id = '887502090050413';
 
-if (!access_token) {
-  console.error('FB_PIXEL_ACCESS_TOKEN is not defined');
-}
-
-FacebookAdsApi.init(access_token);
+let isInitialized = false;
+const initializeFacebookAPI = () => {
+  const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
+  if (!isInitialized && access_token) {
+    FacebookAdsApi.init(access_token);
+    isInitialized = true;
+  } else if (!access_token) {
+    console.error('FB_PIXEL_ACCESS_TOKEN is not defined');
+  }
+};
 
 /**
  * Simple in-memory rate limiter
@@ -399,7 +406,9 @@ export async function POST(request) {
   // Hoist event name for access in catch (avoid ReferenceError)
   let requestedEventName = 'Unknown';
 
-  // Check if access token is available
+  // Initialize Facebook API and check if access token is available
+  initializeFacebookAPI();
+  const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
   if (!access_token) {
     console.error('FB_PIXEL_ACCESS_TOKEN is not defined');
     return NextResponse.json(
@@ -787,7 +796,7 @@ export async function POST(request) {
       !!options.gender
     );
 
-    // Fire the event request to Facebook
+    // Fire the event request to Facebook (already initialized and validated at function start)
     const eventRequest = new EventRequest(access_token, pixel_id).setEvents([
       serverEvent,
     ]);
