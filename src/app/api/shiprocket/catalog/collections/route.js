@@ -8,6 +8,7 @@ import {
   ensureAbsoluteImageUrl,
 } from '@/lib/shiprocket/catalog/helpers';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 1; // Revalidate this route every 10 hours
 
 export async function GET(request) {

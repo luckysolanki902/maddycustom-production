@@ -16,6 +16,8 @@ import SingleCategorySlider from '@/components/showcase/carousels/SingleCategory
 import VoiceOfOurCustomers from '@/components/page-sections/homepage/VoiceOfCustomers';
 import CustomerPhotosSlider from '@/components/page-sections/homepage/CustomerPhotosSlider';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata() {
   return createMetadata({
     title: "MaddyCustom - India's Leading Vehicle Personalization & Custom Car/Bike Wraps Experts",

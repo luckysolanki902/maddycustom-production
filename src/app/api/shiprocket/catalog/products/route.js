@@ -15,6 +15,7 @@ import {
   normalizePagination,
 } from '@/lib/shiprocket/catalog/helpers';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 1; // Revalidate this route every 10 hours
 
 const buildBaseMatchStage = async (collectionIdParam) => {
