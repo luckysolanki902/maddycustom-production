@@ -104,12 +104,12 @@ export async function fetchOurUniqueProducts() {
     });
     if (!res.ok) {
       console.error(`Failed to fetch our unique products. Status: ${res.status}`);
-      throw new Error('Failed to fetch our unique products');
+      return [];
     }
     return await res.json();
   } catch (error) {
     console.error('Error fetching our unique products:', error.message);
-    throw error;
+    return [];
   }
 }
 
@@ -205,12 +205,12 @@ export async function fetchSearchCategories() {
     
     if (!res.ok) {
       console.error(`Failed to fetch search categories. Status: ${res.status}`);
-      throw new Error('Failed to fetch search categories');
+      return { categories: [], variants: [] };
     }
     return await res.json();
   } catch (error) {
     console.error('Error fetching search categories:', error.message);
-    throw error;
+    return { categories: [], variants: [] };
   }
 }
 
