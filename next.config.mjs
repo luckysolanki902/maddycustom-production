@@ -28,8 +28,8 @@ const nextConfig = {
         // Default: [16, 32, 48, 64, 96, 128, 256, 384]
         imageSizes: [64, 128, 256],
         
-        // 31 days cache TTL (reduces cache writes significantly)
-        minimumCacheTTL: 2678400,
+        // 1 year cache TTL (reduces cache writes significantly)
+        minimumCacheTTL: 31536000,
         
         // Lower default quality (reduces transformation time and cache size)
         // Default is 75, 70 is still good quality with less processing
@@ -38,9 +38,6 @@ const nextConfig = {
     
     // Enable compression
     compress: true,
-    
-    // Optimize bundle
-    swcMinify: true,
     
     // Reduce function bundle sizes
     experimental: {
