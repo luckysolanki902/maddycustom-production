@@ -720,7 +720,8 @@ export default function SearchCategoryDialog() {
               display: 'flex', 
               alignItems: 'center', 
               mb: 2,
-              mt: { xs: 1, sm: 2 }
+              mt: { xs: 1, sm: 2 },
+              gap: { xs: 1, sm: 1.5 }
             }}
           >
             <Image
@@ -778,7 +779,7 @@ export default function SearchCategoryDialog() {
               />
             </div>
             {/* Ask AI Button */}
-            <motion.button
+            {/* <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ 
                 opacity: 1, 
@@ -799,24 +800,24 @@ export default function SearchCategoryDialog() {
                 }, 100);
               }}
               style={{
-                marginLeft: 10,
-                padding: '10px 18px',
+                padding: window.innerWidth < 768 ? '8px 12px' : '10px 18px',
                 background: '#2d2d2d',
                 backgroundSize: '200% 100%',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 24,
-                fontSize: '0.9rem',
+                fontSize: window.innerWidth < 768 ? '0.8rem' : '0.9rem',
                 fontWeight: 700,
                 fontFamily: 'Jost, sans-serif',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 7,
+                gap: window.innerWidth < 768 ? 4 : 7,
                 whiteSpace: 'nowrap',
                 boxShadow: '0 6px 20px rgba(139, 92, 246, 0.35), 0 0 0 1px rgba(255,255,255,0.2) inset',
                 position: 'relative',
                 overflow: 'hidden',
+                flexShrink: 0,
               }}
             >
               <motion.span 
@@ -829,11 +830,11 @@ export default function SearchCategoryDialog() {
                   repeat: Infinity,
                   repeatDelay: 1
                 }}
-                style={{ fontSize: '1.1rem', lineHeight: 1 }}
+                style={{ fontSize: window.innerWidth < 768 ? '0.95rem' : '1.1rem', lineHeight: 1 }}
               >
                 ✨
               </motion.span>
-              <span style={{ position: 'relative', zIndex: 1 }}>Ask AI</span>
+              <span style={{ position: 'relative', zIndex: 1 }}>{window.innerWidth < 768 ? 'AI' : 'Ask AI'}</span>
               <motion.div
                 animate={{
                   x: ['-100%', '200%'],
@@ -854,7 +855,7 @@ export default function SearchCategoryDialog() {
                   transform: 'skewX(-20deg)',
                 }}
               />
-            </motion.button>
+            </motion.button> */}
 
           </Box>
         </motion.div>
