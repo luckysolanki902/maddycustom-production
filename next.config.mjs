@@ -32,8 +32,22 @@ const nextConfig = {
 
     // Optimize functions memory allocation to reduce costs
     experimental: {
-      isrMemoryCacheSize: 0, // Disable ISR to reduce ISR cache costs ($0.22 writes)
-      optimizePackageImports: ['@mui/material', '@mui/icons-material', 'lodash'], // Reduce bundle size
+      // Tree-shake these packages to reduce bundle size and cold start time
+      optimizePackageImports: [
+        '@mui/material', 
+        '@mui/icons-material', 
+        'lodash',
+        'recharts',
+        'framer-motion',
+        'react-syntax-highlighter',
+        'firebase',
+        'mongoose',
+        'openai',
+        'axios',
+        '@aws-sdk/client-s3',
+        '@aws-sdk/client-ses',
+        'facebook-nodejs-business-sdk',
+      ],
     },
 
     // Compress responses to reduce data transfer

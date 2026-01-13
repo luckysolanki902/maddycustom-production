@@ -1,4 +1,22 @@
 {
+  "functions": {
+    "src/app/api/**/*.js": {
+      "memory": 512,
+      "maxDuration": 30
+    },
+    "src/app/api/assistant/**/*.js": {
+      "memory": 512,
+      "maxDuration": 60
+    },
+    "src/app/api/cron/**/*.js": {
+      "memory": 512,
+      "maxDuration": 300
+    },
+    "src/app/api/google/**/*.js": {
+      "memory": 512,
+      "maxDuration": 300
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/aisensy/abandoned-cart-first-campaign",
