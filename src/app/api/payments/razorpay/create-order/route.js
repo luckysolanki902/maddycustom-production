@@ -5,7 +5,7 @@ import Order from '@/models/Order';
 import Razorpay from 'razorpay';
 import shortid from 'shortid';
 
-// Force dynamic rendering
+// MUST be dynamic: Payment creation requires real-time, secure handling
 export const dynamic = 'force-dynamic';
 
 /**

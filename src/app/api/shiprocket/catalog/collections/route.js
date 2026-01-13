@@ -8,8 +8,8 @@ import {
   ensureAbsoluteImageUrl,
 } from '@/lib/shiprocket/catalog/helpers';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 1; // Revalidate this route every 10 hours
+// Cache Shiprocket catalog for 10 hours
+export const revalidate = 36000;
 
 export async function GET(request) {
   try {

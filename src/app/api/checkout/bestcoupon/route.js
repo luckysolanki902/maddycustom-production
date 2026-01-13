@@ -5,8 +5,6 @@ import Offer from '@/models/Offer';
 import { NextResponse } from 'next/server';
 import moment from 'moment-timezone';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(request) {
   await connectToDatabase();
   

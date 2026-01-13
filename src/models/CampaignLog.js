@@ -47,6 +47,15 @@ const CampaignLogSchema = new mongoose.Schema({
   lastSentAt: {
     type: Date,
   },
+  errors: [{
+    message: String,
+    timestamp: {
+      type: Date,
+      default: Date.now,
+    },
+    errorCode: String,
+    details: mongoose.Schema.Types.Mixed,
+  }],
 }, { timestamps: true });
 
 // Unique index to prevent duplicate logs for the same user, order, and campaign

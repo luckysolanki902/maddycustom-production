@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 import Product from '@/models/Product';
 import connectToDb from '@/lib/middleware/connectToDb';
 
-export const dynamic = 'force-dynamic';
+// Cache product recommendations for 10 minutes
+export const revalidate = 600;
 
 export async function GET(request) {
   await connectToDb();

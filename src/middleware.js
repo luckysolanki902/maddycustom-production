@@ -72,6 +72,7 @@ export function middleware(request) {
 }
 
 // Configure middleware to match specified paths + API routes
+// IMPORTANT: Keep matcher as specific as possible to reduce edge invocations (saves $22/month)
 export const config = {
   matcher: [
     '/bike/win-wraps',

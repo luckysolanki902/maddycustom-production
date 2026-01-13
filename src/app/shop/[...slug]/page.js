@@ -1,5 +1,5 @@
 // app/shop/[...slug]/page.js
-export const revalidate = 600; // Revalidate this page every 60 seconds
+export const revalidate = 3600; // Revalidate every 1 hour (saves ISR costs vs 10 min)
 import React from 'react';
 import ProductsPage from '@/components/full-page-comps/ProductsPage';
 import ProductIdPage from '@/components/full-page-comps/ProductIdPage';

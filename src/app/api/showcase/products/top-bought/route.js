@@ -11,7 +11,8 @@ import Order from '@/models/Order';
 import Option from '@/models/Option';
 import Inventory from '@/models/Inventory';
 
-export const dynamic = 'force-dynamic';
+// Cache top bought products for 10 minutes
+export const revalidate = 600;
 const PAGE_SIZE = 20;
 
 // In-memory cache for optimized performance

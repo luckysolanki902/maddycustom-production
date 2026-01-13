@@ -14,15 +14,15 @@
     },
     {
       "path": "/api/cron/meta/generate-catalogue",
-      "schedule": "0 */3 * * *"
+      "schedule": "0 */2 * * *"
     },
     {
       "path": "/api/google/merchant/sync-products",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 */4 * * *"
     },
     {
       "path": "/api/cron/meta/cleanup-old-catalogues",
-      "schedule": "0 3 * * *"
+      "schedule": "0 2 * * *"
     }
   ]
 }

@@ -2,7 +2,8 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
+// Cache product lookups for 10 minutes
+export const revalidate = 600;
 
 export async function GET(request) {
   try {

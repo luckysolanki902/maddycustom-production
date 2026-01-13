@@ -7,6 +7,7 @@ import NotificationTemplate from '@/models/NotificationTemplate';
 import { sendSMS } from '@/lib/utils/msg91Sender';
 import { sendWhatsAppMessage } from '@/lib/utils/aiSensySender';
 
+// MUST be dynamic: Notification processing requires real-time execution
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {

@@ -2,8 +2,6 @@
 import { NextResponse } from 'next/server';
 import { checkServiceability } from '@/lib/utils/shiprocket';
 
-export const dynamic = 'force-dynamic';
-
 // Create a simple in-memory cache for serviceability results
 // This is a simple implementation - for production consider Redis or a more robust solution
 const serviceabilityCache = new Map();

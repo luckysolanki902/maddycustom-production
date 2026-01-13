@@ -1,9 +1,10 @@
 // @/app/api/analytics/search-track/route.js
 import { NextResponse } from 'next/server';
+
 import connectToDb from '@/lib/middleware/connectToDb';
 import SearchQuery from '@/models/data-tracking/SearchQuery';
 
-export const dynamic = 'force-dynamic';
+// POST-only route: No caching needed (writes data)
 
 export async function POST(request) {
   try {

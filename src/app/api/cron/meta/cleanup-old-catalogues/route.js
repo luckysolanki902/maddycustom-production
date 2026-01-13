@@ -5,9 +5,6 @@ import Catalogue from '@/models/meta/Catalogue';
 import CatalogueCycle from '@/models/meta/CatalogueCycle';
 import { NextResponse } from 'next/server';
 
-// Set maximum timeout
-export const maxDuration = 300; // 5 minutes in seconds
-
 /**
  * Cleanup old catalogue cycles and their entries
  * Keeps only the latest N completed cycles and deletes older ones

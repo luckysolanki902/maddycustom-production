@@ -3,7 +3,7 @@ import ProductInfoTab from '@/models/ProductInfoTab';
 import connectToDatabase from '@/lib/middleware/connectToDb';
 // import { ObjectId } from 'mongodb';
 
-// ISR: Cache product info for 1 hour - content is relatively static
+// Cache product info for 1 hour (static content)
 export const revalidate = 3600;
 
 /**

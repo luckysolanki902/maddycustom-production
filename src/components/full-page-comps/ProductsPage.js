@@ -220,21 +220,20 @@ export default function ProductsPage({
     async (page, tag, sort) => {
       try {
         setIsLoading(true);
-        // Build URL with query params (GET for better compatibility)
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-        const slugPath = Array.isArray(slug) ? slug.join('/') : slug;
-        const params = new URLSearchParams({
-          slug: slugPath,
-          page: String(page),
-          limit: String(ITEMS_PER_PAGE),
-          sortBy: sort
-        });
-        if (tag) params.set('tagFilter', tag);
-        
-        const res = await fetch(`${baseUrl}/api/shop/products?${params.toString()}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/shop/products`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              slug: Array.isArray(slug) ? slug.join('/') : slug,
+              page,
+              limit: ITEMS_PER_PAGE,
+              tagFilter: tag,
+              sortBy: sort,
+            }),
+          }
+        );
 
         if (!res.ok) throw new Error('Fetch failed');
 

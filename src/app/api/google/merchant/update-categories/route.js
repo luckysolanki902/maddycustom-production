@@ -12,7 +12,6 @@ import Product from '@/models/Product';
 import SpecificCategory from '@/models/SpecificCategory';
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 300; // 5 minutes
 
 export async function GET(request) {
   const startTime = Date.now();

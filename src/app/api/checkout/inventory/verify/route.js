@@ -120,7 +120,3 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, message: e.message || 'Server error' }, { status: 500 });
   }
 }
-
-// Disable Next.js data caching for this route
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;

@@ -10,7 +10,7 @@ import {
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// Force dynamic rendering
+// MUST be dynamic: Conversion tracking requires real-time event processing
 export const dynamic = 'force-dynamic';
 
 // Initialize Facebook Ads API

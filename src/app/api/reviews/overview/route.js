@@ -8,8 +8,8 @@ import SpecificCategory from '@/models/SpecificCategory';
 
 const disableFakeAddition = false; // Toggle to disable dummy reviews
 
-// ISR: Cache review overviews for 30 minutes
-export const revalidate = 1800;
+// Cache review overview for 1 hour
+export const revalidate = 3600;
 
 export async function GET(request) {
   try {

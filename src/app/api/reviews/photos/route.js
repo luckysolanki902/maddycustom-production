@@ -5,8 +5,8 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Review from '@/models/Review';
 import User from '@/models/User';
 
-// ISR: Cache review photos for 30 minutes
-export const revalidate = 1800;
+// Cache review photos for 1 hour
+export const revalidate = 3600;
 
 export async function GET(req) {
   try {

@@ -5,8 +5,8 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 3600; // seconds
+// Cache unique products for 1 hour
+export const revalidate = 3600;
 
 export async function GET() {
   await connectToDatabase();

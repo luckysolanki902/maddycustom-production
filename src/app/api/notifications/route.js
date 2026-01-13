@@ -7,6 +7,7 @@ import User from '@/models/User';
 import Product from '@/models/Product';
 import Option from '@/models/Option';
 
+// MUST be dynamic: Notification creation/updates need real-time
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {

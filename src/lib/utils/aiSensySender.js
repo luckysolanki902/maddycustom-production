@@ -136,7 +136,15 @@ export async function sendWhatsAppMessage({
       if (!isOTPCampaign && campaignLog) {
         await CampaignLog.findByIdAndUpdate(campaignLog._id, {
           $inc: { totalCount: 1, failedCount: 1 },
-          $set: { lastSentAt: new Date() }
+          $set: { lastSentAt: new Date() },
+          $push: {
+            errors: {
+              message: 'Unauthorized: Invalid AiSensy API key or permission issue.',
+              timestamp: new Date(),
+              errorCode: '401',
+              details: { status: response.status }
+            }
+          }
         });
       }
 
@@ -153,7 +161,15 @@ export async function sendWhatsAppMessage({
       if (!isOTPCampaign && campaignLog) {
         await CampaignLog.findByIdAndUpdate(campaignLog._id, {
           $inc: { totalCount: 1, failedCount: 1 },
-          $set: { lastSentAt: new Date() }
+          $set: { lastSentAt: new Date() },
+          $push: {
+            errors: {
+              message: 'AiSensy response was not valid JSON.',
+              timestamp: new Date(),
+              errorCode: 'PARSE_ERROR',
+              details: { error: parseErr.message }
+            }
+          }
         });
       }
 
@@ -168,7 +184,15 @@ export async function sendWhatsAppMessage({
       if (!isOTPCampaign && campaignLog) {
         await CampaignLog.findByIdAndUpdate(campaignLog._id, {
           $inc: { totalCount: 1, failedCount: 1 },
-          $set: { lastSentAt: new Date() }
+          $set: { lastSentAt: new Date() },
+          $push: {
+            errors: {
+              message: result?.message || 'AiSensy responded with an error.',
+              timestamp: new Date(),
+              errorCode: result?.code || 'API_ERROR',
+              details: result
+            }
+          }
         });
       }
 
@@ -197,7 +221,18 @@ export async function sendWhatsAppMessage({
     if (!isOTPCampaign && campaignLog) {
       await CampaignLog.findByIdAndUpdate(campaignLog._id, {
         $inc: { totalCount: 1, failedCount: 1 },
-        $set: { lastSentAt: new Date() }
+        $set: { lastSentAt: new Date() },
+        $push: {
+          errors: {
+            message: error.message || 'An error occurred while sending the WhatsApp message.',
+            timestamp: new Date(),
+            errorCode: error.code || 'EXCEPTION',
+            details: {
+              stack: error.stack,
+              name: error.name
+            }
+          }
+        }
       });
     }
 

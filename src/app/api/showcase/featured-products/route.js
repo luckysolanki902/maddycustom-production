@@ -5,8 +5,8 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
 
-// ISR: Cache for 1 hour to reduce function invocations
-export const revalidate = 3600;
+// Cache featured products for 30 minutes
+export const revalidate = 1800;
 
 export async function GET(request) {
   const searchParams = request.nextUrl.searchParams;

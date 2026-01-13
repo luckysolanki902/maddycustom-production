@@ -2,8 +2,8 @@
 import { NextResponse } from 'next/server';
 import { orchestrateChat } from '@/lib/agent-v2/index.js';
 
+// Runtime needed for AI operations (not using revalidate - each chat is unique)
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/assistant/v2/chat

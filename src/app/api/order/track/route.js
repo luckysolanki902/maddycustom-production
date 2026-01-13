@@ -3,6 +3,7 @@ import { trackShiprocketOrder } from '@/lib/utils/shiprocket';
 import Order from '@/models/Order';
 import { NextResponse } from 'next/server';
 
+// MUST be dynamic: Order tracking needs real-time data
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {

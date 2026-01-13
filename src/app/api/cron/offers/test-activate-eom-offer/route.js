@@ -3,7 +3,6 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import mongoose from 'mongoose';
 const Offer = require('@/models/Offer');
 
-export const dynamic = 'force-dynamic';
 
 /**
  * TEST ENDPOINT: Force activates the End-of-Month offer (EOM50) regardless of date

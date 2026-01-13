@@ -6,7 +6,6 @@ import SpecificCategory from '@/models/SpecificCategory';
 import Option from '@/models/Option';
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 300;
 export const revalidate = 86400; // 1 day in seconds
 export async function GET() {
   try {

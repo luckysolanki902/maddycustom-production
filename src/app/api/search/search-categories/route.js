@@ -5,8 +5,8 @@ import SpecificCategory from '@/models/SpecificCategory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import { NextResponse } from 'next/server';
 
-// ISR: Cache categories for 1 hour
-export const revalidate = 3600;
+// Cache search categories for 1 day (rarely changes)
+export const revalidate = 86400;
 
 export async function GET(request) {
   try {

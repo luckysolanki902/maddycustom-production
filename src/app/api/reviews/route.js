@@ -2,14 +2,15 @@
 import connectToDatabase from '@/lib/middleware/connectToDb';
 import Review from '@/models/Review';
 import { NextResponse } from 'next/server';
+
 import User from '@/models/User';
 import mongoose from 'mongoose';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 
 const includeDummyReviewCount = true; // Toggle this to enable/disable dummy reviews
 
-// ISR: Cache reviews for 30 minutes to reduce function invocations
-export const revalidate = 1800;
+// Cache reviews for 1 hour (reviews don't change frequently)
+export const revalidate = 3600;
 
 export async function GET(request) {
   try {

@@ -2,7 +2,8 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import Order from '@/models/Order';
 import mongoose from 'mongoose';
 
-export const dynamic = 'force-dynamic';
+// Cache sales stats for 10 minutes
+export const revalidate = 600;
 
 /**
  * GET /api/stats/sales?type=specificCategory|specificCategoryVariant&id=<id>&days=<optionalDays>&round=<true|false>

@@ -15,8 +15,8 @@ import {
   normalizePagination,
 } from '@/lib/shiprocket/catalog/helpers';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 1; // Revalidate this route every 10 hours
+// Cache Shiprocket products for 10 hours
+export const revalidate = 36000;
 
 const buildBaseMatchStage = async (collectionIdParam) => {
   const match = { available: true };

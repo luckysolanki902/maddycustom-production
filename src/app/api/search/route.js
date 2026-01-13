@@ -7,8 +7,8 @@ import SpecificCategory from '@/models/SpecificCategory';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import Option from '@/models/Option';
 
-// ISR: Cache search results for 5 minutes to reduce function invocations
-export const revalidate = 300;
+// Cache search results for 10 minutes
+export const revalidate = 600;
 
 export async function GET(req) {
   try {

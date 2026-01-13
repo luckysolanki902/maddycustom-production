@@ -3,8 +3,6 @@ import DisplayAsset from '@/models/DisplayAssets';
 import { NextResponse } from 'next/server';
 import { shouldDisplayAsset } from '@/lib/utils/displayAssetUtils';
 
-export const dynamic = 'force-dynamic';
-
 function toRelativeLink(link) {
   if (!link) return link;
   try {

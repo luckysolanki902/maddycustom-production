@@ -3,9 +3,6 @@ import DisplayAsset from '@/models/DisplayAssets';
 import { NextResponse } from 'next/server';
 import { shouldDisplayAsset } from '@/lib/utils/displayAssetUtils';
 
-// ISR: Cache display assets for 10 minutes
-export const revalidate = 600;
-
 // Convert any link (absolute or relative) to a root-relative URL that always starts with '/'
 function toRelativeLink(link) {
   if (!link) return link;

@@ -3,7 +3,6 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import { NextResponse } from 'next/server';
 
-// ISR: Cache variant data for 1 hour
 export const revalidate = 3600;
 
 export async function GET(request) {

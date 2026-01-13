@@ -2,7 +2,8 @@ import connectToDatabase from '@/lib/middleware/connectToDb';
 import SpecificCategory from '@/models/SpecificCategory';
 import Product from '@/models/Product';
 
-export const dynamic = 'force-dynamic';
+// Cache car products for 30 minutes
+export const revalidate = 1800;
 
 export async function GET(request) {
   try {

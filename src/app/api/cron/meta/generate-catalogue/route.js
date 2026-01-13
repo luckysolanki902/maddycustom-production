@@ -15,9 +15,6 @@ import SpecificCategoryVariant from '@/models/SpecificCategoryVariant';
 import ProductInfoTab from '@/models/ProductInfoTab';
 import { NextResponse } from 'next/server';
 
-// Set maximum timeout to 5 minutes for this cron API (Vercel will auto-stop after this)
-export const maxDuration = 300;
-
 // Concurrency settings for parallel processing
 const BATCH_SIZE = 100; // Products per batch
 const CONCURRENCY_LIMIT = 20; // Parallel product processing

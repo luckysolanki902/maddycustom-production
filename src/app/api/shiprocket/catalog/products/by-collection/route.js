@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 
 import { GET as baseProductsGet } from '../route';
 
-export const revalidate = 1; // Revalidate this route every 10 hours
+// Cache Shiprocket products by collection for 10 hours
+export const revalidate = 36000;
 
 export async function GET(request) {
   const url = new URL(request.url);

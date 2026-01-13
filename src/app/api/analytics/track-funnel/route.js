@@ -4,6 +4,8 @@ import { saveFunnelEvents, validateEventsPayload } from '@/lib/analytics/funnelS
 
 const MAX_EVENTS_PER_REQUEST = 50;
 
+// POST-only route: No caching needed (writes data)
+
 export async function POST(request) {
   let payload;
   try {

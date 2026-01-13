@@ -19,8 +19,6 @@ import {
 } from '@/lib/utils/orderSplitting';
 import { PAYMENT_PROVIDERS, decidePaymentProvider } from '@/lib/payments/providers';
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
 
 const SMALL_TEST_PAYMENT_ENABLED = process.env.SMALL_TEST_PAYMENT === 'true';
 
