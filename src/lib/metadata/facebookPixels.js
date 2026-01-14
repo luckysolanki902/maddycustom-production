@@ -394,25 +394,36 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
  */
 export const addToCart = async (product) => {
   try {
+    // Validate product data before sending
+    if (!product) {
+      console.warn('[Meta Pixel] addToCart called with null/undefined product');
+      return;
+    }
+    
+    const productId = product.id || product._id;
+    if (!productId) {
+      console.warn('[Meta Pixel] addToCart: product missing id/_ id', product);
+    }
+    
     await trackEvent('AddToCart', {}, {
-      value: product.price,
+      value: parseFloat(product.price) || 0,
       currency: 'INR',
       contents: [{
-        id: product.id || product._id,
-        quantity: product.quantity || 1,
-        item_price: product.price || 0,
-        brand: product.brand,
-        category: product.category,
-        title: product.name
+        id: String(productId || 'unknown'),
+        quantity: parseInt(product.quantity) || 1,
+        item_price: parseFloat(product.price) || 0,
+        brand: product.brand ? String(product.brand) : undefined,
+        category: product.category ? String(product.category) : undefined,
+        title: product.name ? String(product.name) : undefined
       }],
-      content_name: product.name,
-      content_category: product.category,
+      content_name: product.name ? String(product.name) : undefined,
+      content_category: product.category ? String(product.category) : undefined,
       content_type: 'product',
-      content_ids: [product.id || product._id],
+      content_ids: [String(productId || 'unknown')],
       num_items: 1
     });
   } catch (error) {
-    // console.error('Error in addToCart function:', error);
+    console.error('[Meta Pixel] Error in addToCart:', error, product);
   }
 };
 
@@ -429,12 +440,12 @@ export const purchase = async (order, userData = {}) => {
       currency: 'INR',
       orderId: order.orderId,
       contents: order.items.map(item => ({
-        id: item.product || item._id,
-        quantity: item.quantity,
-        item_price: item.priceAtPurchase,
-        brand: item.brand,
-        category: item.category,
-        title: item.name
+        id: String(item.product || item._id),
+        quantity: parseInt(item.quantity) || 1,
+        item_price: parseFloat(item.priceAtPurchase) || 0,
+        brand: item.brand ? String(item.brand) : undefined,
+        category: item.category ? String(item.category) : undefined,
+        title: item.name ? String(item.name) : undefined
       })),
       content_name: order.items.map(item => item.name).join(', '),
       content_category: 'purchase',

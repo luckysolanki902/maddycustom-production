@@ -103,22 +103,36 @@ const isSha256Hash = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/i.t
  */
 const createContents = (product) => {
   try {
+    // Validate Content class is available
+    if (typeof Content !== 'function') {
+      console.error('Content class is not available');
+      throw new Error('Content class not initialized');
+    }
+    
     const content = new Content();
+    
+    // Validate content instance and methods
+    if (!content || typeof content.setId !== 'function') {
+      console.error('Content instance invalid or setId method missing');
+      throw new Error('Invalid Content instance');
+    }
     
     // Validate and set ID
     if (product.id || product._id) {
       content.setId(String(product.id || product._id));
+    } else {
+      content.setId('unknown');
     }
     
     // Validate and set quantity
     const quantity = parseInt(product.quantity) || 1;
-    if (quantity > 0) {
+    if (quantity > 0 && typeof content.setQuantity === 'function') {
       content.setQuantity(quantity);
     }
     
     // Validate and set item price
     const itemPrice = parseFloat(product.item_price) || 0;
-    if (itemPrice >= 0) {
+    if (itemPrice >= 0 && typeof content.setItemPrice === 'function') {
       content.setItemPrice(itemPrice);
     }
     
@@ -126,7 +140,12 @@ const createContents = (product) => {
   } catch (error) {
     console.error('Error creating content:', error, product);
     // Return a minimal valid content object
-    return new Content().setId('unknown').setQuantity(1).setItemPrice(0);
+    try {
+      return new Content().setId('unknown').setQuantity(1).setItemPrice(0);
+    } catch (fallbackError) {
+      console.error('Critical: Cannot create fallback Content object:', fallbackError);
+      throw fallbackError;
+    }
   }
 };
 
@@ -704,20 +723,29 @@ export async function POST(request) {
     // Prepare Contents with enhanced data
     const contents = options.contents
       ? options.contents.map((product) => {
-          const content = createContents(product);
-          
-          // Add additional content fields for better matching
-          if (product.brand) {
-            content.setBrand(String(product.brand));
+          try {
+            const content = createContents(product);
+            
+            // Add additional content fields for better matching
+            if (product.brand && typeof content.setBrand === 'function') {
+              content.setBrand(String(product.brand));
+            }
+            if (product.category && typeof content.setCategory === 'function') {
+              content.setCategory(String(product.category));
+            }
+            if ((product.title || product.name) && typeof content.setTitle === 'function') {
+              content.setTitle(String(product.title || product.name));
+            }
+            
+            return content;
+          } catch (contentError) {
+            console.error('Error creating content item:', contentError, product);
+            // Return minimal valid content
+            return new Content()
+              .setId(String(product.id || product._id || 'unknown'))
+              .setQuantity(parseInt(product.quantity) || 1)
+              .setItemPrice(parseFloat(product.item_price) || 0);
           }
-          if (product.category) {
-            content.setCategory(String(product.category));
-          }
-          if (product.title || product.name) {
-            content.setTitle(String(product.title || product.name));
-          }
-          
-          return content;
         })
       : [];
 
