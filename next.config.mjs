@@ -30,33 +30,6 @@ const nextConfig = {
       removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
     },
 
-    // Prevent Next.js from bundling these packages - they break when minified
-    serverExternalPackages: ['facebook-nodejs-business-sdk'],
-
-    // Optimize functions memory allocation to reduce costs
-    experimental: {
-      // Tree-shake these packages to reduce bundle size and cold start time
-      optimizePackageImports: [
-        '@mui/material', 
-        '@mui/icons-material', 
-        'lodash',
-        'recharts',
-        'framer-motion',
-        'react-syntax-highlighter',
-        'firebase',
-        'mongoose',
-        'openai',
-        'axios',
-        '@aws-sdk/client-s3',
-        '@aws-sdk/client-ses',
-      ],
-    },
-
-    // Compress responses to reduce data transfer
-    compress: true,
-
-    // Reduce power drain and improve performance
-    poweredByHeader: false,
 
 };
 
