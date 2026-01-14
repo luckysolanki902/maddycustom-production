@@ -33,6 +33,7 @@ const nextConfig = {
     // Optimize functions memory allocation to reduce costs
     experimental: {
       // Tree-shake these packages to reduce bundle size and cold start time
+      // NOTE: facebook-nodejs-business-sdk MUST NOT be here - it breaks with "f is not a function" error
       optimizePackageImports: [
         '@mui/material', 
         '@mui/icons-material', 
@@ -46,7 +47,6 @@ const nextConfig = {
         'axios',
         '@aws-sdk/client-s3',
         '@aws-sdk/client-ses',
-        'facebook-nodejs-business-sdk',
       ],
     },
 
