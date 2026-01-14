@@ -1,24 +1,52 @@
 import { v4 as uuidv4 } from 'uuid';
-import {
-  FacebookAdsApi,
-  ServerEvent,
-  UserData,
-  CustomData,
-  EventRequest,
-  Content,
-} from 'facebook-nodejs-business-sdk';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// Initialize Facebook Ads API
-const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
+// MUST be dynamic: Conversion tracking requires real-time event processing
+export const dynamic = 'force-dynamic';
+
+// Pixel configuration
 const pixel_id = '887502090050413';
 
-if (!access_token) {
-  console.error('FB_PIXEL_ACCESS_TOKEN is not defined');
-}
+// SDK initialization flag
+let sdkInitialized = false;
+let FacebookAdsApi, ServerEvent, UserData, CustomData, EventRequest, Content;
 
-FacebookAdsApi.init(access_token);
+/**
+ * Lazy load and initialize Facebook SDK
+ * This prevents build-time initialization issues in serverless environments
+ */
+async function initializeFacebookSDK() {
+  if (sdkInitialized) {
+    return { FacebookAdsApi, ServerEvent, UserData, CustomData, EventRequest, Content };
+  }
+
+  try {
+    // Dynamic import to avoid tree-shaking and bundling issues
+    const sdk = await import('facebook-nodejs-business-sdk');
+    
+    FacebookAdsApi = sdk.FacebookAdsApi;
+    ServerEvent = sdk.ServerEvent;
+    UserData = sdk.UserData;
+    CustomData = sdk.CustomData;
+    EventRequest = sdk.EventRequest;
+    Content = sdk.Content;
+
+    const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
+    if (!access_token) {
+      throw new Error('FB_PIXEL_ACCESS_TOKEN is not defined');
+    }
+
+    // Initialize the SDK
+    FacebookAdsApi.init(access_token);
+    sdkInitialized = true;
+
+    return { FacebookAdsApi, ServerEvent, UserData, CustomData, EventRequest, Content };
+  } catch (error) {
+    console.error('[Meta CAPI] Failed to initialize Facebook SDK:', error);
+    throw error;
+  }
+}
 
 /**
  * Simple in-memory rate limiter
@@ -92,11 +120,12 @@ const isSha256Hash = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/i.t
 /**
  * Creates a Content object for Facebook Conversion API.
  * @param {object} product - The product details.
+ * @param {object} ContentClass - The Content class from SDK
  * @returns {Content} - The Content object.
  */
-const createContents = (product) => {
+const createContents = (product, ContentClass) => {
   try {
-    const content = new Content();
+    const content = new ContentClass();
     
     // Validate and set ID
     if (product.id || product._id) {
@@ -119,7 +148,7 @@ const createContents = (product) => {
   } catch (error) {
     console.error('Error creating content:', error, product);
     // Return a minimal valid content object
-    return new Content().setId('unknown').setQuantity(1).setItemPrice(0);
+    return new ContentClass().setId('unknown').setQuantity(1).setItemPrice(0);
   }
 };
 
@@ -399,16 +428,11 @@ export async function POST(request) {
   // Hoist event name for access in catch (avoid ReferenceError)
   let requestedEventName = 'Unknown';
 
-  // Check if access token is available
-  if (!access_token) {
-    console.error('FB_PIXEL_ACCESS_TOKEN is not defined');
-    return NextResponse.json(
-      { error: 'Facebook access token not configured' },
-      { status: 500 }
-    );
-  }
-
   try {
+    // Initialize Facebook SDK (lazy load)
+    const sdk = await initializeFacebookSDK();
+    const { FacebookAdsApi: API, ServerEvent: Event, UserData: User, CustomData: Custom, EventRequest: Request, Content: ContentClass } = sdk;
+
     const { eventName, options = {} } = await request.json();
     requestedEventName = eventName || 'Unknown';
     
@@ -595,7 +619,7 @@ export async function POST(request) {
     }
 
     // Prepare User Data with enhanced matching
-    const userData = new UserData()
+    const userData = new User()
       .setEmails(hashedEmails)
       .setPhones(hashedPhones)
       .setClientIpAddress(options.client_ip_address || '')
@@ -695,7 +719,7 @@ export async function POST(request) {
     // Prepare Contents with enhanced data
     const contents = options.contents
       ? options.contents.map((product) => {
-          const content = createContents(product);
+          const content = createContents(product, ContentClass);
           
           // Add additional content fields for better matching
           if (product.brand) {
@@ -713,7 +737,7 @@ export async function POST(request) {
       : [];
 
     // Prepare Custom Data with enhanced fields
-    const customData = new CustomData()
+    const customData = new Custom()
       .setCurrency(options.currency || 'INR');
     
     // Set value with proper validation
@@ -747,7 +771,7 @@ export async function POST(request) {
     }
 
     // Build the Server Event with corrected timestamp
-    const serverEvent = new ServerEvent()
+    const serverEvent = new Event()
       .setEventName(eventName)
       .setEventTime(eventTimestamp) // Use validated timestamp
       .setUserData(userData)
@@ -788,7 +812,8 @@ export async function POST(request) {
     );
 
     // Fire the event request to Facebook
-    const eventRequest = new EventRequest(access_token, pixel_id).setEvents([
+    const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
+    const eventRequest = new Request(access_token, pixel_id).setEvents([
       serverEvent,
     ]);
 
