@@ -1,8 +1,4 @@
 import { v4 as uuidv4 } from 'uuid';
-import { NextResponse } from 'next/server';
-import crypto from 'crypto';
-
-// Import Facebook SDK classes - these should be synchronous imports
 import {
   FacebookAdsApi,
   ServerEvent,
@@ -11,63 +7,18 @@ import {
   EventRequest,
   Content,
 } from 'facebook-nodejs-business-sdk';
-
-// MUST be dynamic: Conversion tracking requires real-time event processing
-export const dynamic = 'force-dynamic';
+import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 // Initialize Facebook Ads API
+const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
 const pixel_id = '887502090050413';
 
-// Validate SDK imports at module load time
-const validateSDK = () => {
-  const issues = [];
-  
-  if (typeof Content !== 'function') {
-    issues.push('Content class is not a function');
-  }
-  if (typeof ServerEvent !== 'function') {
-    issues.push('ServerEvent class is not a function');
-  }
-  if (typeof UserData !== 'function') {
-    issues.push('UserData class is not a function');
-  }
-  if (typeof CustomData !== 'function') {
-    issues.push('CustomData class is not a function');
-  }
-  if (typeof EventRequest !== 'function') {
-    issues.push('EventRequest class is not a function');
-  }
-  if (typeof FacebookAdsApi !== 'object' && typeof FacebookAdsApi !== 'function') {
-    issues.push('FacebookAdsApi is not available');
-  }
-  
-  if (issues.length > 0) {
-    console.error('[Meta CAPI] SDK Validation Issues:', issues);
-    return false;
-  }
-  
-  console.log('[Meta CAPI] SDK validated successfully');
-  return true;
-};
+if (!access_token) {
+  console.error('FB_PIXEL_ACCESS_TOKEN is not defined');
+}
 
-// Run validation
-const isSDKValid = validateSDK();
-
-let isInitialized = false;
-const initializeFacebookAPI = () => {
-  const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
-  if (!isInitialized && access_token) {
-    try {
-      FacebookAdsApi.init(access_token);
-      isInitialized = true;
-    } catch (error) {
-      console.error('[Meta CAPI] Failed to initialize Facebook API:', error);
-      throw error;
-    }
-  } else if (!access_token) {
-    console.error('FB_PIXEL_ACCESS_TOKEN is not defined');
-  }
-};
+FacebookAdsApi.init(access_token);
 
 /**
  * Simple in-memory rate limiter
@@ -145,47 +96,30 @@ const isSha256Hash = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/i.t
  */
 const createContents = (product) => {
   try {
-    // Create Content instance
     const content = new Content();
     
-    // Set ID (required field)
-    const productId = product.id || product._id;
-    if (productId) {
-      content.setId(String(productId));
-    } else {
-      content.setId('unknown');
+    // Validate and set ID
+    if (product.id || product._id) {
+      content.setId(String(product.id || product._id));
     }
     
-    // Set quantity (with validation)
-    const quantity = parseInt(product.quantity);
-    if (!isNaN(quantity) && quantity > 0) {
+    // Validate and set quantity
+    const quantity = parseInt(product.quantity) || 1;
+    if (quantity > 0) {
       content.setQuantity(quantity);
-    } else {
-      content.setQuantity(1);
     }
     
-    // Set item price (with validation)
-    const itemPrice = parseFloat(product.item_price);
-    if (!isNaN(itemPrice) && itemPrice >= 0) {
+    // Validate and set item price
+    const itemPrice = parseFloat(product.item_price) || 0;
+    if (itemPrice >= 0) {
       content.setItemPrice(itemPrice);
-    } else {
-      content.setItemPrice(0);
     }
     
     return content;
   } catch (error) {
-    console.error('[Meta CAPI] Error creating content:', error, product);
-    // Return a minimal valid content object as fallback
-    try {
-      const fallbackContent = new Content();
-      fallbackContent.setId('unknown');
-      fallbackContent.setQuantity(1);
-      fallbackContent.setItemPrice(0);
-      return fallbackContent;
-    } catch (fallbackError) {
-      console.error('[Meta CAPI] CRITICAL: Cannot create fallback Content object:', fallbackError);
-      throw new Error('Facebook SDK Content class is not functional');
-    }
+    console.error('Error creating content:', error, product);
+    // Return a minimal valid content object
+    return new Content().setId('unknown').setQuantity(1).setItemPrice(0);
   }
 };
 
@@ -465,18 +399,7 @@ export async function POST(request) {
   // Hoist event name for access in catch (avoid ReferenceError)
   let requestedEventName = 'Unknown';
 
-  // Validate SDK before proceeding
-  if (!isSDKValid) {
-    console.error('[Meta CAPI] SDK validation failed - cannot process request');
-    return NextResponse.json(
-      { error: 'Facebook SDK not properly initialized' },
-      { status: 500 }
-    );
-  }
-
-  // Initialize Facebook API and check if access token is available
-  initializeFacebookAPI();
-  const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
+  // Check if access token is available
   if (!access_token) {
     console.error('FB_PIXEL_ACCESS_TOKEN is not defined');
     return NextResponse.json(
@@ -772,49 +695,21 @@ export async function POST(request) {
     // Prepare Contents with enhanced data
     const contents = options.contents
       ? options.contents.map((product) => {
-          try {
-            const content = createContents(product);
-            
-            // Add additional content fields for better matching (with defensive checks)
-            if (product.brand) {
-              try {
-                content.setBrand(String(product.brand));
-              } catch (e) {
-                console.warn('[Meta CAPI] Failed to set brand:', e.message);
-              }
-            }
-            if (product.category) {
-              try {
-                content.setCategory(String(product.category));
-              } catch (e) {
-                console.warn('[Meta CAPI] Failed to set category:', e.message);
-              }
-            }
-            if (product.title || product.name) {
-              try {
-                content.setTitle(String(product.title || product.name));
-              } catch (e) {
-                console.warn('[Meta CAPI] Failed to set title:', e.message);
-              }
-            }
-            
-            return content;
-          } catch (contentError) {
-            console.error('[Meta CAPI] Error creating content item:', contentError, product);
-            // Return minimal valid content with fallback
-            try {
-              const fallback = new Content();
-              fallback.setId(String(product.id || product._id || 'unknown'));
-              fallback.setQuantity(parseInt(product.quantity) || 1);
-              fallback.setItemPrice(parseFloat(product.item_price) || 0);
-              return fallback;
-            } catch (fallbackError) {
-              console.error('[Meta CAPI] CRITICAL: Content creation completely failed:', fallbackError);
-              // Skip this product entirely if we can't create Content
-              return null;
-            }
+          const content = createContents(product);
+          
+          // Add additional content fields for better matching
+          if (product.brand) {
+            content.setBrand(String(product.brand));
           }
-        }).filter(Boolean) // Remove any null entries from failed content creation
+          if (product.category) {
+            content.setCategory(String(product.category));
+          }
+          if (product.title || product.name) {
+            content.setTitle(String(product.title || product.name));
+          }
+          
+          return content;
+        })
       : [];
 
     // Prepare Custom Data with enhanced fields
@@ -852,60 +747,14 @@ export async function POST(request) {
     }
 
     // Build the Server Event with corrected timestamp
-    let serverEvent;
-    try {
-      // Validate ServerEvent class
-      if (typeof ServerEvent !== 'function') {
-        throw new Error('[Meta CAPI] ServerEvent is not a function');
-      }
-      
-      serverEvent = new ServerEvent();
-      
-      // Validate instance and methods
-      if (!serverEvent) {
-        throw new Error('[Meta CAPI] ServerEvent instance is null/undefined');
-      }
-      
-      // Set required fields with validation
-      if (typeof serverEvent.setEventName !== 'function') {
-        throw new Error('[Meta CAPI] serverEvent.setEventName is not a function');
-      }
-      serverEvent.setEventName(eventName);
-      
-      if (typeof serverEvent.setEventTime !== 'function') {
-        throw new Error('[Meta CAPI] serverEvent.setEventTime is not a function');
-      }
-      serverEvent.setEventTime(eventTimestamp); // Use validated timestamp
-      
-      if (typeof serverEvent.setUserData !== 'function') {
-        throw new Error('[Meta CAPI] serverEvent.setUserData is not a function');
-      }
-      serverEvent.setUserData(userData);
-      
-      if (typeof serverEvent.setCustomData !== 'function') {
-        throw new Error('[Meta CAPI] serverEvent.setCustomData is not a function');
-      }
-      serverEvent.setCustomData(customData);
-      
-      if (typeof serverEvent.setEventSourceUrl !== 'function') {
-        throw new Error('[Meta CAPI] serverEvent.setEventSourceUrl is not a function');
-      }
-      serverEvent.setEventSourceUrl(options.event_source_url || '');
-      
-      if (typeof serverEvent.setEventId !== 'function') {
-        throw new Error('[Meta CAPI] serverEvent.setEventId is not a function');
-      }
-      serverEvent.setEventId(options.eventID || uuidv4());
-      
-      if (typeof serverEvent.setActionSource !== 'function') {
-        throw new Error('[Meta CAPI] serverEvent.setActionSource is not a function');
-      }
-      serverEvent.setActionSource('website');
-      
-    } catch (eventBuildError) {
-      console.error('[Meta CAPI] Failed to build ServerEvent:', eventBuildError);
-      throw new Error(`ServerEvent build failed: ${eventBuildError.message}`);
-    }
+    const serverEvent = new ServerEvent()
+      .setEventName(eventName)
+      .setEventTime(eventTimestamp) // Use validated timestamp
+      .setUserData(userData)
+      .setCustomData(customData)
+      .setEventSourceUrl(options.event_source_url || '')
+      .setEventId(options.eventID || uuidv4())
+      .setActionSource('website');
 
     // Enhanced logging for event quality assessment
     const hasUserIdentifiers = !!(
@@ -938,33 +787,10 @@ export async function POST(request) {
       !!options.gender
     );
 
-    // Fire the event request to Facebook (already initialized and validated at function start)
-    let eventRequest;
-    try {
-      // Validate EventRequest class
-      if (typeof EventRequest !== 'function') {
-        throw new Error('[Meta CAPI] EventRequest is not a function');
-      }
-      
-      // Create event request with defensive checks
-      eventRequest = new EventRequest(access_token, pixel_id);
-      
-      // Validate event request instance
-      if (!eventRequest || typeof eventRequest.setEvents !== 'function') {
-        throw new Error('[Meta CAPI] EventRequest instance invalid or setEvents method missing');
-      }
-      
-      // Set events
-      eventRequest.setEvents([serverEvent]);
-      
-      // Validate execute method
-      if (typeof eventRequest.execute !== 'function') {
-        throw new Error('[Meta CAPI] eventRequest.execute is not a function');
-      }
-    } catch (setupError) {
-      console.error('[Meta CAPI] Failed to create EventRequest:', setupError);
-      throw new Error(`EventRequest setup failed: ${setupError.message}`);
-    }
+    // Fire the event request to Facebook
+    const eventRequest = new EventRequest(access_token, pixel_id).setEvents([
+      serverEvent,
+    ]);
 
     let response;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
