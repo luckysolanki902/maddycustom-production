@@ -30,10 +30,12 @@ const nextConfig = {
       removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
     },
 
+    // Prevent Next.js from bundling these packages - they break when minified
+    serverExternalPackages: ['facebook-nodejs-business-sdk'],
+
     // Optimize functions memory allocation to reduce costs
     experimental: {
       // Tree-shake these packages to reduce bundle size and cold start time
-      // NOTE: facebook-nodejs-business-sdk MUST NOT be here - it breaks with "f is not a function" error
       optimizePackageImports: [
         '@mui/material', 
         '@mui/icons-material', 
