@@ -31,6 +31,7 @@ import ChangeVariantButton from "../page-sections/products-page/ChangeVariantBut
 import VariantSelectionDialog from "../dialogs/VariantSelectionDialog";
 import { setAssistantContext } from '@/store/slices/assistantContextSlice';
 import PaymentShippingPoweredBy from "../page-sections/product-id-page/rating-section/PaymentShippingPoweredBy";
+import ProductFeatureHighlights from "../page-sections/product-id-page/ProductFeatureHighlights";
 
 // Memoize components that do not need to update on option change
 const MemoizedImageGallery = memo(ImageGallery);
@@ -752,6 +753,33 @@ export default function ProductIdPage({
             )}
           </div>
 
+          {/* Mobile: Duplicate Add to Cart Button before description (non-fixed, CSS controlled visibility) */}
+          {!isDisabled && !isZoomed && (
+            <div className={styles.mobileButtonBeforeDescription}>
+              <MemoizedAddToCartButtonWithOrder
+                product={{
+                  ...product,
+                  thumbnail: selectedOption?.images?.[0] || product?.images?.[0],
+                  selectedOption: selectedOption || null,
+                  wrapFinish: product.category.toLowerCase() === "wraps" ? selectedWrapFinish : null,
+                  variantDetails: variant,
+                  category: category,
+                  price:
+                    variant?.availableBrands?.length > 0
+                      ? variant.availableBrands[0].brandBasePrice + product.price
+                      : product.price,
+                }}
+                isLarge={true}
+                insertionDetails={{
+                  component: "productDetails-AddToCart-MobileInline",
+                  pageType: "product-id-page",
+                }}
+              />
+            </div>
+          )}
+
+          {/* Feature Highlights Section */}
+          <ProductFeatureHighlights />
 
           {/* Product description & additional details */}
           <MemoizedProductDescription
