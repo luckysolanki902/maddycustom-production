@@ -178,6 +178,11 @@ const OrderForm = ({
   const serviceabilityCache = useRef({});
   const [isPincodeValid, setIsPincodeValid] = useState(false);
   const [pincodeCheckInProgress, setPincodeCheckInProgress] = useState(false);
+  
+  // Address length validation for Shiprocket (190 character limit)
+  const [isAddressTooLong, setIsAddressTooLong] = useState(false);
+  const [addressLength, setAddressLength] = useState(0);
+  const MAX_ADDRESS_LENGTH = 190;
 
   // Background processing refs and state
   const pendingOperationsRef = useRef({
@@ -485,6 +490,44 @@ const OrderForm = ({
 
   // Prevent multiple form submissions
   const [purchaseInitiated, setPurchaseInitiated] = useState(false);
+  
+  // Watch address fields and validate total length for Shiprocket
+  const watchedAddressLine1 = watch('addressLine1');
+  const watchedFloorInput = watch('floorInput');
+  const watchedAreaLocality = watch('areaLocality');
+  const watchedLandmark = watch('landmark');
+  
+  useEffect(() => {
+    // Helper to format floor (inlined to avoid dependency issues)
+    const formatFloor = (value) => {
+      if (value === null || value === undefined) return '';
+      const t = String(value).trim();
+      if (!t) return '';
+      if (/^\d+$/.test(t)) return `Floor ${t}`;
+      if (/\bfloor\b/i.test(t)) return t;
+      return `Floor ${t}`;
+    };
+    
+    // Calculate the total address length as it will be sent to Shiprocket
+    // This matches the composition in onSubmitAddressDetails and fulfillmentHandler
+    const composedLine1 = [
+      watchedAddressLine1,
+      formatFloor(watchedFloorInput)
+    ].filter(Boolean).join(', ');
+    
+    const composedLine2 = [
+      watchedAreaLocality,
+      watchedLandmark
+    ].filter(Boolean).join(', ');
+    
+    // Final address is line1 + ' ' + line2 (as sent to Shiprocket)
+    // Match the exact backend format: `${addressLine1} ${addressLine2 || ''}`
+    const finalAddress = `${composedLine1} ${composedLine2 || ''}`;
+    const length = finalAddress.trim().length;
+    
+    setAddressLength(length);
+    setIsAddressTooLong(length > MAX_ADDRESS_LENGTH);
+  }, [watchedAddressLine1, watchedFloorInput, watchedAreaLocality, watchedLandmark]);
 
   // Reset tabIndex when dialog opens
   useEffect(() => {
@@ -2588,6 +2631,56 @@ const OrderForm = ({
                         )}
                       />
 
+                      {/* Address length warning */}
+                      {isAddressTooLong && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 1,
+                              p: '10px 12px',
+                              backgroundColor: '#FFF4E5',
+                              border: '1px solid #FFB74D',
+                              borderRadius: '8px',
+                            }}
+                          >
+                            <WarningAmberIcon sx={{ color: '#F57C00', fontSize: '1rem', mt: 0.2 }} />
+                            <Box>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  fontFamily: 'Jost, sans-serif',
+                                  color: '#E65100',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 600,
+                                  display: 'block'
+                                }}
+                              >
+                                Address is too long!
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  fontFamily: 'Jost, sans-serif',
+                                  color: '#F57C00',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 400,
+                                  display: 'block',
+                                  mt: 0.5
+                                }}
+                              >
+                                Please shorten your address to {MAX_ADDRESS_LENGTH} characters or less. Currently: {addressLength} characters.
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </motion.div>
+                      )}
+
                       {/* Pincode non-serviceable message */}
                       {watchedPincode?.length === 6 && !isPincodeValid && !pincodeCheckInProgress && (
                         <motion.div
@@ -3034,7 +3127,8 @@ const OrderForm = ({
                         isLoading ||
                         purchaseInitiated ||
                         pincodeCheckInProgress ||  // disable while checking
-                        !isPincodeValid             // disable until valid
+                        !isPincodeValid ||          // disable until valid
+                        isAddressTooLong            // disable if address exceeds 190 characters
                       }
                       sx={{
                         borderRadius: '50px',
