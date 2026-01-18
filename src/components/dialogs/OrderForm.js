@@ -186,6 +186,9 @@ const OrderForm = ({
     couponValidation: null,
   });
 
+  // Ref to track pending Razorpay payment (for Razorpay-only mode)
+  const pendingRazorpayPaymentRef = useRef(false);
+
   // Local Tab Index State - memoize to prevent rerenders
   const [tabIndex, setTabIndex] = useState(0);
   const formOpenTrackedRef = useRef(false);
@@ -225,9 +228,10 @@ const OrderForm = ({
   const upiSelected = selectedPaymentMethod === 'upi';
   const otherSelected = selectedPaymentMethod === 'other';
   
-  // Show payment tab after address
-  const requiresPayuPaymentTab = true;
-  const totalTabs = 3; // User details + Address + Payment
+  // Show payment tab after address only when PayU is the provider
+  // When Razorpay is the provider, go directly to Razorpay payment from address tab
+  const requiresPayuPaymentTab = isPayuProvider;
+  const totalTabs = isPayuProvider ? 3 : 2; // User details + Address (+ Payment for PayU)
 
   // Extract and aggregate unique extraFields from cart items - memoized
   const aggregatedExtraFields = useMemo(() => {
@@ -1232,11 +1236,21 @@ const OrderForm = ({
         }));
       }
       
-      console.log('✅ Moving to payment tab (index 2)');
-      // Just move to payment tab - user will choose payment method there
-      setIsLoading(false);
-      setPurchaseInitiated(false);
-      setTabIndex(2); // Move to payment tab
+      // Check if we should show payment method selection (PayU mode) or go directly to Razorpay
+      if (requiresPayuPaymentTab) {
+        console.log('✅ Moving to payment tab (index 2) - PayU mode');
+        // Just move to payment tab - user will choose payment method there
+        setIsLoading(false);
+        setPurchaseInitiated(false);
+        setTabIndex(2); // Move to payment tab
+      } else {
+        console.log('✅ Razorpay-only mode - marking pending Razorpay payment');
+        // Razorpay-only mode: mark that we should initiate Razorpay payment
+        // The useEffect watching lastOrderId will pick this up and trigger payment
+        pendingRazorpayPaymentRef.current = true;
+        setIsLoading(false);
+        setPurchaseInitiated(false);
+      }
 
     } catch (error) {
       console.log('❌ ERROR during order creation:', error);
@@ -1398,6 +1412,15 @@ const OrderForm = ({
       showSnackbar(error.message || 'Payment failed. Please try again.', 'error');
     }
   }, [lastOrderId, customerName, customerPhone, fetchOrCreateRazorpayOrder, handlePaymentStatusChange, dispatch, reset, handleFullClose, router, showSnackbar, computeCartSnapshot, totalCost, normalizedCouponCode]);
+
+  // Effect to trigger Razorpay payment when in Razorpay-only mode and order is created
+  useEffect(() => {
+    if (pendingRazorpayPaymentRef.current && lastOrderId && !requiresPayuPaymentTab) {
+      console.log('🔄 Triggering pending Razorpay payment for order:', lastOrderId);
+      pendingRazorpayPaymentRef.current = false;
+      initiateRazorpayPayment({ hideUpi: false, paymentContext: 'razorpay-direct' });
+    }
+  }, [lastOrderId, requiresPayuPaymentTab, initiateRazorpayPayment]);
 
   // NEW: Handle UPI payment with PayU S2S on mobile, Razorpay UPI elsewhere
   const handlePayWithUPI = useCallback(async () => {
@@ -2649,7 +2672,7 @@ const OrderForm = ({
                   </motion.div>
                 )}
 
-                {tabIndex === 2 && (
+                {tabIndex === 2 && requiresPayuPaymentTab && (
                   <motion.div
                     key="payment"
                     custom={2}
@@ -3004,7 +3027,7 @@ const OrderForm = ({
                     <BlackButton
                       extraClass="lg"
                       isLoading={isLoading}
-                      buttonText="Continue to Payment"
+                      buttonText={requiresPayuPaymentTab ? "Continue to Payment" : "Proceed to Pay"}
                       type="submit"
                       disabled={
                         isPaymentProcessing ||
