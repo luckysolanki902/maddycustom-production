@@ -15,6 +15,7 @@ import ProductCategorySlider from '@/components/page-sections/homepage/ProductCa
 import SingleCategorySlider from '@/components/showcase/carousels/SingleCategoryCarousel';
 import VoiceOfOurCustomers from '@/components/page-sections/homepage/VoiceOfCustomers';
 import CustomerPhotosSlider from '@/components/page-sections/homepage/CustomerPhotosSlider';
+import TankBagBanner from '@/components/page-sections/homepage/TankBagBanner';
 
 export const revalidate = 300; // 5 minutes - balances freshness with cost
 
@@ -111,6 +112,9 @@ const HomePage = async () => {
   <CategoryGrid assets={safeDisplayAssets} />
 
         <SingleCategorySlider products={uniqueProductsData} />
+
+  {/* Tank Bag Banner Section - Conditionally rendered */}
+  <TankBagBanner />
 
   {/* Interior & Exterior Sections */}
   <CarIntExtWrapper assets={safeDisplayAssets} />

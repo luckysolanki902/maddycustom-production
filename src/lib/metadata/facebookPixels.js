@@ -324,10 +324,26 @@ const trackEvent = async (name, formData = {}, otherOptions = {}) => {
     }
 
     if (finalUserData.phoneNumber) {
-      const normalizedPhone = finalUserData.phoneNumber.replace(/[^\d+]/g, '');
-      const hashedPhone = await hashIdentifier(normalizedPhone);
-      if (hashedPhone) {
-        eventParams.phones = [hashedPhone];
+      // Normalize phone number to prevent duplicate phone hashes
+      // Meta requires: digits only with country code (e.g., "919876543210" for India)
+      let normalizedPhone = String(finalUserData.phoneNumber).replace(/\D/g, '');
+      
+      // Handle Indian phone numbers (10 digits without country code)
+      if (normalizedPhone.length === 10) {
+        normalizedPhone = '91' + normalizedPhone;
+      } else if (normalizedPhone.length === 11 && normalizedPhone.startsWith('0')) {
+        // Starts with 0 (local format) - remove 0 and add country code
+        normalizedPhone = '91' + normalizedPhone.substring(1);
+      } else if (normalizedPhone.length > 12 && normalizedPhone.startsWith('91')) {
+        // Too many digits - extract last 10 and prepend 91
+        normalizedPhone = '91' + normalizedPhone.slice(-10);
+      }
+      
+      if (normalizedPhone) {
+        const hashedPhone = await hashIdentifier(normalizedPhone);
+        if (hashedPhone) {
+          eventParams.phones = [hashedPhone];
+        }
       }
     }
 

@@ -23,23 +23,43 @@ const hashData = (data) => {
   return crypto.createHash('sha256').update(data).digest('hex');
 };
 
+/**
+ * Normalizes phone number for Meta Conversions API
+ * 
+ * CRITICAL: Ensures consistent phone number formatting to prevent
+ * the "duplicate client phone numbers" error from Meta.
+ * 
+ * Meta requires: digits only with country code (e.g., "919876543210" for India)
+ * 
+ * @param {string} phone - The phone number to normalize
+ * @returns {string} - The normalized phone number (digits only with country code)
+ */
 const normalizePhoneNumber = (phone) => {
   if (!phone) return '';
-  let normalized = phone.replace(/[^\d+]/g, '');
-  if (normalized.startsWith('+')) {
-    const parts = normalized.split('');
-    let countryCode = '+';
-    let i = 1;
-    while (i < parts.length && i <= 4) {
-      countryCode += parts[i];
-      i++;
-    }
-    let number = parts.slice(i).join('').replace(/^0+/, '');
-    normalized = countryCode + number;
-  } else {
-    normalized = normalized.replace(/^0+/, '');
+  
+  // Convert to string and remove all non-digit characters
+  let digitsOnly = String(phone).replace(/\D/g, '');
+  
+  if (!digitsOnly) return '';
+  
+  // Handle Indian phone numbers (most common case)
+  if (digitsOnly.length === 10) {
+    // Assume Indian number without country code - add 91
+    digitsOnly = '91' + digitsOnly;
+  } else if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) {
+    // Already has Indian country code - good
+  } else if (digitsOnly.length === 11 && digitsOnly.startsWith('0')) {
+    // Starts with 0 (local format) - remove 0 and add country code
+    digitsOnly = '91' + digitsOnly.substring(1);
+  } else if (digitsOnly.length > 12 && digitsOnly.startsWith('91')) {
+    // Too many digits - extract last 10 and prepend 91
+    digitsOnly = '91' + digitsOnly.slice(-10);
+  } else if (digitsOnly.length > 10 && digitsOnly.length < 12) {
+    // Has partial country code - extract 10 digit number
+    digitsOnly = '91' + digitsOnly.slice(-10);
   }
-  return normalized;
+  
+  return digitsOnly;
 };
 
 export const sendPurchaseEvent = async (order, analyticsInfo = {}) => {

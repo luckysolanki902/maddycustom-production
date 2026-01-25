@@ -413,7 +413,7 @@ export default function ProductsPage({
                     }}
                   >
                     {variant?.name}
-                    {variant?.name?.toLowerCase().includes('tank') && (
+                    {variant?.name?.toLowerCase().includes('tank') && !variant?.name?.toLowerCase().includes('bag') && (
                       <button
                         className={styles.sizebutton}
                         style={{ backgroundColor: '#d6fcff' }}
