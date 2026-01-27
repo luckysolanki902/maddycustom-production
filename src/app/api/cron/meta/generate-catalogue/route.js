@@ -93,8 +93,10 @@ export async function GET() {
     });
     const processedIdSet = new Set(processedProductIds.map(id => id.toString()));
 
-    // Get ALL products (with available categories)
-    const allCategoryIds = allSpecificCategories.map(cat => cat._id);
+    // Get ALL products (with available categories) - excluding 673aea6778c57ec01acae635
+    const allCategoryIds = allSpecificCategories
+      .filter(cat => cat._id.toString() !== '673aea6778c57ec01acae635')
+      .map(cat => cat._id);
     const allProducts = await Product.find({
       specificCategory: { $in: allCategoryIds },
     })
