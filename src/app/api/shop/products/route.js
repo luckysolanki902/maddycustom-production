@@ -129,6 +129,10 @@ export async function POST(request) {
         sortStage.displayOrder = 1;
       }
 
+      // Add _id as final sort to ensure stable, deterministic ordering
+      // This prevents documents from shifting between pages when primary sort values are identical
+      sortStage._id = 1;
+
       pipeline.push({
         $sort: {
           isTagMatched: -1,
