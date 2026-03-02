@@ -124,50 +124,32 @@ const createContents = (product) => {
 };
 
 /**
- * Normalizes phone number for Meta Conversions API
- * 
- * CRITICAL: This function ensures consistent phone number formatting to prevent
- * the "duplicate client phone numbers" error from Meta.
- * 
- * Meta's requirements for phone numbers:
- * - Should be digits only (no +, spaces, dashes)
- * - Should include country code WITHOUT the + prefix
- * - Example: Indian number should be "919876543210" not "+919876543210" or "9876543210"
- * 
+ * Normalizes phone number for better matching
  * @param {string} phone - The phone number to normalize
- * @returns {string} - The normalized phone number (digits only with country code)
+ * @returns {string} - The normalized phone number
  */
 const normalizePhoneNumber = (phone) => {
   if (!phone) return '';
-  
-  // Convert to string and remove all non-digit characters
-  let digitsOnly = String(phone).replace(/\D/g, '');
-  
-  if (!digitsOnly) return '';
-  
-  // Handle Indian phone numbers (most common case for this app)
-  // Indian numbers are 10 digits, country code is 91
-  if (digitsOnly.length === 10) {
-    // Assume it's an Indian number without country code - add 91
-    digitsOnly = '91' + digitsOnly;
-  } else if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) {
-    // Already has Indian country code - good
-  } else if (digitsOnly.length === 11 && digitsOnly.startsWith('0')) {
-    // Starts with 0 (local format) - remove 0 and add country code
-    digitsOnly = '91' + digitsOnly.substring(1);
-  } else if (digitsOnly.length > 12 && digitsOnly.startsWith('91')) {
-    // Too many digits but starts with 91 - might have extra leading zeros
-    // Extract the last 10 digits and prepend 91
-    const last10 = digitsOnly.slice(-10);
-    digitsOnly = '91' + last10;
-  } else if (digitsOnly.length > 10 && digitsOnly.length < 12) {
-    // Has some country code but unclear - try to extract 10 digit number
-    const last10 = digitsOnly.slice(-10);
-    digitsOnly = '91' + last10;
+  // Remove all non-digit characters except + at the beginning
+  let normalized = phone.replace(/[^\d+]/g, '');
+  // Remove leading zeros after country code
+  if (normalized.startsWith('+')) {
+    const parts = normalized.split('');
+    let countryCode = '+';
+    let i = 1;
+    // Extract country code (1-4 digits after +)
+    while (i < parts.length && i <= 4) {
+      countryCode += parts[i];
+      i++;
+    }
+    // Remove leading zeros from the rest
+    let number = parts.slice(i).join('').replace(/^0+/, '');
+    normalized = countryCode + number;
+  } else {
+    // Remove leading zeros
+    normalized = normalized.replace(/^0+/, '');
   }
-  // For other international numbers, keep as-is (they should include country code)
-  
-  return digitsOnly;
+  return normalized;
 };
 
 /**
