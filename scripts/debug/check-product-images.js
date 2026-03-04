@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
-// Get MongoDB URI from environment or use default
-const MONGODB_URI = process.env.MONGODB_URI || 'process.env.MONGODB_URI';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 async function checkProductImages(productName = 'Tigrave') {
   try {
