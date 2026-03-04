@@ -23,24 +23,24 @@ This codebase — the original custom-built platform — is live at:
 <div align="center">
 <table>
 <tr>
-<td width="50%"><img src="https://maddycustom.vercel.app/images/githubss/hero.png" alt="Hero — Landing page" /></td>
-<td width="50%"><img src="https://maddycustom.vercel.app/images/githubss/plp.png" alt="PLP — Product listing" /></td>
+<td width="50%"><img src="public/images/githubss/hero.png" alt="Hero — Landing page" /></td>
+<td width="50%"><img src="public/images/githubss/plp.png" alt="PLP — Product listing" /></td>
 </tr>
 <tr>
 <td align="center"><sub>Landing page</sub></td>
 <td align="center"><sub>Product listing</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="https://maddycustom.vercel.app/images/githubss/pdp.png" alt="PDP — Product detail page" /></td>
-<td width="50%"><img src="https://maddycustom.vercel.app/images/githubss/cart.png" alt="Cart & Checkout" /></td>
+<td width="50%"><img src="public/images/githubss/pdp.png" alt="PDP — Product detail page" /></td>
+<td width="50%"><img src="public/images/githubss/cart.png" alt="Cart & Checkout" /></td>
 </tr>
 <tr>
 <td align="center"><sub>Product detail page</sub></td>
 <td align="center"><sub>Cart & checkout</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="https://maddycustom.vercel.app/images/githubss/chatbot.png" alt="AI Chatbot" /></td>
-<td width="50%"><img src="https://maddycustom.vercel.app/images/githubss/track-order.png" alt="Track your order" /></td>
+<td width="50%"><img src="public/images/githubss/chatbot.png" alt="AI Chatbot" /></td>
+<td width="50%"><img src="public/images/githubss/track-order.png" alt="Track your order" /></td>
 </tr>
 <tr>
 <td align="center"><sub>AI chatbot</sub></td>
