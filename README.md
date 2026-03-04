@@ -57,11 +57,13 @@ This codebase — the original custom-built platform — is live at:
 
 ## Context
 
-Started in 2022 as a side project between two college students selling custom bike wraps. I handled the engineering; my co-founder handled the business. Within a year the product grew past what any off-the-shelf platform could support — custom offer engines, multi-provider payment failover, WhatsApp-first customer flows, and a 3-tier product hierarchy that doesn't map to any standard e-commerce template.
+Started in 2022 when [Harshit Yadav](https://github.com/harshityadav) — the founder — spotted a market in custom bike wraps. I came on as co-founder and sole engineer; he handled the business. Within a year the product grew past what any off-the-shelf platform could support — custom offer engines, multi-provider payment failover, WhatsApp-first customer flows, and a 3-tier product hierarchy that doesn't map to any standard e-commerce template.
 
-So I built the entire platform from scratch. Sole engineer. Every API route, every model, every deployment decision.
+So I built the entire platform from scratch. Every API route, every model, every deployment decision.
 
-The platform eventually served **100K+ monthly users**, generated **₹60L in annual revenue**, and ran on **under $30/month** in infrastructure costs. In early 2026, the business moved to Shopify — the right call for scale with a non-technical team. But the engineering here is real, battle-tested, and mine.
+The platform eventually served **100K+ monthly users**, generated **₹60L in annual revenue**, and ran on **under $30/month** in infrastructure costs (MongoDB ~$9, AWS ~$2, Vercel ~$20). Then Vercel changed their pricing — our bill jumped from $20 to $116. I optimised it down to $75, but the cost unpredictability, combined with growing payment gateway issues (Razorpay upstream bank downtimes), made the team decide to migrate to Shopify. Grow faster, spend less, fewer incidents to debug without a dedicated engineer. It was the right business call.
+
+The main domain ([maddycustom.com](https://maddycustom.com)) now runs on Shopify. This codebase — the original custom-built platform — is still live at [maddycustom.vercel.app](https://maddycustom.vercel.app).
 
 <br/>
 
