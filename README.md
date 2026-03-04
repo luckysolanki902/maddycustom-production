@@ -9,7 +9,8 @@
 Built from scratch. No Shopify. No templates.
 100K+ monthly users · ₹60L annual revenue · 10-person team.
 
-<br/>
+The main domain ([maddycustom.com](https://maddycustom.com)) has since moved to Shopify.
+This codebase — the original custom-built platform — is live at:
 
 [maddycustom.vercel.app](https://maddycustom.vercel.app)
 
