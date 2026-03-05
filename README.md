@@ -57,7 +57,7 @@ This codebase — the original custom-built platform — is live at:
 
 ## Context
 
-Started in 2022 when [Harshit Yadav](https://github.com/harshityadav) — the founder — spotted a market in custom bike wraps. I came on as co-founder and sole engineer; he handled the business. Within a year the product grew past what any off-the-shelf platform could support — custom offer engines, multi-provider payment failover, WhatsApp-first customer flows, and a 3-tier product hierarchy that doesn't map to any standard e-commerce template.
+Started in 2022 when [Harshit Yadav]([https://github.com/harshityadav](https://www.linkedin.com/in/harshit-yadav-a63768229)) — the founder — spotted a market in custom bike wraps. I came on as co-founder and sole engineer; he handled the business. Within a year the product grew past what any off-the-shelf platform could support — custom offer engines, multi-provider payment failover, WhatsApp-first customer flows, and a 3-tier product hierarchy that doesn't map to any standard e-commerce template.
 
 So I built the entire platform from scratch. Every API route, every model, every deployment decision.
 
