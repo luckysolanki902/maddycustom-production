@@ -1,6 +1,8 @@
 import Script from 'next/script';
 
+// Disabled - Facebook tracking turned off
 const FacebookPixel = () => {
+  return null;
   return (
     <>
       <Script

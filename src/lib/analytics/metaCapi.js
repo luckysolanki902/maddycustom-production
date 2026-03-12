@@ -63,6 +63,9 @@ const normalizePhoneNumber = (phone) => {
 };
 
 export const sendPurchaseEvent = async (order, analyticsInfo = {}) => {
+  // Disabled - Facebook tracking turned off
+  return;
+
   const access_token = process.env.FB_PIXEL_ACCESS_TOKEN;
   if (!access_token) {
     console.error('FB_PIXEL_ACCESS_TOKEN is not defined');

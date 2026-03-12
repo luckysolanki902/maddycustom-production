@@ -4,7 +4,7 @@ import { getFbp, getFbc, getFacebookTrackingParams, getFacebookTrackingParamsAsy
 import { enhanceEventData } from '@/lib/utils/userDataEnhancer';
 import { getExternalId } from '@/lib/utils/externalIdManager';
 import { detectClientIP, getClientIPSync } from '@/lib/utils/ipDetection';
-const StopFacebookPixels = false; // Set to true to disable Facebook Pixel events
+const StopFacebookPixels = true; // Disabled - Facebook tracking turned off
 
 // Standard FB event names that should use fbq('track', ...). Others use 'trackCustom'.
 const STANDARD_EVENTS = new Set([

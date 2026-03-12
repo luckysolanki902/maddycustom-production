@@ -393,6 +393,9 @@ const isValidIpAddress = (ip) => {
  * Handles sending events to Facebook's Conversion API.
  */
 export async function POST(request) {
+  // Disabled - Facebook tracking turned off
+  return NextResponse.json({ disabled: true, message: 'Facebook tracking is disabled' }, { status: 200 });
+
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 1000; // in milliseconds
 
